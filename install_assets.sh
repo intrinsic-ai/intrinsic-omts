@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # Builds and installs skills and services listed in required_assets.txt
-# into a target Intrinsic cluster.
+# into a target Intrinsic cluster. If an asset is a service, automatically
+# adds the service instance via inctl.
 #
 # Usage:
 #   ./install_assets.sh [options]
@@ -14,6 +15,7 @@
 #   -n, --dry-run                 Print commands without executing them
 #       --build-only              Only build bundle.tar assets without installing
 #       --install-only            Only install existing bundle.tar assets without building
+#       --no-service-add          Skip running 'service add' for service assets
 #   -h, --help                    Show this help message
 
 set -euo pipefail
@@ -28,6 +30,7 @@ COMPILATION_MODE="${COMPILATION_MODE:-opt}"
 DRY_RUN=false
 BUILD_ONLY=false
 INSTALL_ONLY=false
+AUTO_SERVICE_ADD=true
 
 usage() {
   sed -n '/^# Usage:/,/^#   -h, --help/p' "$0" | sed 's/^# \?//'
@@ -63,6 +66,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --install-only)
       INSTALL_ONLY=true
+      shift
+      ;;
+    --no-service-add)
+      AUTO_SERVICE_ADD=false
       shift
       ;;
     -h|--help)
@@ -101,6 +108,7 @@ echo "Assets file:      ${ASSETS_FILE}"
 echo "Bazel workspace:  ${WORKSPACE_DIR}"
 echo "Cluster address:  ${ADDRESS}"
 echo "Compilation mode: ${COMPILATION_MODE}"
+echo "Auto service add: ${AUTO_SERVICE_ADD}"
 echo "Dry run:          ${DRY_RUN}"
 echo "============================================================"
 echo ""
@@ -200,6 +208,8 @@ if [[ "${BUILD_ONLY}" == false ]]; then
   INSTALLED_COUNT=0
   SKIPPED_COUNT=0
   FAILED_COUNT=0
+  SERVICES_ADDED=0
+  SERVICES_SKIPPED=0
 
   for i in "${BUILD_SUCCEEDED[@]}"; do
     target="${TARGETS[i]}"
@@ -225,11 +235,20 @@ if [[ "${BUILD_ONLY}" == false ]]; then
 
     echo "+ ${INSTALL_CMD[*]}"
 
+    # Check if bundle is a service asset
+    is_service=false
+    if [[ -f "${bundle_path}" ]] && tar -tf "${bundle_path}" 2>/dev/null | grep -q "service_manifest"; then
+      is_service=true
+    fi
+
     if [[ "${DRY_RUN}" == true ]]; then
+      if [[ "${AUTO_SERVICE_ADD}" == true ]]; then
+        echo "+ [if service] bazel run -c ${COMPILATION_MODE} //google3/intrinsic/tools/inctl:inctl_external -- -alsologtostderr service add --address ${ADDRESS} <service_name>"
+      fi
       continue
     fi
 
-    # Run installation and capture output to inspect for AlreadyExists
+    # Run installation and capture output to inspect for AlreadyExists and service name
     set +e
     output="$("${INSTALL_CMD[@]}" 2>&1)"
     exit_code=$?
@@ -237,27 +256,80 @@ if [[ "${BUILD_ONLY}" == false ]]; then
 
     echo "$output"
 
+    asset_id=""
     if [[ $exit_code -eq 0 ]]; then
       echo "Status: Successfully installed."
       INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
+      if echo "$output" | grep -q 'Finished installing "'; then
+        asset_id="$(echo "$output" | sed -n -E 's/.*Finished installing "([^"]+)".*/\1/p' | head -n 1)"
+      fi
     elif echo "$output" | grep -q "AlreadyExists"; then
       echo "Status: Asset is already installed. Skipping."
       SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+      if echo "$output" | grep -q 'exact asset already is installed: "'; then
+        asset_id="$(echo "$output" | sed -n -E 's/.*exact asset already is installed: "([^"]+)".*/\1/p' | head -n 1)"
+      fi
     else
       echo "Status: Installation failed with exit code ${exit_code}." >&2
       FAILED_COUNT=$((FAILED_COUNT + 1))
     fi
+
+    # If this asset is a service, add the service instance
+    if [[ "${is_service}" == true && "${AUTO_SERVICE_ADD}" == true ]]; then
+      service_name=""
+      if [[ -n "${asset_id}" ]]; then
+        # Strip version suffix (e.g. .0.0.1+...)
+        service_name="$(echo "${asset_id}" | sed -E 's/\.[0-9]+\.[0-9]+\.[0-9]+.*$//')"
+      else
+        # Fallback to target name
+        target_clean="${target#//}"
+        target_name="${target_clean##*:}"
+        service_name="ai.intrinsic.${target_name}"
+      fi
+
+      echo ""
+      echo ">>> Adding service instance: ${service_name}"
+      SERVICE_ADD_CMD=(
+        bazel run -c "${COMPILATION_MODE}" //google3/intrinsic/tools/inctl:inctl_external --
+        -alsologtostderr service add
+        --address "${ADDRESS}"
+        "${service_name}"
+      )
+      echo "+ ${SERVICE_ADD_CMD[*]}"
+
+      set +e
+      svc_output="$("${SERVICE_ADD_CMD[@]}" 2>&1)"
+      svc_exit_code=$?
+      set -e
+
+      echo "$svc_output"
+
+      if [[ $svc_exit_code -eq 0 ]]; then
+        echo "Status: Service '${service_name}' added successfully."
+        SERVICES_ADDED=$((SERVICES_ADDED + 1))
+      elif echo "$svc_output" | grep -E -q "already exists|AlreadyExists"; then
+        echo "Status: Service instance '${service_name}' already exists. Skipping."
+        SERVICES_SKIPPED=$((SERVICES_SKIPPED + 1))
+      else
+        echo "Warning: Failed to add service '${service_name}' (exit code ${svc_exit_code})." >&2
+      fi
+    fi
+
     echo ""
   done
 
   echo "============================================================"
   echo "Installation Summary"
   echo "============================================================"
-  echo "Total assets:      ${#TARGETS[@]}"
-  echo "Build failures:    ${#BUILD_FAILED[@]}"
-  echo "Installed:         ${INSTALLED_COUNT}"
-  echo "Already present:   ${SKIPPED_COUNT}"
-  echo "Install failures:  ${FAILED_COUNT}"
+  echo "Total assets:        ${#TARGETS[@]}"
+  echo "Build failures:      ${#BUILD_FAILED[@]}"
+  echo "Installed assets:    ${INSTALLED_COUNT}"
+  echo "Already present:     ${SKIPPED_COUNT}"
+  echo "Install failures:    ${FAILED_COUNT}"
+  if [[ "${AUTO_SERVICE_ADD}" == true ]]; then
+    echo "Services added:      ${SERVICES_ADDED}"
+    echo "Services existing:   ${SERVICES_SKIPPED}"
+  fi
   echo "============================================================"
 
   if [[ ${#BUILD_FAILED[@]} -gt 0 || ${FAILED_COUNT} -gt 0 ]]; then
