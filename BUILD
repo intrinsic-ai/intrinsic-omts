@@ -25,6 +25,7 @@ intrinsic_solution(
     name = "omts",
     assets = [
         "//google3/intrinsic/resources/catalog/resourcedata/product/building_block",
+        "//google3/intrinsic/resources/catalog/resourcedata/product/imts:raw_stock_2x3x5",
         "//google3/intrinsic/simulation/gazebo/asset:gazebo_simulator_type",
         "//google3/intrinsic/resources/catalog/resourcedata/calibration:charuco_9x14_20mm_15mm_dict_5x5",
         "//google3/intrinsic/apps/common/resources:charuco_9x14_20mm_15mm_dict_5x5_estimator",
@@ -51,6 +52,7 @@ intrinsic_solution(
     default_operation_mode = "real",
     instances = [
         ":building_block",
+        ":raw_stock_2x3x5",
         ":gazebo_simulator",
         ":charuco_9x14_20mm_15mm_dict_5x5",
         ":calibration_service_instance",
@@ -65,6 +67,11 @@ intrinsic_solution(
 intrinsic_asset_instance(
     name = "building_block",
     id = "ai.intrinsic.building_block",
+)
+
+intrinsic_asset_instance(
+    name = "raw_stock_2x3x5",
+    id = "ai.intrinsic.raw_stock_2x3x5",
 )
 
 intrinsic_asset_instance(
