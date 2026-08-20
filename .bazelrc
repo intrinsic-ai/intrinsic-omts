@@ -5,10 +5,6 @@ common --enable_workspace=false
 # Disable empty glob check
 common --incompatible_disallow_empty_glob=false
 
-# Custom downloader configs. This makes it so that external URLs to download dependencies from
-# can be rewritten at build time and, for example, support custom mirrors.
-common               --downloader_config=bazel/content_mirror/permissive.cfg
-common:strict_mirror --downloader_config=bazel/content_mirror/strict.cfg
 
 # Static linking to workaround OpenCV symbol lookup errors: https://github.com/bazelbuild/rules_foreign_cc/issues/1164
 common --dynamic_mode=off
@@ -56,3 +52,13 @@ common --sandbox_default_allow_network=false
 #
 # See https://github.com/google/googletest/issues/2883#issuecomment-647540343
 common --define absl=1
+
+# Flags for rules_cuda
+common --repo_env=CUDA_COMPILER_USE_CC_TOOLCHAIN=true
+common --@rules_cuda//cuda:compiler=clang
+common --@rules_cuda//cuda:runtime=@cuda//:cuda_runtime_static
+common --@rules_cuda//cuda:archs=sm_89,sm_86,sm_80,sm_75,sm_70
+common --@rules_cuda//cuda:copts='-std=c++20'
+common --@rules_cuda//cuda:copts='-stdlib=libc++'
+common --@rules_cuda//cuda:copts="-D_ALLOW_UNSUPPORTED_LIBCPP"
+
