@@ -1,6 +1,0 @@
-### PERCEPTION ###
-//google3/intrinsic/perception/skills/calibration:calibrate_camera_to_robot_skill
-//google3/intrinsic/perception/skills/calibration:sample_calibration_poses_skill
-//google3/intrinsic/perception/skills/calibration:collect_calibration_data_skill
-//google3/intrinsic/perception/skills/calibration:initialize_calibration_skill
-//google3/intrinsic/perception/service/v1:calibration_service

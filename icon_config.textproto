@@ -1,0 +1,190 @@
+[type.googleapis.com/intrinsic_proto.icon.IconMainConfig]:  {
+  control_frequency_hz:  500
+  services:  {
+    world_service_from_grpc:  {
+      world_id:  "world"
+    }
+    kinematics_from_world_service:  true
+    assembly_from_world_service:  true
+  }
+  realtime_control_config:  {
+    parts_by_name:  {
+      key:  "adio"
+      value:  {
+        part_type_name:  "HalADIOPart"
+        config:  {
+          [type.googleapis.com/intrinsic_proto.icon.HalADIOPartConfig]:  {
+            digital_inputs:  {
+              interface:  {
+                module_name:  "ur_module"
+                interface_name:  "standard_digital_output_status"
+              }
+              export_name:  "standard_out_status"
+            }
+            digital_inputs:  {
+              interface:  {
+                module_name:  "ur_module"
+                interface_name:  "configurable_digital_output_status"
+              }
+              export_name:  "configurable_out_status"
+            }
+            digital_inputs:  {
+              interface:  {
+                module_name:  "ur_module"
+                interface_name:  "tool_digital_output_status"
+              }
+              export_name:  "tool_out_status"
+            }
+            digital_inputs:  {
+              interface:  {
+                module_name:  "ur_module"
+                interface_name:  "standard_digital_input_status"
+              }
+              export_name:  "standard_in"
+            }
+            digital_inputs:  {
+              interface:  {
+                module_name:  "ur_module"
+                interface_name:  "configurable_digital_input_status"
+              }
+              export_name:  "configurable_in"
+            }
+            digital_inputs:  {
+              interface:  {
+                module_name:  "ur_module"
+                interface_name:  "tool_digital_input_status"
+              }
+              export_name:  "tool_in_status"
+            }
+            digital_outputs:  {
+              interface:  {
+                module_name:  "ur_module"
+                interface_name:  "standard_digital_output_command"
+              }
+              export_name:  "standard_out"
+            }
+            digital_outputs:  {
+              interface:  {
+                module_name:  "ur_module"
+                interface_name:  "configurable_digital_output_command"
+              }
+              export_name:  "configurable_out"
+            }
+            digital_outputs:  {
+              interface:  {
+                module_name:  "ur_module"
+                interface_name:  "tool_digital_output_command"
+              }
+              export_name:  "tool_out"
+            }
+            analog_inputs:  {
+              interface:  {
+                module_name:  "ur_module"
+                interface_name:  "analog_input_status"
+              }
+            }
+          }
+        }
+        safety_action_type_name:  "intrinsic.empty"
+      }
+    }
+    parts_by_name:  {
+      key:  "arm"
+      value:  {
+        part_type_name:  "HalArmPart"
+        config:  {
+          [type.googleapis.com/intrinsic_proto.icon.HalArmPartConfig]:  {
+            joint_position_command:  {
+              module_name:  "ur_module"
+              interface_name:  "joint_position_command"
+            }
+            joint_position_state:  {
+              module_name:  "ur_module"
+              interface_name:  "joint_position_state"
+            }
+            joint_velocity_state:  {
+              module_name:  "ur_module"
+              interface_name:  "joint_velocity_state"
+            }
+            payload_command:  {
+              module_name:  "ur_module"
+              interface_name:  "payload_command"
+            }
+            payload_state:  {
+              module_name:  "ur_module"
+              interface_name:  "payload_state"
+            }
+            linear_joint_acceleration_filter_config:  {
+              joint_position_process_noise:  0.001
+              joint_velocity_process_noise:  0.001
+              joint_acceleration_process_noise:  0.5
+              joint_jerk_process_noise:  1250
+              joint_position_measurement_noise:  0.0001
+              joint_velocity_measurement_noise:  0.001
+              dare_settings:  {
+                max_iterations:  3000
+              }
+            }
+          }
+        }
+        safety_action_type_name:  "intrinsic.stop"
+        hardware_resource_name:  "ur_module"
+      }
+    }
+    parts_by_name:  {
+      key:  "ft_sensor"
+      value:  {
+        part_type_name:  "HalForceTorqueSensorPart"
+        config:  {
+          [type.googleapis.com/intrinsic_proto.icon.HalForceTorqueSensorPartConfig]:  {
+            force_torque_state:  {
+              module_name:  "ur_module"
+              interface_name:  "force_torque_status"
+            }
+            force_torque_command:  {
+              module_name:  "ur_module"
+              interface_name:  "force_torque_command"
+            }
+            world_robot_collection_name:  "ur_module"
+            joint_position_state:  {
+              module_name:  "ur_module"
+              interface_name:  "joint_position_state"
+            }
+            joint_velocity_state:  {
+              module_name:  "ur_module"
+              interface_name:  "joint_velocity_state"
+            }
+            target_link_name:  "wrist_3_link"
+            ft_sensor_link_name:  "InternalForceTorqueSensor"
+            ft_t_cog:  0
+            ft_t_cog:  0
+            ft_t_cog:  0
+            force_control_settings:  {
+              excessive_force_threshold:  50
+              excessive_torque_threshold:  50
+              virtual_translational_inertia:  7
+              virtual_rotational_inertia:  7
+              sensed_wrench_deadband:  {
+                x:  0.5
+                y:  0.5
+                z:  0.5
+                rx:  0.05
+                ry:  0.05
+                rz:  0.05
+              }
+            }
+          }
+        }
+        safety_action_type_name:  "intrinsic.empty"
+      }
+    }
+    safety_hardware_interface:  {
+      module_name:  "ur_module"
+      interface_name:  "safety_status"
+    }
+  }
+  hardware_module_names:  "ur_module"
+  hardware_module_that_drives_clock:  "ur_module"
+  hardware_module_read_write_timeout_seconds:  1
+  deactivated_hardware_configuration:  {}
+}
