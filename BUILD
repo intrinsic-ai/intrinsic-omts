@@ -1,10 +1,10 @@
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
-load("@ioc//bazel:python.bzl", "py_binary")
 load("@ioc//google3/intrinsic/assets/build_defs:asset.bzl", "intrinsic_asset_instance")
 load("@ioc//google3/intrinsic/config:def.bzl", "intrinsic_solution")
 
 package(default_visibility = ["//visibility:public"])
 
+# Flag to parameterize robot hardware model (ur3e vs ur5e)
 string_flag(
     name = "robot_model",
     build_setting_default = "ur5e",
@@ -21,8 +21,9 @@ config_setting(
     },
 )
 
+# Solution deployment definition
 intrinsic_solution(
-    name = "omts",
+    name = "omts_solution",
     assets = [
         "@ioc//google3/intrinsic/resources/catalog/resourcedata/product/building_block",
         "@ioc//google3/intrinsic/resources/catalog/resourcedata/product/imts:raw_stock_2x3x5",
@@ -64,6 +65,17 @@ intrinsic_solution(
     ],
 )
 
+# Default aliases
+alias(
+    name = "omts",
+    actual = ":omts_solution",
+)
+
+alias(
+    name = "omts_app",
+    actual = "//src:omts_app",
+)
+
 intrinsic_asset_instance(
     name = "building_block",
     id = "ai.intrinsic.building_block",
@@ -92,14 +104,14 @@ intrinsic_asset_instance(
 
 intrinsic_asset_instance(
     name = "icon",
-    config = ":icon_config.textproto",
+    config = "//configs:icon_config.textproto",
     id = "ai.intrinsic.generic_realtime_control_service",
     instance_name = "icon",
 )
 
 intrinsic_asset_instance(
     name = "ur_module",
-    config = ":ur_module_config.textproto",
+    config = "//configs:ur_module_config.textproto",
     id = select({
         ":is_ur3e": "ai.intrinsic.ur3e_hardware_module_ioc",
         "//conditions:default": "ai.intrinsic.ur5e_hardware_module_ioc",
@@ -109,7 +121,7 @@ intrinsic_asset_instance(
 
 intrinsic_asset_instance(
     name = "orbbec_camera",
-    config = ":gemini_device_config.textproto",
+    config = "//configs:gemini_device_config.textproto",
     id = "ai.intrinsic.orbbec_gemini_335le",
     instance_name = "orbbec_camera",
 )
@@ -124,32 +136,4 @@ intrinsic_asset_instance(
     name = "motion_planner_service",
     id = "ai.intrinsic.motion_planner_service",
     instance_name = "motion_planner_service",
-)
-
-py_binary(
-    name = "calibrate_camera_to_robot_with_jogging",
-    srcs = ["calibrate_camera_to_robot_with_jogging.py"],
-    deps = [
-        "@ioc//google3/intrinsic/icon/proto:joint_space_py_pb2",
-        "@ioc//google3/intrinsic/icon/proto/v1:service_py_pb2_grpc",
-        "@ioc//google3/intrinsic/icon/python:create_action_utils",
-        "@ioc//google3/intrinsic/icon/python:icon",
-        "@ioc//google3/intrinsic/math/python:proto_conversion",
-        "@ioc//google3/intrinsic/motion_planning/public/proto/v1:geometric_constraints_py_pb2",
-        "@ioc//google3/intrinsic/perception/public/proto/v1:camera_to_robot_calibration_py_pb2",
-        "@ioc//google3/intrinsic/perception/skills/calibration:collect_calibration_data_py_pb2",
-        "@ioc//google3/intrinsic/perception/skills/calibration:sample_calibration_poses_py_pb2",
-        "@ioc//google3/intrinsic/skills/proto:skills_py_pb2",
-        "@ioc//google3/intrinsic/solutions:behavior_tree",
-        "@ioc//google3/intrinsic/solutions:deployments",
-        "@ioc//google3/intrinsic/solutions:execution",
-        "@ioc//google3/intrinsic/solutions:provided",
-        "@ioc//google3/intrinsic/util/grpc:connection",
-        "@ioc//google3/intrinsic/util/grpc:interceptor",
-        "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
-        "@ioc//google3/intrinsic/world/python:object_world_ids",
-        "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
-        "@com_google_absl_py//absl:app",
-        "@com_google_absl_py//absl/flags",
-    ],
 )

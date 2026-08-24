@@ -6,7 +6,7 @@ OMTS is an open-source reference application for automated machine tending (e.g.
 
 ## 1. Solution Architecture & Execution Pipeline
 
-OMTS orchestrates a complete 13-step machine tending cycle. It features a dual-infeed strategy supporting either **Vision-Guided Pick** (random part placement via 3D camera pose estimation) or **Blind Grid Pick** (deterministic pallet slot math).
+OMTS orchestrates a complete machine tending cycle. It features a dual-infeed strategy supporting either **Vision-Guided Pick** (random part placement via 3D camera pose estimation) or **Blind Grid Pick** (deterministic pallet slot math).
 
 ```mermaid
 flowchart TD
@@ -50,7 +50,7 @@ flowchart TD
 
 ---
 
-## 2. 13-Step Execution Sequence
+## 2. Machine Tending Process Flow
 
 1. **Perception Acquisition:** Move robot to `view_pose`, capture point cloud/RGBD image with 3D camera (Orbbec Gemini 335Le), and estimate raw stock 6D pose (or fallback to grid slot index).
 2. **Part Grasping:** Move arm toward raw stock, perform compliant touchdown via `move_to_contact`, close gripper, and store `initial_infeed_pose`.
@@ -74,8 +74,8 @@ flowchart TD
 omts/
 ├── .bazelrc                             # Compiler flags, toolchains, and CUDA settings
 ├── .bazelversion                        # Pinned Bazel version (8.x)
-├── MODULE.bazel                         # Bzlmod dependencies (insrc/ioc, toolchains, Skylib)
-├── BUILD                                # Defines intrinsic_solution(:omts) & robot model flags
+├── MODULE.bazel                         # Bzlmod dependencies (ioc, toolchains, Skylib)
+├── BUILD                                # Defines intrinsic_solution(:omts_solution) & aliases
 │
 ├── configs/                             # Workcell Textproto / Pbtxt configurations
 │   ├── icon_config.textproto            # ICON mainloop controller configuration
@@ -119,38 +119,91 @@ OMTS adheres to clean separation of concerns:
 
 ---
 
-## 5. Build & Run Instructions
+## 5. Prerequisites & Workspace Setup
 
-### Deploy & Run Solution
+For local development, the `omts` workspace expects the exported **`ioc`** repository to be located in an adjacent sibling directory:
 
-Run OMTS using the default UR5e robot model:
-```bash
-bazel run //:omts -- --address localhost:17080
+```
+workspaces/
+├── ioc/          # Intrinsic Open Core platform workspace
+└── omts/         # OMTS application workspace
 ```
 
-Run OMTS with the UR3e robot model:
-```bash
-bazel run //:omts --//:robot_model=ur3e -- --address localhost:17080
+This dependency is configured in [`MODULE.bazel`](MODULE.bazel) via local path overrides:
+
+```python
+bazel_dep(name = "insrc", repo_name = "ioc")
+local_path_override(
+    module_name = "insrc",
+    path = "../ioc",
+)
+
+bazel_dep(name = "intrinsic_apis", version = "0.0.1")
+local_path_override(
+    module_name = "intrinsic_apis",
+    path = "../ioc/incode/intrinsic_apis",
+)
 ```
 
-Compile in optimized mode (`-c opt`):
+> [!NOTE]
+> Once `ioc` is published to a public Git repository or the Bazel Central Registry (BCR), these `local_path_override` definitions will be replaced with standard remote dependencies or archive overrides.
+
+---
+
+## 6. Build & Run Instructions
+
+### 1. Deploy the Workcell Solution
+
+Deploy and start the ICON controller, robot hardware modules, camera drivers, and platform services:
+
 ```bash
-bazel run -c opt //:omts --//:robot_model=ur3e -- --address localhost:17080
+# Deploy with default UR5e robot model:
+bazel run //:omts_solution -- --address localhost:17080
+
+# Deploy with UR3e robot model:
+bazel run //:omts_solution --//:robot_model=ur3e -- --address localhost:17080
+```
+
+### 2. Run the OMTS Python Application
+
+Connect to the running deployment and execute the machine tending sequence:
+
+```bash
+# Run in Perception mode (3D vision-guided picking):
+bazel run //src:omts_app -- --address=localhost:17080 --infeed_mode=perception
+
+# Run in Blind Grid mode (deterministic tray slots):
+bazel run //src:omts_app -- --address=localhost:17080 --infeed_mode=grid
 ```
 
 ---
 
-## 6. Developer Tools
+## 7. Testing & Developer Tools
+
+### Unit Tests
+Run offline unit tests (no physical cluster required):
+```bash
+bazel test //tests/...
+```
+
+### Developer CLI Tools
+
+- **Interactive Joint & Teleop Jogging:**
+  ```bash
+  bazel run //tools/jogging:jog_interactive -- --host=localhost --port=17080
+  ```
+
+- **Store & Teach Named Joint Configurations:**
+  ```bash
+  bazel run //tools/jogging:store_joint_config -- home --address=localhost:17080
+  ```
+
+- **Inspect Solution World & Resources:**
+  ```bash
+  bazel run //tools/world:inspect_world -- --address=localhost:17080
+  ```
 
 - **Camera-to-Robot Calibration:**
   ```bash
   bazel run //tools/calibration:calibrate_camera -- --address=localhost:17080
-  ```
-- **Interactive Robot Jogging & Pose Teaching:**
-  ```bash
-  bazel run //tools/jogging:jog_interactive -- --address=localhost:17080
-  ```
-- **Run Unit Tests:**
-  ```bash
-  bazel test //tests/unit/...
   ```

@@ -16,10 +16,6 @@ from intrinsic.icon.python import create_action_utils
 from intrinsic.icon.python import errors as icon_errors
 from intrinsic.icon.python import icon_api
 from intrinsic.math.python import proto_conversion
-from intrinsic.motion_planning.public.proto.v1 import geometric_constraints_pb2
-from intrinsic.perception.public.proto.v1 import camera_to_robot_calibration_pb2 as calibration_type_pb2
-from intrinsic.perception.skills.calibration import sample_calibration_poses_pb2
-from intrinsic.skills.proto import skills_pb2
 from intrinsic.solutions import behavior_tree as bt
 from intrinsic.solutions import deployments
 from intrinsic.solutions import execution
@@ -363,14 +359,17 @@ def main(argv) -> None:
         f"Pose estimator '{_POSE_ESTIMATOR.value}' not found in the solution."
     )
 
+  initialize_calibration_skill = skills.ai.intrinsic.initialize_calibration
+  sample_calibration_poses_skill = skills.ai.intrinsic.sample_calibration_poses
+
   # Determine calibration type
   if _MOVING_CAMERA.value:
     calibration_type = (
-        calibration_type_pb2.CAMERA_TO_ROBOT_CALIBRATION_TYPE_MOVING_CAMERA
+        initialize_calibration_skill.intrinsic_proto.skills.CameraToRobotCalibrationType.CAMERA_TO_ROBOT_CALIBRATION_TYPE_MOVING_CAMERA
     )
   else:
     calibration_type = (
-        calibration_type_pb2.CAMERA_TO_ROBOT_CALIBRATION_TYPE_STATIONARY_CAMERA
+        initialize_calibration_skill.intrinsic_proto.skills.CameraToRobotCalibrationType.CAMERA_TO_ROBOT_CALIBRATION_TYPE_STATIONARY_CAMERA
     )
 
   # Collect manual waypoints if selected
@@ -389,7 +388,7 @@ def main(argv) -> None:
           )
 
         result_proto = (
-            sample_calibration_poses_pb2.SampleCalibrationPosesResult()
+            sample_calibration_poses_skill.intrinsic_proto.skills.SampleCalibrationPosesResult()
         )
         with open(import_path, 'r') as f:
           text_format.Parse(f.read(), result_proto)
@@ -510,8 +509,9 @@ def main(argv) -> None:
                 os.path.join(workspace_dir, export_path)
             )
 
+          sample_calibration_poses_skill = skills.ai.intrinsic.sample_calibration_poses
           result_proto = (
-              sample_calibration_poses_pb2.SampleCalibrationPosesResult()
+              sample_calibration_poses_skill.intrinsic_proto.skills.SampleCalibrationPosesResult()
           )
           result_proto.sample_calibration_poses_result.extend(manual_waypoints)
           with open(export_path, 'w') as f:
