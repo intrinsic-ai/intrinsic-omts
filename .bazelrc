@@ -62,4 +62,7 @@ common --@rules_cuda//cuda:copts='-std=c++20'
 common --@rules_cuda//cuda:copts='-stdlib=libc++'
 common --@rules_cuda//cuda:copts="-D_ALLOW_UNSUPPORTED_LIBCPP"
 
-
+# Hardware setup configurations
+common --flag_alias=setup=//:setup
+common:omts --//:setup=omts
+common:lab_bb_01 --//:setup=lab_bb_01

@@ -4,20 +4,20 @@ load("@ioc//google3/intrinsic/config:def.bzl", "intrinsic_solution")
 
 package(default_visibility = ["//visibility:public"])
 
-# Flag to parameterize robot hardware model (ur3e vs ur5e)
+# Flag to parameterize hardware setup (omts vs lab_bb_01)
 string_flag(
-    name = "robot_model",
-    build_setting_default = "ur5e",
+    name = "setup",
+    build_setting_default = "omts",
     values = [
-        "ur3e",
-        "ur5e",
+        "omts",
+        "lab_bb_01",
     ],
 )
 
 config_setting(
-    name = "is_ur3e",
+    name = "is_lab_bb_01",
     flag_values = {
-        ":robot_model": "ur3e",
+        ":setup": "lab_bb_01",
     },
 )
 
@@ -47,7 +47,7 @@ intrinsic_solution(
         "@ioc//google3/intrinsic/icon/skills:dio_set_output_skill",
         "@ioc//incode/intrinsic_inference/assets/inference_service:inference_service_asset",
     ] + select({
-        ":is_ur3e": ["@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_ioc"],
+        ":is_lab_bb_01": ["@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_ioc"],
         "//conditions:default": ["@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_ioc"],
     }),
     default_operation_mode = "real",
@@ -113,7 +113,7 @@ intrinsic_asset_instance(
     name = "ur_module",
     config = "//configs:ur_module_config.textproto",
     id = select({
-        ":is_ur3e": "ai.intrinsic.ur3e_hardware_module_ioc",
+        ":is_lab_bb_01": "ai.intrinsic.ur3e_hardware_module_ioc",
         "//conditions:default": "ai.intrinsic.ur5e_hardware_module_ioc",
     }),
     instance_name = "ur_module",
@@ -121,7 +121,10 @@ intrinsic_asset_instance(
 
 intrinsic_asset_instance(
     name = "orbbec_camera",
-    config = "//configs:gemini_device_config.textproto",
+    config = select({
+        ":is_lab_bb_01": "//configs:lab_bb_01_gemini_device_config.textproto",
+        "//conditions:default": "//configs:omts_gemini_device_config.textproto",
+    }),
     id = "ai.intrinsic.orbbec_gemini_335le",
     instance_name = "orbbec_camera",
 )
