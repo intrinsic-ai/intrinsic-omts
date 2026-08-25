@@ -1,0 +1,8 @@
+[type.googleapis.com/intrinsic_proto.perception.v1.CameraConfig]:  {
+  identifier:  {
+    ros:  {
+      device_id:  "CPEP1630005C"
+      driver_type:  "orbbec"
+    }
+  }
+}

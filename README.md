@@ -80,7 +80,8 @@ omts/
 ├── configs/                             # Workcell Textproto / Pbtxt configurations
 │   ├── icon_config.textproto            # ICON mainloop controller configuration
 │   ├── ur_module_config.textproto       # Universal Robots hardware module config
-│   ├── gemini_device_config.textproto   # Orbbec Gemini 335Le camera config
+│   ├── lab_bb_01_gemini_device_config.textproto # Orbbec Gemini 335Le camera config (Lab BB-01)
+│   ├── omts_gemini_device_config.textproto      # Orbbec Gemini 335Le camera config (OMTS)
 │   └── motion_planner_config.textproto  # Motion planning & collision checking config
 │
 ├── assets/                              # 3D models, meshes, and catalog assets
@@ -157,11 +158,11 @@ local_path_override(
 Deploy and start the ICON controller, robot hardware modules, camera drivers, and platform services:
 
 ```bash
-# Deploy with default UR5e robot model:
+# Deploy with default OMTS setup (UR5e + omts camera config):
 bazel run //:omts_solution -- --address localhost:17080
 
-# Deploy with UR3e robot model:
-bazel run //:omts_solution --//:robot_model=ur3e -- --address localhost:17080
+# Deploy with Lab BB-01 setup (UR3e + lab_bb_01 camera config):
+bazel run //:omts_solution --config=lab_bb_01 -- --address localhost:17080
 ```
 
 ### 2. Run the OMTS Python Application
