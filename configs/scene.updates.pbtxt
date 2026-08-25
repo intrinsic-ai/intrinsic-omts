@@ -93,3 +93,27 @@ updates: {
     new_frame_name: "place_vise"
   }
 }
+
+updates: {
+  create_frame: {
+    parent_object_with_filter: { reference: {
+      by_name: {
+        object_name: "root"
+      }
+    } }
+    parent_t_new_frame: {
+      position: {
+        x: 0.34
+        y: 0.37
+        z: 1.0
+      }
+      orientation: {
+        x: 1
+        y: 0
+        z: 0
+        w: 0
+      }
+    }
+    new_frame_name: "view"
+  }
+}
