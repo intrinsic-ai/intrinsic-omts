@@ -46,6 +46,9 @@ intrinsic_solution(
         "@ioc//google3/intrinsic/icon/skills:dio_read_input_skill",
         "@ioc//google3/intrinsic/icon/skills:dio_set_output_skill",
         "@ioc//incode/intrinsic_inference/assets/inference_service:inference_service_asset",
+        "@ioc//incode/perception/ioc_pose_estimator:ioc_pose_estimator_service_asset",
+        "@ioc//incode/perception/ioc_train_service:ioc_train_service_asset",
+        "@ioc//google3/intrinsic/perception/skills/multi_view:estimate_pose_multi_view_skill",
     ] + select({
         ":is_lab_bb_01": ["@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_ioc"],
         "//conditions:default": ["@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_ioc"],
@@ -62,6 +65,8 @@ intrinsic_solution(
         ":orbbec_camera",
         ":motion_planner_service",
         ":inference_service",
+        ":pose_estimator_service",
+        ":train_service",
     ],
 )
 
@@ -139,4 +144,17 @@ intrinsic_asset_instance(
     name = "motion_planner_service",
     id = "ai.intrinsic.motion_planner_service",
     instance_name = "motion_planner_service",
+)
+
+intrinsic_asset_instance(
+    name = "pose_estimator_service",
+    asset = "ai.intrinsic.ioc_pose_estimator_service",
+    config = "//configs:pose_estimator_config.textproto",
+    instance_name = "pose_estimator_service",
+)
+
+intrinsic_asset_instance(
+    name = "train_service",
+    asset = "ai.intrinsic.ioc_train_service",
+    instance_name = "train_service",
 )
