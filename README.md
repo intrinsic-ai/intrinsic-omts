@@ -11,35 +11,37 @@ OMTS orchestrates a complete machine tending cycle. It features a dual-infeed st
 ```mermaid
 flowchart TD
     subgraph INFEED["1. Infeed & Acquisition"]
-        A1[Move to view_pose] --> A2[Capture RGBD & Estimate 6D Pose]
+        A1[Move to view frame] --> A2[Capture RGBD & Estimate 6D Pose]
         A2 --> A3[Move & Touch Part via move_to_contact]
         A3 --> A4[Grasp Part & Store initial_infeed_pose]
     end
 
     subgraph CNC_LOAD["2. Machine Loading & Fixturing"]
         B1[Open CNC Door via dio_set_output] --> B2[Open CNC Vise via dio_set_output]
-        B2 --> B3[Approach Vise Insertion Frame via move_robot]
-        B3 --> B4[Seat Part into Vise via move_to_contact]
-        B4 --> B5[Close & Clamp Vise via dio_set_output]
-        B5 --> B6[Open Gripper & Retract Arm out of CNC]
+        B2 --> B3[Approach Machine Entry via move_robot]
+        B3 --> B4[Approach Vise Insertion Frame via move_robot]
+        B4 --> B5[Seat Part into Vise via move_to_contact]
+        B5 --> B6[Close & Clamp Vise via dio_set_output]
+        B6 --> B7[Open Gripper & Retract Arm out of Machine]
     end
 
     subgraph MACHINING["3. Machining Cycle Handshake"]
-        C1[Move Arm to Safe wait_pose] --> C2[Close CNC Door via dio_set_output]
+        C1[Move Arm to Safe machine_approach Standby] --> C2[Close CNC Door via dio_set_output]
         C2 --> C3[Trigger CNC Cycle Start via dio_set_output]
         C3 --> C4[Wait for cycle_complete via dio_read_input / timer]
     end
 
     subgraph CNC_UNLOAD["4. Part Extraction"]
         D1[Open CNC Door via dio_set_output] --> D2[Open CNC Vise via dio_set_output]
-        D2 --> D3[Approach Machined Part via move_robot]
-        D3 --> D4[Align & Touch Part via move_to_contact]
-        D4 --> D5[Grasp Part & Retract Arm out of CNC]
+        D2 --> D3[Approach Machine Entry via move_robot]
+        D3 --> D4[Approach Machined Part via move_robot]
+        D4 --> D5[Align & Touch Part via move_to_contact]
+        D5 --> D6[Grasp Part & Retract Arm out of Machine]
     end
 
     subgraph OUTFEED["5. Infeed Return / Outfeed Placement"]
-        E1[Navigate to initial_infeed_pose Approach] --> E2[Lower Part to Table via move_to_contact]
-        E2 --> E3[Release Gripper & Retract to home Pose]
+        E1[Navigate to pre_grasp Infeed Approach] --> E2[Lower Part to Table via move_to_contact]
+        E2 --> E3[Release Gripper & Return to view Frame]
     end
 
     INFEED --> CNC_LOAD
@@ -50,25 +52,7 @@ flowchart TD
 
 ---
 
-## 2. Machine Tending Process Flow
-
-1. **Perception Acquisition:** Move robot to `view_pose`, capture point cloud/RGBD image with 3D camera (Orbbec Gemini 335Le), and estimate raw stock 6D pose (or fallback to grid slot index).
-2. **Part Grasping:** Move arm toward raw stock, perform compliant touchdown via `move_to_contact`, close gripper, and store `initial_infeed_pose`.
-3. **Open CNC Door:** Assert digital output pin via `dio_set_output`.
-4. **Open CNC Vise:** Assert digital output pin via `dio_set_output`.
-5. **Vise Insertion:** Move robot into CNC enclosure and seat part against vise backstops using `move_to_contact`.
-6. **Clamp Vise:** Close and clamp CNC vise via `dio_set_output`.
-7. **Standby Move:** Open gripper, retract arm outside CNC enclosure, and move to `wait_pose`.
-8. **Close CNC Door:** Assert digital output pin via `dio_set_output`.
-9. **Machining Execution:** Assert cycle start signal and monitor `dio_read_input` for cycle completion.
-10. **Open CNC Door:** Assert digital output pin upon cycle completion.
-11. **Unclamp Vise:** Open CNC vise via `dio_set_output`.
-12. **Part Extraction:** Approach machined part, align via `move_to_contact`, close gripper, and retract cleanly out of CNC enclosure.
-13. **Return to Infeed:** Transfer finished part back to `initial_infeed_pose`, lower to surface via `move_to_contact`, release gripper, and return to `home`.
-
----
-
-## 3. Repository Layout
+## 2. Repository Layout
 
 ```
 omts/
@@ -78,6 +62,9 @@ omts/
 ├── BUILD                                # Defines intrinsic_solution(:omts_solution) & aliases
 │
 ├── configs/                             # Workcell Textproto / Pbtxt configurations
+│   ├── scene.updates.pbtxt              # Target scene frames (view, pre_grasp, machine_approach, etc.)
+│   ├── ur_module.attachments.updates.pbtxt # Robot mounting, gripper attachment & tool_frame
+│   ├── align_robot.updates.pbtxt        # Enclosure-to-robot base transform
 │   ├── icon_config.textproto            # ICON mainloop controller configuration
 │   ├── ur_module_config.textproto       # Universal Robots hardware module config
 │   ├── lab_bb_01_gemini_device_config.textproto # Orbbec Gemini 335Le camera config (Lab BB-01)
@@ -93,12 +80,12 @@ omts/
 │   ├── core/                            # Domain models (Workpiece, Tray, WorkcellState)
 │   ├── hardware/                        # Hardware adapters (Robot, Gripper, CNC Machine, Camera)
 │   ├── behaviors/                       # Composable Behavior Tree subtrees & tasks
-│   └── utils/                           # Math, coordinate transforms, and logging utilities
+│   └── utils/                           # Math & coordinate transform utilities
 │
 ├── tools/                               # Developer & operational CLI tools
 │   ├── calibration/                     # Camera-to-robot & hand-eye calibration scripts
 │   ├── jogging/                         # Interactive robot teleoperation & pose teaching
-│   └── world/                           # Scene object import & belief world population
+│   └── world/                           # Scene updates, transform inspection & alignment
 │
 └── tests/                               # Test Suites
     ├── unit/                            # Offline unit tests (Mock SBL, tray math, domain state)
@@ -107,7 +94,7 @@ omts/
 
 ---
 
-## 4. Object-Oriented Design & SBL Abstractions
+## 3. Object-Oriented Design & SBL Abstractions
 
 OMTS adheres to clean separation of concerns:
 
@@ -120,7 +107,7 @@ OMTS adheres to clean separation of concerns:
 
 ---
 
-## 5. Prerequisites & Workspace Setup
+## 4. Prerequisites & Workspace Setup
 
 For local development, the `omts` workspace expects the exported **`ioc`** repository to be located in an adjacent sibling directory:
 
@@ -151,7 +138,7 @@ local_path_override(
 
 ---
 
-## 6. Build & Run Instructions
+## 5. Build & Run Instructions
 
 ### 1. Deploy the Workcell Solution
 
@@ -179,7 +166,7 @@ bazel run //src:omts_app -- --address=localhost:17080 --infeed_mode=grid
 
 ---
 
-## 7. Testing & Developer Tools
+## 6. Testing & Developer Tools
 
 ### Unit Tests
 Run offline unit tests (no physical cluster required):
@@ -188,6 +175,20 @@ bazel test //tests/...
 ```
 
 ### Developer CLI Tools
+
+- **Apply Scene & Attachment Updates Live (without restarting the solution):**
+  ```bash
+  # Push all default configs live (ur_module attachments, scene frames, align_robot):
+  bazel run //tools/world:apply_scene_updates -- --address=localhost:17080
+
+  # Or apply specific .pbtxt files:
+  bazel run //tools/world:apply_scene_updates -- --files configs/scene.updates.pbtxt --address=localhost:17080
+  ```
+
+- **Inspect Solution World & Resources:**
+  ```bash
+  bazel run //tools/world:inspect_world -- --address=localhost:17080
+  ```
 
 - **Interactive Joint & Teleop Jogging:**
   ```bash
@@ -199,11 +200,6 @@ bazel test //tests/...
   bazel run //tools/jogging:store_joint_config -- home --address=localhost:17080
   ```
 
-- **Inspect Solution World & Resources:**
-  ```bash
-  bazel run //tools/world:inspect_world -- --address=localhost:17080
-  ```
-
 - **Sample Poses for Camera-to-Robot Calibration:**
   ```bash
   bazel run //tools/calibration:sample_calibration_poses -- --address=localhost:17080
@@ -213,4 +209,3 @@ bazel test //tests/...
   ```bash
   bazel run //tools/calibration:calibrate_camera -- --address=localhost:17080
   ```
-
