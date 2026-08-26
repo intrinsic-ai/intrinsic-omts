@@ -204,7 +204,13 @@ bazel test //tests/...
   bazel run //tools/world:inspect_world -- --address=localhost:17080
   ```
 
-- **Camera-to-Robot Calibration:**
+- **Sample Poses for Camera-to-Robot Calibration:**
+  ```bash
+  bazel run //tools/calibration:sample_calibration_poses -- --address=localhost:17080
+  ```
+  
+- **Run Camera-to-Robot Calibration:**
   ```bash
   bazel run //tools/calibration:calibrate_camera -- --address=localhost:17080
   ```
+
