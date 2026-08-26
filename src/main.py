@@ -1,46 +1,90 @@
-"""Main application entrypoint for the Open Machine Tending Solution (OMTS)."""
+"""Main application entrypoint for the Open Machine Tending Solution."""
 
-from collections.abc import Sequence
+from typing import Sequence
+
 from absl import app
 from absl import flags
+from absl import logging
 from intrinsic.solutions import deployments
-from intrinsic.solutions.execution import ExecutionFailedError
 from src.behaviors.machine_tending_bt import build_machine_tending_behavior_tree
-from src.core.infeed import GridInfeedStrategy, InfeedStrategy, PerceptionInfeedStrategy
-from src.core.tray import Tray
-from src.core.types import InfeedMode
+from src.core.infeed import GridInfeedStrategy, InfeedMode, PerceptionInfeedStrategy
 from src.core.workcell import WorkcellState
-from src.hardware.gripper import DioGripper, MockGripper
-from src.hardware.machine import DioCncMachine, MockCncMachine
+from src.core.workpiece import Workpiece
+from src.hardware.gripper import MockGripper
+from src.hardware.machine import MockCncMachine
 from src.hardware.robot import MockRobot, UrRobot
-from src.hardware.vision import MockVision, OrbbecVision
-from src.utils.logging_utils import log_error, log_info, log_step
+from src.hardware.vision import MockVision
 
 _ADDRESS = flags.DEFINE_string(
     "address",
     "localhost:17080",
-    "Address of the Intrinsic solution deployment.",
+    "gRPC address of the running SBL solution deployment.",
 )
 _INFEED_MODE = flags.DEFINE_enum_class(
     "infeed_mode",
     InfeedMode.PERCEPTION,
     InfeedMode,
-    "Infeed strategy: 'perception' (random placement) or 'grid' (blind tray).",
+    "Infeed strategy mode: 'perception' (3D vision) or 'grid' (slot math).",
 )
 _MOCK_HARDWARE = flags.DEFINE_bool(
     "mock_hardware",
     False,
-    "Whether to run with offline mock hardware adapters for testing.",
+    "Use offline mock hardware adapters instead of live SBL skill stubs.",
 )
 _ARM_PART_NAME = flags.DEFINE_string(
     "arm_part_name",
     "ur_module",
-    "Attribute name of robot arm part in solution.world.",
+    "ICON part name for the robot arm in solution.world.",
+)
+_TOOL_OBJECT_NAME = flags.DEFINE_string(
+    "tool_object_name",
+    "gripper",
+    "Object name for the robot end-effector tool.",
+)
+_TOOL_FRAME_NAME = flags.DEFINE_string(
+    "tool_frame_name",
+    "tool_frame",
+    "Frame name on tool_object_name to use as moving tool reference.",
 )
 _CAMERA_NAME = flags.DEFINE_string(
     "camera_name",
     "orbbec_camera",
     "Attribute name of 3D camera in solution.world.",
+)
+_PARENT_OBJECT = flags.DEFINE_string(
+    "parent_object",
+    "root",
+    "Parent object in world for target motion frames (default: 'root').",
+)
+_VIEW_FRAME = flags.DEFINE_string(
+    "view_frame",
+    "view",
+    "Perception camera viewing target frame name.",
+)
+_PREGRASP_FRAME = flags.DEFINE_string(
+    "pregrasp_frame",
+    "pre_grasp",
+    "Pre-grasp approach target frame name.",
+)
+_GRASP_FRAME = flags.DEFINE_string(
+    "grasp_frame",
+    "grasp",
+    "Grasp target frame name.",
+)
+_MACHINE_APPROACH_FRAME = flags.DEFINE_string(
+    "machine_approach_frame",
+    "machine_approach",
+    "Machine entry approach target frame name.",
+)
+_PREPLACE_VISE_FRAME = flags.DEFINE_string(
+    "preplace_vise_frame",
+    "pre_place_vise",
+    "Pre-place CNC vise approach frame name.",
+)
+_PLACE_VISE_FRAME = flags.DEFINE_string(
+    "place_vise_frame",
+    "place_vise",
+    "Place CNC vise frame name.",
 )
 
 
@@ -49,59 +93,57 @@ def run_machine_tending_cycle(
     infeed_mode: InfeedMode,
     mock_hardware: bool = False,
     arm_part_name: str = "ur_module",
+    tool_object_name: str = "gripper",
+    tool_frame_name: str = "tool_frame",
     camera_name: str = "orbbec_camera",
+    parent_object: str = "root",
+    view_frame: str = "view",
+    pregrasp_frame: str = "pre_grasp",
+    grasp_frame: str = "grasp",
+    machine_approach_frame: str = "machine_approach",
+    preplace_vise_frame: str = "pre_place_vise",
+    place_vise_frame: str = "place_vise",
 ) -> None:
   """Executes one full machine tending cycle."""
-  log_info(f"Connecting to Intrinsic solution at {solution_address}...")
+  logging.info("Connecting to Intrinsic solution at %s...", solution_address)
   solution = deployments.connect(address=solution_address)
 
   # Initialize hardware adapters
   if mock_hardware:
-    log_info("Using mock hardware adapters.")
+    logging.info("Using offline mock hardware adapters.")
     robot = MockRobot()
     gripper = MockGripper()
     machine = MockCncMachine()
     vision = MockVision()
   else:
-    log_info("Using live SBL hardware adapters.")
-    robot = UrRobot(solution=solution, arm_part_name=arm_part_name)
-    gripper = DioGripper(solution=solution, device_name=arm_part_name)
-    machine = DioCncMachine(
+    logging.info("Initializing live hardware adapters from solution deployment.")
+    robot = UrRobot(
         solution=solution,
-        device_name=arm_part_name,
-        is_mock=False,
+        arm_part_name=arm_part_name,
+        tool_object_name=tool_object_name,
+        tool_frame_name=tool_frame_name,
     )
-    vision = OrbbecVision(solution=solution, camera_name=camera_name)
+    gripper = MockGripper()
+    machine = MockCncMachine()
+    vision = MockVision()
 
-  # Configure Infeed Strategy
+  # Select infeed strategy
+  workpiece = Workpiece(id="raw_stock_01")
+  workcell_state = WorkcellState()
+  workcell_state.start_new_cycle(workpiece)
+
   if infeed_mode == InfeedMode.PERCEPTION:
-    log_info("Configuring PerceptionInfeedStrategy (random part placement)...")
-    infeed_strategy: InfeedStrategy = PerceptionInfeedStrategy(
+    logging.info("Configuring Vision-Guided Perception Infeed Strategy.")
+    infeed_strategy = PerceptionInfeedStrategy(
         camera_name=camera_name,
-        estimator_name="raw_stock_2x3x5_estimator",
-        view_joint_pose_name="view_pose",
+        view_frame_name=view_frame,
     )
   else:
-    log_info("Configuring GridInfeedStrategy (blind tray grid)...")
-    infeed_tray = Tray(
-        name="infeed_tray",
-        rows=2,
-        cols=4,
-        pitch_x=0.06,
-        pitch_y=0.08,
-        origin_frame="infeed_tray_origin",
-    )
-    infeed_tray.populate_all_slots()
-    infeed_strategy = GridInfeedStrategy(tray=infeed_tray)
+    logging.info("Configuring Blind Grid Pallet Infeed Strategy.")
+    infeed_strategy = GridInfeedStrategy(slot_count=4)
 
-  workcell_state = WorkcellState()
-  workpiece = infeed_strategy.get_target_part()
-  if workpiece is None:
-    raise ValueError("No available workpiece found for infeed strategy.")
-
-  workcell_state.start_new_cycle(workpiece=workpiece)
-
-  log_info(f"Assembling Behavior Tree for workpiece '{workpiece.id}'...")
+  # Build master Behavior Tree
+  logging.info("Constructing SBL Behavior Tree for machine tending cycle...")
   tree = build_machine_tending_behavior_tree(
       robot=robot,
       gripper=gripper,
@@ -109,18 +151,29 @@ def run_machine_tending_cycle(
       vision=vision,
       infeed_strategy=infeed_strategy,
       workpiece=workpiece,
+      parent_object=parent_object,
+      view_frame_name=view_frame,
+      pregrasp_frame_name=pregrasp_frame,
+      grasp_frame_name=grasp_frame,
+      machine_approach_frame_name=machine_approach_frame,
+      preplace_vise_frame_name=preplace_vise_frame,
+      place_vise_frame_name=place_vise_frame,
   )
 
-  log_step(1, "Executing OMTS Machine Tending Master Cycle via Executive")
+  logging.info(
+      "Executing OMTS Infeed, Acquisition & Vise Approach Pipeline..."
+  )
   try:
     solution.executive.run(tree)
     duration = workcell_state.record_cycle_success()
-    log_info(f"Machine tending cycle completed successfully in {duration:.2f}s.")
-  except ExecutionFailedError as e:
+    logging.info(
+        "Pipeline execution completed successfully in %.2fs.", duration
+    )
+  except Exception as e:
     workcell_state.record_cycle_failure()
-    log_error("Machine tending cycle failed during execution", e)
+    logging.error("Pipeline execution failed: %s", e)
     if hasattr(solution.executive, "get_errors"):
-      log_error("Executive errors", solution.executive.get_errors())
+      logging.error("Executive errors: %s", solution.executive.get_errors())
     raise
 
 
@@ -133,7 +186,16 @@ def main(argv: Sequence[str]) -> None:
       infeed_mode=_INFEED_MODE.value,
       mock_hardware=_MOCK_HARDWARE.value,
       arm_part_name=_ARM_PART_NAME.value,
+      tool_object_name=_TOOL_OBJECT_NAME.value,
+      tool_frame_name=_TOOL_FRAME_NAME.value,
       camera_name=_CAMERA_NAME.value,
+      parent_object=_PARENT_OBJECT.value,
+      view_frame=_VIEW_FRAME.value,
+      pregrasp_frame=_PREGRASP_FRAME.value,
+      grasp_frame=_GRASP_FRAME.value,
+      machine_approach_frame=_MACHINE_APPROACH_FRAME.value,
+      preplace_vise_frame=_PREPLACE_VISE_FRAME.value,
+      place_vise_frame=_PLACE_VISE_FRAME.value,
   )
 
 

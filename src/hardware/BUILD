@@ -8,7 +8,11 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//src/core:types",
+        "@ioc//google3/intrinsic/manipulation/skills/force:move_to_contact_proto_py_pb2",
+        "@ioc//google3/intrinsic/math/proto:vector3_py_pb2",
+        "@ioc//google3/intrinsic/motion_planning/public/proto/v1:geometric_constraints_py_pb2",
         "@ioc//google3/intrinsic/solutions:behavior_tree",
+        "@ioc//google3/intrinsic/world/public/proto:object_world_refs_py_pb2",
     ],
 )
 

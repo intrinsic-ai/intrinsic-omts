@@ -24,7 +24,10 @@ config_setting(
 # Solution deployment definition
 intrinsic_solution(
     name = "omts_solution",
+    add_compose_world_test = False,
     assets = [
+        "@ioc//google3/intrinsic/apps/bluebird_caw/resources:caw_enclosure",
+        "@ioc//google3/intrinsic/resources/catalog/resourcedata/gripper:robotiq_pinch_gripper_resource_type",
         "@ioc//google3/intrinsic/resources/catalog/resourcedata/product/building_block",
         "@ioc//google3/intrinsic/resources/catalog/resourcedata/product/imts:raw_stock_2x3x5",
         "@ioc//google3/intrinsic/simulation/gazebo/asset:gazebo_simulator_type",
@@ -52,6 +55,8 @@ intrinsic_solution(
     }),
     default_operation_mode = "real",
     instances = [
+        ":enclosure",
+        ":robotiq_pinch_gripper",
         ":building_block",
         ":raw_stock_2x3x5",
         ":gazebo_simulator",
@@ -62,6 +67,11 @@ intrinsic_solution(
         ":orbbec_camera",
         ":motion_planner_service",
         ":inference_service",
+    ],
+    object_world_updates = [
+        "//configs:ur_module.attachments.updates.pbtxt",
+        "//configs:scene.updates.pbtxt",
+        "//configs:align_robot.updates.pbtxt",
     ],
 )
 
@@ -74,6 +84,17 @@ alias(
 alias(
     name = "omts_app",
     actual = "//src:omts_app",
+)
+
+intrinsic_asset_instance(
+    name = "enclosure",
+    id = "ai.intrinsic.caw_enclosure",
+)
+
+intrinsic_asset_instance(
+    name = "robotiq_pinch_gripper",
+    id = "ai.intrinsic.robotiq_gripper",
+    instance_name = "gripper",
 )
 
 intrinsic_asset_instance(
