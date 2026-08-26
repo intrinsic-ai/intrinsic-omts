@@ -76,3 +76,20 @@ go_deps.gazelle_override(
     ],
     path = "github.com/googlecloudrobotics/core/src",
 )
+
+gh = use_extension("//bazel:gh_release.bzl", "gh_release")
+gh.download(
+    name = "moveit_ros_bridge_bundle",
+    pattern = "moveit_flowstate_ros_bridge.bundle.tar",
+    repo = "intrinsic-ai/intrinsic-omts",
+    tag = "v0.0.1",
+)
+gh.download(
+    name = "orbbec_gemini_driver_bundle",
+    pattern = "orbbec_gemini_driver.bundle.tar",
+    repo = "intrinsic-ai/intrinsic-omts",
+    tag = "v0.0.1",
+)
+use_repo(gh, "moveit_ros_bridge_bundle", "orbbec_gemini_driver_bundle")
+
+
