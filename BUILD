@@ -1,6 +1,7 @@
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@ioc//google3/intrinsic/assets/build_defs:asset.bzl", "intrinsic_asset_instance")
 load("@ioc//google3/intrinsic/config:def.bzl", "intrinsic_solution")
+load("//bazel:imported_asset.bzl", "imported_asset_bundle")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -49,6 +50,8 @@ intrinsic_solution(
         "@ioc//google3/intrinsic/icon/skills:dio_read_input_skill",
         "@ioc//google3/intrinsic/icon/skills:dio_set_output_skill",
         "@ioc//incode/intrinsic_inference/assets/inference_service:inference_service_asset",
+        ":moveit_flowstate_ros_bridge_asset",
+        ":orbbec_gemini_driver_asset",
     ] + select({
         ":is_lab_bb_01": ["@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_ioc"],
         "//conditions:default": ["@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_ioc"],
@@ -65,8 +68,10 @@ intrinsic_solution(
         ":icon",
         ":ur_module",
         ":orbbec_camera",
+        ":orbbec_gemini_driver",
         ":motion_planner_service",
         ":inference_service",
+        ":moveit_ros_bridge",
     ],
     object_world_updates = [
         "//configs:ur_module.attachments.updates.pbtxt",
@@ -161,3 +166,28 @@ intrinsic_asset_instance(
     id = "ai.intrinsic.motion_planner_service",
     instance_name = "motion_planner_service",
 )
+
+imported_asset_bundle(
+    name = "moveit_flowstate_ros_bridge_asset",
+    bundle = "@moveit_ros_bridge_bundle//:moveit_flowstate_ros_bridge.bundle.tar",
+    manifest = "//configs:moveit_service_manifest.textproto",
+)
+
+intrinsic_asset_instance(
+    name = "moveit_ros_bridge",
+    id = "ai.intrinsic.moveit_flowstate_ros_bridge",
+    instance_name = "moveit_ros_bridge",
+)
+
+imported_asset_bundle(
+    name = "orbbec_gemini_driver_asset",
+    bundle = "@orbbec_gemini_driver_bundle//:orbbec_gemini_driver.bundle.tar",
+    manifest = "//configs:orbbec_gemini_driver_manifest.textproto",
+)
+
+intrinsic_asset_instance(
+    name = "orbbec_gemini_driver",
+    id = "ai.intrinsic.orbbec_gemini_driver",
+    instance_name = "orbbec_gemini_driver",
+)
+

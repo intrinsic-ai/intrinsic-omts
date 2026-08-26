@@ -1470,6 +1470,36 @@
   },
   "selectedYankedVersions": {},
   "moduleExtensions": {
+    "//bazel:gh_release.bzl%gh_release": {
+      "general": {
+        "bzlTransitiveDigest": "YRrNXtSJv2W2UFQyQBSNT3uGKXEM2BODLV1uXfQl+Hc=",
+        "usagesDigest": "clE6j3CWDiHoAiOaPp9BjCi8M+FoK9c5e+rOfaBYcDg=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "moveit_ros_bridge_bundle": {
+            "repoRuleId": "@@//bazel:gh_release.bzl%gh_release_file",
+            "attributes": {
+              "repo": "intrinsic-ai/intrinsic-omts",
+              "tag": "v0.0.1",
+              "pattern": "moveit_flowstate_ros_bridge.bundle.tar",
+              "output": ""
+            }
+          },
+          "orbbec_gemini_driver_bundle": {
+            "repoRuleId": "@@//bazel:gh_release.bzl%gh_release_file",
+            "attributes": {
+              "repo": "intrinsic-ai/intrinsic-omts",
+              "tag": "v0.0.1",
+              "pattern": "orbbec_gemini_driver.bundle.tar",
+              "output": ""
+            }
+          }
+        },
+        "recordedRepoMappingEntries": []
+      }
+    },
     "@@aspect_rules_esbuild+//esbuild:extensions.bzl%esbuild": {
       "general": {
         "bzlTransitiveDigest": "FBXwgpdvNGIC9bXvfuVk+Ww3mFeFU1hTyQTO57fRxyY=",
