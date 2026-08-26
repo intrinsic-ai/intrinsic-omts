@@ -12,17 +12,10 @@ py_library(
 )
 
 py_library(
-    name = "logging_utils",
-    srcs = ["logging_utils.py"],
-    srcs_version = "PY3",
-)
-
-py_library(
     name = "utils",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     deps = [
-        ":logging_utils",
         ":math_utils",
     ],
 )

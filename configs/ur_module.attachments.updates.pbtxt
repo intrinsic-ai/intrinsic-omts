@@ -89,8 +89,8 @@ updates: {
       orientation {
         x: 0
         y: 0
-        z: 0.70710678118654757
-        w: 0.70710678118654757
+        z: 0
+        w: 1
       }
     }
   }
@@ -130,8 +130,8 @@ updates: {
       orientation {
         x: 0
         y: 0
-        z: 1
-        w: 0
+        z: 0
+        w: 1
       }
     }
     node_a_filter: {

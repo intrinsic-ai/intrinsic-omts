@@ -77,12 +77,6 @@
               }
               export_name:  "tool_out"
             }
-            analog_inputs:  {
-              interface:  {
-                module_name:  "ur_module"
-                interface_name:  "analog_input_status"
-              }
-            }
           }
         }
         safety_action_type_name:  "intrinsic.empty"

@@ -29,11 +29,11 @@ class PerceptionInfeedStrategy(InfeedStrategy):
       self,
       camera_name: str = "orbbec_camera",
       estimator_name: str = "raw_stock_2x3x5_estimator",
-      view_joint_pose_name: str = "view_pose",
+      view_frame_name: str = "view",
   ) -> None:
     self.camera_name = camera_name
     self.estimator_name = estimator_name
-    self.view_joint_pose_name = view_joint_pose_name
+    self.view_frame_name = view_frame_name
     self._current_part_count = 0
 
   @property
