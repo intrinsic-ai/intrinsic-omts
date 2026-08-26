@@ -1,0 +1,183 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      # TODO(infra): Update default ioc_repo once public repo / BCR module is published.
+      ioc_repo:
+        description: 'IOC Repository (e.g. intrinsic-ai/ioc or intrinsic-ai/insrc)'
+        required: false
+        default: 'intrinsic-ai/ioc'
+      ioc_ref:
+        description: 'IOC Branch / Tag / Ref to test against'
+        required: false
+        default: 'main'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout OMTS
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Buildifier
+        uses: bazelbuild/setup-buildifier@v1
+        with:
+          version: "latest"
+
+      - name: Check Bazel Buildifier Formatting
+        run: |
+          buildifier --mode=check -r .
+
+      - name: Install Python Linters
+        run: |
+          pip install ruff
+
+      - name: Check Python Code Formatting & Linting (Ruff)
+        run: |
+          ruff check .
+          ruff format --check .
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout OMTS
+        uses: actions/checkout@v4
+        with:
+          path: omts
+
+      # TODO(infra): Provision external IOC repository access / credentials.
+      # 1. Verify remote repository name ('intrinsic-ai/ioc' vs 'intrinsic-ai/insrc').
+      # 2. Provision 'IOC_ACCESS_TOKEN' / 'GH_PAT' secret if repo is private in org.
+      # 3. Once IOC is published to BCR or remote archive, replace sibling checkout with archive_override/bzlmod dep.
+      - name: Checkout IOC (Platform Dependency)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.ioc_repo || vars.IOC_REPO || 'intrinsic-ai/ioc' }}
+          ref: ${{ inputs.ioc_ref || vars.IOC_REF || 'main' }}
+          token: ${{ secrets.IOC_ACCESS_TOKEN || secrets.GH_PAT || github.token }}
+          path: ioc
+
+      - name: Set up Bazelisk
+        uses: bazelbuild/setup-bazelisk@v3
+
+      # TODO(infra): Provision remote cache (e.g., GCS bucket / RBE backend) if GitHub Actions cache limit is reached.
+      - name: Mount Bazel Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazel-repo
+            ~/.cache/bazel-disk
+          key: bazel-test-${{ runner.os }}-${{ hashFiles('omts/MODULE.bazel', 'omts/MODULE.bazel.lock', 'omts/.bazelrc', 'omts/.bazelversion') }}
+          restore-keys: |
+            bazel-test-${{ runner.os }}-
+
+      - name: Run Unit Tests (Offline)
+        working-directory: omts
+        run: |
+          bazel test \
+            --config=ci \
+            --repository_cache=~/.cache/bazel-repo \
+            --disk_cache=~/.cache/bazel-disk \
+            //tests/...
+
+      - name: Upload Test Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bazel-testlogs
+          path: omts/bazel-testlogs/
+          if-no-files-found: ignore
+
+  build:
+    name: Build (${{ matrix.setup }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - setup: omts
+            extra_flags: ""
+            description: "Default OMTS setup (UR5e + OMTS Gemini camera)"
+          - setup: lab_bb_01
+            extra_flags: "--config=lab_bb_01"
+            description: "Lab BB-01 setup (UR3e + Lab BB-01 Gemini camera)"
+    steps:
+      - name: Checkout OMTS
+        uses: actions/checkout@v4
+        with:
+          path: omts
+
+      # TODO(infra): Provision external IOC repository access / credentials (same as test job).
+      - name: Checkout IOC (Platform Dependency)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.ioc_repo || vars.IOC_REPO || 'intrinsic-ai/ioc' }}
+          ref: ${{ inputs.ioc_ref || vars.IOC_REF || 'main' }}
+          token: ${{ secrets.IOC_ACCESS_TOKEN || secrets.GH_PAT || github.token }}
+          path: ioc
+
+      - name: Set up Bazelisk
+        uses: bazelbuild/setup-bazelisk@v3
+
+      # TODO(infra): Provision remote cache (e.g., GCS bucket / RBE backend).
+      - name: Mount Bazel Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazel-repo
+            ~/.cache/bazel-disk
+          key: bazel-build-${{ matrix.setup }}-${{ runner.os }}-${{ hashFiles('omts/MODULE.bazel', 'omts/MODULE.bazel.lock', 'omts/.bazelrc', 'omts/.bazelversion') }}
+          restore-keys: |
+            bazel-build-${{ matrix.setup }}-${{ runner.os }}-
+            bazel-build-
+
+      - name: Build OMTS Solution, Application & Developer Tools
+        working-directory: omts
+        run: |
+          bazel build \
+            --config=ci \
+            ${{ matrix.extra_flags }} \
+            --repository_cache=~/.cache/bazel-repo \
+            --disk_cache=~/.cache/bazel-disk \
+            //:omts_solution \
+            //src:omts_app \
+            //tools/...
+
+  # TODO(testing): Add E2E Simulation test job when Gazebo containerized runner / cluster simulation is provisioned.
+  # - name: Run Simulation E2E Tests
+  #   run: bazel test --config=ci //tests/e2e/...
+
+  ci-success:
+    name: CI Passed
+    needs: [lint, test, build]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check Status of Upstream Jobs
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ] || \
+             [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.build.result }}" != "success" ]; then
+            echo "CI pipeline failed."
+            echo "lint:   ${{ needs.lint.result }}"
+            echo "test:   ${{ needs.test.result }}"
+            echo "build:  ${{ needs.build.result }}"
+            exit 1
+          fi
+          echo "All CI jobs passed successfully!"

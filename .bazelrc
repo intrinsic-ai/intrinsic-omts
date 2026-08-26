@@ -66,3 +66,10 @@ common --@rules_cuda//cuda:copts="-D_ALLOW_UNSUPPORTED_LIBCPP"
 common --flag_alias=setup=//:setup
 common:omts --//:setup=omts
 common:lab_bb_01 --//:setup=lab_bb_01
+
+# CI Runner Presets
+common:ci --color=yes
+common:ci --curses=no
+common:ci --show_timestamps
+test:ci --test_output=errors
+test:ci --test_summary=detailed
