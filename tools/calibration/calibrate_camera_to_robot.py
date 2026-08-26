@@ -14,12 +14,18 @@ from intrinsic.perception.skills.calibration import sample_calibration_poses_pb2
 from intrinsic.solutions import behavior_tree as bt
 from intrinsic.solutions import deployments
 from intrinsic.solutions import execution
-from intrinsic.solutions import perception
+try:
+  from intrinsic.solutions import perception
+except ImportError:
+  perception = None
 from intrinsic.solutions import provided
 from intrinsic.world.public.proto import object_world_updates_pb2
 from intrinsic.world.python import object_world_ids
 
 # Command line input flags
+_ADDRESS = flags.DEFINE_string(
+    'address', 'localhost:17080', 'Solution address to connect to.'
+)
 _ROBOT = flags.DEFINE_string(
     'robot', 'icon', 'Robot / controller resource name in the workcell.'
 )
@@ -75,7 +81,7 @@ def main(argv) -> None:
     if not import_path:
       raise ValueError('An import waypoint file must be specified.')
 
-  solution = deployments.connect(address='localhost:17080')
+  solution = deployments.connect(address=_ADDRESS.value)
 
   executive = solution.executive
   skills = solution.skills
@@ -190,10 +196,8 @@ def main(argv) -> None:
       behavior_tree=bt.Sequence(children=calibration_children),
   )
 
-  print('Running behavior tree sequence via executive...')
   try:
-    executive.run(calibration)
-    print('Execution completed successfully.')
+    executive.run(calibration, silence_outputs=True)
   except execution.ExecutionFailedError as e:
     print('=== Execution Failed ===')
     print('Error message:', e)

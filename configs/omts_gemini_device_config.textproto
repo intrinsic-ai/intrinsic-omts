@@ -7,6 +7,6 @@
   }
   camera_settings: {
     name: "exposure"
-    float_value: 0.002
+    float_value: 0.001
   }
 }
