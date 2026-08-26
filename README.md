@@ -159,10 +159,10 @@ Deploy and start the ICON controller, robot hardware modules, camera drivers, an
 
 ```bash
 # Deploy with default OMTS setup (UR5e + omts camera config):
-bazel run //:omts_solution -- --address localhost:17080
+bazel run //:omts_solution -c opt -- --address localhost:17080
 
 # Deploy with Lab BB-01 setup (UR3e + lab_bb_01 camera config):
-bazel run //:omts_solution --config=lab_bb_01 -- --address localhost:17080
+bazel run //:omts_solution -c opt --config=lab_bb_01 -- --address localhost:17080
 ```
 
 ### 2. Run the OMTS Python Application
