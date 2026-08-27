@@ -17,11 +17,27 @@ def create_move_to_named_pose_task(
   )
 
 
+def create_move_to_frame_task(
+    robot: RobotInterface,
+    frame_name: str,
+    parent_object: str = "root",
+    motion_type: str = "ANY",
+    task_name: Optional[str] = None,
+) -> bt.Node:
+  """Builds a Cartesian motion task moving the arm tool to a target frame."""
+  return robot.build_move_cartesian_task(
+      target_frame_name=frame_name,
+      target_object_name=parent_object,
+      motion_type=motion_type,
+      name=task_name or f"Move to {parent_object}/{frame_name} ({motion_type})",
+  )
+
+
 def create_compliant_touchdown_task(
     robot: RobotInterface,
-    direction: tuple[float, float, float] = (0.0, 0.0, -1.0),
-    contact_force_newtons: float = 5.0,
-    timeout_seconds: float = 15.0,
+    direction: tuple[float, float, float] = (0.0, 0.0, 1.0),
+    contact_force_newtons: float = 10.0,
+    timeout_seconds: float = 20.0,
     task_name: Optional[str] = None,
 ) -> bt.Node:
   """Builds a compliant move_to_contact task."""
