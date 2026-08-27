@@ -14,6 +14,7 @@ from absl import flags
 from google.protobuf import text_format
 import grpc
 
+from intrinsic.executive.proto import run_metadata_pb2
 from intrinsic.icon.proto import joint_space_pb2
 from intrinsic.icon.proto.v1 import service_pb2_grpc
 from intrinsic.icon.python import create_action_utils
@@ -53,21 +54,21 @@ _MOVING_CAMERA = flags.DEFINE_bool(
 )
 _SAMPLE_BOX_HALFSIZE_X = flags.DEFINE_float(
     'sample_box_halfsize_x',
-    0.20,
+    0.15,
     'Sampling box half-size X dimension (meters).',
 )
 _SAMPLE_BOX_HALFSIZE_Y = flags.DEFINE_float(
     'sample_box_halfsize_y',
-    0.20,
+    0.15,
     'Sampling box half-size Y dimension (meters).',
 )
 _SAMPLE_BOX_HALFSIZE_Z = flags.DEFINE_float(
     'sample_box_halfsize_z',
-    0.20,
+    0.15,
     'Sampling box half-size Z dimension (meters).',
 )
 _RAND_ANGLE = flags.DEFINE_float(
-    'rand_angle', 10.0, 'Randomization angle in degrees.'
+    'rand_angle', 15.0, 'Randomization angle in degrees.'
 )
 _RAND_ROLL_ANGLE = flags.DEFINE_float(
     'rand_roll_angle', 45.0, 'Randomization roll angle in degrees.'
@@ -440,6 +441,13 @@ def main(argv) -> None:
   solution = deployments.connect(address=_ADDRESS.value)
 
   executive = solution.executive
+
+  if executive.has_operation:
+    op_state = executive.operation.metadata.operation_state
+    if op_state == run_metadata_pb2.RunMetadata.PREPARING:
+      print("Operation is in PREPARING state. Canceling...")
+      executive.cancel()
+
   skills = solution.skills
   world = solution.world
 
@@ -478,19 +486,19 @@ def main(argv) -> None:
     )
 
   streamer = None
-  if _STREAM_CAMERA.value:
-    streamer = CameraStreamer(
-        camera=camera,
-        skills=skills,
-        executive=executive,
-        camera_ref=camera_ref,
-        fps=_STREAM_FPS.value,
-    )
-    streamer.start()
-
   try:
     waypoints = []
     if _MANUAL_WAYPOINTS.value:
+      if _STREAM_CAMERA.value:
+        streamer = CameraStreamer(
+            camera=camera,
+            skills=skills,
+            executive=executive,
+            camera_ref=camera_ref,
+            fps=_STREAM_FPS.value,
+        )
+        streamer.start()
+
       print('\n=== Manual Waypoint Collection ===')
       # Initialize ICON client
       icon_client = None
@@ -609,12 +617,18 @@ def main(argv) -> None:
 
       print('Sampling calibration poses via executive...')
       try:
-        executive.run(sample_calibration_poses, silence_outputs=True)
+        executive.run(sample_calibration_poses)
         res_proto = executive.get_value(sample_calibration_poses.result)
         waypoints = list(res_proto.sample_calibration_poses_result)
         print(f'Successfully sampled {len(waypoints)} calibration poses.')
       except Exception as e:
         print(f'Failed to sample calibration poses: {e}')
+        try:
+          errors = executive.get_errors()
+          if errors and errors.errors:
+            print(f'{errors.summary}')
+        except Exception as err_e:
+          print(f'Could not fetch executive error details: {err_e}')
         return
 
     if waypoints:
@@ -646,7 +660,10 @@ def main(argv) -> None:
           result_proto = (
               sample_calibration_poses_pb2.SampleCalibrationPosesResult()
           )
-          result_proto.sample_calibration_poses_result.extend(waypoints)
+          for wp in waypoints:
+            result_proto.sample_calibration_poses_result.add().ParseFromString(
+                wp.SerializeToString()
+            )
           with open(export_path, 'w') as f:
             f.write(text_format.MessageToString(result_proto))
           print(f'Successfully exported waypoints to {export_path}')

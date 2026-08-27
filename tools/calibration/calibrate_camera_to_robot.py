@@ -89,6 +89,7 @@ def main(argv) -> None:
 
   try:
     robot_ref = solution.resources[_ROBOT.value]
+
   except KeyError:
     raise ValueError(
         f"Robot '{_ROBOT.value}' not found in resources. Available resources:"
@@ -164,6 +165,7 @@ def main(argv) -> None:
   calibrate_camera_to_robot_skill = (
       skills.ai.intrinsic.calibrate_camera_to_robot
   )
+  print('ROBOTksdhdfkfhdkh:', robot_ref)
 
   # Setup calibration subtree
   collect_calibration_data = collect_calibration_data_skill(
