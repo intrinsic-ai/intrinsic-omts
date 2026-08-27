@@ -93,52 +93,52 @@ alias(
 
 intrinsic_asset_instance(
     name = "enclosure",
-    id = "ai.intrinsic.caw_enclosure",
+    asset = "ai.intrinsic.caw_enclosure",
 )
 
 intrinsic_asset_instance(
     name = "robotiq_pinch_gripper",
-    id = "ai.intrinsic.robotiq_gripper",
+    asset = "ai.intrinsic.robotiq_gripper",
     instance_name = "gripper",
 )
 
 intrinsic_asset_instance(
     name = "building_block",
-    id = "ai.intrinsic.building_block",
+    asset = "ai.intrinsic.building_block",
 )
 
 intrinsic_asset_instance(
     name = "raw_stock_2x3x5",
-    id = "ai.intrinsic.raw_stock_2x3x5",
+    asset = "ai.intrinsic.raw_stock_2x3x5",
 )
 
 intrinsic_asset_instance(
     name = "charuco_9x14_20mm_15mm_dict_5x5",
-    id = "ai.intrinsic.charuco_9x14_20mm_15mm_dict_5x5",
+    asset = "ai.intrinsic.charuco_9x14_20mm_15mm_dict_5x5",
 )
 
 intrinsic_asset_instance(
     name = "gazebo_simulator",
-    id = "ai.intrinsic.gazebo_simulator",
+    asset = "ai.intrinsic.gazebo_simulator",
 )
 
 intrinsic_asset_instance(
     name = "calibration_service_instance",
-    id = "ai.intrinsic.calibration_service",
+    asset = "ai.intrinsic.calibration_service",
     instance_name = "calibration_service",
 )
 
 intrinsic_asset_instance(
     name = "icon",
     config = "//configs:icon_config.textproto",
-    id = "ai.intrinsic.generic_realtime_control_service",
+    asset = "ai.intrinsic.generic_realtime_control_service",
     instance_name = "icon",
 )
 
 intrinsic_asset_instance(
     name = "ur_module",
     config = "//configs:ur_module_config.textproto",
-    id = select({
+    asset = select({
         ":is_lab_bb_01": "ai.intrinsic.ur3e_hardware_module_ioc",
         "//conditions:default": "ai.intrinsic.ur5e_hardware_module_ioc",
     }),
@@ -151,19 +151,19 @@ intrinsic_asset_instance(
         ":is_lab_bb_01": "//configs:lab_bb_01_gemini_device_config.textproto",
         "//conditions:default": "//configs:omts_gemini_device_config.textproto",
     }),
-    id = "ai.intrinsic.orbbec_gemini_335le",
+    asset = "ai.intrinsic.orbbec_gemini_335le",
     instance_name = "orbbec_camera",
 )
 
 intrinsic_asset_instance(
     name = "inference_service",
-    id = "ai.intrinsic.inference_service",
+    asset = "ai.intrinsic.inference_service",
     instance_name = "inference_service",
 )
 
 intrinsic_asset_instance(
     name = "motion_planner_service",
-    id = "ai.intrinsic.motion_planner_service",
+    asset = "ai.intrinsic.motion_planner_service",
     instance_name = "motion_planner_service",
 )
 
@@ -175,7 +175,7 @@ imported_asset_bundle(
 
 intrinsic_asset_instance(
     name = "moveit_ros_bridge",
-    id = "ai.intrinsic.moveit_flowstate_ros_bridge",
+    asset = "ai.intrinsic.moveit_flowstate_ros_bridge",
     instance_name = "moveit_ros_bridge",
 )
 
@@ -187,7 +187,7 @@ imported_asset_bundle(
 
 intrinsic_asset_instance(
     name = "orbbec_gemini_driver",
-    id = "ai.intrinsic.orbbec_gemini_driver",
+    asset = "ai.intrinsic.orbbec_gemini_driver",
     instance_name = "orbbec_gemini_driver",
 )
 
