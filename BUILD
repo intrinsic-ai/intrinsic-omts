@@ -254,45 +254,45 @@ copy_file(
 )
 
 copy_file(
-    name = "foundationpose_py311_model_py",
-    src = "@foundationpose_py311_bundle//:model.py",
-    out = "foundationpose_py311_model.py",
+    name = "foundationpose_py312_model_py",
+    src = "@foundationpose_py312_bundle//:model.py",
+    out = "foundationpose_py312_model.py",
     allow_symlink = True,
 )
 
 copy_file(
-    name = "foundationpose_py311_cpp_so",
-    src = "@foundationpose_py311_bundle//:foundationpose_cpp.so",
-    out = "foundationpose_py311_foundationpose_cpp.so",
+    name = "foundationpose_py312_cpp_so",
+    src = "@foundationpose_py312_bundle//:foundationpose_cpp.so",
+    out = "foundationpose_py312_foundationpose_cpp.so",
     allow_symlink = True,
 )
 
 copy_file(
-    name = "foundationpose_py311_env_tar_gz",
-    src = "@foundationpose_py311_bundle//:env.tar.gz",
-    out = "foundationpose_py311_env.tar.gz",
+    name = "foundationpose_py312_env_tar_gz",
+    src = "@foundationpose_py312_bundle//:env.tar.gz",
+    out = "foundationpose_py312_env.tar.gz",
     allow_symlink = True,
 )
 
 copy_file(
-    name = "foundationpose_py311_config_pbtxt",
-    src = "@foundationpose_py311_bundle//:config.pbtxt",
-    out = "foundationpose_py311_config.pbtxt",
+    name = "foundationpose_py312_config_pbtxt",
+    src = "@foundationpose_py312_bundle//:config.pbtxt",
+    out = "foundationpose_py312_config.pbtxt",
     allow_symlink = True,
 )
 
 intrinsic_mlmodel(
-    name = "foundationpose_mlmodel_py311",
+    name = "foundationpose_mlmodel_py312",
     backend = "triton",
-    config = ":foundationpose_py311_config_pbtxt",
+    config = ":foundationpose_py312_config_pbtxt",
     description = "FoundationPose 6D object pose estimation model.",
     display_name = "FoundationPose model weights",
     id = "ai.intrinsic.ioc_pose_estimation.pose_estimator.foundationpose",
     model_files = {
         ":foundationpose_refine_onnx_file": "1/foundationpose_refine.onnx",
         ":foundationpose_score_onnx_file": "1/foundationpose_score.onnx",
-        ":foundationpose_py311_model_py": "1/model.py",
-        ":foundationpose_py311_cpp_so": "1/foundationpose_cpp.so",
-        ":foundationpose_py311_env_tar_gz": "env.tar.gz",
+        ":foundationpose_py312_model_py": "1/model.py",
+        ":foundationpose_py312_cpp_so": "1/foundationpose_cpp.so",
+        ":foundationpose_py312_env_tar_gz": "env.tar.gz",
     },
 )

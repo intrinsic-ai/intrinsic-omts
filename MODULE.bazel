@@ -103,9 +103,9 @@ gh.download(
     tag = "v0.0.1",
 )
 gh.download(
-    name = "foundationpose_py311_bundle",
+    name = "foundationpose_py312_bundle",
     archive = True,
-    pattern = "foundationpose_py311.tar.gz",
+    pattern = "foundationpose_py312.tar.gz",
     repo = "intrinsic-ai/intrinsic-omts",
     tag = "v0.0.1",
 )
@@ -115,7 +115,7 @@ use_repo(
     "moveit_ros_bridge_bundle",
     "orbbec_gemini_driver_bundle",
     "segmentation_weights_bundle",
-    "foundationpose_py311_bundle",
+    "foundationpose_py312_bundle",
 )
 
 
