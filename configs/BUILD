@@ -10,4 +10,5 @@ exports_files([
     "scene.updates.pbtxt",
     "ur_module.attachments.updates.pbtxt",
     "ur_module_config.textproto",
+    "pose_estimator_config.textproto",
 ])

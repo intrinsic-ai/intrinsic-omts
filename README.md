@@ -209,3 +209,23 @@ bazel test //tests/...
   ```bash
   bazel run //tools/calibration:calibrate_camera -- --address=localhost:17080
   ```
+
+- **Pose Estimation:**
+  (More documentation on parameters can be found in `tools/pose_estimation/README.md`)
+  ```bash
+  bazel run //tools/pose_estimation:register_using_train_service -- \
+  --address="localhost:17080" \
+  --scene_object_id="ai.intrinsic.scene_object_id" \
+  --pose_estimator_id="ai.intrinsic.my_pose_estimator" \
+  --refinement_iters=3 \
+  --confidence_threshold=0.6 \
+  --visibility_threshold=0.6
+
+  bazel run //tools/pose_estimation:run_pose_estimation -- \
+  --address="localhost:17080" \
+  --pose_estimator_id="ai.intrinsic.my_pose_estimator" \
+  --camera_name="orbbec_camera" \
+  --sensor_ids="1,4" \
+  --service_name="pose_estimator_service" \
+  --min_num_instances=1
+  ```

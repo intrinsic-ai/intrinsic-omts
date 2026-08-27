@@ -50,6 +50,9 @@ intrinsic_solution(
         "@ioc//google3/intrinsic/icon/skills:dio_read_input_skill",
         "@ioc//google3/intrinsic/icon/skills:dio_set_output_skill",
         "@ioc//incode/intrinsic_inference/assets/inference_service:inference_service_asset",
+        "@ioc//incode/perception/ioc_pose_estimator:ioc_pose_estimator_service_asset",
+        "@ioc//incode/perception/ioc_train_service:ioc_train_service_asset",
+        "@ioc//google3/intrinsic/perception/skills/multi_view:estimate_pose_multi_view_skill",
         ":moveit_flowstate_ros_bridge_asset",
         ":orbbec_gemini_driver_asset",
     ] + select({
@@ -71,6 +74,8 @@ intrinsic_solution(
         ":orbbec_gemini_driver",
         ":motion_planner_service",
         ":inference_service",
+        ":pose_estimator_service",
+        ":train_service",
         ":moveit_ros_bridge",
     ],
     object_world_updates = [
@@ -167,6 +172,18 @@ intrinsic_asset_instance(
     instance_name = "motion_planner_service",
 )
 
+intrinsic_asset_instance(
+    name = "pose_estimator_service",
+    asset = "ai.intrinsic.ioc_pose_estimator_service",
+    config = "//configs:pose_estimator_config.textproto",
+    instance_name = "pose_estimator_service",
+)
+
+intrinsic_asset_instance(
+    name = "train_service",
+    asset = "ai.intrinsic.ioc_train_service",
+    instance_name = "train_service",
+)
 imported_asset_bundle(
     name = "moveit_flowstate_ros_bridge_asset",
     bundle = "@moveit_ros_bridge_bundle//:moveit_flowstate_ros_bridge.bundle.tar",
