@@ -50,7 +50,12 @@ llvm.toolchain(
 )
 
 non_module_deps = use_extension("@ioc//bazel:non_module_deps.bzl", "non_module_deps_ext")
-use_repo(non_module_deps, "intrinsic_llvm_sysroot")
+use_repo(
+    non_module_deps,
+    "intrinsic_llvm_sysroot",
+    "foundationpose_refine_onnx",
+    "foundationpose_score_onnx",
+)
 
 llvm.sysroot(
     label = "@intrinsic_llvm_sysroot//:all_files",
@@ -90,6 +95,27 @@ gh.download(
     repo = "intrinsic-ai/intrinsic-omts",
     tag = "v0.0.1",
 )
-use_repo(gh, "moveit_ros_bridge_bundle", "orbbec_gemini_driver_bundle")
+gh.download(
+    name = "segmentation_weights_bundle",
+    archive = True,
+    pattern = "segmentation.tar.gz",
+    repo = "intrinsic-ai/intrinsic-omts",
+    tag = "v0.0.1",
+)
+gh.download(
+    name = "foundationpose_py311_bundle",
+    archive = True,
+    pattern = "foundationpose_py311.tar.gz",
+    repo = "intrinsic-ai/intrinsic-omts",
+    tag = "v0.0.1",
+)
+
+use_repo(
+    gh,
+    "moveit_ros_bridge_bundle",
+    "orbbec_gemini_driver_bundle",
+    "segmentation_weights_bundle",
+    "foundationpose_py311_bundle",
+)
 
 

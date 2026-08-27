@@ -28,9 +28,27 @@ def _gh_release_file_impl(rctx):
     if res.return_code != 0:
         fail("Failed to download GitHub release asset: %s\n%s" % (res.stdout, res.stderr))
 
-    rctx.file(
-        "BUILD.bazel",
-        content = """package(default_visibility = ["//visibility:public"])
+    if rctx.attr.archive:
+        rctx.extract(
+            archive = filename,
+            stripPrefix = rctx.attr.strip_prefix,
+        )
+        rctx.file(
+            "BUILD.bazel",
+            content = """package(default_visibility = ["//visibility:public"])
+
+exports_files(glob(["**"]))
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
+)
+""",
+        )
+    else:
+        rctx.file(
+            "BUILD.bazel",
+            content = """package(default_visibility = ["//visibility:public"])
 
 exports_files(["{filename}"])
 
@@ -39,7 +57,7 @@ filegroup(
     srcs = ["{filename}"],
 )
 """.format(filename = filename),
-    )
+        )
 
 gh_release_file = repository_rule(
     implementation = _gh_release_file_impl,
@@ -48,6 +66,8 @@ gh_release_file = repository_rule(
         "tag": attr.string(mandatory = True, doc = "Release tag (e.g. 'v0.0.1')"),
         "pattern": attr.string(mandatory = True, doc = "Asset filename pattern (e.g. 'moveit_flowstate_ros_bridge.bundle.tar')"),
         "output": attr.string(doc = "Target filename in the downloaded repository"),
+        "archive": attr.bool(default = False, doc = "Whether to unpack the downloaded asset"),
+        "strip_prefix": attr.string(default = "", doc = "Directory prefix to strip when extracting"),
     },
 )
 
@@ -60,6 +80,8 @@ def _gh_release_extension_impl(mctx):
                 tag = download.tag,
                 pattern = download.pattern,
                 output = download.output,
+                archive = download.archive,
+                strip_prefix = download.strip_prefix,
             )
 
 _download_tag = tag_class(
@@ -69,6 +91,8 @@ _download_tag = tag_class(
         "tag": attr.string(mandatory = True),
         "pattern": attr.string(mandatory = True),
         "output": attr.string(),
+        "archive": attr.bool(default = False),
+        "strip_prefix": attr.string(default = ""),
     },
 )
 
