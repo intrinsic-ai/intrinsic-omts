@@ -12,7 +12,7 @@ class HardwareAdaptersTest(absltest.TestCase):
   def test_mock_robot(self):
     robot = MockRobot()
     robot.build_move_joint_task("home")
-    robot.build_move_to_contact_task(direction=(0.0, 0.0, -1.0))
+    robot.build_move_to_contact_task(direction=(0.0, 0.0, 1.0))
     self.assertEqual(len(robot.executed_commands), 2)
     self.assertEqual(robot.executed_commands[0], "move_joint:home")
     self.assertIn("move_to_contact", robot.executed_commands[1])

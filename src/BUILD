@@ -14,6 +14,7 @@ py_binary(
         "//src/utils",
         "@com_google_absl_py//absl:app",
         "@com_google_absl_py//absl/flags",
+        "@com_google_absl_py//absl/logging",
         "@ioc//google3/intrinsic/solutions:deployments",
         "@ioc//google3/intrinsic/solutions:execution",
     ],
