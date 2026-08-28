@@ -100,6 +100,7 @@ gh.download(
     archive = True,
     pattern = "segmentation.tar.gz",
     repo = "intrinsic-ai/intrinsic-omts",
+    sha256 = "decfe9edb9ffd9778bce9e5b815410a1780f21a85662e1d601468117678f4034",
     tag = "v0.0.1",
 )
 gh.download(
@@ -107,6 +108,7 @@ gh.download(
     archive = True,
     pattern = "foundationpose_py312.tar.gz",
     repo = "intrinsic-ai/intrinsic-omts",
+    sha256 = "e367c3dd6b98bbee3f603009ea670f38d604d2bbb8a5ef5f430cd3797833b17a",
     tag = "v0.0.1",
 )
 

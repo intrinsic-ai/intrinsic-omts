@@ -28,6 +28,14 @@ def _gh_release_file_impl(rctx):
     if res.return_code != 0:
         fail("Failed to download GitHub release asset: %s\n%s" % (res.stdout, res.stderr))
 
+    if rctx.attr.sha256:
+        sh_res = rctx.execute(["sha256sum", filename])
+        if sh_res.return_code != 0:
+            fail("Failed to compute sha256 checksum of downloaded asset %s" % filename)
+        actual_sha256 = sh_res.stdout[:64]
+        if actual_sha256 != rctx.attr.sha256:
+            fail("Checksum mismatch for %s: expected %s, got %s" % (filename, rctx.attr.sha256, actual_sha256))
+
     if rctx.attr.archive:
         rctx.extract(
             archive = filename,
@@ -68,6 +76,7 @@ gh_release_file = repository_rule(
         "output": attr.string(doc = "Target filename in the downloaded repository"),
         "archive": attr.bool(default = False, doc = "Whether to unpack the downloaded asset"),
         "strip_prefix": attr.string(default = "", doc = "Directory prefix to strip when extracting"),
+        "sha256": attr.string(default = "", doc = "Expected SHA-256 checksum of downloaded asset"),
     },
 )
 
@@ -82,6 +91,7 @@ def _gh_release_extension_impl(mctx):
                 output = download.output,
                 archive = download.archive,
                 strip_prefix = download.strip_prefix,
+                sha256 = download.sha256,
             )
 
 _download_tag = tag_class(
@@ -93,6 +103,7 @@ _download_tag = tag_class(
         "output": attr.string(),
         "archive": attr.bool(default = False),
         "strip_prefix": attr.string(default = ""),
+        "sha256": attr.string(default = ""),
     },
 )
 
