@@ -40,3 +40,23 @@ updates {
     }
   }
 }
+
+updates {
+  reparent_object: {
+    object: {
+      by_name: {
+        object_name: "orbbec_camera"
+      }
+    }
+    new_parent: {
+      reference: {
+        by_name: {
+          object_name: "ur_module"
+        }
+      }
+      entity_filter: {
+        include_final_entity: true
+      }
+    }
+  }
+}
