@@ -8,6 +8,7 @@ from absl import app
 from absl import flags
 from google.protobuf import text_format
 
+from intrinsic.math.proto import pose_pb2
 from intrinsic.math.python import proto_conversion
 from intrinsic.perception.public.proto.v1 import camera_to_robot_calibration_pb2 as calibration_type_pb2
 from intrinsic.perception.skills.calibration import sample_calibration_poses_pb2
@@ -297,10 +298,18 @@ def main(argv) -> None:
       scene_object = world.get_object(
           object_world_ids.WorldObjectName(camera_name)
       )
+      if _MOVING_CAMERA.value:
+        new_pose_proto = res.moving_camera_result_poses.flange_t_camera
+      else:
+        new_pose_proto = res.stationary_camera_result_poses.base_t_camera
+
+      a_t_b_pose = pose_pb2.Pose()
+      a_t_b_pose.ParseFromString(new_pose_proto.SerializeToString())
+
       update_request = object_world_updates_pb2.UpdateTransformRequest(
           node_a=scene_object.parent.transform_node_reference,
           node_b=scene_object.transform_node_reference,
-          a_t_b=proto_conversion.pose_to_proto(scene_object.parent_t_this),
+          a_t_b=a_t_b_pose,
           node_to_update=scene_object.transform_node_reference,
       )
 
