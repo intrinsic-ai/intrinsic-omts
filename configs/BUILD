@@ -7,6 +7,7 @@ exports_files([
     "moveit_service_manifest.textproto",
     "omts_gemini_device_config.textproto",
     "orbbec_gemini_driver_manifest.textproto",
+    "orbbec_camera.attachments.updates.pbtxt",
     "scene.updates.pbtxt",
     "ur_module.attachments.updates.pbtxt",
     "ur_module_config.textproto",
