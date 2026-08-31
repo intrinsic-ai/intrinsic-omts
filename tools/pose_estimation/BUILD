@@ -27,7 +27,6 @@ py_binary(
         "@ioc//google3/intrinsic/assets/proto:id_py_pb2",
         "@ioc//google3/intrinsic/assets/proto:installed_assets_pb2_grpc",
         "@ioc//google3/intrinsic/assets/proto:installed_assets_py_pb2",
-        "@ioc//google3/intrinsic/assets/proto:metadata_py_pb2",
         "@ioc//google3/intrinsic/assets/proto:view_py_pb2",
         "@ioc//google3/intrinsic/perception/public/proto/v1:pose_estimation_config_py_pb2",
         "@ioc//google3/intrinsic/perception/public/proto/v1:pose_range_py_pb2",
