@@ -113,6 +113,7 @@ gh.download(
     name = "orbbec_gemini_driver_bundle",
     pattern = "orbbec_gemini_driver.bundle.tar",
     repo = "intrinsic-ai/intrinsic-omts",
+    sha256 = "a7c30e1435d2f9d278b7999c02de7a90e24f9cba2ddbc9ba9f33f74fc68de031",
     tag = "v0.0.1",
 )
 gh.download(
