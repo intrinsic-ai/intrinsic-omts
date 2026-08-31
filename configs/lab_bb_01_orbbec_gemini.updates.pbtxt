@@ -1,0 +1,62 @@
+# proto-file: intrinsic/world/public/proto/object_world_updates.proto
+# proto-message: intrinsic_proto.world.ObjectWorldUpdates
+
+updates {
+  update_transform {
+    node_a {
+      by_name {
+        frame: {
+          object_name: "ur_module"
+          frame_name: "flange"
+        }
+      }
+    }
+    node_b {
+      by_name {
+        object {
+          object_name: "orbbec_camera"
+        }
+      }
+    }
+    node_to_update {
+      by_name {
+        object {
+          object_name: "orbbec_camera"
+        }
+      }
+    }
+    a_t_b {
+      position {
+        x: -0.02384264602250228
+        y: -0.0685219943320335
+        z: 0.031921843930468173
+      }
+      orientation {
+        x: 0.0018083188260855385
+        y: 0.000445643075593246
+        z: -0.0020980919137146914
+        w: 0.99999606469005364
+      }
+    }
+  }
+}
+
+updates {
+  reparent_object: {
+    object: {
+      by_name: {
+        object_name: "orbbec_camera"
+      }
+    }
+    new_parent: {
+      reference: {
+        by_name: {
+          object_name: "ur_module"
+        }
+      }
+      entity_filter: {
+        include_final_entity: true
+      }
+    }
+  }
+}
