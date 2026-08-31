@@ -24,6 +24,8 @@ bazel_dep(name = "abseil-py", version = "2.1.0", repo_name = "com_google_absl_py
 bazel_dep(name = "grpc", version = "1.69.0", repo_name = "com_github_grpc_grpc")
 bazel_dep(name = "rules_cuda", version = "0.3.0")
 bazel_dep(name = "toolchains_llvm", version = "1.6.0")
+bazel_dep(name = "googleapis", version = "0.0.0-20260728-b8486a2f", repo_name = "com_google_googleapis")
+bazel_dep(name = "protobuf", version = "32.1", repo_name = "com_google_protobuf")
 
 cuda = use_extension("@rules_cuda//cuda:extensions.bzl", "toolchain")
 cuda.redist_json(
@@ -53,8 +55,26 @@ non_module_deps = use_extension("@ioc//bazel:non_module_deps.bzl", "non_module_d
 use_repo(
     non_module_deps,
     "intrinsic_llvm_sysroot",
-    "foundationpose_refine_onnx",
-    "foundationpose_score_onnx",
+)
+
+http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+
+http_file(
+    name = "foundationpose_refine_onnx",
+    downloaded_file_path = "foundationpose_refine.onnx",
+    sha256 = "dcc695a19c4bcfe5e1d909a22d8f652d8ec8bab1e19bd1544c6b45f2d3595cf7",
+    urls = [
+        "https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.1_onnx/files/refine_model.onnx",
+    ],
+)
+
+http_file(
+    name = "foundationpose_score_onnx",
+    downloaded_file_path = "foundationpose_score.onnx",
+    sha256 = "0bf1026c0db7320ebf9a548ecf0d3c810c8dbd377948630bd3e5af1d49440503",
+    urls = [
+        "https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.1_onnx/files/score_model.onnx",
+    ],
 )
 
 llvm.sysroot(
