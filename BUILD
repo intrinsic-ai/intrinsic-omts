@@ -43,7 +43,7 @@ intrinsic_solution(
         "@ioc//google3/intrinsic/perception/skills/calibration:collect_calibration_data_skill",
         "@ioc//google3/intrinsic/perception/skills/calibration:initialize_calibration_skill",
         "@ioc//google3/intrinsic/perception/public/hardware_devices:orbbec_gemini_335le_hardware_device",
-        "@ioc//google3/intrinsic/motion_planning/service:motion_planner_service_asset",
+        "@ioc//incode/intrinsic_motion_planning/service:motion_planner_service_asset",
         "@ioc//incode/motion_planning/skills:clear_motion_planner_service_cache_skill",
         "@ioc//incode/motion_planning/skills:move_robot_skill",
         "@ioc//incode/motion_planning/skills:preplan_motion_skill",
