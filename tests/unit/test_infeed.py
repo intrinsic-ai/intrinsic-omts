@@ -12,7 +12,7 @@ class InfeedStrategyTest(absltest.TestCase):
     strategy = PerceptionInfeedStrategy(
         camera_name="test_camera",
         estimator_name="test_estimator",
-        view_joint_pose_name="view_pose",
+        view_frame_name="view",
     )
     self.assertEqual(strategy.mode, InfeedMode.PERCEPTION)
 

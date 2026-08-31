@@ -55,18 +55,26 @@ class DioGripper(GripperInterface):
 
 
 class MockGripper(GripperInterface):
-  """Mock gripper for offline testing."""
+  """Mock gripper for testing when gripper hardware service is not deployed."""
 
   def __init__(self) -> None:
     self.state: str = "open"
     self.command_log: list[str] = []
 
   def build_open_task(self, name: Optional[str] = None) -> bt.Node:
+    task_name = name or "Mock Open Gripper"
     self.state = "open"
     self.command_log.append("open")
-    return bt.Sequence([])
+    return bt.Task(
+        action=bt.PythonScript(function_body='print("[MockGripper] Gripper Opened")'),
+        name=task_name,
+    )
 
   def build_close_task(self, name: Optional[str] = None) -> bt.Node:
+    task_name = name or "Mock Close Gripper"
     self.state = "closed"
     self.command_log.append("close")
-    return bt.Sequence([])
+    return bt.Task(
+        action=bt.PythonScript(function_body='print("[MockGripper] Gripper Closed (Part Grasped)")'),
+        name=task_name,
+    )

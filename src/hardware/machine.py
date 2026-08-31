@@ -108,8 +108,12 @@ class DioCncMachine(CncMachineInterface):
   ) -> bt.Node:
     task_name = name or "Wait for CNC Cycle Complete"
     if self._is_mock:
-      # Bypass blocking hardware I/O wait in mock mode to avoid hanging
-      return bt.Sequence(name=f"{task_name} (Mock Bypassed)", children=[])
+      return bt.Task(
+          action=bt.PythonScript(
+              function_body='print("[MockCNC] Wait for cycle complete (bypassed)")'
+          ),
+          name=f"{task_name} (Mock Bypassed)",
+      )
 
     read_action = self._dio_read_skill(
         pin=self._cycle_done_input_pin,
@@ -119,7 +123,7 @@ class DioCncMachine(CncMachineInterface):
 
 
 class MockCncMachine(CncMachineInterface):
-  """Mock CNC machine for offline simulation and unit testing."""
+  """Mock CNC machine for testing when CNC hardware signals are not deployed."""
 
   def __init__(self) -> None:
     self.door_open: bool = False
@@ -128,32 +132,68 @@ class MockCncMachine(CncMachineInterface):
     self.command_log: list[str] = []
 
   def build_open_door_task(self, name: Optional[str] = None) -> bt.Node:
+    task_name = name or "Mock Open CNC Door"
     self.door_open = True
     self.command_log.append("open_door")
-    return bt.Sequence([])
+    return bt.Task(
+        action=bt.PythonScript(
+            function_body='print("[MockCNC] Open CNC Door")'
+        ),
+        name=task_name,
+    )
 
   def build_close_door_task(self, name: Optional[str] = None) -> bt.Node:
+    task_name = name or "Mock Close CNC Door"
     self.door_open = False
     self.command_log.append("close_door")
-    return bt.Sequence([])
+    return bt.Task(
+        action=bt.PythonScript(
+            function_body='print("[MockCNC] Close CNC Door")'
+        ),
+        name=task_name,
+    )
 
   def build_open_vise_task(self, name: Optional[str] = None) -> bt.Node:
+    task_name = name or "Mock Open CNC Vise"
     self.vise_open = True
     self.command_log.append("open_vise")
-    return bt.Sequence([])
+    return bt.Task(
+        action=bt.PythonScript(
+            function_body='print("[MockCNC] Open CNC Vise")'
+        ),
+        name=task_name,
+    )
 
   def build_close_vise_task(self, name: Optional[str] = None) -> bt.Node:
+    task_name = name or "Mock Clamp CNC Vise"
     self.vise_open = False
     self.command_log.append("close_vise")
-    return bt.Sequence([])
+    return bt.Task(
+        action=bt.PythonScript(
+            function_body='print("[MockCNC] Clamp CNC Vise")'
+        ),
+        name=task_name,
+    )
 
   def build_trigger_cycle_task(self, name: Optional[str] = None) -> bt.Node:
+    task_name = name or "Mock Trigger CNC Machining Cycle"
     self.cycle_triggered = True
     self.command_log.append("trigger_cycle")
-    return bt.Sequence([])
+    return bt.Task(
+        action=bt.PythonScript(
+            function_body='print("[MockCNC] Trigger Machining Cycle Start")'
+        ),
+        name=task_name,
+    )
 
   def build_wait_cycle_complete_task(
       self, timeout_seconds: float = 30.0, name: Optional[str] = None
   ) -> bt.Node:
+    task_name = name or "Mock Wait for CNC Cycle Complete"
     self.command_log.append("wait_cycle_complete")
-    return bt.Sequence([])
+    return bt.Task(
+        action=bt.PythonScript(
+            function_body='print("[MockCNC] Machining Cycle Complete")'
+        ),
+        name=task_name,
+    )

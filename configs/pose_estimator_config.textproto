@@ -1,0 +1,12 @@
+[type.googleapis.com/intrinsic_proto.perception.ioc.IocPoseEstimatorServiceConfig] {
+  inference_service: {
+    name: "inference_service"
+  }
+  segmentation_model: {
+    name: "ai.intrinsic.ioc_pose_estimation.segmentor.rfdetr"
+  }
+  foundationpose_model: {
+    name: "ai.intrinsic.ioc_pose_estimation.pose_estimator.foundationpose"
+  }
+  batch_size: 128
+}
