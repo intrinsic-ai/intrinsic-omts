@@ -55,6 +55,8 @@ intrinsic_solution(
         "@ioc//incode/perception/ioc_pose_estimator:ioc_pose_estimator_service_asset",
         "@ioc//incode/perception/ioc_train_service:ioc_train_service_asset",
         "@ioc//google3/intrinsic/perception/skills/multi_view:estimate_pose_multi_view_skill",
+        "@ioc//google3/intrinsic/world/skills/create_object:create_object_skill",
+        "@ioc//google3/intrinsic/skills/apps:update_world_skill",
         ":moveit_flowstate_ros_bridge_asset",
         ":orbbec_gemini_driver_asset",
         ":foundationpose_mlmodel",
