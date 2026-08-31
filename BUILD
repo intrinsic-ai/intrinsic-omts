@@ -81,8 +81,6 @@ intrinsic_solution(
         ":pose_estimator_service",
         ":train_service",
         ":moveit_ros_bridge",
-        ":foundationpose_mlmodel",
-        ":rfdetr_mlmodel"
     ],
     object_world_updates = [
         "//configs:ur_module.attachments.updates.pbtxt",
