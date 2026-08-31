@@ -57,6 +57,8 @@ intrinsic_solution(
         "@ioc//google3/intrinsic/perception/skills/multi_view:estimate_pose_multi_view_skill",
         ":moveit_flowstate_ros_bridge_asset",
         ":orbbec_gemini_driver_asset",
+        ":foundationpose_mlmodel",
+        ":rfdetr_mlmodel",
     ] + select({
         ":is_lab_bb_01": ["@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_ioc"],
         "//conditions:default": ["@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_ioc"],
