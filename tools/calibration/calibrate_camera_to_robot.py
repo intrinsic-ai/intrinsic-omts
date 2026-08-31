@@ -165,7 +165,6 @@ def main(argv) -> None:
   calibrate_camera_to_robot_skill = (
       skills.ai.intrinsic.calibrate_camera_to_robot
   )
-  print('ROBOTksdhdfkfhdkh:', robot_ref)
 
   # Setup calibration subtree
   collect_calibration_data = collect_calibration_data_skill(
