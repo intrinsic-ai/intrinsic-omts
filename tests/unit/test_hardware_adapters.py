@@ -44,6 +44,8 @@ class HardwareAdaptersTest(absltest.TestCase):
     vision = MockVision()
     vision.build_capture_image_task()
     self.assertEqual(vision.capture_count, 1)
+    vision.build_perception_and_spawn_task()
+    self.assertEqual(vision.pipeline_count, 1)
 
 
 if __name__ == "__main__":

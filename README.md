@@ -1,6 +1,6 @@
 # Open Machine Tending Solution (OMTS)
 
-OMTS is an open-source reference application for automated machine tending (e.g. CNC milling, turning, press braking, and fixture loading) built on top of **Intrinsic Open Core (IOC)** using the **Solution Building Language (SBL)** Python SDK.
+OMTS is an open-source reference application for automated machine tending (e.g. CNC milling, turning, press braking, and fixture loading) built on top of **Intrinsic Open Core (IOC)** using the **Solution Building Library (SBL)** Python SDK.
 
 ---
 
@@ -193,6 +193,24 @@ bazel test //tests/...
 - **Interactive Joint & Teleop Jogging:**
   ```bash
   bazel run //tools/jogging:jog_interactive -- --host=localhost --port=17080
+  ```
+
+- **Move Robot Tool Frame to a Target Scene Frame:**
+  ```bash
+  # Interactive frame selection menu:
+  bazel run //tools/jogging:move_to_frame -- --address=localhost:17080
+
+  # Or move directly to a specified frame:
+  bazel run //tools/jogging:move_to_frame -- --address=localhost:17080 --frame=view --motion_type=ANY
+  ```
+
+- **Store & Teach Scene Frames (persists & overwrites in scene.updates.pbtxt):**
+  ```bash
+  # Store current tool_frame pose with specified frame name:
+  bazel run //tools/jogging:store_frame -- view --address=localhost:17080
+
+  # Or run interactively to prompt for frame name:
+  bazel run //tools/jogging:store_frame -- --address=localhost:17080
   ```
 
 - **Store & Teach Named Joint Configurations:**

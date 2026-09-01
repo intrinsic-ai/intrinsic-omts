@@ -13,7 +13,7 @@ from src.core.workpiece import Workpiece
 from src.hardware.gripper import MockGripper
 from src.hardware.machine import MockCncMachine
 from src.hardware.robot import MockRobot, UrRobot
-from src.hardware.vision import MockVision
+from src.hardware.vision import MockVision, OrbbecVision
 
 _ADDRESS = flags.DEFINE_string(
     "address",
@@ -50,6 +50,31 @@ _CAMERA_NAME = flags.DEFINE_string(
     "camera_name",
     "orbbec_camera",
     "Attribute name of 3D camera in solution.world.",
+)
+_PERCEPTION_SERVICE_NAME = flags.DEFINE_string(
+    "perception_service_name",
+    "pose_estimator_service",
+    "Name of the IOC pose estimator service in solution resources.",
+)
+_POSE_ESTIMATOR_ID = flags.DEFINE_string(
+    "pose_estimator_id",
+    "ai.intrinsic.raw_stock_2x3x5_estimator",
+    "Asset ID of the registered pose estimator model.",
+)
+_SCENE_OBJECT_ID = flags.DEFINE_string(
+    "scene_object_id",
+    "ai.intrinsic.raw_stock_2x3x5",
+    "Asset ID of the target scene object to spawn in belief world.",
+)
+_SENSOR_IDS = flags.DEFINE_list(
+    "sensor_ids",
+    ["1", "4"],
+    "Sensor IDs to capture from the RGB-D camera (1=RGB, 4=Depth).",
+)
+_MIN_NUM_INSTANCES = flags.DEFINE_integer(
+    "min_num_instances",
+    1,
+    "Minimum number of detected workpiece instances required.",
 )
 _PARENT_OBJECT = flags.DEFINE_string(
     "parent_object",
@@ -96,6 +121,11 @@ def run_machine_tending_cycle(
     tool_object_name: str = "gripper",
     tool_frame_name: str = "tool_frame",
     camera_name: str = "orbbec_camera",
+    perception_service_name: str = "pose_estimator_service",
+    pose_estimator_id: str = "ai.intrinsic.raw_stock_2x3x5_estimator",
+    scene_object_id: str = "ai.intrinsic.raw_stock_2x3x5",
+    sensor_ids: Sequence[int] = (1, 4),
+    min_num_instances: int = 1,
     parent_object: str = "root",
     view_frame: str = "view",
     pregrasp_frame: str = "pre_grasp",
@@ -125,7 +155,12 @@ def run_machine_tending_cycle(
     )
     gripper = MockGripper()
     machine = MockCncMachine()
-    vision = MockVision()
+    vision = OrbbecVision(
+        solution=solution,
+        camera_name=camera_name,
+        perception_service_name=perception_service_name,
+        sensor_ids=sensor_ids,
+    )
 
   # Select infeed strategy
   workpiece = Workpiece(id="raw_stock_01")
@@ -136,6 +171,10 @@ def run_machine_tending_cycle(
     logging.info("Configuring Vision-Guided Perception Infeed Strategy.")
     infeed_strategy = PerceptionInfeedStrategy(
         camera_name=camera_name,
+        pose_estimator_id=pose_estimator_id,
+        scene_object_id=scene_object_id,
+        sensor_ids=sensor_ids,
+        min_num_instances=min_num_instances,
         view_frame_name=view_frame,
     )
   else:
@@ -160,15 +199,11 @@ def run_machine_tending_cycle(
       place_vise_frame_name=place_vise_frame,
   )
 
-  logging.info(
-      "Executing OMTS Infeed, Acquisition & Vise Approach Pipeline..."
-  )
+  logging.info("Executing OMTS Infeed, Acquisition & Vise Approach Pipeline...")
   try:
     solution.executive.run(tree)
     duration = workcell_state.record_cycle_success()
-    logging.info(
-        "Pipeline execution completed successfully in %.2fs.", duration
-    )
+    logging.info("Pipeline execution completed successfully in %.2fs.", duration)
   except Exception as e:
     workcell_state.record_cycle_failure()
     logging.error("Pipeline execution failed: %s", e)
@@ -181,6 +216,12 @@ def main(argv: Sequence[str]) -> None:
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
 
+  sensor_ids = (
+      [int(s.strip()) for s in _SENSOR_IDS.value if s.strip()]
+      if _SENSOR_IDS.value
+      else [1, 4]
+  )
+
   run_machine_tending_cycle(
       solution_address=_ADDRESS.value,
       infeed_mode=_INFEED_MODE.value,
@@ -189,6 +230,11 @@ def main(argv: Sequence[str]) -> None:
       tool_object_name=_TOOL_OBJECT_NAME.value,
       tool_frame_name=_TOOL_FRAME_NAME.value,
       camera_name=_CAMERA_NAME.value,
+      perception_service_name=_PERCEPTION_SERVICE_NAME.value,
+      pose_estimator_id=_POSE_ESTIMATOR_ID.value,
+      scene_object_id=_SCENE_OBJECT_ID.value,
+      sensor_ids=sensor_ids,
+      min_num_instances=_MIN_NUM_INSTANCES.value,
       parent_object=_PARENT_OBJECT.value,
       view_frame=_VIEW_FRAME.value,
       pregrasp_frame=_PREGRASP_FRAME.value,

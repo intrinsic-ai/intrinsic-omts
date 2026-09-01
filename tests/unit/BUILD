@@ -64,3 +64,29 @@ py_test(
         "@com_google_absl_py//absl/testing:absltest",
     ],
 )
+
+py_test(
+    name = "test_move_to_frame",
+    srcs = ["test_move_to_frame.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//src/hardware:robot",
+        "//tools/jogging:move_to_frame_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//google3/intrinsic/solutions:behavior_tree",
+        "@ioc//google3/intrinsic/solutions:execution",
+    ],
+)
+
+py_test(
+    name = "test_store_frame",
+    srcs = ["test_store_frame.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tools/jogging:store_frame_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//google3/intrinsic/math/python:data_types",
+        "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
+    ],
+)
+
