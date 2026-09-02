@@ -26,7 +26,6 @@ from intrinsic.perception.skills.calibration import sample_calibration_poses_pb2
 from intrinsic.skills.proto import skills_pb2
 from intrinsic.solutions import behavior_tree as bt
 from intrinsic.solutions import deployments
-from intrinsic.solutions import perception
 from intrinsic.util.grpc import connection
 
 # Command line input flags
@@ -465,16 +464,6 @@ def main(argv) -> None:
     )
 
   camera = None
-  if perception is not None:
-    try:
-      cameras = perception.Cameras.for_solution(solution)
-      camera = cameras[_CAMERA.value]
-    except Exception as e:
-      print(
-          f'Warning: Failed to initialize camera client: {e}. Image capture on'
-          " 'r' will be unavailable."
-      )
-
   calibration_object_ref = world.get_object(_CALIBRATION_OBJECT.value)
   if not calibration_object_ref:
     raise ValueError(
