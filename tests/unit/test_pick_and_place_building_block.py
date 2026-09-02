@@ -17,6 +17,7 @@ from src.pick_and_place_building_block import inject_dynamic_frames
 from src.pick_and_place_building_block import run_pick_and_place_loop
 from src.pick_and_place_building_block import select_best_detection
 from src.pick_and_place_building_block import select_best_estimate
+from src.pick_and_place_building_block import update_workpiece_pose
 
 
 class PickAndPlaceBuildingBlockTest(absltest.TestCase):
@@ -169,6 +170,54 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
     self.assertAlmostEqual(poses["dynamic_grasp"][1][2], 0.0, places=5)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][3], 0.0, places=5)
 
+  def test_compute_dynamic_frame_poses_vertical_local_x_axis(self):
+    pos = (0.34769688, 0.26536308, 1.05280108)
+    # Detected workpiece pose where local X points along +Z
+    ori = (0.52664544, 0.4644981, 0.53018673, -0.47517168)
+    poses = compute_dynamic_frame_poses(
+        position=pos,
+        orientation=ori,
+    )
+    # Local X is vertical (+Z). Primary horizontal axis is local Y
+    # with direction (0.99311, -0.11690), yielding yaw = -0.11721 rad (-6.716 deg).
+    # Expected top-down: qx = cos(yaw/2) = 0.99828, qy = sin(yaw/2) = -0.05856
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 0.9982827, places=4)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], -0.0585787, places=4)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][2], 0.0, places=5)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][3], 0.0, places=5)
+
+  def test_compute_dynamic_frame_poses_vertical_local_y_axis(self):
+    pos = (0.10, 0.20, 0.30)
+    # 90 deg around X: local Y points along +Z, local Z points along -Y
+    ori = (0.70710678, 0.0, 0.0, 0.70710678)
+    poses = compute_dynamic_frame_poses(
+        position=pos,
+        orientation=ori,
+    )
+    # Local Y is vertical. Primary horizontal axis is local Z (0, -1, 0),
+    # yielding yaw = -pi/2 (-90 deg).
+    # Expected top-down: qx = cos(-pi/4) = 0.70710678, qy = sin(-pi/4) = -0.70710678
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 0.70710678, places=5)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], -0.70710678, places=5)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][2], 0.0, places=5)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][3], 0.0, places=5)
+
+  def test_compute_dynamic_frame_poses_inverted_vertical_local_z_axis(self):
+    pos = (0.10, 0.20, 0.30)
+    # 180 deg around X: local Z points along -Z, local X points along +X
+    ori = (1.0, 0.0, 0.0, 0.0)
+    poses = compute_dynamic_frame_poses(
+        position=pos,
+        orientation=ori,
+    )
+    # Local Z is vertical. Primary horizontal axis is local X (1, 0, 0),
+    # yielding yaw = 0.
+    # Expected top-down: qx = 1.0, qy = 0.0
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 1.0, places=5)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], 0.0, places=5)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][2], 0.0, places=5)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][3], 0.0, places=5)
+
   def test_select_best_estimate(self):
     est1 = mock.MagicMock(score=-19.2566)
     est2 = mock.MagicMock(score=-17.4622)
@@ -226,12 +275,28 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
     self.assertAlmostEqual(pos[1], 0.65)
     self.assertAlmostEqual(pos[2], 0.6)
 
-  def test_extract_pose_root_t_target_not_double_transformed(self):
+  def test_extract_pose_root_t_target_with_camera_transform(self):
     # Camera at (0.6, 0.7, 1.0)
     r_cam = data_types.Rotation3(data_types.Quaternion([0.0, 0.0, 0.0, 1.0]))
     root_t_cam = data_types.Pose3(r_cam, [0.6, 0.7, 1.0])
 
-    # Workpiece already in root frame (0.15, 0.25, 0.70)
+    # Workpiece detection in camera frame: (0.1, -0.05, -0.4)
+    est_proto = mock.MagicMock()
+    est_proto.root_t_target.position.x = 0.10
+    est_proto.root_t_target.position.y = -0.05
+    est_proto.root_t_target.position.z = -0.40
+    est_proto.root_t_target.orientation.x = 0.0
+    est_proto.root_t_target.orientation.y = 0.0
+    est_proto.root_t_target.orientation.z = 0.0
+    est_proto.root_t_target.orientation.w = 1.0
+
+    pos, ori = extract_pose_from_estimate(est_proto, root_t_camera=root_t_cam)
+    self.assertAlmostEqual(pos[0], 0.70)
+    self.assertAlmostEqual(pos[1], 0.65)
+    self.assertAlmostEqual(pos[2], 0.60)
+    self.assertEqual(ori, (0.0, 0.0, 0.0, 1.0))
+
+  def test_extract_pose_root_t_target_without_camera_transform(self):
     est_proto = mock.MagicMock()
     est_proto.root_t_target.position.x = 0.15
     est_proto.root_t_target.position.y = 0.25
@@ -241,7 +306,7 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
     est_proto.root_t_target.orientation.z = 0.0
     est_proto.root_t_target.orientation.w = 1.0
 
-    pos, ori = extract_pose_from_estimate(est_proto, root_t_camera=root_t_cam)
+    pos, ori = extract_pose_from_estimate(est_proto, root_t_camera=None)
     self.assertAlmostEqual(pos[0], 0.15)
     self.assertAlmostEqual(pos[1], 0.25)
     self.assertAlmostEqual(pos[2], 0.70)
@@ -318,6 +383,58 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
     updates = mock_world.batch_update.call_args[0][0]
     self.assertIsInstance(updates, object_world_updates_pb2.ObjectWorldUpdates)
     self.assertEqual(len(updates.updates), 4)
+
+  def test_update_workpiece_pose_existing_object(self):
+    mock_world = mock.MagicMock()
+    mock_root = mock.MagicMock()
+    mock_raw_stock = mock.MagicMock()
+    setattr(mock_world, "root", mock_root)
+    setattr(mock_world, "raw_stock_2x3x5", mock_raw_stock)
+
+    update_workpiece_pose(
+        world=mock_world,
+        position=(0.15, 0.25, 0.71),
+        orientation=(1.0, 0.0, 0.0, 0.0),
+        workpiece_name="raw_stock_2x3x5",
+        parent_object_name="root",
+    )
+    mock_world.update_transform.assert_called_once()
+    call_kwargs = mock_world.update_transform.call_args.kwargs
+    self.assertEqual(call_kwargs["node_a"], mock_root)
+    self.assertEqual(call_kwargs["node_b"], mock_raw_stock)
+
+  def test_update_workpiece_pose_fallback_name(self):
+    mock_world = mock.MagicMock(spec=["update_transform", "root", "raw_stock"])
+    mock_root = mock.MagicMock()
+    mock_raw_stock = mock.MagicMock()
+    setattr(mock_world, "root", mock_root)
+    setattr(mock_world, "raw_stock", mock_raw_stock)
+
+    update_workpiece_pose(
+        world=mock_world,
+        position=(0.15, 0.25, 0.71),
+        orientation=(1.0, 0.0, 0.0, 0.0),
+        workpiece_name="raw_stock_2x3x5",
+        parent_object_name="root",
+    )
+    mock_world.update_transform.assert_called_once()
+    call_kwargs = mock_world.update_transform.call_args.kwargs
+    self.assertEqual(call_kwargs["node_a"], mock_root)
+    self.assertEqual(call_kwargs["node_b"], mock_raw_stock)
+
+  def test_update_workpiece_pose_missing_object_noops(self):
+    mock_world = mock.MagicMock(spec=["update_transform", "root"])
+    mock_root = mock.MagicMock()
+    setattr(mock_world, "root", mock_root)
+
+    update_workpiece_pose(
+        world=mock_world,
+        position=(0.15, 0.25, 0.71),
+        orientation=(1.0, 0.0, 0.0, 0.0),
+        workpiece_name="raw_stock_2x3x5",
+        parent_object_name="root",
+    )
+    mock_world.update_transform.assert_not_called()
 
   def test_build_cycle_tree(self):
     tree = build_building_block_pick_place_tree(

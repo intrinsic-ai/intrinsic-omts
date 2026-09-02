@@ -243,7 +243,12 @@ def extract_pose_from_estimate(
 ) -> tuple[tuple[float, float, float], tuple[float, float, float, float]]:
   """Extracts (position, orientation) tuples from a detection estimate."""
   if hasattr(estimate, "root_t_target"):
-    pose = proto_conversion.pose_from_proto(estimate.root_t_target)
+    p = proto_conversion.pose_from_proto(estimate.root_t_target)
+    pose = (
+        root_t_camera * p
+        if (root_t_camera is not None and hasattr(root_t_camera, "__mul__"))
+        else p
+    )
     trans = pose.translation
     quat = pose.rotation.quaternion
     return (
@@ -360,18 +365,51 @@ def compute_dynamic_frame_poses(
   else:
     qx, qy, qz, qw = 0.0, 0.0, 0.0, 1.0
 
-  # Compute horizontal in-plane yaw angle from orientation quaternion
+  # Compute 3D rotation matrix columns from orientation quaternion (x, y, z, w)
+  # vx: local X axis in root frame
   vx_x = 1.0 - 2.0 * (qy * qy + qz * qz)
   vx_y = 2.0 * (qx * qy + qz * qw)
+  vx_z = 2.0 * (qx * qz - qy * qw)
+
+  # vy: local Y axis in root frame
   vy_x = 2.0 * (qx * qy - qz * qw)
   vy_y = 1.0 - 2.0 * (qx * qx + qz * qz)
+  vy_z = 2.0 * (qy * qz + qx * qw)
 
-  if (vx_x * vx_x + vx_y * vx_y) >= 1e-4:
-    yaw = math.atan2(vx_y, vx_x)
-  elif (vy_x * vy_x + vy_y * vy_y) >= 1e-4:
-    yaw = math.atan2(vy_y, vy_x) - math.pi / 2.0
+  # vz: local Z axis in root frame
+  vz_x = 2.0 * (qx * qz + qy * qw)
+  vz_y = 2.0 * (qy * qz - qx * qw)
+  vz_z = 1.0 - 2.0 * (qx * qx + qy * qy)
+
+  # Identify which body axis is most vertical (parallel to root Z normal)
+  abs_vx_z = abs(vx_z)
+  abs_vy_z = abs(vy_z)
+  abs_vz_z = abs(vz_z)
+
+  if abs_vx_z >= abs_vy_z and abs_vx_z >= abs_vz_z:
+    # Local X is vertical; primary in-plane axis is local Y, secondary is Z
+    if (vy_x * vy_x + vy_y * vy_y) >= 1e-4:
+      yaw = math.atan2(vy_y, vy_x)
+    elif (vz_x * vz_x + vz_y * vz_y) >= 1e-4:
+      yaw = math.atan2(vz_y, vz_x)
+    else:
+      yaw = 0.0
+  elif abs_vy_z >= abs_vx_z and abs_vy_z >= abs_vz_z:
+    # Local Y is vertical; primary in-plane axis is local Z, secondary is X
+    if (vz_x * vz_x + vz_y * vz_y) >= 1e-4:
+      yaw = math.atan2(vz_y, vz_x)
+    elif (vx_x * vx_x + vx_y * vx_y) >= 1e-4:
+      yaw = math.atan2(vx_y, vx_x)
+    else:
+      yaw = 0.0
   else:
-    yaw = 0.0
+    # Local Z is vertical; primary in-plane axis is local X, secondary is Y
+    if (vx_x * vx_x + vx_y * vx_y) >= 1e-4:
+      yaw = math.atan2(vx_y, vx_x)
+    elif (vy_x * vy_x + vy_y * vy_y) >= 1e-4:
+      yaw = math.atan2(vy_y, vy_x)
+    else:
+      yaw = 0.0
 
   # Downward top-down orientation: R_z(yaw) * R_x(pi)
   grasp_ori = (
@@ -455,6 +493,32 @@ def inject_dynamic_frames(
 
   if new_updates.updates:
     world.batch_update(new_updates)
+
+
+def update_workpiece_pose(
+    world: Any,
+    position: tuple[float, float, float],
+    orientation: tuple[float, float, float, float],
+    workpiece_name: str = "raw_stock_2x3x5",
+    parent_object_name: str = "root",
+) -> None:
+  """Updates the pose of the raw stock workpiece object in solution world."""
+  if world is None or not hasattr(world, "update_transform"):
+    return
+  parent_obj = getattr(world, parent_object_name, getattr(world, "root", None))
+  workpiece_obj = getattr(world, workpiece_name, None)
+  if workpiece_obj is None and hasattr(world, "raw_stock"):
+    workpiece_obj = getattr(world, "raw_stock")
+  if parent_obj is None or workpiece_obj is None:
+    return
+  pose = data_types.Pose3(
+      data_types.Rotation3(data_types.Quaternion(list(orientation))),
+      list(position),
+  )
+  try:
+    world.update_transform(node_a=parent_obj, node_b=workpiece_obj, a_t_b=pose)
+  except Exception as e:
+    logging.warning("Failed to update workpiece pose in world: %s", e)
 
 
 def create_pose_estimation_pipeline(
@@ -635,10 +699,16 @@ def run_pick_and_place_loop(
         place_offset_y=place_offset_y * offset_sign,
     )
 
-    # 4. Inject dynamic frames into solution.world
+    # 4. Inject dynamic frames and update workpiece pose in solution.world
     inject_dynamic_frames(
         world=solution.world,
         frame_poses=frame_poses,
+        parent_object_name=parent_object,
+    )
+    update_workpiece_pose(
+        world=solution.world,
+        position=pos,
+        orientation=ori,
         parent_object_name=parent_object,
     )
 

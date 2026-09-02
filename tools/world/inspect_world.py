@@ -82,27 +82,19 @@ def main(argv: Sequence[str] | None = None) -> None:
           "Tool Frame in root:"
           f" {world.get_transform(world.root, world.gripper.tool_frame)}"
       )
-    if hasattr(world.root, "view"):
-      print(f"View frame in root: {world.get_transform(world.root, world.root.view)}")
-    if hasattr(world.root, "pre_grasp"):
-      print(
-          "Pre-grasp frame in root:"
-          f" {world.get_transform(world.root, world.root.pre_grasp)}"
-      )
-    if hasattr(world.root, "grasp"):
-      print(
-          "Grasp frame in root:"
-          f" {world.get_transform(world.root, world.root.grasp)}"
-      )
-    if hasattr(world, "orbbec_camera"):
-      print(
-          f"Camera in root: {world.get_transform(world.root, world.orbbec_camera)}"
-      )
-      if hasattr(world.orbbec_camera, "sensor"):
-        print(
-            "Camera sensor in root:"
-            f" {world.get_transform(world.root, world.orbbec_camera.sensor)}"
-        )
+    for frame_name in ["dynamic_pregrasp", "dynamic_grasp", "dynamic_preplace", "dynamic_place", "pre_grasp", "grasp", "view", "side_view", "place_vise", "pre_place_vise"]:
+      if hasattr(world.root, frame_name):
+        tf = world.get_transform(world.root, getattr(world.root, frame_name))
+        rpy = tf.rotation.euler_angles(radians=False)
+        print(f"Frame root.{frame_name}: pos={tf.translation}, quat={tf.rotation.quaternion}, rpy_deg={rpy}")
+    if hasattr(world, "raw_stock_2x3x5"):
+      tf = world.get_transform(world.root, world.raw_stock_2x3x5)
+      rpy = tf.rotation.euler_angles(radians=False)
+      print(f"Object raw_stock_2x3x5 in root: pos={tf.translation}, quat={tf.rotation.quaternion}, rpy_deg={rpy}")
+    if hasattr(world, "building_block"):
+      tf = world.get_transform(world.root, world.building_block)
+      rpy = tf.rotation.euler_angles(radians=False)
+      print(f"Object building_block in root: pos={tf.translation}, quat={tf.rotation.quaternion}, rpy_deg={rpy}")
   except Exception as e:
     print(f"   Error checking transforms: {e}")
 
