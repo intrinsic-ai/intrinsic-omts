@@ -1,0 +1,400 @@
+is_valid: true
+warnings: "Poor calibration observability detected (FIM condition number = 2.7e+06, rank = 10). Captured camera views have limited angular diversity."
+warnings: "High grazing incidence angle (67.6 deg) for camera \'orbbec_camera_sensor_1\'. Extreme perspective foreshortening degrades corner localization."
+warnings: "High grazing incidence angle (68.1 deg) for camera \'orbbec_camera_sensor_2\'. Extreme perspective foreshortening degrades corner localization."
+warnings: "Camera \'orbbec_camera_sensor_3\' flagged as an outlier (mono reproj: 0.12 px, observer reproj: 2.59 px). Check its intrinsics or lens focus."
+warnings: "High grazing incidence angle (66.1 deg) for camera \'orbbec_camera_sensor_3\'. Extreme perspective foreshortening degrades corner localization."
+mean_epipolar_error_px: 0.45483501859986575
+max_epipolar_error_px: 1.2170409669689985
+rms_epipolar_error_px: 0.5722075394219023
+mean_sampson_epipolar_error_px: 0.3215067383179047
+rms_sampson_epipolar_error_px: 0.40446698820092575
+p95_epipolar_error_px: 1.2170409669689985
+mean_pose_translation_error_m: 0.0004724684655398939
+mean_pose_rotation_error_deg: 0.17311331326149218
+mean_pose_add_error_m: 0.0005357149299162924
+mean_pose_cross_reprojection_error_px: 1.208647067741097
+mean_pose_weighted_cross_reprojection_error_px: 1.2142698251822468
+mean_triangulation_reprojection_error_px: 0.5319772938829708
+rms_triangulation_reprojection_error_px: 0.9468436642420074
+mean_novel_view_triangulation_reprojection_error_px: 1.4797914884480543
+rms_novel_view_triangulation_reprojection_error_px: 1.8523410032605918
+p95_triangulation_reprojection_error_px: 0.9085870686283218
+mean_triangulation_3d_error_m: 0.0010364972383792761
+rms_triangulation_3d_error_m: 0.0016331182769434502
+mean_triangulation_scale_error_m: 0.000281075582657338
+mean_cluster_std_m: 0.00044506875980095904
+max_cluster_spread_m: 0.0009605061627986633
+mean_fov_coverage_ratio: 0.36412591512685366
+d_optimality_score: 14.471051097660972
+fim_condition_number: 2650138.5312101976
+mean_mono_reprojection_error_px: 0.2800723603368136
+rms_mono_reprojection_error_px: 0.3099698673630543
+mean_loop_translation_error_m: 0.0014174053966197681
+max_loop_translation_error_m: 0.0014174053966197681
+mean_loop_rotation_error_deg: 0.5193399397788376
+max_loop_rotation_error_deg: 0.5193399397788376
+mean_board_viewing_cosine: 0.386424209304161
+mean_board_incidence_angle_deg: 67.26499691659093
+epipolar_metrics {
+  camera_0: "orbbec_camera_sensor_1"
+  camera_1: "orbbec_camera_sensor_2"
+  num_common_corners: 22
+  mean_epipolar_error_px: 0.5311059848879935
+  rms_epipolar_error_px: 0.6096124899772783
+  max_epipolar_error_px: 1.1799083432635227
+  std_epipolar_error_px: 0.3062977120504336
+  mean_sampson_epipolar_error_px: 0.37542258688679203
+  rms_sampson_epipolar_error_px: 0.43091413311286314
+  p95_epipolar_error_px: 1.037304036667893
+  median_epipolar_error_px: 0.4971042010066808
+  mean_angular_epipolar_error_mrad: 0.8545323784124406
+  rms_angular_epipolar_error_mrad: 0.9808468098510977
+  subpixel_noise_ratio: 3.5407065659199572
+  mean_tangent_drift_mm_per_m: 0.8545323784124406
+}
+epipolar_metrics {
+  camera_0: "orbbec_camera_sensor_1"
+  camera_1: "orbbec_camera_sensor_3"
+  num_common_corners: 11
+  mean_epipolar_error_px: 0.6182174496082765
+  rms_epipolar_error_px: 0.7069103755350467
+  max_epipolar_error_px: 1.2170409669689985
+  std_epipolar_error_px: 0.3595586328303531
+  mean_sampson_epipolar_error_px: 0.43697714747684374
+  rms_sampson_epipolar_error_px: 0.49966698534837245
+  p95_epipolar_error_px: 1.2170409669689985
+  median_epipolar_error_px: 0.5324206444416184
+  mean_angular_epipolar_error_mrad: 0.99469191201309
+  rms_angular_epipolar_error_mrad: 1.1373959656240564
+  subpixel_noise_ratio: 4.121449664055177
+  mean_tangent_drift_mm_per_m: 0.99469191201309
+}
+epipolar_metrics {
+  camera_0: "orbbec_camera_sensor_2"
+  camera_1: "orbbec_camera_sensor_3"
+  num_common_corners: 9
+  mean_epipolar_error_px: 0.06870524088527385
+  rms_epipolar_error_px: 0.09366254982922344
+  max_epipolar_error_px: 0.19085693359356992
+  std_epipolar_error_px: 0.06751885666118977
+  mean_sampson_epipolar_error_px: 0.04858194173303238
+  rms_sampson_epipolar_error_px: 0.0662294241274668
+  p95_epipolar_error_px: 0.19085693359356992
+  median_epipolar_error_px: 0.05242919921973922
+  mean_angular_epipolar_error_mrad: 0.10888075899635671
+  rms_angular_epipolar_error_mrad: 0.14843190102439127
+  subpixel_noise_ratio: 0.45803493923515903
+  mean_tangent_drift_mm_per_m: 0.10888075899635671
+}
+pose_consistency_metrics {
+  camera_0: "orbbec_camera_sensor_1"
+  camera_1: "orbbec_camera_sensor_2"
+  translation_error_m: 0.0005240076821857126
+  rotation_error_deg: 0.09999473469952139
+  add_error_m: 0.0006222630970532839
+  cross_reprojection_error_px: 1.4539733602271379
+  weighted_cross_reprojection_error_px: 1.4517583533354923
+}
+pose_consistency_metrics {
+  camera_0: "orbbec_camera_sensor_1"
+  camera_1: "orbbec_camera_sensor_3"
+  translation_error_m: 0.0005717341588230414
+  rotation_error_deg: 0.25853558367799656
+  add_error_m: 0.0006171361242020075
+  cross_reprojection_error_px: 1.2689844389607494
+  weighted_cross_reprojection_error_px: 1.2875051256265397
+}
+pose_consistency_metrics {
+  camera_0: "orbbec_camera_sensor_2"
+  camera_1: "orbbec_camera_sensor_3"
+  translation_error_m: 0.00032166355561092763
+  rotation_error_deg: 0.16080962140695865
+  add_error_m: 0.00036774556849358565
+  cross_reprojection_error_px: 0.9029834040354032
+  weighted_cross_reprojection_error_px: 0.9035459965847086
+}
+triangulation_metrics {
+  triangulated_by_camera_0: "orbbec_camera_sensor_1"
+  triangulated_by_camera_1: "orbbec_camera_sensor_2"
+  reprojected_to_camera: "orbbec_camera_sensor_1"
+  num_evaluated_corners: 22
+  mean_reprojection_error_px: 0.2695226301314328
+  rms_reprojection_error_px: 0.3093418206301112
+  max_reprojection_error_px: 0.598289643610411
+  std_reprojection_error_px: 0.15539475146362983
+  mean_triangulation_3d_error_m: 0.00233783089642142
+  rms_triangulation_3d_error_m: 0.0027142653837570426
+  p95_reprojection_error_px: 0.525775499236256
+  median_reprojection_error_px: 0.25218254289459596
+  mean_grid_scale_error_m: 0.000659055912643707
+  is_novel_view: false
+  mean_angular_reprojection_error_mrad: 0.44027965552532694
+  rms_angular_reprojection_error_mrad: 0.505326436448718
+  subpixel_noise_ratio: 1.796817534209552
+  mean_tangent_drift_mm_per_m: 0.44027965552532694
+}
+triangulation_metrics {
+  triangulated_by_camera_0: "orbbec_camera_sensor_1"
+  triangulated_by_camera_1: "orbbec_camera_sensor_2"
+  reprojected_to_camera: "orbbec_camera_sensor_2"
+  num_evaluated_corners: 22
+  mean_reprojection_error_px: 0.2613682406875959
+  rms_reprojection_error_px: 0.30002284718771177
+  max_reprojection_error_px: 0.5811148526193513
+  std_reprojection_error_px: 0.1507769931734288
+  mean_triangulation_3d_error_m: 0.00233783089642142
+  rms_triangulation_3d_error_m: 0.0027142653837570426
+  p95_reprojection_error_px: 0.5110717336178251
+  median_reprojection_error_px: 0.2446900363781178
+  mean_grid_scale_error_m: 0.000659055912643707
+  is_novel_view: false
+  mean_angular_reprojection_error_mrad: 0.4142038082819314
+  rms_angular_reprojection_error_mrad: 0.47546176823095493
+  subpixel_noise_ratio: 1.742454937917306
+  mean_tangent_drift_mm_per_m: 0.4142038082819314
+}
+triangulation_metrics {
+  triangulated_by_camera_0: "orbbec_camera_sensor_1"
+  triangulated_by_camera_1: "orbbec_camera_sensor_2"
+  reprojected_to_camera: "orbbec_camera_sensor_3"
+  num_evaluated_corners: 9
+  mean_reprojection_error_px: 2.591603957175642
+  rms_reprojection_error_px: 2.8882043074469412
+  max_reprojection_error_px: 4.297559905519536
+  std_reprojection_error_px: 1.3522119589934656
+  mean_triangulation_3d_error_m: 0.00233783089642142
+  rms_triangulation_3d_error_m: 0.0027142653837570426
+  p95_reprojection_error_px: 4.297559905519536
+  median_reprojection_error_px: 3.158492938605864
+  mean_grid_scale_error_m: 0.000659055912643707
+  is_novel_view: true
+  mean_angular_reprojection_error_mrad: 4.107049218362124
+  rms_angular_reprojection_error_mrad: 4.5770871782035
+  subpixel_noise_ratio: 17.277359714504282
+  mean_tangent_drift_mm_per_m: 4.107049218362124
+}
+triangulation_metrics {
+  triangulated_by_camera_0: "orbbec_camera_sensor_1"
+  triangulated_by_camera_1: "orbbec_camera_sensor_3"
+  reprojected_to_camera: "orbbec_camera_sensor_1"
+  num_evaluated_corners: 11
+  mean_reprojection_error_px: 0.31343842568951596
+  rms_reprojection_error_px: 0.35840895312877646
+  max_reprojection_error_px: 0.6170868008664282
+  std_reprojection_error_px: 0.18230376870091752
+  mean_triangulation_3d_error_m: 0.0005657366889433548
+  rms_triangulation_3d_error_m: 0.0007614288286635756
+  p95_reprojection_error_px: 0.6170868008664282
+  median_reprojection_error_px: 0.2698988135902191
+  mean_grid_scale_error_m: 0.00011434097558115988
+  is_novel_view: false
+  mean_angular_reprojection_error_mrad: 0.5120184602817391
+  rms_angular_reprojection_error_mrad: 0.5854802260714784
+  subpixel_noise_ratio: 2.0895895045967734
+  mean_tangent_drift_mm_per_m: 0.5120184602817391
+}
+triangulation_metrics {
+  triangulated_by_camera_0: "orbbec_camera_sensor_1"
+  triangulated_by_camera_1: "orbbec_camera_sensor_3"
+  reprojected_to_camera: "orbbec_camera_sensor_2"
+  num_evaluated_corners: 9
+  mean_reprojection_error_px: 0.92946604788889
+  rms_reprojection_error_px: 1.008769225645816
+  max_reprojection_error_px: 1.429474116384585
+  std_reprojection_error_px: 0.4158386026884112
+  mean_triangulation_3d_error_m: 0.0005657366889433548
+  rms_triangulation_3d_error_m: 0.0007614288286635756
+  p95_reprojection_error_px: 1.429474116384585
+  median_reprojection_error_px: 1.072240730597703
+  mean_grid_scale_error_m: 0.00011434097558115988
+  is_novel_view: true
+  mean_angular_reprojection_error_mrad: 1.472973057826475
+  rms_angular_reprojection_error_mrad: 1.5986489171021219
+  subpixel_noise_ratio: 6.196440319259267
+  mean_tangent_drift_mm_per_m: 1.472973057826475
+}
+triangulation_metrics {
+  triangulated_by_camera_0: "orbbec_camera_sensor_1"
+  triangulated_by_camera_1: "orbbec_camera_sensor_3"
+  reprojected_to_camera: "orbbec_camera_sensor_3"
+  num_evaluated_corners: 11
+  mean_reprojection_error_px: 0.3044854812266796
+  rms_reprojection_error_px: 0.34816180372016603
+  max_reprojection_error_px: 0.5993670244054227
+  std_reprojection_error_px: 0.1770755675439738
+  mean_triangulation_3d_error_m: 0.0005657366889433548
+  rms_triangulation_3d_error_m: 0.0007614288286635756
+  p95_reprojection_error_px: 0.5993670244054227
+  median_reprojection_error_px: 0.26226809481451296
+  mean_grid_scale_error_m: 0.00011434097558115988
+  is_novel_view: false
+  mean_angular_reprojection_error_mrad: 0.4825339358709339
+  rms_angular_reprojection_error_mrad: 0.5517500696328598
+  subpixel_noise_ratio: 2.0299032081778643
+  mean_tangent_drift_mm_per_m: 0.4825339358709339
+}
+triangulation_metrics {
+  triangulated_by_camera_0: "orbbec_camera_sensor_2"
+  triangulated_by_camera_1: "orbbec_camera_sensor_3"
+  reprojected_to_camera: "orbbec_camera_sensor_1"
+  num_evaluated_corners: 9
+  mean_reprojection_error_px: 0.9183044602796306
+  rms_reprojection_error_px: 0.9665206179467882
+  max_reprojection_error_px: 1.266723771034153
+  std_reprojection_error_px: 0.31974818379488135
+  mean_triangulation_3d_error_m: 0.00020592412977305365
+  rms_triangulation_3d_error_m: 0.00023284218878562437
+  p95_reprojection_error_px: 1.266723771034153
+  median_reprojection_error_px: 1.0237956494184197
+  mean_grid_scale_error_m: 6.982985974714716e-05
+  is_novel_view: true
+  mean_angular_reprojection_error_mrad: 1.5000995324293354
+  rms_angular_reprojection_error_mrad: 1.5788632090753332
+  subpixel_noise_ratio: 6.122029735197538
+  mean_tangent_drift_mm_per_m: 1.5000995324293354
+}
+triangulation_metrics {
+  triangulated_by_camera_0: "orbbec_camera_sensor_2"
+  triangulated_by_camera_1: "orbbec_camera_sensor_3"
+  reprojected_to_camera: "orbbec_camera_sensor_2"
+  num_evaluated_corners: 9
+  mean_reprojection_error_px: 0.034354326901782944
+  rms_reprojection_error_px: 0.04683901726966484
+  max_reprojection_error_px: 0.09545906242504003
+  std_reprojection_error_px: 0.0337695570322231
+  mean_triangulation_3d_error_m: 0.00020592412977305365
+  rms_triangulation_3d_error_m: 0.00023284218878562437
+  p95_reprojection_error_px: 0.09545906242504003
+  median_reprojection_error_px: 0.026214599609375
+  mean_grid_scale_error_m: 6.982985974714716e-05
+  is_novel_view: false
+  mean_angular_reprojection_error_mrad: 0.0544430838125017
+  rms_angular_reprojection_error_mrad: 0.07422822022384705
+  subpixel_noise_ratio: 0.2290288460118863
+  mean_tangent_drift_mm_per_m: 0.0544430838125017
+}
+triangulation_metrics {
+  triangulated_by_camera_0: "orbbec_camera_sensor_2"
+  triangulated_by_camera_1: "orbbec_camera_sensor_3"
+  reprojected_to_camera: "orbbec_camera_sensor_3"
+  num_evaluated_corners: 9
+  mean_reprojection_error_px: 0.03435092852216363
+  rms_reprojection_error_px: 0.046823564429641557
+  max_reprojection_error_px: 0.09539796874375
+  std_reprojection_error_px: 0.033749331586081066
+  mean_triangulation_3d_error_m: 0.00020592412977305365
+  rms_triangulation_3d_error_m: 0.00023284218878562437
+  p95_reprojection_error_px: 0.09539796874375
+  median_reprojection_error_px: 0.026214599609375
+  mean_grid_scale_error_m: 6.982985974714716e-05
+  is_novel_view: false
+  mean_angular_reprojection_error_mrad: 0.054437698224043804
+  rms_angular_reprojection_error_mrad: 0.0742037313067178
+  subpixel_noise_ratio: 0.22900619014775753
+  mean_tangent_drift_mm_per_m: 0.054437698224043804
+}
+camera_diagnostics {
+  camera_name: "orbbec_camera_sensor_1"
+  num_evaluated_frames: 1
+  num_detected_corners: 24
+  mean_mono_reprojection_error_px: 0.44232759132132665
+  rms_mono_reprojection_error_px: 0.48239164887757724
+  max_mono_reprojection_error_px: 0.9103944818658396
+  std_mono_reprojection_error_px: 0.19661838083663136
+  mean_observer_reprojection_error_px: 0.9183044602796306
+  rms_observer_reprojection_error_px: 0.9665206179467882
+  num_observer_evaluations: 9
+  mean_marginal_epipolar_error_px: 0.574661717248135
+  rms_marginal_epipolar_error_px: 0.6582614327561624
+  mean_marginal_pose_translation_error_m: 0.0005478709205043769
+  mean_marginal_pose_rotation_error_deg: 0.17926515918875896
+  is_outlier: false
+  fov_coverage_ratio: 0.40978759476773596
+  mean_center_reprojection_error_px: 0.3821481009179916
+  mean_periphery_reprojection_error_px: 0.0
+  periphery_to_center_error_ratio: 0.0
+  mean_board_viewing_cosine: 0.38075455972374894
+  mean_board_incidence_angle_deg: 67.61957034679232
+  has_cheirality_violation: false
+  min_board_depth_m: 0.23676629360472978
+  mean_angular_mono_reprojection_error_mrad: 0.722565817353936
+  rms_angular_mono_reprojection_error_mrad: 0.7880126017341975
+  mono_subpixel_noise_ratio: 2.9488506088088444
+  mean_angular_observer_reprojection_error_mrad: 1.5000995324293354
+}
+camera_diagnostics {
+  camera_name: "orbbec_camera_sensor_2"
+  num_evaluated_frames: 1
+  num_detected_corners: 30
+  mean_mono_reprojection_error_px: 0.28089666664188295
+  rms_mono_reprojection_error_px: 0.30862589429282483
+  max_mono_reprojection_error_px: 0.5800061686998081
+  std_mono_reprojection_error_px: 0.13004112863002404
+  mean_observer_reprojection_error_px: 0.92946604788889
+  rms_observer_reprojection_error_px: 1.008769225645816
+  num_observer_evaluations: 9
+  mean_marginal_epipolar_error_px: 0.2999056128866337
+  rms_marginal_epipolar_error_px: 0.3516375199032509
+  mean_marginal_pose_translation_error_m: 0.0004228356188983201
+  mean_marginal_pose_rotation_error_deg: 0.13040217805324
+  is_outlier: false
+  fov_coverage_ratio: 0.40775975868455977
+  mean_center_reprojection_error_px: 0.23524288493452827
+  mean_periphery_reprojection_error_px: 0.0
+  periphery_to_center_error_ratio: 0.0
+  mean_board_viewing_cosine: 0.37275509483197117
+  mean_board_incidence_angle_deg: 68.11436821829632
+  has_cheirality_violation: false
+  min_board_depth_m: 0.23678620097018088
+  mean_angular_mono_reprojection_error_mrad: 0.4451515178381417
+  rms_angular_mono_reprojection_error_mrad: 0.4890954632215636
+  mono_subpixel_noise_ratio: 1.8726444442792198
+  mean_angular_observer_reprojection_error_mrad: 1.472973057826475
+}
+camera_diagnostics {
+  camera_name: "orbbec_camera_sensor_3"
+  num_evaluated_frames: 1
+  num_detected_corners: 22
+  mean_mono_reprojection_error_px: 0.11699282304723126
+  rms_mono_reprojection_error_px: 0.15122740740032964
+  max_mono_reprojection_error_px: 0.38518685070368736
+  std_mono_reprojection_error_px: 0.09807989413355085
+  mean_observer_reprojection_error_px: 2.591603957175642
+  rms_observer_reprojection_error_px: 2.8882043074469412
+  num_observer_evaluations: 9
+  mean_marginal_epipolar_error_px: 0.3434613452467752
+  rms_marginal_epipolar_error_px: 0.400286462682135
+  mean_marginal_pose_translation_error_m: 0.0004466988572169845
+  mean_marginal_pose_rotation_error_deg: 0.2096726025424776
+  is_outlier: true
+  fov_coverage_ratio: 0.27483039192826525
+  mean_center_reprojection_error_px: 0.07965165765194382
+  mean_periphery_reprojection_error_px: 0.0
+  periphery_to_center_error_ratio: 0.0
+  mean_board_viewing_cosine: 0.4057629733567629
+  mean_board_incidence_angle_deg: 66.06105218468416
+  has_cheirality_violation: false
+  min_board_depth_m: 0.23668252496643047
+  mean_angular_mono_reprojection_error_mrad: 0.1854045951425998
+  rms_angular_mono_reprojection_error_mrad: 0.23965791672711217
+  mono_subpixel_noise_ratio: 0.7799521536482084
+  mean_angular_observer_reprojection_error_mrad: 4.107049218362124
+}
+loop_closure_metrics {
+  camera_a: "orbbec_camera_sensor_1"
+  camera_b: "orbbec_camera_sensor_2"
+  camera_c: "orbbec_camera_sensor_3"
+  num_evaluated_frames: 1
+  mean_loop_translation_error_m: 0.0014174053966197681
+  max_loop_translation_error_m: 0.0014174053966197681
+  mean_loop_rotation_error_deg: 0.5193399397788376
+  max_loop_rotation_error_deg: 0.5193399397788376
+}
+mean_angular_epipolar_error_mrad: 0.7314583378139259
+rms_angular_epipolar_error_mrad: 0.9205844919793874
+mean_angular_triangulation_reprojection_error_mrad: 0.8508084313272919
+rms_angular_triangulation_reprojection_error_mrad: 1.506124592731262
+mean_angular_mono_reprojection_error_mrad: 0.45104064344489253
+mean_subpixel_noise_ratio: 3.032233457332439
+mean_tangent_drift_mm_per_m: 0.7314583378139259

@@ -29,7 +29,7 @@ py_library(
     data = [
         "//configs:align_robot.updates.pbtxt",
         "//configs:cnc_enclosure.updates.pbtxt",
-        "//configs:lab_bb_01_orbbec_gemini.updates.pbtxt",
+        "//configs:omts_orbbec_gemini.updates.pbtxt",
         "//configs:scene.updates.pbtxt",
         "//configs:ur_module.attachments.updates.pbtxt",
     ],

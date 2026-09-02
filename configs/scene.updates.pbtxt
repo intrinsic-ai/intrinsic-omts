@@ -119,15 +119,40 @@ updates {
     new_frame_name: "view"
     parent_t_new_frame {
       position {
-        x: 0.3433
-        y: 0.3786
-        z: 0.9078
+        x: 0.3574
+        y: -0.0379
+        z: 1.3114
       }
       orientation {
-        x: -0.2667
-        y: -0.9585
-        z: 0.1
-        w: 0.0092
+        x: 0.9631
+        y: 0.0158
+        z: 0.072
+        w: -0.259
+      }
+    }
+    parent_object_with_filter {
+      reference {
+        by_name {
+          object_name: "root"
+        }
+      }
+    }
+  }
+}
+updates {
+  create_frame {
+    new_frame_name: "side_view"
+    parent_t_new_frame {
+      position {
+        x: 0.7568
+        y: 0.9081
+        z: 0.8859
+      }
+      orientation {
+        x: -0.3246
+        y: -0.9434
+        z: 0.0598
+        w: 0.0318
       }
     }
     parent_object_with_filter {

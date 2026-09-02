@@ -15,7 +15,12 @@ metadata {
 service_def {
   real_spec {
     image {
-      archive_filename: "moveit_flowstate_ros_bridge.tar"
+      archive_filename: "flowstate_ros_bridge.tar"
+    }
+  }
+  sim_spec {
+    image {
+      archive_filename: "flowstate_ros_bridge.tar"
     }
   }
 }
