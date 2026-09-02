@@ -52,6 +52,25 @@ def main(argv: Sequence[str] | None = None) -> None:
   except Exception as e:
     print(f"   Error listing resources: {e}")
 
+  print("\n=== Solution Pose Estimators ===")
+  try:
+    if hasattr(solution, "pose_estimators"):
+      for est_name in dir(solution.pose_estimators):
+        if not est_name.startswith("_"):
+          print(f" - {est_name}")
+  except Exception as e:
+    print(f"   Error listing pose estimators: {e}")
+
+  print("\n=== Solution Skills ===")
+  try:
+    if hasattr(solution, "skills"):
+      if hasattr(solution.skills, "ai") and hasattr(solution.skills.ai, "intrinsic"):
+        for skill_name in dir(solution.skills.ai.intrinsic):
+          if not skill_name.startswith("_"):
+            print(f" - ai.intrinsic.{skill_name}")
+  except Exception as e:
+    print(f"   Error listing skills: {e}")
+
   print("\n=== Transforms Inspection ===")
   try:
     if hasattr(world, "ur_module") and hasattr(world.ur_module, "flange"):
@@ -66,9 +85,24 @@ def main(argv: Sequence[str] | None = None) -> None:
     if hasattr(world.root, "view"):
       print(f"View frame in root: {world.get_transform(world.root, world.root.view)}")
     if hasattr(world.root, "pre_grasp"):
-      print(f"Pre-grasp frame in root: {world.get_transform(world.root, world.root.pre_grasp)}")
+      print(
+          "Pre-grasp frame in root:"
+          f" {world.get_transform(world.root, world.root.pre_grasp)}"
+      )
     if hasattr(world.root, "grasp"):
-      print(f"Grasp frame in root: {world.get_transform(world.root, world.root.grasp)}")
+      print(
+          "Grasp frame in root:"
+          f" {world.get_transform(world.root, world.root.grasp)}"
+      )
+    if hasattr(world, "orbbec_camera"):
+      print(
+          f"Camera in root: {world.get_transform(world.root, world.orbbec_camera)}"
+      )
+      if hasattr(world.orbbec_camera, "sensor"):
+        print(
+            "Camera sensor in root:"
+            f" {world.get_transform(world.root, world.orbbec_camera.sensor)}"
+        )
   except Exception as e:
     print(f"   Error checking transforms: {e}")
 

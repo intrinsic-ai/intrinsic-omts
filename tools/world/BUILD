@@ -28,9 +28,9 @@ py_binary(
     srcs = ["apply_scene_updates.py"],
     data = [
         "//configs:align_robot.updates.pbtxt",
+        "//configs:omts_orbbec_gemini.updates.pbtxt",
         "//configs:scene.updates.pbtxt",
         "//configs:ur_module.attachments.updates.pbtxt",
-        "//configs:lab_bb_01_orbbec_gemini.updates.pbtxt",
     ],
     main = "apply_scene_updates.py",
     srcs_version = "PY3",

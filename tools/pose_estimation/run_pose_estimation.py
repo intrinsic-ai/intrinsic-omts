@@ -85,6 +85,11 @@ _TIMEOUT_SEC = flags.DEFINE_integer(
     None,
     help="Optional inference timeout in seconds.",
 )
+_CAPTURE_ONLY = flags.DEFINE_bool(
+    "capture_only",
+    False,
+    help="Only execute capture_images skill and inspect image buffers.",
+)
 
 FLAGS = flags.FLAGS
 
@@ -420,6 +425,28 @@ def main(argv: Sequence[str]) -> None:
     )
   except ValueError as e:
     print(f"Failed to create pose estimation pipeline: {e}")
+    return
+
+  if _CAPTURE_ONLY.value:
+    print("Executing capture_images only on executive...")
+    try:
+      solution.executive.run(capture_skill)
+      print("capture_images executed successfully.")
+    except execution.ExecutionFailedError as e:
+      print(f"capture_images execution failed: {e}")
+      if hasattr(solution.executive, "get_errors"):
+        print(solution.executive.get_errors())
+      return
+
+    cap_res = solution.executive.get_value(capture_skill.result)
+    print("\n=== Capture Images Result Inspection ===")
+    print(f"Result type: {type(cap_res)}")
+    print(f"cap_res fields: {[f.name for f, _ in cap_res.ListFields()]}")
+    if hasattr(cap_res, "capture_data"):
+      cd = cap_res.capture_data
+      print(f"Capture data type: {type(cd)}")
+      print(f"Capture data fields: {[f.name for f, _ in cd.ListFields()]}")
+      print(f"Capture data proto string:\n{cd}")
     return
 
   try:

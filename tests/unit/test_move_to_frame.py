@@ -99,6 +99,7 @@ class MoveToFrameTest(absltest.TestCase):
     self.assertEqual(args.arm_part_name, "ur_module")
     self.assertEqual(args.tool_object_name, "gripper")
     self.assertEqual(args.tool_frame_name, "tool_frame")
+    self.assertEqual(args.settling_timeout_seconds, 10.0)
 
   def test_parse_args_custom_values(self):
     args = parse_args([
@@ -116,6 +117,8 @@ class MoveToFrameTest(absltest.TestCase):
         "custom_gripper",
         "--tool_frame_name",
         "custom_tcp",
+        "--settling_timeout_seconds",
+        "25.0",
     ])
     self.assertEqual(args.address, "192.168.1.50:17080")
     self.assertEqual(args.frame, "view")
@@ -124,6 +127,7 @@ class MoveToFrameTest(absltest.TestCase):
     self.assertEqual(args.arm_part_name, "robot_arm")
     self.assertEqual(args.tool_object_name, "custom_gripper")
     self.assertEqual(args.tool_frame_name, "custom_tcp")
+    self.assertEqual(args.settling_timeout_seconds, 25.0)
 
 
 if __name__ == "__main__":

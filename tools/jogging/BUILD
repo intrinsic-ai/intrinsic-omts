@@ -65,10 +65,30 @@ py_binary(
     ],
 )
 
+py_library(
+    name = "move_to_joint_lib",
+    srcs = ["move_to_joint.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//src/hardware:robot",
+        "@ioc//google3/intrinsic/solutions:deployments",
+        "@ioc//google3/intrinsic/solutions:execution",
+    ],
+)
+
 py_binary(
-    name = "store_joint_config",
+    name = "move_to_joint",
+    srcs = ["move_to_joint.py"],
+    main = "move_to_joint.py",
+    srcs_version = "PY3",
+    deps = [
+        ":move_to_joint_lib",
+    ],
+)
+
+py_library(
+    name = "store_joint_config_lib",
     srcs = ["store_joint_config.py"],
-    main = "store_joint_config.py",
     srcs_version = "PY3",
     deps = [
         "//src/utils:math_utils",
@@ -78,3 +98,12 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "store_joint_config",
+    srcs = ["store_joint_config.py"],
+    main = "store_joint_config.py",
+    srcs_version = "PY3",
+    deps = [
+        ":store_joint_config_lib",
+    ],
+)
