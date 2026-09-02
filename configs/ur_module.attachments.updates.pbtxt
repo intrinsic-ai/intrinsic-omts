@@ -84,7 +84,7 @@ updates: {
       position {
         x: 0
         y: 0
-        z: 0
+        z: 0.064
       }
       orientation {
         x: 0
@@ -125,7 +125,7 @@ updates: {
       position {
         x: 0
         y: 0
-        z: 0.128
+        z: 0.155
       }
       orientation {
         x: 0

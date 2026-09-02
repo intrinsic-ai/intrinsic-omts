@@ -67,7 +67,6 @@ py_test(
     ],
 )
 
-
 py_test(
     name = "test_move_to_frame",
     srcs = ["test_move_to_frame.py"],
@@ -165,7 +164,3 @@ py_test(
         "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
     ],
 )
-
-
-
-
