@@ -107,6 +107,7 @@ py_library(
     deps = [
         ":motions",
         "//src/hardware:gripper",
+        "//src/hardware:machine",
         "//src/hardware:robot",
         "//src/hardware:vision",
         "@ioc//google3/intrinsic/solutions:behavior_tree",
