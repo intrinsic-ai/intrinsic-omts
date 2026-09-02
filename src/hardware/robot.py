@@ -1,7 +1,7 @@
 """Robot hardware interface and implementations for Universal Robots and Mocks."""
 
 import abc
-from typing import Any, Optional
+from typing import Any, Optional, Sequence, Union
 
 from intrinsic.manipulation.skills.force import move_to_contact_pb2
 from intrinsic.math.proto import point_pb2, pose_pb2, quaternion_pb2, vector3_pb2
@@ -15,9 +15,12 @@ class RobotInterface(abc.ABC):
 
   @abc.abstractmethod
   def build_move_joint_task(
-      self, joint_configuration_name: str, name: Optional[str] = None
+      self,
+      joint_target: Union[str, Sequence[float]],
+      settling_timeout_seconds: Optional[float] = None,
+      name: Optional[str] = None,
   ) -> bt.Node:
-    """Builds a behavior tree task to move the robot arm to a named joint pose."""
+    """Builds a behavior tree task to move the robot arm to a named joint pose or positions."""
     raise NotImplementedError
 
   @abc.abstractmethod
@@ -32,6 +35,7 @@ class RobotInterface(abc.ABC):
       target_frame_offset: Optional[
           tuple[tuple[float, float, float], tuple[float, float, float, float]]
       ] = None,
+      settling_timeout_seconds: Optional[float] = None,
       name: Optional[str] = None,
   ) -> bt.Node:
     """Builds a behavior tree task to move the robot tool to a target frame or object."""
@@ -42,6 +46,7 @@ class RobotInterface(abc.ABC):
       self,
       translation: tuple[float, float, float],
       motion_type: str = "LINEAR",
+      settling_timeout_seconds: Optional[float] = None,
       name: Optional[str] = None,
   ) -> bt.Node:
     """Builds a behavior tree task to move the robot tool relative to its current pose."""
@@ -69,23 +74,49 @@ class UrRobot(RobotInterface):
       tool_object_name: str = "gripper",
       tool_frame_name: str = "tool_frame",
       disable_collision_checking: bool = True,
+      default_settling_timeout_seconds: Optional[float] = None,
   ) -> None:
     """Initializes UR robot adapter.
 
     Args:
         solution: Connected SBL deployment instance (from deployments.connect).
         arm_part_name: Attribute name of robot arm in solution.world.
-        tool_object_name: Object name for moving tool frame (default: 'gripper').
-        tool_frame_name: Frame name under tool_object_name (default: 'tool_frame').
-        disable_collision_checking: Whether to disable collision checking in motion planning.
+        tool_object_name: Object name for moving tool frame (default:
+          'gripper').
+        tool_frame_name: Frame name under tool_object_name (default:
+          'tool_frame').
+        disable_collision_checking: Whether to disable collision checking in
+          motion planning.
+        default_settling_timeout_seconds: Default settling timeout in seconds
+          for trajectory motions.
     """
     self._solution = solution
     self._arm_part_name = arm_part_name
     self._tool_object_name = tool_object_name
     self._tool_frame_name = tool_frame_name
     self._disable_collision_checking = disable_collision_checking
+    self._default_settling_timeout_seconds = default_settling_timeout_seconds
     self._move_robot_skill = solution.skills.ai.intrinsic.move_robot
     self._move_to_contact_skill = solution.skills.ai.intrinsic.move_to_contact
+
+  @property
+  def arm_part(self) -> Any:
+    """Retrieves the robot arm part from the solution world."""
+    return getattr(self._solution.world, self._arm_part_name)
+
+  @property
+  def tool_frame_reference(
+      self,
+  ) -> object_world_refs_pb2.TransformNodeReference:
+    """Constructs the moving tool frame reference (gripper TCP)."""
+    return object_world_refs_pb2.TransformNodeReference(
+        by_name=object_world_refs_pb2.TransformNodeReferenceByName(
+            frame=object_world_refs_pb2.FrameReferenceByName(
+                object_name=self._tool_object_name,
+                frame_name=self._tool_frame_name,
+            )
+        )
+    )
 
   def _get_collision_settings(self) -> Optional[Any]:
     """Returns CollisionSettings with disabled collision checking if configured."""
@@ -102,34 +133,69 @@ class UrRobot(RobotInterface):
       pass
     return None
 
-  @property
-  def arm_part(self) -> Any:
-    """Retrieves the robot arm part from the solution world."""
-    return getattr(self._solution.world, self._arm_part_name)
-
-  @property
-  def tool_frame_reference(self) -> object_world_refs_pb2.TransformNodeReference:
-    """Constructs the moving tool frame reference (gripper TCP)."""
-    return object_world_refs_pb2.TransformNodeReference(
-        by_name=object_world_refs_pb2.TransformNodeReferenceByName(
-            frame=object_world_refs_pb2.FrameReferenceByName(
-                object_name=self._tool_object_name,
-                frame_name=self._tool_frame_name,
+  def _get_execution_parameters(
+      self, settling_timeout_seconds: Optional[float] = None
+  ) -> Optional[Any]:
+    """Returns ExecutionParameters with configured settling timeout if available."""
+    timeout = (
+        settling_timeout_seconds
+        if settling_timeout_seconds is not None
+        else self._default_settling_timeout_seconds
+    )
+    if timeout is None:
+      return None
+    try:
+      if hasattr(self._move_robot_skill, "intrinsic_proto") and hasattr(
+          self._move_robot_skill.intrinsic_proto, "skills"
+      ):
+        return (
+            self._move_robot_skill.intrinsic_proto.skills.ExecutionParameters(
+                settling_timeout_seconds=float(timeout)
             )
         )
-    )
+    except (AttributeError, TypeError, ValueError):
+      pass
+    return None
 
   def build_move_joint_task(
-      self, joint_configuration_name: str, name: Optional[str] = None
+      self,
+      joint_target: Union[str, Sequence[float], Any],
+      settling_timeout_seconds: Optional[float] = None,
+      name: Optional[str] = None,
   ) -> bt.Node:
     """Builds an SBL move_robot joint motion task."""
-    task_name = name or f"Move to {joint_configuration_name}"
-    joint_target = getattr(
-        self.arm_part.joint_configurations, joint_configuration_name
-    )
+    if isinstance(joint_target, str):
+      task_name = name or f"Move to {joint_target}"
+      try:
+        target_pos = getattr(
+            self.arm_part.joint_configurations, joint_target
+        )
+      except AttributeError:
+        if (
+            hasattr(self.arm_part, "joint_configurations")
+            and joint_target in self.arm_part.joint_configurations
+        ):
+          target_pos = self.arm_part.joint_configurations[joint_target]
+        else:
+          raise
+    elif hasattr(joint_target, "joint_position") or hasattr(
+        joint_target, "joints"
+    ):
+      task_name = name or "Move to Joint Configuration"
+      target_pos = joint_target
+    else:
+      task_name = name or f"Move to joint positions {list(joint_target)}"
+      if hasattr(self._move_robot_skill, "intrinsic_proto") and hasattr(
+          self._move_robot_skill.intrinsic_proto, "icon"
+      ):
+        target_pos = self._move_robot_skill.intrinsic_proto.icon.JointVec(
+            joints=list(joint_target)
+        )
+      else:
+        target_pos = list(joint_target)
 
-    segment_kwargs: dict[str, Any] = {
-        "joint_position": joint_target,
+    segment_kwargs = {
+        "joint_position": target_pos,
         "motion_type": (
             self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType.JOINT
         ),
@@ -138,14 +204,19 @@ class UrRobot(RobotInterface):
     if col_settings is not None:
       segment_kwargs["collision_settings"] = col_settings
 
-    skill_action = self._move_robot_skill(
-        motion_segments=[
-            self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
-                **segment_kwargs
-            )
-        ],
-        arm_part=self.arm_part,
+    segment = self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
+        **segment_kwargs
     )
+
+    skill_kwargs = {
+        "motion_segments": [segment],
+        "arm_part": self.arm_part,
+    }
+    exec_params = self._get_execution_parameters(settling_timeout_seconds)
+    if exec_params is not None:
+      skill_kwargs["execution_parameters"] = exec_params
+
+    skill_action = self._move_robot_skill(**skill_kwargs)
     return bt.Task(action=skill_action, name=task_name)
 
   def build_move_cartesian_task(
@@ -159,6 +230,7 @@ class UrRobot(RobotInterface):
       target_frame_offset: Optional[
           tuple[tuple[float, float, float], tuple[float, float, float, float]]
       ] = None,
+      settling_timeout_seconds: Optional[float] = None,
       name: Optional[str] = None,
   ) -> bt.Node:
     """Builds an SBL move_robot Cartesian motion task aligning tool to target frame or object.
@@ -285,22 +357,29 @@ class UrRobot(RobotInterface):
         **segment_kwargs
     )
 
-    skill_action = self._move_robot_skill(
-        motion_segments=[motion_segment],
-        arm_part=self.arm_part,
-    )
+    skill_kwargs = {
+        "motion_segments": [motion_segment],
+        "arm_part": self.arm_part,
+    }
+    exec_params = self._get_execution_parameters(settling_timeout_seconds)
+    if exec_params is not None:
+      skill_kwargs["execution_parameters"] = exec_params
+
+    skill_action = self._move_robot_skill(**skill_kwargs)
     return bt.Task(action=skill_action, name=task_name)
 
   def build_move_relative_cartesian_task(
       self,
       translation: tuple[float, float, float],
       motion_type: str = "LINEAR",
+      settling_timeout_seconds: Optional[float] = None,
       name: Optional[str] = None,
   ) -> bt.Node:
     """Builds a relative Cartesian motion task along tool frames using RelativePoseEquality."""
     task_name = (
         name
-        or f"Move relative ({translation[0]:.3f}, {translation[1]:.3f}, {translation[2]:.3f}) [{motion_type}]"
+        or f"Move relative ({translation[0]:.3f}, {translation[1]:.3f},"
+        f" {translation[2]:.3f}) [{motion_type}]"
     )
 
     if motion_type.upper() == "LINEAR":
@@ -336,16 +415,19 @@ class UrRobot(RobotInterface):
     if col_settings is not None:
       segment_kwargs["collision_settings"] = col_settings
 
-    motion_segment = (
-        self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
-            **segment_kwargs
-        )
+    motion_segment = self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
+        **segment_kwargs
     )
 
-    skill_action = self._move_robot_skill(
-        motion_segments=[motion_segment],
-        arm_part=self.arm_part,
-    )
+    skill_kwargs = {
+        "motion_segments": [motion_segment],
+        "arm_part": self.arm_part,
+    }
+    exec_params = self._get_execution_parameters(settling_timeout_seconds)
+    if exec_params is not None:
+      skill_kwargs["execution_parameters"] = exec_params
+
+    skill_action = self._move_robot_skill(**skill_kwargs)
     return bt.Task(action=skill_action, name=task_name)
 
   def build_move_to_contact_task(
@@ -380,11 +462,19 @@ class MockRobot(RobotInterface):
     self.executed_commands: list[str] = []
 
   def build_move_joint_task(
-      self, joint_configuration_name: str, name: Optional[str] = None
+      self,
+      joint_target: Union[str, Sequence[float], Any],
+      settling_timeout_seconds: Optional[float] = None,
+      name: Optional[str] = None,
   ) -> bt.Node:
-    task_name = name or f"Mock Move to {joint_configuration_name}"
-    self.executed_commands.append(f"move_joint:{joint_configuration_name}")
-    return bt.Sequence([])
+    target_desc = (
+        joint_target
+        if isinstance(joint_target, str)
+        else str(list(joint_target))
+    )
+    task_name = name or f"Mock Move to {target_desc}"
+    self.executed_commands.append(f"move_joint:{target_desc}")
+    return bt.Sequence(name=task_name, children=[])
 
   def build_move_cartesian_task(
       self,
@@ -397,6 +487,7 @@ class MockRobot(RobotInterface):
       target_frame_offset: Optional[
           tuple[tuple[float, float, float], tuple[float, float, float, float]]
       ] = None,
+      settling_timeout_seconds: Optional[float] = None,
       name: Optional[str] = None,
   ) -> bt.Node:
     target_desc = (
@@ -406,21 +497,23 @@ class MockRobot(RobotInterface):
     )
     task_name = name or f"Mock Move to {target_desc} ({motion_type})"
     self.executed_commands.append(
-        f"move_cartesian:{target_desc}:{motion_type}:z_rot={allow_tool_z_rotation}"
+        f"move_cartesian:{target_desc}:{motion_type}:"
+        f"z_rot={allow_tool_z_rotation}"
     )
-    return bt.Sequence([])
+    return bt.Sequence(name=task_name, children=[])
 
   def build_move_relative_cartesian_task(
       self,
       translation: tuple[float, float, float],
       motion_type: str = "LINEAR",
+      settling_timeout_seconds: Optional[float] = None,
       name: Optional[str] = None,
   ) -> bt.Node:
     task_name = name or f"Mock Move Relative ({translation}) [{motion_type}]"
     self.executed_commands.append(
         f"move_relative_cartesian:{translation}:{motion_type}"
     )
-    return bt.Sequence([])
+    return bt.Sequence(name=task_name, children=[])
 
   def build_move_to_contact_task(
       self,
@@ -433,4 +526,4 @@ class MockRobot(RobotInterface):
     self.executed_commands.append(
         f"move_to_contact:dir={direction},force={contact_force_newtons}"
     )
-    return bt.Sequence([])
+    return bt.Sequence(name=task_name, children=[])

@@ -215,6 +215,18 @@ bazel test //tests/unit:all
   bazel run //tools/jogging:move_to_frame -- --address=localhost:17080 --frame=view --motion_type=ANY
   ```
 
+- **Move Robot to Target Joint Configuration / Positions:**
+  ```bash
+  # Interactive joint configuration selection menu:
+  bazel run //tools/jogging:move_to_joint -- --address=localhost:17080
+
+  # Move to named joint configuration:
+  bazel run //tools/jogging:move_to_joint -- home --address=localhost:17080
+
+  # Move to explicit joint angles (radians):
+  bazel run //tools/jogging:move_to_joint -- --joints 0.0 -1.57 1.57 -1.57 -1.57 0.0
+  ```
+
 - **Store & Teach Scene Frames (persists & overwrites in scene.updates.pbtxt):**
   ```bash
   # Store current tool_frame pose with specified frame name:

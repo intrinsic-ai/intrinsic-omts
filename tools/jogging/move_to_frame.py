@@ -119,6 +119,7 @@ def move_robot_to_frame(
     arm_part_name: str = "ur_module",
     tool_object_name: str = "gripper",
     tool_frame_name: str = "tool_frame",
+    settling_timeout_seconds: float = 10.0,
 ) -> None:
   """Plans and executes a Cartesian motion moving the robot tool to the target frame.
 
@@ -132,6 +133,7 @@ def move_robot_to_frame(
     arm_part_name: Robot arm part name in solution.world (default: 'ur_module').
     tool_object_name: End-effector tool object name (default: 'gripper').
     tool_frame_name: Frame name on tool object to align (default: 'tool_frame').
+    settling_timeout_seconds: Settling timeout in seconds for trajectory motion.
   """
   print(
       f"\nPlanning motion for '{arm_part_name}' moving tool"
@@ -162,6 +164,7 @@ def move_robot_to_frame(
       arm_part_name=arm_part_name,
       tool_object_name=tool_object_name,
       tool_frame_name=tool_frame_name,
+      default_settling_timeout_seconds=settling_timeout_seconds,
   )
 
   task = robot.build_move_cartesian_task(
@@ -169,6 +172,7 @@ def move_robot_to_frame(
       target_object_name=target_object_name,
       motion_type=motion_type,
       allow_tool_z_rotation=allow_tool_z_rotation,
+      settling_timeout_seconds=settling_timeout_seconds,
       name=(
           f"Move {tool_object_name}.{tool_frame_name} to"
           f" {target_object_name}.{target_frame_name} ({motion_type})"
@@ -243,6 +247,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
       default=False,
       help="Allow free rotation around tool Z approach axis using PositionEquality + RotationCone.",
   )
+  parser.add_argument(
+      "--settling_timeout_seconds",
+      type=float,
+      default=10.0,
+      help="Settling timeout in seconds for trajectory motion (default: 10.0).",
+  )
   return parser.parse_args(argv)
 
 
@@ -263,6 +273,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         arm_part_name=args.arm_part_name,
         tool_object_name=args.tool_object_name,
         tool_frame_name=args.tool_frame_name,
+        settling_timeout_seconds=args.settling_timeout_seconds,
     )
     return
 
@@ -287,6 +298,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         arm_part_name=args.arm_part_name,
         tool_object_name=args.tool_object_name,
         tool_frame_name=args.tool_frame_name,
+        settling_timeout_seconds=args.settling_timeout_seconds,
     )
 
 

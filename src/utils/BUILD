@@ -36,5 +36,3 @@ py_library(
         ":script_utils",
     ],
 )
-
-

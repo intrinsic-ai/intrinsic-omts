@@ -1,4 +1,4 @@
-"""CLI utility to load and apply ObjectWorldUpdates (.pbtxt) live to a running solution."""
+"""CLI utility to load and apply ObjectWorldUpdates (.pbtxt) live."""
 
 import argparse
 import os
@@ -20,7 +20,10 @@ DEFAULT_UPDATE_FILES = [
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   """Parses command line arguments."""
   parser = argparse.ArgumentParser(
-      description="Apply ObjectWorldUpdates (.pbtxt) live to a running solution deployment."
+      description=(
+          "Apply ObjectWorldUpdates (.pbtxt) live to a running solution"
+          " deployment."
+      )
   )
   parser.add_argument(
       "--address",
@@ -39,23 +42,44 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def find_file(filepath: str) -> str:
   """Resolves file path in direct directory, workspace, or runfiles."""
+  if os.path.isabs(filepath) and os.path.exists(filepath):
+    return filepath
+
+  # Check BUILD_WORKING_DIRECTORY first if invoked via 'bazel run'
+  working_dir = os.environ.get("BUILD_WORKING_DIRECTORY")
+  if working_dir:
+    w_path = os.path.join(working_dir, filepath)
+    if os.path.exists(w_path):
+      return w_path
+
+  # Check BUILD_WORKSPACE_DIRECTORY
+  workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")
+  if workspace_dir:
+    ws_path = os.path.join(workspace_dir, filepath)
+    if os.path.exists(ws_path):
+      return ws_path
+
   if os.path.exists(filepath):
     return filepath
-  ws_path = os.path.join("/usr/local/google/home/mschweiger/workspaces/omts", filepath)
-  if os.path.exists(ws_path):
-    return ws_path
-  runfiles_dir = os.environ.get("PYTHON_RUNFILES") or os.environ.get("TEST_SRCDIR")
+
+  runfiles_dir = os.environ.get("PYTHON_RUNFILES") or os.environ.get(
+      "TEST_SRCDIR"
+  )
   if runfiles_dir:
     r_path = os.path.join(runfiles_dir, "_main", filepath)
     if os.path.exists(r_path):
       return r_path
+    r_path2 = os.path.join(runfiles_dir, filepath)
+    if os.path.exists(r_path2):
+      return r_path2
+
   return filepath
 
 
 def adapt_updates_for_live_world(
     world: Any, updates: object_world_updates_pb2.ObjectWorldUpdates
 ) -> object_world_updates_pb2.ObjectWorldUpdates:
-  """Converts create_frame requests into update_transform requests if frames already exist."""
+  """Converts create_frame into update_transform if frames exist."""
   adapted = object_world_updates_pb2.ObjectWorldUpdates()
 
   for update in updates.updates:
@@ -71,10 +95,10 @@ def adapt_updates_for_live_world(
       parent_obj = getattr(world, parent_name, None)
       frame_exists = False
       if parent_obj is not None:
-        if hasattr(parent_obj, "list_frames") and frame_name in parent_obj.list_frames():
-          frame_exists = True
-        elif hasattr(parent_obj, frame_name):
-          frame_exists = True
+        if hasattr(parent_obj, "list_frames"):
+          frame_exists = frame_name in parent_obj.list_frames()
+        else:
+          frame_exists = hasattr(parent_obj, frame_name)
 
       if frame_exists:
         # Frame already exists; convert create_frame to update_transform
@@ -99,7 +123,9 @@ def apply_pbtxt_file(world: Any, filepath: str) -> None:
   """Loads a .pbtxt file and pushes its updates to the active ObjectWorld."""
   resolved_path = find_file(filepath)
   if not os.path.exists(resolved_path):
-    print(f"[-] Warning: File not found: {filepath} (resolved: {resolved_path})")
+    print(
+        f"[-] Warning: File not found: {filepath} (resolved: {resolved_path})"
+    )
     return
 
   print(f"[+] Reading update file: {filepath}")
@@ -109,9 +135,14 @@ def apply_pbtxt_file(world: Any, filepath: str) -> None:
   raw_updates = object_world_updates_pb2.ObjectWorldUpdates()
   text_format.Parse(pbtxt_content, raw_updates)
 
-  adapted_updates = adapt_updates_for_live_world(world=world, updates=raw_updates)
+  adapted_updates = adapt_updates_for_live_world(
+      world=world, updates=raw_updates
+  )
 
-  print(f"    Applying {len(adapted_updates.updates)} update rule(s) to live world...")
+  print(
+      f"    Applying {len(adapted_updates.updates)} update rule(s) to live"
+      " world..."
+  )
   world.batch_update(adapted_updates)
   print(f"[✓] Successfully applied: {filepath}")
 
@@ -132,11 +163,15 @@ def main(argv: Sequence[str] | None = None) -> None:
       print("Frames on 'root':")
       if hasattr(world.root, "list_frames"):
         for f in world.root.list_frames():
-          print(f"  - {f}: {world.get_transform(world.root, getattr(world.root, f))}")
+          print(
+              f"  - {f}:"
+              f" {world.get_transform(world.root, getattr(world.root, f))}"
+          )
 
     if hasattr(world, "ur_module") and hasattr(world.ur_module, "flange"):
       print(
-          f"Flange in root: {world.get_transform(world.root, world.ur_module.flange)}"
+          "Flange in root:"
+          f" {world.get_transform(world.root, world.ur_module.flange)}"
       )
     if hasattr(world, "gripper") and hasattr(world.gripper, "tool_frame"):
       print(

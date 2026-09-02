@@ -1,10 +1,10 @@
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@ioc//google3/intrinsic/assets/build_defs:asset.bzl", "intrinsic_asset_instance")
 load("@ioc//google3/intrinsic/assets/scene_objects/build_defs:scene_object.bzl", "intrinsic_scene_object")
 load("@ioc//google3/intrinsic/config:def.bzl", "intrinsic_solution")
-load("//bazel:imported_asset.bzl", "imported_asset_bundle")
-load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@ioc//incode/intrinsic_inference/assets/inference_service/bazel:intrinsic_mlmodel.bzl", "intrinsic_mlmodel")
+load("//bazel:imported_asset.bzl", "imported_asset_bundle")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -187,28 +187,28 @@ intrinsic_asset_instance(
 
 intrinsic_asset_instance(
     name = "icon",
-    config = "//configs:icon_config.textproto",
     asset = "ai.intrinsic.generic_realtime_control_service",
+    config = "//configs:icon_config.textproto",
     instance_name = "icon",
 )
 
 intrinsic_asset_instance(
     name = "ur_module",
-    config = "//configs:ur_module_config.textproto",
     asset = select({
         ":is_lab_bb_01": "ai.intrinsic.ur3e_hardware_module_ioc",
         "//conditions:default": "ai.intrinsic.ur5e_hardware_module_ioc",
     }),
+    config = "//configs:ur_module_config.textproto",
     instance_name = "ur_module",
 )
 
 intrinsic_asset_instance(
     name = "orbbec_camera",
+    asset = "ai.intrinsic.orbbec_gemini_335le",
     config = select({
         ":is_lab_bb_01": "//configs:lab_bb_01_gemini_device_config.textproto",
         "//conditions:default": "//configs:omts_gemini_device_config.textproto",
     }),
-    asset = "ai.intrinsic.orbbec_gemini_335le",
     instance_name = "orbbec_camera",
 )
 
@@ -236,6 +236,7 @@ intrinsic_asset_instance(
     asset = "ai.intrinsic.ioc_train_service",
     instance_name = "train_service",
 )
+
 imported_asset_bundle(
     name = "moveit_flowstate_ros_bridge_asset",
     bundle = "@moveit_ros_bridge_bundle//:moveit_flowstate_ros_bridge.bundle.tar",

@@ -102,5 +102,35 @@ py_test(
     ],
 )
 
+py_test(
+    name = "test_store_joint_config",
+    srcs = ["test_store_joint_config.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tools/jogging:store_joint_config_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+    ],
+)
 
+py_test(
+    name = "test_move_to_joint",
+    srcs = ["test_move_to_joint.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tools/jogging:move_to_joint_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//google3/intrinsic/solutions:behavior_tree",
+        "@ioc//google3/intrinsic/solutions:execution",
+    ],
+)
 
+py_test(
+    name = "test_apply_scene_updates",
+    srcs = ["test_apply_scene_updates.py"],
+    deps = [
+        "//tools/world:apply_scene_updates_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@com_google_protobuf//:protobuf_python",
+        "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
+    ],
+)

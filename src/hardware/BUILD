@@ -71,5 +71,3 @@ py_library(
         ":vision",
     ],
 )
-
-
