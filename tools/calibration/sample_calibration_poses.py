@@ -464,15 +464,6 @@ def main(argv) -> None:
     )
 
   camera = None
-  if perception is not None:
-    try:
-      cameras = perception.Cameras.for_solution(solution)
-      camera = cameras[_CAMERA.value]
-    except Exception as e:
-      print(
-          f'Warning: Failed to initialize camera client: {e}. Image capture on'
-          " 'r' will be unavailable."
-      )
 
   calibration_object_ref = world.get_object(_CALIBRATION_OBJECT.value)
   if not calibration_object_ref:
