@@ -19,17 +19,6 @@ archive_override(
     url = "https://github.com/FilipposSot/Universal_Robots_Client_Library/archive/refs/tags/2.7.0-alpha-acceleration.0.tar.gz",
 )
 
-archive_override(
-    module_name = "gloop",
-    patch_strip = 1,
-    patches = ["//bazel/patches:gloop.patch"],
-    sha256 = "c4a32e9b582b2155dffa56867792a9d4d4931aa5575ade505a7672fce31d354d",
-    strip_prefix = "gloop-20260828.0",
-    urls = [
-        "https://github.com/abseil/gloop/releases/download/20260828.0/gloop-20260828.0.tar.gz",
-    ],
-)
-
 bazel_dep(name = "bazel_skylib", version = "1.9.0")
 bazel_dep(name = "abseil-py", version = "2.1.0", repo_name = "com_google_absl_py")
 bazel_dep(name = "grpc", version = "1.69.0", repo_name = "com_github_grpc_grpc")
@@ -147,13 +136,10 @@ gh.download(
     sha256 = "e367c3dd6b98bbee3f603009ea670f38d604d2bbb8a5ef5f430cd3797833b17a",
     tag = "v0.0.1",
 )
-
 use_repo(
     gh,
+    "foundationpose_py312_bundle",
     "moveit_ros_bridge_bundle",
     "orbbec_gemini_driver_bundle",
     "segmentation_weights_bundle",
-    "foundationpose_py312_bundle",
 )
-
-
