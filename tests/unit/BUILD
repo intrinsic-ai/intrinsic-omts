@@ -170,3 +170,25 @@ py_test(
         "@ioc//google3/intrinsic/perception/skills/calibration:calibration_evaluation_py_pb2",
     ],
 )
+
+py_test(
+    name = "test_control_machine",
+    srcs = ["test_control_machine.py"],
+    deps = [
+        "//src/hardware:machine",
+        "//tools/machine:control_machine_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//google3/intrinsic/solutions:execution",
+    ],
+)
+
+py_test(
+    name = "test_control_gripper",
+    srcs = ["test_control_gripper.py"],
+    deps = [
+        "//src/hardware:gripper",
+        "//tools/gripper:control_gripper_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//google3/intrinsic/solutions:execution",
+    ],
+)

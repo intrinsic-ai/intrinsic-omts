@@ -8,11 +8,13 @@ from src.hardware.robot import RobotInterface
 def create_move_to_named_pose_task(
     robot: RobotInterface,
     pose_name: str,
+    settling_timeout_seconds: Optional[float] = None,
     task_name: Optional[str] = None,
 ) -> bt.Node:
   """Builds a joint motion task moving the arm to a named joint configuration."""
   return robot.build_move_joint_task(
-      joint_configuration_name=pose_name,
+      joint_target=pose_name,
+      settling_timeout_seconds=settling_timeout_seconds,
       name=task_name or f"Move to {pose_name}",
   )
 
@@ -28,6 +30,7 @@ def create_move_to_frame_task(
     target_frame_offset: Optional[
         tuple[tuple[float, float, float], tuple[float, float, float, float]]
     ] = None,
+    settling_timeout_seconds: Optional[float] = None,
     task_name: Optional[str] = None,
 ) -> bt.Node:
   """Builds a Cartesian motion task moving the arm tool to a target frame or object."""
@@ -40,6 +43,7 @@ def create_move_to_frame_task(
       cone_opening_half_angle=cone_opening_half_angle,
       moving_frame_offset=moving_frame_offset,
       target_frame_offset=target_frame_offset,
+      settling_timeout_seconds=settling_timeout_seconds,
       name=task_name or f"Move to {target_desc} ({motion_type})",
   )
 
