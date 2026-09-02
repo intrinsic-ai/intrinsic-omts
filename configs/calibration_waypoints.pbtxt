@@ -1,0 +1,200 @@
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.3867402672767639
+    joints: -1.3531298351338883
+    joints: -1.6333345174789429
+    joints: -1.619549413720602
+    joints: 1.5535526275634766
+    joints: 3.5287816524505615
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.49856579303741455
+    joints: -1.1682271224311371
+    joints: -2.368842840194702
+    joints: -1.0723458391479035
+    joints: 1.4877389669418335
+    joints: 3.5001187324523926
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.7121729254722595
+    joints: -1.1730164748481293
+    joints: -2.496914863586426
+    joints: -0.9268121284297486
+    joints: 1.4641233682632446
+    joints: 3.5003325939178467
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.2984597682952881
+    joints: -1.2944714587977906
+    joints: -2.496842384338379
+    joints: -0.633854941730835
+    joints: 1.760499358177185
+    joints: 3.000150680541992
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.7685037851333618
+    joints: -1.1546410483172913
+    joints: -2.4968197345733643
+    joints: -1.1382835370353241
+    joints: 1.5268911123275757
+    joints: 3.0900797843933105
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.09567701816558838
+    joints: -1.1149267715266724
+    joints: -2.496814012527466
+    joints: -1.0358511370471497
+    joints: 1.6661579608917236
+    joints: 0.8173255324363708
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 1.09035325050354
+    joints: -1.114853636627533
+    joints: -2.4967708587646484
+    joints: -0.9671352666667481
+    joints: 1.5368620157241821
+    joints: 1.255990743637085
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.7990080714225769
+    joints: -1.4624015551856537
+    joints: -2.047118663787842
+    joints: -1.337187872534134
+    joints: 1.4924063682556152
+    joints: 1.2556266784667969
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.4544038474559784
+    joints: -1.4624854785254975
+    joints: -2.140821695327759
+    joints: -1.3371775609305878
+    joints: 1.5809911489486694
+    joints: 1.2555711269378662
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.6385154724121094
+    joints: -1.462546781902649
+    joints: -2.140864849090576
+    joints: -1.0009617370418091
+    joints: 1.5807780027389526
+    joints: -0.10141307512392217
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.7987895607948303
+    joints: -2.012474676171774
+    joints: -1.598150372505188
+    joints: -1.6158186397948207
+    joints: 1.5803508758544922
+    joints: -0.25749332109560186
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.20322704315185547
+    joints: -2.012400289575094
+    joints: -1.5981158018112183
+    joints: -1.615692754785055
+    joints: 1.5810878276824951
+    joints: -0.257481877003805
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.203378826379776
+    joints: -1.8756185970702113
+    joints: -1.7069964408874512
+    joints: -1.441851944928505
+    joints: 1.5811961889266968
+    joints: 2.965876579284668
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.10287832468748093
+    joints: -1.3698300880244751
+    joints: -2.256167411804199
+    joints: -1.297565535908081
+    joints: 1.5811752080917358
+    joints: 2.965512275695801
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.683036208152771
+    joints: -1.370038316850998
+    joints: -2.347120523452759
+    joints: -0.5822137159160157
+    joints: 1.580863356590271
+    joints: 2.9654018878936768
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 1.0037400722503662
+    joints: -1.3700952243855973
+    joints: -2.3470964431762695
+    joints: -0.5822965663722535
+    joints: 1.5805995464324951
+    joints: 2.9654431343078613
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.11471663415431976
+    joints: -1.41048517942939
+    joints: -2.438068389892578
+    joints: -0.5823044937900086
+    joints: 1.8114821910858154
+    joints: 4.75693416595459
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.6516338586807251
+    joints: -1.4103878450444718
+    joints: -2.438002824783325
+    joints: -0.5825358790210267
+    joints: 1.811216950416565
+    joints: 3.576023817062378
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 1.0507373809814453
+    joints: -1.0069921177676697
+    joints: -2.363255023956299
+    joints: -1.231114314203598
+    joints: 1.2480907440185547
+    joints: 3.576279878616333
+  }
+}
+sample_calibration_poses_result {
+  joint_position {
+    joints: 0.7141006588935852
+    joints: -1.509171624933817
+    joints: -2.3633694648742676
+    joints: -0.7300641101649781
+    joints: 1.5847209692001343
+    joints: 3.576075792312622
+  }
+}
