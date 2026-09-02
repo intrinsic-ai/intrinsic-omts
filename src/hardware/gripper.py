@@ -123,7 +123,9 @@ class MockGripper(GripperInterface):
     self.state = "open"
     self.command_log.append("open")
     return bt.Task(
-        action=bt.PythonScript(function_body='print("[MockGripper] Gripper Opened")'),
+        action=bt.PythonScript(
+            function_body='print("[MockGripper] Gripper Opened")'
+        ),
         name=task_name,
     )
 
@@ -132,7 +134,50 @@ class MockGripper(GripperInterface):
     self.state = "closed"
     self.command_log.append("close")
     return bt.Task(
-        action=bt.PythonScript(function_body='print("[MockGripper] Gripper Closed (Part Grasped)")'),
+        action=bt.PythonScript(
+            function_body='print("[MockGripper] Gripper Closed (Part Grasped)")'
+        ),
         name=task_name,
     )
 
+
+class SideloadedGripperCmd(GripperInterface):
+  """Gripper adapter using sideloaded ai.intrinsic.gripper_cmd_skill."""
+
+  def __init__(
+      self,
+      solution: Any,
+      action_name: str = "/gripper/gripper_action_controller/gripper_cmd",
+      joint_name: str = "robotiq_hande_left_finger_joint",
+      open_position: float = 0.025,
+      close_position: float = 0.000,
+  ) -> None:
+    self._solution = solution
+    self._action_name = action_name
+    self._joint_name = joint_name
+    self.open_position = open_position
+    self.close_position = close_position
+
+  def _build_cmd_task(self, position: float, task_name: str) -> bt.Node:
+    cmd_skill = self._solution.skills.ai.intrinsic.gripper_cmd_skill
+    joint_state = cmd_skill.ai.intrinsic.JointState()
+    joint_state.name = [self._joint_name]
+    joint_state.position = [position]
+
+    action = cmd_skill(
+        action_name=self._action_name,
+        command=joint_state,
+    )
+    return bt.Task(action=action, name=task_name)
+
+  def build_open_task(self, name: Optional[str] = None) -> bt.Node:
+    return self._build_cmd_task(
+        position=self.open_position,
+        task_name=name or "Open Gripper (gripper_cmd)",
+    )
+
+  def build_close_task(self, name: Optional[str] = None) -> bt.Node:
+    return self._build_cmd_task(
+        position=self.close_position,
+        task_name=name or "Close Gripper (gripper_cmd)",
+    )

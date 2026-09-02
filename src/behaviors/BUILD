@@ -101,10 +101,24 @@ py_library(
 )
 
 py_library(
+    name = "building_block_bt",
+    srcs = ["building_block_bt.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":motions",
+        "//src/hardware:gripper",
+        "//src/hardware:robot",
+        "//src/hardware:vision",
+        "@ioc//google3/intrinsic/solutions:behavior_tree",
+    ],
+)
+
+py_library(
     name = "behaviors",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     deps = [
+        ":building_block_bt",
         ":load_machine",
         ":machine_tending_bt",
         ":machining",

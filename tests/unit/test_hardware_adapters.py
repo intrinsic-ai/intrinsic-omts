@@ -1,10 +1,18 @@
+"""Unit tests for Mock hardware adapters and interfaces."""
+
 from unittest import mock
+
 from absl.testing import absltest
 from intrinsic.solutions import behavior_tree as bt
-from src.hardware.gripper import DioGripper, MockGripper, RobotiqGripper
+from src.hardware.gripper import DioGripper
+from src.hardware.gripper import MockGripper
+from src.hardware.gripper import RobotiqGripper
+from src.hardware.gripper import SideloadedGripperCmd
 from src.hardware.machine import MockCncMachine
 from src.hardware.robot import MockRobot
+from src.hardware.robot import UrRobot
 from src.hardware.vision import MockVision
+from src.hardware.vision import OrbbecVision
 
 
 class HardwareAdaptersTest(absltest.TestCase):
@@ -125,6 +133,145 @@ class HardwareAdaptersTest(absltest.TestCase):
     vision.build_perception_and_spawn_task()
     self.assertEqual(vision.pipeline_count, 1)
 
+  def test_mock_vision_estimate_and_update_pose(self):
+    vision = MockVision()
+    task = vision.build_estimate_and_update_pose_task(
+        target_object="ai.intrinsic.raw_stock_2x3x5",
+        pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator",
+    )
+    self.assertIsInstance(task, bt.Node)
+    self.assertEqual(vision.pipeline_count, 1)
+
+  def test_orbbec_vision_estimate_and_update_pose(self):
+    mock_solution = mock.MagicMock()
+    mock_cam = mock.MagicMock()
+    mock_svc = mock.MagicMock()
+    mock_solution.resources = {
+        "orbbec_camera": mock_cam,
+        "pose_estimator_service": mock_svc,
+    }
+    mock_estimate_skill = mock.MagicMock(
+        return_value=bt.PythonScript(function_body="pass")
+    )
+    mock_solution.skills.ai.intrinsic.estimate_and_update_pose = (
+        mock_estimate_skill
+    )
+
+    vision = OrbbecVision(
+        solution=mock_solution,
+        camera_name="orbbec_camera",
+        perception_service_name="pose_estimator_service",
+    )
+    task = vision.build_estimate_and_update_pose_task(
+        target_object="ai.intrinsic.raw_stock_2x3x5",
+        pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator",
+        name="Custom Estimate Task",
+    )
+    self.assertIsInstance(task, bt.Task)
+    self.assertEqual(task.name, "Custom Estimate Task")
+    mock_estimate_skill.assert_called_once()
+    call_kwargs = mock_estimate_skill.call_args.kwargs
+    self.assertEqual(call_kwargs.get("camera"), mock_cam)
+    self.assertEqual(call_kwargs.get("perception"), mock_svc)
+    self.assertEqual(call_kwargs.get("object"), "ai.intrinsic.raw_stock_2x3x5")
+
+  def test_sideloaded_gripper_cmd_tasks(self):
+    mock_solution = mock.MagicMock()
+    mock_cmd_skill = mock.MagicMock(
+        return_value=bt.PythonScript(function_body="pass")
+    )
+    mock_joint_state = mock.MagicMock()
+    mock_cmd_skill.ai.intrinsic.JointState.return_value = mock_joint_state
+    mock_solution.skills.ai.intrinsic.gripper_cmd_skill = mock_cmd_skill
+
+    gripper = SideloadedGripperCmd(
+        solution=mock_solution,
+        action_name="/gripper/gripper_action_controller/gripper_cmd",
+        joint_name="robotiq_hande_left_finger_joint",
+        open_position=0.025,
+        close_position=0.000,
+    )
+
+    open_task = gripper.build_open_task()
+    self.assertIsInstance(open_task, bt.Task)
+    self.assertEqual(open_task.name, "Open Gripper (gripper_cmd)")
+    self.assertEqual(mock_joint_state.name, ["robotiq_hande_left_finger_joint"])
+    self.assertEqual(mock_joint_state.position, [0.025])
+    mock_cmd_skill.assert_called_with(
+        action_name="/gripper/gripper_action_controller/gripper_cmd",
+        command=mock_joint_state,
+    )
+
+    close_task = gripper.build_close_task()
+    self.assertIsInstance(close_task, bt.Task)
+    self.assertEqual(close_task.name, "Close Gripper (gripper_cmd)")
+    self.assertEqual(mock_joint_state.position, [0.000])
+    mock_cmd_skill.assert_called_with(
+        action_name="/gripper/gripper_action_controller/gripper_cmd",
+        command=mock_joint_state,
+    )
+
+  def test_ur_robot_build_tasks(self):
+    mock_solution = mock.MagicMock()
+    mock_move_robot = mock.MagicMock(
+        return_value=bt.PythonScript(function_body="pass")
+    )
+    mock_solution.skills.ai.intrinsic.move_robot = mock_move_robot
+    mock_solution.skills.ai.intrinsic.move_to_contact = mock.MagicMock(
+        return_value=bt.PythonScript(function_body="pass")
+    )
+    robot = UrRobot(solution=mock_solution)
+    joint_task = robot.build_move_joint_task("home")
+    self.assertIsInstance(joint_task, bt.Task)
+    joint_pos_task = robot.build_move_joint_task(
+        [0.0, -1.57, 1.57, -1.57, -1.57, 0.0]
+    )
+    self.assertIsInstance(joint_pos_task, bt.Task)
+    cartesian_task = robot.build_move_cartesian_task("view")
+    self.assertIsInstance(cartesian_task, bt.Task)
+    contact_task = robot.build_move_to_contact_task()
+    self.assertIsInstance(contact_task, bt.Task)
+
+  def test_ur_robot_disable_collision_checking(self):
+    mock_solution = mock.MagicMock()
+    mock_move_robot = mock.MagicMock(
+        return_value=bt.PythonScript(function_body="pass")
+    )
+    mock_solution.skills.ai.intrinsic.move_robot = mock_move_robot
+    robot = UrRobot(solution=mock_solution, disable_collision_checking=True)
+    joint_task = robot.build_move_joint_task("home")
+    self.assertIsInstance(joint_task, bt.Task)
+    mock_move_robot.intrinsic_proto.skills.MotionSegment.assert_called()
+    call_kwargs = mock_move_robot.intrinsic_proto.skills.MotionSegment.call_args.kwargs
+    self.assertIn("collision_settings", call_kwargs)
+
+  def test_ur_robot_settling_timeout(self):
+    mock_solution = mock.MagicMock()
+    mock_move_robot = mock.MagicMock(
+        return_value=bt.PythonScript(function_body="pass")
+    )
+    mock_solution.skills.ai.intrinsic.move_robot = mock_move_robot
+    robot = UrRobot(
+        solution=mock_solution,
+        default_settling_timeout_seconds=10.0,
+    )
+    # Default settling timeout passed to skill
+    robot.build_move_joint_task("home")
+    mock_move_robot.intrinsic_proto.skills.ExecutionParameters.assert_called_with(
+        settling_timeout_seconds=10.0
+    )
+    call_kwargs = mock_move_robot.call_args.kwargs
+    self.assertIn("execution_parameters", call_kwargs)
+
+    # Override settling timeout per call
+    robot.build_move_cartesian_task("view", settling_timeout_seconds=15.0)
+    mock_move_robot.intrinsic_proto.skills.ExecutionParameters.assert_called_with(
+        settling_timeout_seconds=15.0
+    )
+    call_kwargs_cart = mock_move_robot.call_args.kwargs
+    self.assertIn("execution_parameters", call_kwargs_cart)
+
 
 if __name__ == "__main__":
   absltest.main()
+

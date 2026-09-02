@@ -4,6 +4,7 @@ from src.hardware.gripper import DioGripper
 from src.hardware.gripper import GripperInterface
 from src.hardware.gripper import MockGripper
 from src.hardware.gripper import RobotiqGripper
+from src.hardware.gripper import SideloadedGripperCmd
 from src.hardware.machine import CncMachineInterface
 from src.hardware.machine import DioCncMachine
 from src.hardware.machine import MockCncMachine
@@ -26,6 +27,7 @@ __all__ = [
     "OrbbecVision",
     "RobotInterface",
     "RobotiqGripper",
+    "SideloadedGripperCmd",
     "UrRobot",
     "VisionInterface",
 ]

@@ -80,6 +80,16 @@ class VisionInterface(abc.ABC):
     """Builds a composite task to capture RGB-D, estimate 6D poses, and update world frames."""
     raise NotImplementedError
 
+  @abc.abstractmethod
+  def build_estimate_and_update_pose_task(
+      self,
+      target_object: str = "raw_stock",
+      pose_estimator_id: str = "ai.intrinsic.raw_stock_2x3x5_estimator",
+      name: Optional[str] = None,
+  ) -> bt.Node:
+    """Builds a task to estimate target object pose and update world frame."""
+    raise NotImplementedError
+
 
 class OrbbecVision(VisionInterface):
   """Orbbec 3D camera perception adapter using IOC SBL perception skills."""
@@ -261,6 +271,39 @@ class OrbbecVision(VisionInterface):
         ],
     )
 
+  def build_estimate_and_update_pose_task(
+      self,
+      target_object: str = "raw_stock",
+      pose_estimator_id: str = "ai.intrinsic.raw_stock_2x3x5_estimator",
+      name: Optional[str] = None,
+  ) -> bt.Node:
+    """Builds a single-step estimate_and_update_pose task."""
+    task_name = name or f"Estimate & Update Pose ({target_object})"
+    skills = self._solution.skills
+
+    pkg = (
+        id_utils.package_from(pose_estimator_id)
+        if id_utils.is_id(pose_estimator_id)
+        else "ai.intrinsic"
+    )
+    est_name = (
+        id_utils.name_from(pose_estimator_id)
+        if id_utils.is_id(pose_estimator_id)
+        else pose_estimator_id
+    )
+    pose_estimator_proto = pose_estimator_id_pb2.PoseEstimatorId(
+        id=est_name,
+        package=pkg,
+    )
+
+    action = skills.ai.intrinsic.estimate_and_update_pose(
+        camera=self._camera_resource,
+        pose_estimator=pose_estimator_proto,
+        object=target_object,
+        perception=self._perception_resource,
+    )
+    return bt.Task(action=action, name=task_name)
+
 
 class MockVision(VisionInterface):
   """Mock vision sensor for offline testing."""
@@ -288,5 +331,17 @@ class MockVision(VisionInterface):
     self.pipeline_count += 1
     return bt.Sequence(
         name=name or "Mock Perception & Dynamic Grasp Frame Update Pipeline",
+        children=[],
+    )
+
+  def build_estimate_and_update_pose_task(
+      self,
+      target_object: str = "raw_stock",
+      pose_estimator_id: str = "ai.intrinsic.raw_stock_2x3x5_estimator",
+      name: Optional[str] = None,
+  ) -> bt.Node:
+    self.pipeline_count += 1
+    return bt.Sequence(
+        name=name or f"Mock Estimate & Update Pose ({target_object})",
         children=[],
     )
