@@ -19,17 +19,28 @@ def create_move_to_named_pose_task(
 
 def create_move_to_frame_task(
     robot: RobotInterface,
-    frame_name: str,
+    frame_name: Optional[str] = None,
     parent_object: str = "root",
     motion_type: str = "ANY",
+    allow_tool_z_rotation: bool = False,
+    cone_opening_half_angle: float = 0.0,
+    moving_frame_offset: Optional[tuple[float, float, float]] = None,
+    target_frame_offset: Optional[
+        tuple[tuple[float, float, float], tuple[float, float, float, float]]
+    ] = None,
     task_name: Optional[str] = None,
 ) -> bt.Node:
-  """Builds a Cartesian motion task moving the arm tool to a target frame."""
+  """Builds a Cartesian motion task moving the arm tool to a target frame or object."""
+  target_desc = f"{parent_object}/{frame_name}" if frame_name else parent_object
   return robot.build_move_cartesian_task(
       target_frame_name=frame_name,
       target_object_name=parent_object,
       motion_type=motion_type,
-      name=task_name or f"Move to {parent_object}/{frame_name} ({motion_type})",
+      allow_tool_z_rotation=allow_tool_z_rotation,
+      cone_opening_half_angle=cone_opening_half_angle,
+      moving_frame_offset=moving_frame_offset,
+      target_frame_offset=target_frame_offset,
+      name=task_name or f"Move to {target_desc} ({motion_type})",
   )
 
 

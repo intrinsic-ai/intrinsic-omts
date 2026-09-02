@@ -29,7 +29,6 @@ intrinsic_solution(
     name = "omts_solution",
     add_compose_world_test = False,
     assets = [
-        "@ioc//google3/intrinsic/apps/bluebird_caw/resources:caw_enclosure",
         "@ioc//google3/intrinsic/resources/catalog/resourcedata/gripper:robotiq_pinch_gripper_resource_type",
         "@ioc//google3/intrinsic/resources/catalog/resourcedata/product/building_block",
         "@ioc//google3/intrinsic/resources/catalog/resourcedata/product/imts:raw_stock_2x3x5",
@@ -62,8 +61,14 @@ intrinsic_solution(
         ":foundationpose_mlmodel",
         ":rfdetr_mlmodel",
     ] + select({
-        ":is_lab_bb_01": ["@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_ioc"],
-        "//conditions:default": ["@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_ioc"],
+        ":is_lab_bb_01": [
+            "@ioc//google3/intrinsic/apps/bluebird_caw/resources:caw_enclosure",
+            "@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_ioc",
+        ],
+        "//conditions:default": [
+            "@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_ioc",
+            "//models/omts_enclosure",
+        ],
     }),
     default_operation_mode = "real",
     instances = [
@@ -104,7 +109,11 @@ alias(
 
 intrinsic_asset_instance(
     name = "enclosure",
-    asset = "ai.intrinsic.caw_enclosure",
+    asset = select({
+        ":is_lab_bb_01": "ai.intrinsic.caw_enclosure",
+        "//conditions:default": "ai.intrinsic.omts_enclosure",
+    }),
+    instance_name = "enclosure",
 )
 
 intrinsic_asset_instance(

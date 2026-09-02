@@ -11,18 +11,19 @@ class InfeedStrategyTest(absltest.TestCase):
   def test_perception_infeed_strategy(self):
     strategy = PerceptionInfeedStrategy(
         camera_name="test_camera",
-        estimator_name="test_estimator",
+        pose_estimator_id="ai.intrinsic.test_estimator",
+        scene_object_id="ai.intrinsic.test_object",
         view_frame_name="view",
     )
     self.assertEqual(strategy.mode, InfeedMode.PERCEPTION)
 
     part1 = strategy.get_target_part()
     self.assertIsNotNone(part1)
-    self.assertEqual(part1.id, "vision_raw_stock_001")
+    self.assertEqual(part1.id, "workpiece_0")
     self.assertEqual(part1.state, PartState.RAW)
 
     part2 = strategy.get_target_part()
-    self.assertEqual(part2.id, "vision_raw_stock_002")
+    self.assertEqual(part2.id, "workpiece_1")
 
   def test_grid_infeed_strategy(self):
     tray = Tray(

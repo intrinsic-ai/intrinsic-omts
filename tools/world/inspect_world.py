@@ -65,6 +65,10 @@ def main(argv: Sequence[str] | None = None) -> None:
       )
     if hasattr(world.root, "view"):
       print(f"View frame in root: {world.get_transform(world.root, world.root.view)}")
+    if hasattr(world.root, "pre_grasp"):
+      print(f"Pre-grasp frame in root: {world.get_transform(world.root, world.root.pre_grasp)}")
+    if hasattr(world.root, "grasp"):
+      print(f"Grasp frame in root: {world.get_transform(world.root, world.root.grasp)}")
   except Exception as e:
     print(f"   Error checking transforms: {e}")
 

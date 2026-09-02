@@ -1,7 +1,7 @@
 """Infeed strategy definitions for vision vs. blind grid acquisition."""
 
 import abc
-from typing import Optional
+from typing import Optional, Sequence
 from src.core.tray import Tray, TraySlot
 from src.core.types import InfeedMode, Pose3D
 from src.core.workpiece import Workpiece
@@ -28,11 +28,19 @@ class PerceptionInfeedStrategy(InfeedStrategy):
   def __init__(
       self,
       camera_name: str = "orbbec_camera",
-      estimator_name: str = "raw_stock_2x3x5_estimator",
+      pose_estimator_id: str = "ai.intrinsic.raw_stock_2x3x5_estimator",
+      scene_object_id: str = "ai.intrinsic.raw_stock_2x3x5",
+      sensor_ids: Sequence[int] = (1, 4),
+      min_num_instances: int = 1,
+      refinement_iters: int = 3,
       view_frame_name: str = "view",
   ) -> None:
     self.camera_name = camera_name
-    self.estimator_name = estimator_name
+    self.pose_estimator_id = pose_estimator_id
+    self.scene_object_id = scene_object_id
+    self.sensor_ids = list(sensor_ids)
+    self.min_num_instances = min_num_instances
+    self.refinement_iters = refinement_iters
     self.view_frame_name = view_frame_name
     self._current_part_count = 0
 
@@ -43,7 +51,7 @@ class PerceptionInfeedStrategy(InfeedStrategy):
   def get_target_part(self) -> Optional[Workpiece]:
     """Instantiates a new workpiece representation for vision acquisition."""
     self._current_part_count += 1
-    return Workpiece(id=f"vision_raw_stock_{self._current_part_count:03d}")
+    return Workpiece(id=f"workpiece_{self._current_part_count - 1}")
 
 
 class GridInfeedStrategy(InfeedStrategy):

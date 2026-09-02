@@ -1,146 +1,138 @@
 # proto-file: intrinsic/world/public/proto/object_world_updates.proto
 # proto-message: intrinsic_proto.world.ObjectWorldUpdates
 
-updates: {
-  create_frame: {
-    parent_object_with_filter: { reference: {
-      by_name: {
-        object_name: "root"
-      }
-    } }
-    parent_t_new_frame: {
-      position: {
+updates {
+  create_frame {
+    new_frame_name: "grasp"
+    parent_t_new_frame {
+      position {
         x: 0.15
         y: 0.25
         z: 0.71
       }
-      orientation: {
-        x: 1
-        y: 0
-        z: 0
-        w: 0
+      orientation {
+        x: 1.0
       }
     }
-    new_frame_name: "grasp"
+    parent_object_with_filter {
+      reference {
+        by_name {
+          object_name: "root"
+        }
+      }
+    }
   }
 }
-
-updates: {
-  create_frame: {
-    parent_object_with_filter: { reference: {
-      by_name: {
-        object_name: "root"
-      }
-    } }
-    parent_t_new_frame: {
-      position: {
+updates {
+  create_frame {
+    new_frame_name: "pre_grasp"
+    parent_t_new_frame {
+      position {
         x: 0.15
         y: 0.25
         z: 0.73
       }
-      orientation: {
-        x: 1
-        y: 0
-        z: 0
-        w: 0
+      orientation {
+        x: 1.0
       }
     }
-    new_frame_name: "pre_grasp"
+    parent_object_with_filter {
+      reference {
+        by_name {
+          object_name: "root"
+        }
+      }
+    }
   }
 }
-
-updates: {
-  create_frame: {
-    parent_object_with_filter: { reference: {
-      by_name: {
-        object_name: "root"
-      }
-    } }
-    parent_t_new_frame: {
-      position: {
+updates {
+  create_frame {
+    new_frame_name: "pre_place_vise"
+    parent_t_new_frame {
+      position {
         x: 0.47
         y: 0.37
         z: 0.73
       }
-      orientation: {
-        x: 1
-        y: 0
-        z: 0
-        w: 0
+      orientation {
+        x: 1.0
       }
     }
-    new_frame_name: "pre_place_vise"
+    parent_object_with_filter {
+      reference {
+        by_name {
+          object_name: "root"
+        }
+      }
+    }
   }
 }
-
-updates: {
-  create_frame: {
-    parent_object_with_filter: { reference: {
-      by_name: {
-        object_name: "root"
-      }
-    } }
-    parent_t_new_frame: {
-      position: {
+updates {
+  create_frame {
+    new_frame_name: "place_vise"
+    parent_t_new_frame {
+      position {
         x: 0.47
         y: 0.37
-        z: 0.70
+        z: 0.7
       }
-      orientation: {
-        x: 1
-        y: 0
-        z: 0
-        w: 0
+      orientation {
+        x: 1.0
       }
     }
-    new_frame_name: "place_vise"
+    parent_object_with_filter {
+      reference {
+        by_name {
+          object_name: "root"
+        }
+      }
+    }
   }
 }
-
-updates: {
-  create_frame: {
-    parent_object_with_filter: { reference: {
-      by_name: {
-        object_name: "root"
-      }
-    } }
-    parent_t_new_frame: {
-      position: {
-        x: 0.34
-        y: 0.37
-        z: 0.85
-      }
-      orientation: {
-        x: 1
-        y: 0
-        z: 0
-        w: 0
-      }
-    }
-    new_frame_name: "view"
-  }
-}
-
-updates: {
-  create_frame: {
-    parent_object_with_filter: { reference: {
-      by_name: {
-        object_name: "root"
-      }
-    } }
-    parent_t_new_frame: {
-      position: {
-        x: 0.35
-        y: 0.40
-        z: 0.80
-      }
-      orientation: {
-        x: 1
-        y: 0
-        z: 0
-        w: 0
-      }
-    }
+updates {
+  create_frame {
     new_frame_name: "machine_approach"
+    parent_t_new_frame {
+      position {
+        x: 0.35
+        y: 0.4
+        z: 0.8
+      }
+      orientation {
+        x: 1.0
+      }
+    }
+    parent_object_with_filter {
+      reference {
+        by_name {
+          object_name: "root"
+        }
+      }
+    }
+  }
+}
+updates {
+  create_frame {
+    new_frame_name: "view"
+    parent_t_new_frame {
+      position {
+        x: 0.3433
+        y: 0.3786
+        z: 0.9078
+      }
+      orientation {
+        x: -0.2667
+        y: -0.9585
+        z: 0.1
+        w: 0.0092
+      }
+    }
+    parent_object_with_filter {
+      reference {
+        by_name {
+          object_name: "root"
+        }
+      }
+    }
   }
 }

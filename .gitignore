@@ -1,3 +1,4 @@
 .env
 bazel-*
 venv*
+MODULE.bazel.lock
