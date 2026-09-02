@@ -15,7 +15,6 @@ from intrinsic.perception.skills.calibration import sample_calibration_poses_pb2
 from intrinsic.solutions import behavior_tree as bt
 from intrinsic.solutions import deployments
 from intrinsic.solutions import execution
-from intrinsic.solutions import perception
 from intrinsic.solutions import provided
 from intrinsic.world.public.proto import object_world_updates_pb2
 from intrinsic.world.python import object_world_ids
