@@ -2,6 +2,8 @@ load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@ioc//google3/intrinsic/assets/build_defs:asset.bzl", "intrinsic_asset_instance")
 load("@ioc//google3/intrinsic/config:def.bzl", "intrinsic_solution")
 load("//bazel:imported_asset.bzl", "imported_asset_bundle")
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+load("@ioc//incode/intrinsic_inference/assets/inference_service/bazel:intrinsic_mlmodel.bzl", "intrinsic_mlmodel")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -41,7 +43,7 @@ intrinsic_solution(
         "@ioc//google3/intrinsic/perception/skills/calibration:collect_calibration_data_skill",
         "@ioc//google3/intrinsic/perception/skills/calibration:initialize_calibration_skill",
         "@ioc//google3/intrinsic/perception/public/hardware_devices:orbbec_gemini_335le_hardware_device",
-        "@ioc//google3/intrinsic/motion_planning/service:motion_planner_service_asset",
+        "@ioc//incode/intrinsic_motion_planning/service:motion_planner_service_asset",
         "@ioc//incode/motion_planning/skills:clear_motion_planner_service_cache_skill",
         "@ioc//incode/motion_planning/skills:move_robot_skill",
         "@ioc//incode/motion_planning/skills:preplan_motion_skill",
@@ -53,8 +55,12 @@ intrinsic_solution(
         "@ioc//incode/perception/ioc_pose_estimator:ioc_pose_estimator_service_asset",
         "@ioc//incode/perception/ioc_train_service:ioc_train_service_asset",
         "@ioc//google3/intrinsic/perception/skills/multi_view:estimate_pose_multi_view_skill",
+        "@ioc//google3/intrinsic/world/skills/create_object:create_object_skill",
+        "@ioc//google3/intrinsic/skills/apps:update_world_skill",
         ":moveit_flowstate_ros_bridge_asset",
         ":orbbec_gemini_driver_asset",
+        ":foundationpose_mlmodel",
+        ":rfdetr_mlmodel",
     ] + select({
         ":is_lab_bb_01": ["@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_ioc"],
         "//conditions:default": ["@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_ioc"],
@@ -208,3 +214,89 @@ intrinsic_asset_instance(
     instance_name = "orbbec_gemini_driver",
 )
 
+
+
+
+copy_file(
+    name = "rfdetr_segmentation_config_pbtxt",
+    src = "@segmentation_weights_bundle//:config.pbtxt",
+    out = "rfdetr_segmentation_config.pbtxt",
+    allow_symlink = True,
+)
+
+copy_file(
+    name = "rfdetr_segmentation_onnx_file",
+    src = "@segmentation_weights_bundle//:segmentation.onnx",
+    out = "segmentation.onnx",
+    allow_symlink = True,
+)
+
+intrinsic_mlmodel(
+    name = "rfdetr_mlmodel",
+    backend = "triton",
+    config = ":rfdetr_segmentation_config_pbtxt",
+    description = "RF-DETR segmentation model for object detection and segmentation.",
+    display_name = "RF-DETR Segmentation Model",
+    id = "ai.intrinsic.ioc_pose_estimation.segmentor.rfdetr",
+    model_files = {
+        ":rfdetr_segmentation_onnx_file": "1/segmentation.onnx",
+    },
+)
+
+copy_file(
+    name = "foundationpose_refine_onnx_file",
+    src = "@foundationpose_refine_onnx//file",
+    out = "foundationpose_refine.onnx",
+    allow_symlink = True,
+)
+
+copy_file(
+    name = "foundationpose_score_onnx_file",
+    src = "@foundationpose_score_onnx//file",
+    out = "foundationpose_score.onnx",
+    allow_symlink = True,
+)
+
+copy_file(
+    name = "foundationpose_py312_model_py",
+    src = "@foundationpose_py312_bundle//:model.py",
+    out = "foundationpose_py312_model.py",
+    allow_symlink = True,
+)
+
+copy_file(
+    name = "foundationpose_py312_cpp_so",
+    src = "@foundationpose_py312_bundle//:foundationpose_cpp.so",
+    out = "foundationpose_py312_foundationpose_cpp.so",
+    allow_symlink = True,
+)
+
+copy_file(
+    name = "foundationpose_py312_env_tar_gz",
+    src = "@foundationpose_py312_bundle//:env.tar.gz",
+    out = "foundationpose_py312_env.tar.gz",
+    allow_symlink = True,
+)
+
+copy_file(
+    name = "foundationpose_py312_config_pbtxt",
+    src = "@foundationpose_py312_bundle//:config.pbtxt",
+    out = "foundationpose_py312_config.pbtxt",
+    allow_symlink = True,
+)
+
+intrinsic_mlmodel(
+    name = "foundationpose_mlmodel",
+    backend = "triton",
+    config = ":foundationpose_py312_config_pbtxt",
+    description = "FoundationPose 6D object pose estimation model.",
+    display_name = "FoundationPose model weights",
+    id = "ai.intrinsic.ioc_pose_estimation.pose_estimator.foundationpose",
+    model_files = {
+        ":foundationpose_refine_onnx_file": "1/foundationpose_refine.onnx",
+        ":foundationpose_score_onnx_file": "1/foundationpose_score.onnx",
+        ":foundationpose_py312_model_py": "1/model.py",
+        ":foundationpose_py312_cpp_so": "1/foundationpose_cpp.so",
+        ":foundationpose_py312_env_tar_gz": "env.tar.gz",
+    },
+)
