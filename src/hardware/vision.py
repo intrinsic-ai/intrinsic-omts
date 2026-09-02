@@ -1,14 +1,13 @@
 """Vision and 3D camera hardware interfaces and implementations."""
 
 import abc
-from typing import Any, Optional, Sequence
+from typing import Optional, Sequence
 
-from absl import logging
 from intrinsic.assets import id_utils
 from intrinsic.assets.proto import id_pb2
-from intrinsic.math.python import proto_conversion
 from intrinsic.perception.public.proto.v1 import pose_estimator_id_pb2
 from intrinsic.solutions import behavior_tree as bt
+from intrinsic.solutions import cel
 from intrinsic.solutions import deployments
 from intrinsic.solutions import provided
 from intrinsic.world.public.proto import object_world_refs_pb2
@@ -72,9 +71,13 @@ class VisionInterface(abc.ABC):
       target_scene_object_id: str = "ai.intrinsic.raw_stock_2x3x5",
       pose_estimator_id: str = "ai.intrinsic.raw_stock_2x3x5_estimator",
       min_num_instances: int = 1,
+      approach_offset_z: float = 0.05,
+      parent_object: str = "root",
+      pregrasp_frame_name: str = "pre_grasp",
+      grasp_frame_name: str = "grasp",
       name: Optional[str] = None,
   ) -> bt.Node:
-    """Builds a composite task to capture RGB-D, estimate 6D poses, and spawn world objects."""
+    """Builds a composite task to capture RGB-D, estimate 6D poses, and update world frames."""
     raise NotImplementedError
 
 
@@ -116,10 +119,14 @@ class OrbbecVision(VisionInterface):
       target_scene_object_id: str = "ai.intrinsic.raw_stock_2x3x5",
       pose_estimator_id: str = "ai.intrinsic.raw_stock_2x3x5_estimator",
       min_num_instances: int = 1,
+      approach_offset_z: float = 0.05,
+      parent_object: str = "root",
+      pregrasp_frame_name: str = "pre_grasp",
+      grasp_frame_name: str = "grasp",
       name: Optional[str] = None,
   ) -> bt.Node:
-    """Builds the pipeline to capture, estimate 6D pose, and spawn objects in the world."""
-    task_name = name or "Perception & Object Spawning Pipeline"
+    """Builds the pipeline to capture RGB-D, estimate 6D poses, and dynamically update grasp frames."""
+    task_name = name or "Perception & Dynamic Grasp Frame Update Pipeline"
 
     skills = self._solution.skills
 
@@ -165,42 +172,93 @@ class OrbbecVision(VisionInterface):
         action=estimate_action, name="2. Estimate 6D Workpiece Poses"
     )
 
-    # 3. Spawn Detected Objects via create_object skill
-    obj_pkg = (
-        id_utils.package_from(target_scene_object_id)
-        if id_utils.is_id(target_scene_object_id)
-        else "ai.intrinsic"
-    )
-    obj_name = (
-        id_utils.name_from(target_scene_object_id)
-        if id_utils.is_id(target_scene_object_id)
-        else target_scene_object_id
-    )
-
-    object_id_proto = id_pb2.Id(package=obj_pkg, name=obj_name)
-
-    root_ref = object_world_refs_pb2.TransformNodeReference(
+    # 3. Update Dynamic Grasp and Pre-Grasp Frames via indirect transform in update_world.
+    # By specifying node_a=camera, node_b=frame_on_root, node_to_update=frame_on_root,
+    # SBL's world service automatically computes the world transform using the live robot
+    # kinematics chain at runtime with zero hardcoded extrinsics or manual matrix math.
+    camera_ref = object_world_refs_pb2.TransformNodeReference(
         by_name=object_world_refs_pb2.TransformNodeReferenceByName(
-            object=object_world_refs_pb2.ObjectReferenceByName(object_name="root")
+            object=object_world_refs_pb2.ObjectReferenceByName(
+                object_name=self._camera_name
+            )
+        )
+    )
+    pre_grasp_ref = object_world_refs_pb2.TransformNodeReference(
+        by_name=object_world_refs_pb2.TransformNodeReferenceByName(
+            frame=object_world_refs_pb2.FrameReferenceByName(
+                object_name=parent_object, frame_name=pregrasp_frame_name
+            )
+        )
+    )
+    grasp_ref = object_world_refs_pb2.TransformNodeReference(
+        by_name=object_world_refs_pb2.TransformNodeReferenceByName(
+            frame=object_world_refs_pb2.FrameReferenceByName(
+                object_name=parent_object, frame_name=grasp_frame_name
+            )
         )
     )
 
-    create_object_action = skills.ai.intrinsic.create_object(
-        object_to_create=object_id_proto,
-        create_at_frame=root_ref,
-        object_naming_schema={
-            "prefix": "workpiece",
-            "suffix": 1,  # INDEX
-        },
-        create_in_world=1,  # BELIEF
+    update_world_skill = skills.ai.intrinsic.update_world
+    uw_proto = update_world_skill.intrinsic_proto
+
+    detected_pos = estimate_action.result.estimates[0].root_t_target.position
+    detected_rot = estimate_action.result.estimates[0].root_t_target.orientation
+
+    # Align workpiece orientation with downward gripper approach:
+    # Q_tool = Q_part * [0.5, 0.5, 0.5, 0.5]
+    qx, qy, qz, qw = detected_rot.x, detected_rot.y, detected_rot.z, detected_rot.w
+    tool_orientation = uw_proto.Quaternion(
+        x=cel.CelExpression(f"0.5 * ({qw} + {qx} + {qy} - {qz})"),
+        y=cel.CelExpression(f"0.5 * ({qw} - {qx} + {qy} + {qz})"),
+        z=cel.CelExpression(f"0.5 * ({qw} + {qx} - {qy} + {qz})"),
+        w=cel.CelExpression(f"0.5 * ({qw} - {qx} - {qy} - {qz})"),
     )
-    create_object_task = bt.Task(
-        action=create_object_action, name="3. Spawn Workpiece World Objects"
+
+    # Standoff in camera optical frame: reduce distance along optical Z by approach_offset_z
+    pre_grasp_update = uw_proto.world.ObjectWorldUpdate(
+        update_transform=uw_proto.world.UpdateTransformRequest(
+            node_a=camera_ref,
+            node_b=pre_grasp_ref,
+            node_to_update=pre_grasp_ref,
+            a_t_b=uw_proto.Pose(
+                position=uw_proto.Point(
+                    x=detected_pos.x,
+                    y=detected_pos.y,
+                    z=cel.CelExpression(f"{detected_pos.z} - {approach_offset_z}"),
+                ),
+                orientation=tool_orientation,
+            ),
+        )
+    )
+    grasp_update = uw_proto.world.ObjectWorldUpdate(
+        update_transform=uw_proto.world.UpdateTransformRequest(
+            node_a=camera_ref,
+            node_b=grasp_ref,
+            node_to_update=grasp_ref,
+            a_t_b=uw_proto.Pose(
+                position=detected_pos,
+                orientation=tool_orientation,
+            ),
+        )
+    )
+
+    update_world_action = update_world_skill(
+        updates=uw_proto.world.ObjectWorldUpdates(
+            updates=[pre_grasp_update, grasp_update]
+        )
+    )
+    update_world_task = bt.Task(
+        action=update_world_action,
+        name="3. Update Dynamic Grasp & Pre-Grasp Frames",
     )
 
     return bt.Sequence(
         name=task_name,
-        children=[capture_task, estimate_task, create_object_task],
+        children=[
+            capture_task,
+            estimate_task,
+            update_world_task,
+        ],
     )
 
 
@@ -221,9 +279,14 @@ class MockVision(VisionInterface):
       target_scene_object_id: str = "ai.intrinsic.raw_stock_2x3x5",
       pose_estimator_id: str = "ai.intrinsic.raw_stock_2x3x5_estimator",
       min_num_instances: int = 1,
+      approach_offset_z: float = 0.05,
+      parent_object: str = "root",
+      pregrasp_frame_name: str = "pre_grasp",
+      grasp_frame_name: str = "grasp",
       name: Optional[str] = None,
   ) -> bt.Node:
     self.pipeline_count += 1
     return bt.Sequence(
-        name=name or "Mock Perception & Object Spawning Pipeline", children=[]
+        name=name or "Mock Perception & Dynamic Grasp Frame Update Pipeline",
+        children=[],
     )

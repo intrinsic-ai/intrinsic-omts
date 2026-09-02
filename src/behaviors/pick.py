@@ -1,6 +1,5 @@
 """Infeed part localization and picking subtree."""
 
-from typing import Optional
 from intrinsic.solutions import behavior_tree as bt
 from src.behaviors.motions import (
     create_compliant_touchdown_task,
@@ -23,13 +22,16 @@ def build_pick_from_infeed_subtree(
     view_frame_name: str = "view",
     pregrasp_frame_name: str = "pre_grasp",
     grasp_frame_name: str = "grasp",
+    approach_offset_z: float = 0.10,
 ) -> bt.Node:
   """Builds the Behavior Tree subtree for locating and grasping a raw workpiece.
 
   Sequence:
   1. Move robot to view frame (ANY Cartesian motion).
-  2. Perception acquisition & object spawning step (capture RGB-D -> estimate 6D pose -> spawn world objects).
-  3. Move to pre_grasp frame (ANY Cartesian motion).
+  2. Perception acquisition & dynamic grasp frame update step:
+     - capture RGB-D -> estimate 6D pose -> dynamically update root/pre_grasp and root/grasp
+       via indirect transforms from the camera with zero hardcoded extrinsics.
+  3. Move to dynamic pre_grasp frame (ANY Cartesian motion with tool Z rotation relaxed).
   4. Perform compliant touchdown (move_to_contact in +Z tool).
   5. Close gripper to grasp part.
   6. Retract arm linearly back up to pre_grasp (LINEAR Cartesian motion).
@@ -44,6 +46,7 @@ def build_pick_from_infeed_subtree(
       view_frame_name: Name of perception view frame (default: 'view').
       pregrasp_frame_name: Name of pre-grasp approach frame (default: 'pre_grasp').
       grasp_frame_name: Name of grasp target frame (default: 'grasp').
+      approach_offset_z: Approach standoff distance in meters (default: 0.05).
 
   Returns:
       Behavior tree sequence executing the infeed pick pipeline.
@@ -79,7 +82,11 @@ def build_pick_from_infeed_subtree(
             target_scene_object_id=target_object_id,
             pose_estimator_id=pose_estimator_id,
             min_num_instances=min_instances,
-            name="Step 02: Perception & Object Spawning Pipeline",
+            approach_offset_z=approach_offset_z,
+            parent_object=parent_object,
+            pregrasp_frame_name=pregrasp_frame_name,
+            grasp_frame_name=grasp_frame_name,
+            name="Step 02: Perception & Dynamic Grasp Frame Update Pipeline",
         ),
     ])
 
@@ -89,7 +96,7 @@ def build_pick_from_infeed_subtree(
           frame_name=pregrasp_frame_name,
           parent_object=parent_object,
           motion_type="ANY",
-          task_name=f"Step 03: Move to Pre-Grasp ({parent_object}/{pregrasp_frame_name})",
+          task_name=f"Step 03: Move to Dynamic Pre-Grasp ({parent_object}/{pregrasp_frame_name})",
       ),
       create_compliant_touchdown_task(
           robot=robot,

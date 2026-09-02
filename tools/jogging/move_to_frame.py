@@ -32,17 +32,18 @@ def list_available_frames(world: Any) -> list[tuple[str, str]]:
 
   # Inspect other scene objects
   if hasattr(world, "list_objects"):
-    for obj_name in world.list_objects():
+    for obj_item in world.list_objects():
+      obj_name = getattr(obj_item, "name", str(obj_item))
       if obj_name in ("root", "ur_module"):
         continue
       obj = getattr(world, obj_name, None)
       if obj is not None:
         if hasattr(obj, "list_frames"):
           for f in obj.list_frames():
-            frames.append((obj_name, f))
+            frames.append((obj_name, getattr(f, "name", str(f))))
         elif hasattr(obj, "frames"):
           for f in obj.frames:
-            frame_name = f if isinstance(f, str) else getattr(f, "name", str(f))
+            frame_name = getattr(f, "name", str(f))
             frames.append((obj_name, frame_name))
 
   # Fallback / scene defaults if dynamic discovery returned nothing
@@ -114,6 +115,7 @@ def move_robot_to_frame(
     target_frame_name: str,
     target_object_name: str = "root",
     motion_type: str = "ANY",
+    allow_tool_z_rotation: bool = False,
     arm_part_name: str = "ur_module",
     tool_object_name: str = "gripper",
     tool_frame_name: str = "tool_frame",
@@ -126,6 +128,7 @@ def move_robot_to_frame(
     target_object_name: Parent object of target frame in world (default:
       'root').
     motion_type: Motion segment type ('ANY', 'LINEAR', 'JOINT').
+    allow_tool_z_rotation: Whether to allow rotation around tool Z approach axis.
     arm_part_name: Robot arm part name in solution.world (default: 'ur_module').
     tool_object_name: End-effector tool object name (default: 'gripper').
     tool_frame_name: Frame name on tool object to align (default: 'tool_frame').
@@ -134,8 +137,25 @@ def move_robot_to_frame(
       f"\nPlanning motion for '{arm_part_name}' moving tool"
       f" '{tool_object_name}/{tool_frame_name}' ->"
       f" '{target_object_name}/{target_frame_name}' (motion_type:"
-      f" {motion_type})..."
+      f" {motion_type}, allow_tool_z_rot: {allow_tool_z_rotation})..."
   )
+  try:
+    from intrinsic.world.public.proto import object_world_refs_pb2
+    current_target_t = solution.world.get_transform(
+        solution.world.root,
+        solution.world.get_transform_node(
+            object_world_refs_pb2.TransformNodeReference(
+                by_name=object_world_refs_pb2.TransformNodeReferenceByName(
+                    frame=object_world_refs_pb2.FrameReferenceByName(
+                        object_name=target_object_name, frame_name=target_frame_name
+                    )
+                )
+            )
+        ),
+    )
+    print(f"Current pose of '{target_object_name}/{target_frame_name}' in root: {current_target_t}")
+  except Exception as te:
+    print(f"Could not query target frame: {te}")
 
   robot = UrRobot(
       solution=solution,
@@ -148,6 +168,7 @@ def move_robot_to_frame(
       target_frame_name=target_frame_name,
       target_object_name=target_object_name,
       motion_type=motion_type,
+      allow_tool_z_rotation=allow_tool_z_rotation,
       name=(
           f"Move {tool_object_name}.{tool_frame_name} to"
           f" {target_object_name}.{target_frame_name} ({motion_type})"
@@ -216,6 +237,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
       default="tool_frame",
       help="Tool frame name on tool_object_name (default: 'tool_frame').",
   )
+  parser.add_argument(
+      "--allow_tool_z_rotation",
+      action="store_true",
+      default=False,
+      help="Allow free rotation around tool Z approach axis using PositionEquality + RotationCone.",
+  )
   return parser.parse_args(argv)
 
 
@@ -232,6 +259,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         target_frame_name=args.frame,
         target_object_name=args.parent_object,
         motion_type=args.motion_type,
+        allow_tool_z_rotation=args.allow_tool_z_rotation,
         arm_part_name=args.arm_part_name,
         tool_object_name=args.tool_object_name,
         tool_frame_name=args.tool_frame_name,
@@ -255,6 +283,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         target_frame_name=frame_name,
         target_object_name=parent_obj,
         motion_type=args.motion_type,
+        allow_tool_z_rotation=args.allow_tool_z_rotation,
         arm_part_name=args.arm_part_name,
         tool_object_name=args.tool_object_name,
         tool_frame_name=args.tool_frame_name,

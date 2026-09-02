@@ -4,7 +4,7 @@ import abc
 from typing import Any, Optional
 
 from intrinsic.manipulation.skills.force import move_to_contact_pb2
-from intrinsic.math.proto import vector3_pb2
+from intrinsic.math.proto import point_pb2, pose_pb2, quaternion_pb2, vector3_pb2
 from intrinsic.motion_planning.public.proto.v1 import geometric_constraints_pb2
 from intrinsic.solutions import behavior_tree as bt
 from intrinsic.world.public.proto import object_world_refs_pb2
@@ -23,12 +23,18 @@ class RobotInterface(abc.ABC):
   @abc.abstractmethod
   def build_move_cartesian_task(
       self,
-      target_frame_name: str,
+      target_frame_name: Optional[str] = None,
       target_object_name: str = "root",
       motion_type: str = "ANY",
+      allow_tool_z_rotation: bool = False,
+      cone_opening_half_angle: float = 0.0,
+      moving_frame_offset: Optional[tuple[float, float, float]] = None,
+      target_frame_offset: Optional[
+          tuple[tuple[float, float, float], tuple[float, float, float, float]]
+      ] = None,
       name: Optional[str] = None,
   ) -> bt.Node:
-    """Builds a behavior tree task to move the robot tool to a target frame."""
+    """Builds a behavior tree task to move the robot tool to a target frame or object."""
     raise NotImplementedError
 
   @abc.abstractmethod
@@ -107,27 +113,48 @@ class UrRobot(RobotInterface):
 
   def build_move_cartesian_task(
       self,
-      target_frame_name: str,
+      target_frame_name: Optional[str] = None,
       target_object_name: str = "root",
       motion_type: str = "ANY",
+      allow_tool_z_rotation: bool = False,
+      cone_opening_half_angle: float = 0.0,
+      moving_frame_offset: Optional[tuple[float, float, float]] = None,
+      target_frame_offset: Optional[
+          tuple[tuple[float, float, float], tuple[float, float, float, float]]
+      ] = None,
       name: Optional[str] = None,
   ) -> bt.Node:
-    """Builds an SBL move_robot Cartesian motion task aligning tool to target frame."""
-    task_name = name or f"Move to {target_frame_name} ({motion_type})"
+    """Builds an SBL move_robot Cartesian motion task aligning tool to target frame or object.
 
-    target_node_ref = object_world_refs_pb2.TransformNodeReference(
-        by_name=object_world_refs_pb2.TransformNodeReferenceByName(
-            frame=object_world_refs_pb2.FrameReferenceByName(
-                object_name=target_object_name,
-                frame_name=target_frame_name,
-            )
-        )
+    When `allow_tool_z_rotation=True`, replaces strict 6-DOF PoseEquality with a
+    ConstraintIntersection of PositionEquality and RotationCone along tool +Z.
+    This frees the wrist rotation around the approach axis, significantly
+    expanding the feasible IK solution space.
+    """
+    target_desc = (
+        f"{target_object_name}/{target_frame_name}"
+        if target_frame_name
+        else target_object_name
     )
+    task_name = name or f"Move to {target_desc} ({motion_type})"
 
-    cartesian_pose = geometric_constraints_pb2.PoseEquality(
-        moving_frame=self.tool_frame_reference,
-        target_frame=target_node_ref,
-    )
+    if target_frame_name:
+      target_node_ref = object_world_refs_pb2.TransformNodeReference(
+          by_name=object_world_refs_pb2.TransformNodeReferenceByName(
+              frame=object_world_refs_pb2.FrameReferenceByName(
+                  object_name=target_object_name,
+                  frame_name=target_frame_name,
+              )
+          )
+      )
+    else:
+      target_node_ref = object_world_refs_pb2.TransformNodeReference(
+          by_name=object_world_refs_pb2.TransformNodeReferenceByName(
+              object=object_world_refs_pb2.ObjectReferenceByName(
+                  object_name=target_object_name,
+              )
+          )
+      )
 
     if motion_type.upper() == "LINEAR":
       motion_type_enum = (
@@ -142,13 +169,79 @@ class UrRobot(RobotInterface):
           self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType.ANY
       )
 
-    skill_action = self._move_robot_skill(
-        motion_segments=[
-            self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
-                cartesian_pose=cartesian_pose,
-                motion_type=motion_type_enum,
+    if allow_tool_z_rotation:
+      pos_equality = geometric_constraints_pb2.PositionEquality(
+          moving_frame=self.tool_frame_reference,
+          target_frame=target_node_ref,
+      )
+      if moving_frame_offset is not None:
+        pos_equality.moving_frame_offset.CopyFrom(
+            point_pb2.Point(
+                x=moving_frame_offset[0],
+                y=moving_frame_offset[1],
+                z=moving_frame_offset[2],
             )
-        ],
+        )
+      if target_frame_offset is not None:
+        pos, _ = target_frame_offset
+        pos_equality.target_frame_offset.CopyFrom(
+            point_pb2.Point(x=pos[0], y=pos[1], z=pos[2])
+        )
+
+      # Constrain tool +Z to point vertically downwards (-Z in root) into the table,
+      # freeing rotation around the tool approach axis.
+      rot_cone_target_frame = object_world_refs_pb2.TransformNodeReference(
+          by_name=object_world_refs_pb2.TransformNodeReferenceByName(
+              object=object_world_refs_pb2.ObjectReferenceByName(
+                  object_name="root",
+              )
+          )
+      )
+      rot_cone_target_axis = vector3_pb2.Vector3(x=0.0, y=0.0, z=-1.0)
+
+      rot_cone = geometric_constraints_pb2.RotationCone(
+          moving_frame=self.tool_frame_reference,
+          target_frame=rot_cone_target_frame,
+          moving_axis=vector3_pb2.Vector3(x=0.0, y=0.0, z=1.0),
+          target_axis=rot_cone_target_axis,
+          cone_opening_half_angle=cone_opening_half_angle,
+      )
+      constraint_intersection = geometric_constraints_pb2.ConstraintIntersection(
+          constraints=[
+              geometric_constraints_pb2.GeometricConstraint(
+                  position_equality=pos_equality
+              ),
+              geometric_constraints_pb2.GeometricConstraint(
+                  rotation_cone=rot_cone
+              ),
+          ]
+      )
+      motion_segment = self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
+          constraint_intersection=constraint_intersection,
+          motion_type=motion_type_enum,
+      )
+    else:
+      cartesian_pose = geometric_constraints_pb2.PoseEquality(
+          moving_frame=self.tool_frame_reference,
+          target_frame=target_node_ref,
+      )
+      if target_frame_offset is not None:
+        pos, quat = target_frame_offset
+        cartesian_pose.target_frame_offset.CopyFrom(
+            pose_pb2.Pose(
+                position=point_pb2.Point(x=pos[0], y=pos[1], z=pos[2]),
+                orientation=quaternion_pb2.Quaternion(
+                    x=quat[0], y=quat[1], z=quat[2], w=quat[3]
+                ),
+            )
+        )
+      motion_segment = self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
+          cartesian_pose=cartesian_pose,
+          motion_type=motion_type_enum,
+      )
+
+    skill_action = self._move_robot_skill(
+        motion_segments=[motion_segment],
         arm_part=self.arm_part,
     )
     return bt.Task(action=skill_action, name=task_name)
@@ -193,14 +286,25 @@ class MockRobot(RobotInterface):
 
   def build_move_cartesian_task(
       self,
-      target_frame_name: str,
+      target_frame_name: Optional[str] = None,
       target_object_name: str = "root",
       motion_type: str = "ANY",
+      allow_tool_z_rotation: bool = False,
+      cone_opening_half_angle: float = 0.0,
+      moving_frame_offset: Optional[tuple[float, float, float]] = None,
+      target_frame_offset: Optional[
+          tuple[tuple[float, float, float], tuple[float, float, float, float]]
+      ] = None,
       name: Optional[str] = None,
   ) -> bt.Node:
-    task_name = name or f"Mock Move to {target_frame_name} ({motion_type})"
+    target_desc = (
+        f"{target_object_name}/{target_frame_name}"
+        if target_frame_name
+        else target_object_name
+    )
+    task_name = name or f"Mock Move to {target_desc} ({motion_type})"
     self.executed_commands.append(
-        f"move_cartesian:{target_object_name}/{target_frame_name}:{motion_type}"
+        f"move_cartesian:{target_desc}:{motion_type}:z_rot={allow_tool_z_rotation}"
     )
     return bt.Sequence([])
 
