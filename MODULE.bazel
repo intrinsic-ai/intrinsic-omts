@@ -19,6 +19,17 @@ archive_override(
     url = "https://github.com/FilipposSot/Universal_Robots_Client_Library/archive/refs/tags/2.7.0-alpha-acceleration.0.tar.gz",
 )
 
+archive_override(
+    module_name = "gloop",
+    patch_strip = 1,
+    patches = ["//bazel/patches:gloop.patch"],
+    sha256 = "c4a32e9b582b2155dffa56867792a9d4d4931aa5575ade505a7672fce31d354d",
+    strip_prefix = "gloop-20260828.0",
+    urls = [
+        "https://github.com/abseil/gloop/releases/download/20260828.0/gloop-20260828.0.tar.gz",
+    ],
+)
+
 bazel_dep(name = "bazel_skylib", version = "1.9.0")
 bazel_dep(name = "abseil-py", version = "2.1.0", repo_name = "com_google_absl_py")
 bazel_dep(name = "grpc", version = "1.69.0", repo_name = "com_github_grpc_grpc")
@@ -26,6 +37,10 @@ bazel_dep(name = "rules_cuda", version = "0.3.0")
 bazel_dep(name = "toolchains_llvm", version = "1.6.0")
 bazel_dep(name = "googleapis", version = "0.0.0-20260728-b8486a2f", repo_name = "com_google_googleapis")
 bazel_dep(name = "protobuf", version = "32.1", repo_name = "com_google_protobuf")
+single_version_override(
+    module_name = "protobuf",
+    version = "32.1",
+)
 
 cuda = use_extension("@rules_cuda//cuda:extensions.bzl", "toolchain")
 cuda.redist_json(

@@ -1,0 +1,342 @@
+# Copyright 2026 Intrinsic Innovation LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+diff -u -r gloop_orig/BUILD gloop_mod/BUILD
+--- gloop_orig/BUILD	1970-01-01 00:00:00.000000000 +0000
++++ gloop_mod/BUILD	2026-09-01 20:04:53.558265790 +0000
+@@ -0,0 +1,29 @@
++# Copyright 2026 Google LLC.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++load("@rules_license//rules:license.bzl", "license")
++
++package(
++    default_applicable_licenses = [":license"],
++    default_visibility = ["//visibility:public"],
++)
++
++license(
++    name = "license",
++    package_name = "gloop",
++)
++
++licenses(["notice"])
++
++exports_files(["LICENSE"])
+diff -u -r gloop_orig/gloop/BUILD gloop_mod/gloop/BUILD
+--- gloop_orig/gloop/BUILD	2026-08-29 04:20:20.000000000 +0000
++++ gloop_mod/gloop/BUILD	2026-09-01 20:04:53.558470910 +0000
+@@ -17,22 +17,18 @@
+ 
+ load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+ load("@rules_cc//cc:cc_library.bzl", "cc_library")
+-load("@rules_license//rules:license.bzl", "license")
+ 
+ package(
+-    default_applicable_licenses = [":license"],
++    default_applicable_licenses = ["//:license"],
+     default_visibility = ["//visibility:private"],
+ )
+ 
+-license(
++alias(
+     name = "license",
+-    package_name = "gloop",
++    actual = "//:license",
++    visibility = ["//visibility:public"],
+ )
+ 
+-licenses(["notice"])
+-
+-exports_files(["LICENSE"])
+-
+ cc_library(
+     name = "enforce_gloop_support",
+     hdrs = ["enforce_gloop_support.h"],
+diff -u -r gloop_orig/gloop/enforce_gloop_support.h gloop_mod/gloop/enforce_gloop_support.h
+--- gloop_orig/gloop/enforce_gloop_support.h	2026-08-29 04:20:20.000000000 +0000
++++ gloop_mod/gloop/enforce_gloop_support.h	2026-09-01 20:04:53.555857760 +0000
+@@ -18,95 +18,6 @@
+ #ifndef THIRD_PARTY_GLOOP_ENFORCE_GLOOP_SUPPORT_H_
+ #define THIRD_PARTY_GLOOP_ENFORCE_GLOOP_SUPPORT_H_
+ 
+-#include <cstddef>
+-
+-#ifdef __linux__
+-#include <linux/version.h>
+-#endif
+-
+-/*
+- * Test compiler support.
+- */
+-
+-#if !defined(__clang__)
+-#error "Gloop requires Clang."
+-#endif
+-
+-#if !defined(__clang_major__) || __clang_major__ < 21
+-#error "Gloop requires Clang 21 or later."
+-#endif
+-
+-#if !defined(__cplusplus) || __cplusplus < 202002L
+-#error "Gloop requires C++20 or later."
+-#endif
+-
+-// Explicitly use some C++20 syntax, to prevent teams from adding
+-// flags like `-Wc++17-compat`, which are not supported and which will
+-// lead to breakages as more C++20 syntax gets added to common
+-// library headers.
+-namespace gloop::requires_cpp20_or_later {
+-consteval void requires_cpp20() {}
+-}  // namespace gloop::requires_cpp20_or_later
+-
+-/*
+- * Test platform support.
+- */
+-
+-#if !defined(__linux__)
+-#error "Gloop only supports Linux."
+-#endif  // !defined(__linux__)
+-
+-#if defined(__ANDROID__)
+-#error "Gloop doesn't support Android."
+-#endif  // !defined(__ANDROID__)
+-
+-static_assert(sizeof(void*) == 8, "Gloop only supports 64-bit platforms.");
+-
+-#if !defined(__x86_64__) && !defined(__aarch64__)
+-#error "Gloop only supports x86-64 and ARM64."
+-#endif
+-
+-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
+-#error "Gloop requires Linux kernel 6.6 or later."
+-#endif
+-
+-/*
+- * Test toolchain support.
+- */
+-
+-#if defined(__GLIBCXX__) && \
+-    !defined(GLOOP_I_ACKNOWLEDGE_THAT_GLOOP_DOES_NOT_SUPPORT_LIBSTDCXX)
+-#error "Gloop does not support libstdc++."
+-#elif defined(__GLIBCXX__)
+-// TODO Remove this once we decide on whether to support libstdc++.
+-#define GLOOP_UNSUPPORTED_LIBSTDCXX 1
+-#endif
+-
+-#ifndef GLOOP_I_ACKNOWLEDGE_THAT_GLOOP_DOES_NOT_SUPPORT_LIBSTDCXX
+-#if !defined(_LIBCPP_VERSION) || _LIBCPP_VERSION < 210000
+-#error "Gloop requires libc++ 21 or later."
+-#endif
+-#endif
+-
+-#if !defined(__GLIBC__) || !defined(__GLIBC_MINOR__) || __GLIBC__ < 2 || \
+-    (__GLIBC__ == 2 && __GLIBC_MINOR__ < 39)
+-#error "Gloop requires glibc 2.39 or later."
+-#endif
+-
+-/*
+- * Test compiler flags.
+- */
+-
+-static_assert((char)-1 > 0,
+-              "Gloop does not support signed chars (use -funsigned-char)");
+-
+-#if defined(__EXCEPTIONS) || defined(__cpp_exceptions)
+-#error "Gloop does not support exceptions (use -fno-exceptions)"
+-#endif
+-
+-// Convenience macro for checking if we're building for open source.
+-// This is useful for controlling test behavior where we don't actually need to
+-// worry about scrubbing.
+ #define GLOOP_OPENSOURCE 1
+ 
+ #endif  // THIRD_PARTY_GLOOP_ENFORCE_GLOOP_SUPPORT_H_
+diff -u -r gloop_orig/gloop/util/gtl/associative_view_internal.h gloop_mod/gloop/util/gtl/associative_view_internal.h
+--- gloop_orig/gloop/util/gtl/associative_view_internal.h	2026-08-29 04:20:20.000000000 +0000
++++ gloop_mod/gloop/util/gtl/associative_view_internal.h	2026-09-01 20:04:53.556167740 +0000
+@@ -33,7 +33,7 @@
+ 
+ #include "absl/base/attributes.h"
+ #include "absl/base/optimization.h"
+-#include "absl/base/throw_delegate.h"
++#include "absl/base/internal/throw_delegate.h"
+ #include "absl/strings/cord.h"
+ #include "absl/strings/string_view.h"
+ #include "gloop/util/gtl/requires.h"
+@@ -158,7 +158,7 @@
+ const mapped_type& AtFunction(const View& v, const Key& key) {
+   auto it = v.find(key);
+   if (ABSL_PREDICT_FALSE(it == v.end())) {
+-    absl::ThrowStdOutOfRange("MapView::at failed bounds check");
++    absl::base_internal::ThrowStdOutOfRange("MapView::at failed bounds check");
+   }
+   return it->second;
+ }
+diff -u -r gloop_orig/gloop/util/gtl/BUILD gloop_mod/gloop/util/gtl/BUILD
+--- gloop_orig/gloop/util/gtl/BUILD	2026-08-29 04:20:20.000000000 +0000
++++ gloop_mod/gloop/util/gtl/BUILD	2026-09-01 20:04:53.556482690 +0000
+@@ -30,7 +30,6 @@
+         ":requires",
+         "//gloop:enforce_gloop_support",
+         "@abseil-cpp//absl/base:core_headers",
+-        "@abseil-cpp//absl/base:throw_delegate",
+         "@abseil-cpp//absl/strings:cord",
+         "@abseil-cpp//absl/strings:string_view",
+     ],
+@@ -185,7 +184,6 @@
+         ":iterator_adaptors",
+         ":unchecked_tags",
+         "//gloop:enforce_gloop_support",
+-        "@abseil-cpp//absl/base:throw_delegate",
+     ],
+ )
+ 
+@@ -390,7 +388,6 @@
+         ":requires",
+         "//gloop:enforce_gloop_support",
+         "@abseil-cpp//absl/base:core_headers",
+-        "@abseil-cpp//absl/base:throw_delegate",
+         "@abseil-cpp//absl/meta:type_traits",
+     ],
+ )
+@@ -479,7 +476,6 @@
+     hdrs = ["requires.h"],
+     deps = [
+         "//gloop:enforce_gloop_support",
+-        "@abseil-cpp//absl/meta:requires",
+     ],
+ )
+ 
+diff -u -r gloop_orig/gloop/util/gtl/flat_map.h gloop_mod/gloop/util/gtl/flat_map.h
+--- gloop_orig/gloop/util/gtl/flat_map.h	2026-08-29 04:20:20.000000000 +0000
++++ gloop_mod/gloop/util/gtl/flat_map.h	2026-09-01 20:04:53.556784650 +0000
+@@ -66,7 +66,7 @@
+ #include <utility>
+ #include <vector>
+ 
+-#include "absl/base/throw_delegate.h"
++#include "absl/base/internal/throw_delegate.h"
+ #include "gloop/util/gtl/flat_internal.h"
+ #include "gloop/util/gtl/heterogeneous_lookup.h"
+ #include "gloop/util/gtl/iterator_adaptors.h"
+@@ -233,13 +233,13 @@
+   template <typename K = key_type>
+   constexpr mapped_type& at(const key_arg<K>& k) {
+     auto it = find(k);
+-    if (it == end()) absl::ThrowStdOutOfRange("flat_map::at");
++    if (it == end()) absl::base_internal::ThrowStdOutOfRange("flat_map::at");
+     return it->second;
+   }
+   template <typename K = key_type>
+   constexpr const mapped_type& at(const key_arg<K>& k) const {
+     auto it = find(k);
+-    if (it == end()) absl::ThrowStdOutOfRange("flat_map::at");
++    if (it == end()) absl::base_internal::ThrowStdOutOfRange("flat_map::at");
+     return it->second;
+   }
+ 
+diff -u -r gloop_orig/gloop/util/gtl/iterator_adaptors.h gloop_mod/gloop/util/gtl/iterator_adaptors.h
+--- gloop_orig/gloop/util/gtl/iterator_adaptors.h	2026-08-29 04:20:20.000000000 +0000
++++ gloop_mod/gloop/util/gtl/iterator_adaptors.h	2026-09-01 20:04:53.557083610 +0000
+@@ -32,7 +32,6 @@
+ 
+ #include "absl/base/attributes.h"
+ #include "absl/base/optimization.h"
+-#include "absl/base/throw_delegate.h"
+ #include "absl/meta/type_traits.h"
+ #include "gloop/util/gtl/compressed_tuple.h"
+ #include "gloop/util/gtl/requires.h"
+@@ -601,7 +600,7 @@
+   constexpr std::enable_if_t<!is_mutable && has_subscript, const_reference> at(
+       size_type i) const {
+     if (ABSL_PREDICT_FALSE(i >= size())) {
+-      absl::ThrowStdOutOfRange(
++      absl::base_internal::ThrowStdOutOfRange(
+           "`container_view::at(size_type)` failed bounds check");
+     }
+     return begin()[i];
+@@ -632,7 +631,7 @@
+   constexpr std::enable_if_t<is_mutable && has_subscript, reference> at(
+       size_type i) const {
+     if (ABSL_PREDICT_FALSE(i >= size())) {
+-      absl::ThrowStdOutOfRange(
++      absl::base_internal::ThrowStdOutOfRange(
+           "`container_view::at(size_type)` failed bounds check");
+     }
+     return begin()[i];
+diff -u -r gloop_orig/gloop/util/gtl/requires.h gloop_mod/gloop/util/gtl/requires.h
+--- gloop_orig/gloop/util/gtl/requires.h	2026-08-29 04:20:20.000000000 +0000
++++ gloop_mod/gloop/util/gtl/requires.h	2026-09-01 20:04:53.557424730 +0000
+@@ -21,7 +21,7 @@
+ #ifndef THIRD_PARTY_GLOOP_UTIL_GTL_REQUIRES_H_
+ #define THIRD_PARTY_GLOOP_UTIL_GTL_REQUIRES_H_
+ 
+-#include "absl/meta/internal/requires.h"
++#include <type_traits>
+ 
+ namespace gtl {
+ 
+@@ -58,8 +58,8 @@
+ //              [] (auto&& v) -> decltype(<expr>) {})>>
+ //
+ template <typename... T, typename F>
+-constexpr bool Requires(F f) {
+-  return absl::meta_internal::Requires<T...>(f);
++constexpr bool Requires(F) {
++  return std::is_invocable_v<F, T...>;
+ }
+ 
+ }  // namespace gtl
+diff -u -r gloop_orig/MODULE.bazel gloop_mod/MODULE.bazel
+--- gloop_orig/MODULE.bazel	2026-08-29 04:20:20.000000000 +0000
++++ gloop_mod/MODULE.bazel	2026-09-01 20:04:53.557735380 +0000
+@@ -3,9 +3,9 @@
+     bazel_compatibility = [">=8.0.0"],
+ )
+ 
+-bazel_dep(name = "abseil-cpp", version = "20260817.0")
+-bazel_dep(name = "protobuf", version = "36.0.bcr.1")
+-bazel_dep(name = "tcmalloc", version = "0.0.0-20260818-15db23d")
++bazel_dep(name = "abseil-cpp", version = "20250814.2")
++bazel_dep(name = "protobuf", version = "32.1")
++bazel_dep(name = "tcmalloc", version = "0.0.0-20250927-12f2552")
+ bazel_dep(name = "platforms", version = "1.1.0")
+ bazel_dep(name = "bazel_skylib", version = "1.9.0")
+ bazel_dep(name = "rules_license", version = "1.0.0")
+@@ -14,11 +14,11 @@
+ bazel_dep(name = "googletest", version = "1.17.0.bcr.2")
+ bazel_dep(name = "zlib", version = "1.3.2")
+ bazel_dep(name = "boringssl", version = "0.20260413.0")
+-bazel_dep(name = "re2", version = "2025-11-05.bcr.1")
++bazel_dep(name = "re2", version = "2024-07-02.bcr.1")
+ bazel_dep(name = "googleapis", version = "0.0.0-20260716-3e4ab771")
+ 
+ # grpc provides Starlark rules for compiling StatusProto related code.
+-bazel_dep(name = "grpc", version = "1.80.0")
++bazel_dep(name = "grpc", version = "1.74.0")
+ 
+ cc_configure = use_extension("@rules_cc//cc:extensions.bzl", "cc_configure_extension")
+ use_repo(cc_configure, "local_config_cc")
