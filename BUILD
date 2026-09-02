@@ -107,6 +107,17 @@ alias(
     actual = "//src:omts_app",
 )
 
+alias(
+    name = "omts_pp_app",
+    actual = "//src:omts_pp_app",
+)
+
+alias(
+    name = "pick_and_place_building_block",
+    actual = "//src:pick_and_place_building_block",
+)
+
+
 intrinsic_asset_instance(
     name = "enclosure",
     asset = select({

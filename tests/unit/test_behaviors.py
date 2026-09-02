@@ -1,6 +1,7 @@
 """Unit tests for Behavior Tree construction and structure."""
 
 from absl.testing import absltest
+from src.behaviors.building_block_bt import build_building_block_pick_place_tree
 from src.behaviors.load_machine import build_load_machine_subtree
 from src.behaviors.machine_tending_bt import build_machine_tending_behavior_tree
 from src.behaviors.pick import build_pick_from_infeed_subtree
@@ -133,6 +134,105 @@ class BehaviorsTest(absltest.TestCase):
     # 4: Retract Arm to pre_grasp (LINEAR)
     # 5: Return to view (ANY)
     self.assertEqual(len(return_subtree.children), 5)
+
+  def test_build_building_block_pick_place_tree(self):
+    tree = build_building_block_pick_place_tree(
+        robot=self.robot,
+        gripper=self.gripper,
+        parent_object="root",
+        pregrasp_frame_name="dynamic_pregrasp",
+        grasp_frame_name="dynamic_grasp",
+        preplace_frame_name="dynamic_preplace",
+        place_frame_name="dynamic_place",
+        view_frame_name="view",
+    )
+
+    self.assertIsNotNone(tree)
+    self.assertEqual(tree.name, "Building Block Pick & Place Cycle")
+    self.assertIsNotNone(tree.root)
+    # Sequence of 10 steps:
+    # 1: Move to Pre-Grasp (ANY)
+    # 2: Open Gripper (Prepare Grasp)
+    # 3: Move to Grasp (LINEAR)
+    # 4: Close Gripper (Grasp Block)
+    # 5: Linear Retract Up (LINEAR)
+    # 6: Transit to Pre-Place (ANY)
+    # 7: Move to Place (LINEAR)
+    # 8: Open Gripper (Release Block)
+    # 9: Linear Retract from Place (LINEAR)
+    # 10: Return to View (ANY)
+    self.assertEqual(len(tree.root.children), 10)
+    self.assertEqual(
+        self.robot.executed_commands,
+        [
+            "move_cartesian:root/dynamic_pregrasp:ANY:z_rot=False",
+            "move_cartesian:root/dynamic_grasp:LINEAR:z_rot=False",
+            "move_cartesian:root/dynamic_pregrasp:LINEAR:z_rot=False",
+            "move_cartesian:root/dynamic_preplace:ANY:z_rot=False",
+            "move_cartesian:root/dynamic_place:LINEAR:z_rot=False",
+            "move_cartesian:root/dynamic_preplace:LINEAR:z_rot=False",
+            "move_cartesian:root/view:ANY:z_rot=False",
+        ],
+    )
+    self.assertEqual(self.gripper.command_log, ["open", "close", "open"])
+
+  def test_build_building_block_pick_place_tree_with_vision(self):
+    tree = build_building_block_pick_place_tree(
+        robot=self.robot,
+        gripper=self.gripper,
+        vision=self.vision,
+        target_object="ai.intrinsic.raw_stock_2x3x5",
+        pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator",
+        parent_object="root",
+        pregrasp_frame_name="dynamic_pregrasp",
+        grasp_frame_name="dynamic_grasp",
+        preplace_frame_name="dynamic_preplace",
+        place_frame_name="dynamic_place",
+        view_frame_name="view",
+    )
+
+    self.assertIsNotNone(tree)
+    self.assertEqual(tree.name, "Building Block Pick & Place Cycle")
+    self.assertIsNotNone(tree.root)
+    # Sequence of 11 steps:
+    # 1: Move to Pre-Grasp (ANY)
+    # 2: Estimate & Update Pose (ai.intrinsic.raw_stock_2x3x5)
+    # 3: Open Gripper (Prepare Grasp)
+    # 4: Move to Grasp (LINEAR)
+    # 5: Close Gripper (Grasp Block)
+    # 6: Linear Retract Up (LINEAR)
+    # 7: Transit to Pre-Place (ANY)
+    # 8: Move to Place (LINEAR)
+    # 9: Open Gripper (Release Block)
+    # 10: Linear Retract from Place (LINEAR)
+    # 11: Return to View (ANY)
+    self.assertEqual(len(tree.root.children), 11)
+    self.assertEqual(
+        tree.root.children[1].name,
+        "2. Estimate & Update Pose (ai.intrinsic.raw_stock_2x3x5)",
+    )
+    self.assertEqual(
+        tree.root.children[2].name,
+        "3. Open Gripper (Prepare Grasp)",
+    )
+    self.assertEqual(
+        tree.root.children[3].name,
+        "4. Move to Grasp (root/dynamic_grasp)",
+    )
+    self.assertEqual(self.vision.pipeline_count, 1)
+    self.assertEqual(
+        self.robot.executed_commands,
+        [
+            "move_cartesian:root/dynamic_pregrasp:ANY:z_rot=False",
+            "move_cartesian:root/dynamic_grasp:LINEAR:z_rot=False",
+            "move_cartesian:root/dynamic_pregrasp:LINEAR:z_rot=False",
+            "move_cartesian:root/dynamic_preplace:ANY:z_rot=False",
+            "move_cartesian:root/dynamic_place:LINEAR:z_rot=False",
+            "move_cartesian:root/dynamic_preplace:LINEAR:z_rot=False",
+            "move_cartesian:root/view:ANY:z_rot=False",
+        ],
+    )
+    self.assertEqual(self.gripper.command_log, ["open", "close", "open"])
 
 
 if __name__ == "__main__":

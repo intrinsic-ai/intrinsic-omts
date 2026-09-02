@@ -55,6 +55,7 @@ py_test(
     srcs = ["test_behaviors.py"],
     srcs_version = "PY3",
     deps = [
+        "//src/behaviors:building_block_bt",
         "//src/behaviors:machine_tending_bt",
         "//src/core:infeed",
         "//src/core:workpiece",
@@ -65,6 +66,7 @@ py_test(
         "@com_google_absl_py//absl/testing:absltest",
     ],
 )
+
 
 py_test(
     name = "test_move_to_frame",
@@ -148,6 +150,22 @@ py_test(
         "@ioc//google3/intrinsic/perception/skills/calibration:calibration_evaluation_py_pb2",
     ],
 )
+
+py_test(
+    name = "test_pick_and_place_building_block",
+    srcs = ["test_pick_and_place_building_block.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//src:pick_and_place_building_block_lib",
+        "//src/behaviors:building_block_bt",
+        "//src/core:types",
+        "//src/hardware:gripper",
+        "//src/hardware:robot",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
+    ],
+)
+
 
 
 
