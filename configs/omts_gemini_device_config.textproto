@@ -5,4 +5,8 @@
       driver_type:  "orbbec"
     }
   }
+  camera_settings: {
+    name: "exposure"
+    float_value: 0.001
+  }
 }
