@@ -113,4 +113,41 @@ py_test(
     ],
 )
 
+py_test(
+    name = "test_calibrate_camera",
+    srcs = ["test_calibrate_camera.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tools/calibration:calibrate_camera_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//google3/intrinsic/perception/public/proto/v1:camera_to_robot_calibration_py_pb2",
+        "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
+    ],
+)
+
+py_test(
+    name = "test_update_robot_kinematics",
+    srcs = ["test_update_robot_kinematics.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tools/calibration:update_robot_kinematics_lib",
+        "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//google3/intrinsic/world/service/robot_calibration:robot_update_service_py_pb2",
+        "@ioc//google3/intrinsic/world/service/robot_calibration:robot_update_service_py_pb2_grpc",
+    ],
+)
+
+py_test(
+    name = "test_evaluate_calibration",
+    srcs = ["test_evaluate_calibration.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tools/calibration:evaluate_calibration_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//google3/intrinsic/perception/skills/calibration:calibration_evaluation_py_pb2",
+    ],
+)
+
+
 
