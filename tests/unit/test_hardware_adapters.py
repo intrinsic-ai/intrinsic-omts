@@ -1,7 +1,7 @@
-"""Unit tests for Mock hardware adapters and interfaces."""
-
+from unittest import mock
 from absl.testing import absltest
-from src.hardware.gripper import MockGripper
+from intrinsic.solutions import behavior_tree as bt
+from src.hardware.gripper import DioGripper, MockGripper, RobotiqGripper
 from src.hardware.machine import MockCncMachine
 from src.hardware.robot import MockRobot
 from src.hardware.vision import MockVision
@@ -24,6 +24,84 @@ class HardwareAdaptersTest(absltest.TestCase):
     gripper.build_close_task()
     self.assertEqual(gripper.state, "closed")
     self.assertEqual(gripper.command_log, ["open", "close"])
+
+  def test_dio_gripper(self):
+    mock_solution = mock.MagicMock()
+    dio_set_mock = mock.MagicMock()
+    dio_set_mock.return_value = bt.PythonScript(function_body="pass")
+    mock_solution.skills.ai.intrinsic.dio_set_output = dio_set_mock
+
+    gripper = DioGripper(
+        solution=mock_solution,
+        open_pin=0,
+        close_pin=1,
+        device_name="ur_module",
+    )
+
+    open_task = gripper.build_open_task()
+    self.assertEqual(open_task.name, "Open Gripper (DIO)")
+    dio_set_mock.assert_called_with(pin=0, state=True, device_name="ur_module")
+
+    close_task = gripper.build_close_task()
+    self.assertEqual(close_task.name, "Close Gripper (DIO)")
+    dio_set_mock.assert_called_with(pin=1, state=True, device_name="ur_module")
+
+  def test_robotiq_gripper_defaults(self):
+    mock_solution = mock.MagicMock()
+    gripper_cmd_mock = mock.MagicMock()
+    gripper_cmd_mock.return_value = bt.PythonScript(function_body="pass")
+    mock_joint_state_cls = mock.MagicMock()
+    gripper_cmd_mock.ai.intrinsic.JointState = mock_joint_state_cls
+    mock_solution.skills.ai.intrinsic.gripper_cmd_skill = gripper_cmd_mock
+
+    gripper = RobotiqGripper(solution=mock_solution)
+
+    open_task = gripper.build_open_task()
+    self.assertEqual(open_task.name, "Open Robotiq Gripper")
+    mock_joint_state_cls.assert_called_with(
+        name=["robotiq_hande_left_finger_joint"],
+        position=[0.0],
+    )
+    gripper_cmd_mock.assert_called_with(
+        command=mock_joint_state_cls.return_value
+    )
+
+    close_task = gripper.build_close_task()
+    self.assertEqual(close_task.name, "Close Robotiq Gripper")
+    mock_joint_state_cls.assert_called_with(
+        name=["robotiq_hande_left_finger_joint"],
+        position=[0.025],
+    )
+    gripper_cmd_mock.assert_called_with(
+        command=mock_joint_state_cls.return_value
+    )
+
+  def test_robotiq_gripper_custom_params(self):
+    mock_solution = mock.MagicMock()
+    gripper_cmd_mock = mock.MagicMock()
+    gripper_cmd_mock.return_value = bt.PythonScript(function_body="pass")
+    mock_joint_state_cls = mock.MagicMock()
+    gripper_cmd_mock.ai.intrinsic.JointState = mock_joint_state_cls
+    mock_solution.skills.ai.intrinsic.gripper_cmd_skill = gripper_cmd_mock
+
+    gripper = RobotiqGripper(
+        solution=mock_solution,
+        joint_name="custom_finger_joint",
+        open_position=0.005,
+        close_position=0.020,
+        action_name="/custom/action",
+    )
+
+    open_task = gripper.build_open_task(name="Custom Open")
+    self.assertEqual(open_task.name, "Custom Open")
+    mock_joint_state_cls.assert_called_with(
+        name=["custom_finger_joint"],
+        position=[0.005],
+    )
+    gripper_cmd_mock.assert_called_with(
+        command=mock_joint_state_cls.return_value,
+        action_name="/custom/action",
+    )
 
   def test_mock_cnc_machine(self):
     machine = MockCncMachine()

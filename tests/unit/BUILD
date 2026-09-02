@@ -46,6 +46,7 @@ py_test(
         "//src/hardware:robot",
         "//src/hardware:vision",
         "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//google3/intrinsic/solutions:behavior_tree",
     ],
 )
 
