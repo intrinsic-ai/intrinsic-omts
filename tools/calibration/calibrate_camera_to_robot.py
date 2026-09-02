@@ -8,6 +8,7 @@ from absl import app
 from absl import flags
 from google.protobuf import text_format
 
+from intrinsic.math.proto import pose_pb2
 from intrinsic.math.python import proto_conversion
 from intrinsic.perception.public.proto.v1 import camera_to_robot_calibration_pb2 as calibration_type_pb2
 from intrinsic.perception.skills.calibration import sample_calibration_poses_pb2
@@ -20,6 +21,9 @@ from intrinsic.world.public.proto import object_world_updates_pb2
 from intrinsic.world.python import object_world_ids
 
 # Command line input flags
+_ADDRESS = flags.DEFINE_string(
+    'address', 'localhost:17080', 'Solution address to connect to.'
+)
 _ROBOT = flags.DEFINE_string(
     'robot', 'icon', 'Robot / controller resource name in the workcell.'
 )
@@ -75,7 +79,7 @@ def main(argv) -> None:
     if not import_path:
       raise ValueError('An import waypoint file must be specified.')
 
-  solution = deployments.connect(address='localhost:17080')
+  solution = deployments.connect(address=_ADDRESS.value)
 
   executive = solution.executive
   skills = solution.skills
@@ -83,6 +87,7 @@ def main(argv) -> None:
 
   try:
     robot_ref = solution.resources[_ROBOT.value]
+
   except KeyError:
     raise ValueError(
         f"Robot '{_ROBOT.value}' not found in resources. Available resources:"
@@ -190,10 +195,8 @@ def main(argv) -> None:
       behavior_tree=bt.Sequence(children=calibration_children),
   )
 
-  print('Running behavior tree sequence via executive...')
   try:
-    executive.run(calibration)
-    print('Execution completed successfully.')
+    executive.run(calibration, silence_outputs=True)
   except execution.ExecutionFailedError as e:
     print('=== Execution Failed ===')
     print('Error message:', e)
@@ -291,10 +294,18 @@ def main(argv) -> None:
       scene_object = world.get_object(
           object_world_ids.WorldObjectName(camera_name)
       )
+      if _MOVING_CAMERA.value:
+        new_pose_proto = res.moving_camera_result_poses.flange_t_camera
+      else:
+        new_pose_proto = res.stationary_camera_result_poses.base_t_camera
+
+      a_t_b_pose = pose_pb2.Pose()
+      a_t_b_pose.ParseFromString(new_pose_proto.SerializeToString())
+
       update_request = object_world_updates_pb2.UpdateTransformRequest(
           node_a=scene_object.parent.transform_node_reference,
           node_b=scene_object.transform_node_reference,
-          a_t_b=proto_conversion.pose_to_proto(scene_object.parent_t_this),
+          a_t_b=a_t_b_pose,
           node_to_update=scene_object.transform_node_reference,
       )
 

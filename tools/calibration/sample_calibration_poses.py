@@ -4,13 +4,17 @@ import datetime
 import os
 import sys
 import termios
+import threading
+import time
 import tty
+from typing import Any, Optional
 
 from absl import app
 from absl import flags
 from google.protobuf import text_format
 import grpc
 
+from intrinsic.executive.proto import run_metadata_pb2
 from intrinsic.icon.proto import joint_space_pb2
 from intrinsic.icon.proto.v1 import service_pb2_grpc
 from intrinsic.icon.python import create_action_utils
@@ -26,6 +30,9 @@ from intrinsic.solutions import perception
 from intrinsic.util.grpc import connection
 
 # Command line input flags
+_ADDRESS = flags.DEFINE_string(
+    'address', 'localhost:17080', 'Solution address to connect to.'
+)
 _ROBOT = flags.DEFINE_string(
     'robot', 'icon', 'Robot / controller resource name in the workcell.'
 )
@@ -44,21 +51,21 @@ _MOVING_CAMERA = flags.DEFINE_bool(
 )
 _SAMPLE_BOX_HALFSIZE_X = flags.DEFINE_float(
     'sample_box_halfsize_x',
-    0.20,
+    0.15,
     'Sampling box half-size X dimension (meters).',
 )
 _SAMPLE_BOX_HALFSIZE_Y = flags.DEFINE_float(
     'sample_box_halfsize_y',
-    0.20,
+    0.15,
     'Sampling box half-size Y dimension (meters).',
 )
 _SAMPLE_BOX_HALFSIZE_Z = flags.DEFINE_float(
     'sample_box_halfsize_z',
-    0.20,
+    0.15,
     'Sampling box half-size Z dimension (meters).',
 )
 _RAND_ANGLE = flags.DEFINE_float(
-    'rand_angle', 10.0, 'Randomization angle in degrees.'
+    'rand_angle', 15.0, 'Randomization angle in degrees.'
 )
 _RAND_ROLL_ANGLE = flags.DEFINE_float(
     'rand_roll_angle', 45.0, 'Randomization roll angle in degrees.'
@@ -84,6 +91,105 @@ _EXPORT_WAYPOINTS_FILE = flags.DEFINE_string(
 _ICON_PORT = flags.DEFINE_integer(
     'icon_port', 17080, 'Local port mapped to ICON service via port-forward.'
 )
+_STREAM_CAMERA = flags.DEFINE_bool(
+    'stream_camera',
+    True,
+    'Whether to continuously trigger camera captures in the background to publish images to ROS topics during sampling.',
+)
+_STREAM_FPS = flags.DEFINE_float(
+    'stream_fps',
+    10.0,
+    'Target frame rate (FPS) for background camera streaming to ROS topics.',
+)
+
+
+class CameraStreamer:
+  """Background worker to continuously trigger camera captures and stream to ROS topics."""
+
+  def __init__(
+      self,
+      camera: object | None = None,
+      skills: Any | None = None,
+      executive: Any | None = None,
+      camera_ref: Any | None = None,
+      fps: float = 10.0,
+  ):
+    self._camera = camera
+    self._skills = skills
+    self._executive = executive
+    self._camera_ref = camera_ref
+    self._interval = 1.0 / max(fps, 0.1)
+    self._stop_event = threading.Event()
+    self._thread: threading.Thread | None = None
+    self._latest_capture: object | None = None
+    self._lock = threading.Lock()
+    self._capture_skill = None
+    if self._skills is not None and self._camera_ref is not None:
+      try:
+        self._capture_skill = self._skills.ai.intrinsic.capture_images(
+            camera=self._camera_ref
+        )
+      except Exception:
+        self._capture_skill = None
+
+  def start(self) -> None:
+    if self._thread is not None and self._thread.is_alive():
+      return
+    self._stop_event.clear()
+    self._thread = threading.Thread(
+        target=self._stream_loop, daemon=True, name='camera_streamer'
+    )
+    self._thread.start()
+
+  def stop(self) -> None:
+    if self._thread is not None:
+      self._stop_event.set()
+      self._thread.join(timeout=2.0)
+      self._thread = None
+
+  def __enter__(self):
+    self.start()
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    self.stop()
+
+  def get_latest_capture(self) -> object | None:
+    with self._lock:
+      return self._latest_capture
+
+  def trigger_capture(self) -> object | None:
+    """Explicitly triggers a single capture."""
+    try:
+      if self._camera is not None and hasattr(self._camera, 'capture'):
+        res = self._camera.capture()
+        with self._lock:
+          self._latest_capture = res
+        return res
+      elif self._capture_skill is not None and self._executive is not None:
+        self._executive.run(self._capture_skill, silence_outputs=True)
+    except Exception as e:
+      print(f'Warning: Capture trigger failed: {e}')
+    return None
+
+  def _stream_loop(self) -> None:
+    while not self._stop_event.is_set():
+      start_time = time.time()
+      try:
+        if self._camera is not None and hasattr(self._camera, 'capture'):
+          res = self._camera.capture()
+          with self._lock:
+            self._latest_capture = res
+        elif self._capture_skill is not None and self._executive is not None:
+          self._executive.run(self._capture_skill, silence_outputs=True)
+      except Exception:
+        # Suppress transient network/frame capture errors during background streaming
+        pass
+
+      elapsed = time.time() - start_time
+      sleep_time = self._interval - elapsed
+      if sleep_time > 0:
+        self._stop_event.wait(sleep_time)
 
 
 def get_key() -> str:
@@ -149,7 +255,8 @@ def run_manual_waypoint_loop(
     ndof: int | None,
     part_name: str | None,
     icon_client,
-    camera: perception.Camera | None = None,
+    camera: object | None = None,
+    streamer: CameraStreamer | None = None,
 ) -> None:
   """Runs the interactive loop to record waypoints or jog the robot."""
   print(
@@ -176,37 +283,43 @@ def run_manual_waypoint_loop(
       except Exception as e:
         print(f'Error reading robot pose: {e}')
 
-      if camera and _CAPTURE_IMAGES.value:
+      if (camera or streamer) and _CAPTURE_IMAGES.value:
         try:
-          print('Capturing images...')
-          capture_result = camera.capture()
-          for name, sensor_image in capture_result.sensor_images.items():
-            import numpy as np
-            from PIL import Image
+          capture_result = None
+          if streamer is not None:
+            capture_result = streamer.get_latest_capture()
+            if capture_result is None:
+              capture_result = streamer.trigger_capture()
+          elif camera is not None and hasattr(camera, 'capture'):
+            capture_result = camera.capture()
 
-            array = sensor_image.array
-            if array.dtype in (np.float32, np.float64):
-              array = np.nan_to_num(array, nan=0.0, posinf=0.0, neginf=0.0)
-              min_val = array.min()
-              max_val = array.max()
-              if max_val > min_val:
-                array = (array - min_val) / (max_val - min_val) * 255.0
+          if capture_result and hasattr(capture_result, 'sensor_images'):
+            for name, sensor_image in capture_result.sensor_images.items():
+              import numpy as np
+              from PIL import Image
+
+              array = sensor_image.array
+              if array.dtype in (np.float32, np.float64):
+                array = np.nan_to_num(array, nan=0.0, posinf=0.0, neginf=0.0)
+                min_val = array.min()
+                max_val = array.max()
+                if max_val > min_val:
+                  array = (array - min_val) / (max_val - min_val) * 255.0
+                else:
+                  array = np.zeros_like(array)
+                array = array.astype(np.uint8)
+
+              img = Image.fromarray(array)
+              timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+              filename = f'captured_image_{name}_{timestamp}.png'
+
+              workspace_dir = os.environ.get('BUILD_WORKSPACE_DIRECTORY')
+              if workspace_dir:
+                filepath = os.path.join(workspace_dir, filename)
               else:
-                array = np.zeros_like(array)
-              array = array.astype(np.uint8)
+                filepath = filename
 
-            img = Image.fromarray(array)
-            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')
-            filename = f'captured_image_{name}_{timestamp}.png'
-
-            workspace_dir = os.environ.get('BUILD_WORKSPACE_DIRECTORY')
-            if workspace_dir:
-              filepath = os.path.join(workspace_dir, filename)
-            else:
-              filepath = filename
-
-            img.save(filepath)
-            print(f'Saved captured image: {filepath}')
+              img.save(filepath)
         except Exception as e:
           print(f'Error capturing or saving image: {e}')
     elif user_input == 's':
@@ -322,9 +435,16 @@ def main(argv) -> None:
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
 
-  solution = deployments.connect(address='localhost:17080')
+  solution = deployments.connect(address=_ADDRESS.value)
 
   executive = solution.executive
+
+  if executive.has_operation:
+    op_state = executive.operation.metadata.operation_state
+    if op_state == run_metadata_pb2.RunMetadata.PREPARING:
+      print("Operation is in PREPARING state. Canceling...")
+      executive.cancel()
+
   skills = solution.skills
   world = solution.world
 
@@ -345,14 +465,15 @@ def main(argv) -> None:
     )
 
   camera = None
-  try:
-    cameras = perception.Cameras.for_solution(solution)
-    camera = cameras[_CAMERA.value]
-  except Exception as e:
-    print(
-        f'Warning: Failed to initialize camera client: {e}. Image capture on'
-        " 'r' will be unavailable."
-    )
+  if perception is not None:
+    try:
+      cameras = perception.Cameras.for_solution(solution)
+      camera = cameras[_CAMERA.value]
+    except Exception as e:
+      print(
+          f'Warning: Failed to initialize camera client: {e}. Image capture on'
+          " 'r' will be unavailable."
+      )
 
   calibration_object_ref = world.get_object(_CALIBRATION_OBJECT.value)
   if not calibration_object_ref:
@@ -361,165 +482,193 @@ def main(argv) -> None:
         ' world model.'
     )
 
-  waypoints = []
-  if _MANUAL_WAYPOINTS.value:
-    print('\n=== Manual Waypoint Collection ===')
-    # Initialize ICON client
-    icon_client = None
-    part_name = None
-    ndof = None
-    session_context = None
+  streamer = None
+  try:
+    waypoints = []
+    if _MANUAL_WAYPOINTS.value:
+      if _STREAM_CAMERA.value:
+        streamer = CameraStreamer(
+            camera=camera,
+            skills=skills,
+            executive=executive,
+            camera_ref=camera_ref,
+            fps=_STREAM_FPS.value,
+        )
+        streamer.start()
 
-    try:
-      print(f'\nConnecting to ICON on localhost:{_ICON_PORT.value}...')
-      icon_client = icon_api.Client.connect_with_params(
-          connection.ConnectionParams(f'localhost:{_ICON_PORT.value}', 'icon')
-      )
+      print('\n=== Manual Waypoint Collection ===')
+      # Initialize ICON client
+      icon_client = None
+      part_name = None
+      ndof = None
+      session_context = None
 
-      parts = icon_client.list_parts()
-      if not parts:
-        raise ValueError('No parts found on the ICON server.')
+      try:
+        print(f'\nConnecting to ICON on localhost:{_ICON_PORT.value}...')
+        icon_client = icon_api.Client.connect_with_params(
+            connection.ConnectionParams(f'localhost:{_ICON_PORT.value}', 'icon')
+        )
 
-      for part in parts:
-        if part == _ROBOT.value:
-          part_name = part
-          break
-      if part_name is None:
-        part_name = parts[1] if len(parts) > 1 else parts[0]
+        parts = icon_client.list_parts()
+        if not parts:
+          raise ValueError('No parts found on the ICON server.')
+
+        for part in parts:
+          if part == _ROBOT.value:
+            part_name = part
+            break
+        if part_name is None:
+          part_name = parts[1] if len(parts) > 1 else parts[0]
+          print(
+              f"Warning: Could not find part matching '{_ROBOT.value}'."
+              f" Using fallback part '{part_name}'."
+          )
+
+        part_configs = icon_client.get_config().part_configs
+        for config in part_configs:
+          if config.name == part_name:
+            if config.HasField('generic_config'):
+              ndof = config.generic_config.joint_position_config.num_joints
+              print(f"Part '{part_name}' has {ndof} DoFs.")
+            break
+        if ndof is None:
+          raise ValueError(
+              f"Could not retrieve configuration for part '{part_name}'."
+          )
+
         print(
-            f"Warning: Could not find part matching '{_ROBOT.value}'."
-            f" Using fallback part '{part_name}'."
+            f"Connected! Controlling part '{part_name}' with {ndof} joints.\n"
+        )
+        session_context = icon_client.start_session([part_name])
+      except Exception as e:
+        print(
+            f"Warning: Failed to initialize ICON client: {e}. Jogging ('j')"
+            ' will be unavailable.'
         )
 
-      part_configs = icon_client.get_config().part_configs
-      for config in part_configs:
-        if config.name == part_name:
-          if config.HasField('generic_config'):
-            ndof = config.generic_config.joint_position_config.num_joints
-            print(f"Part '{part_name}' has {ndof} DoFs.")
-          break
-      if ndof is None:
-        raise ValueError(
-            f"Could not retrieve configuration for part '{part_name}'."
-        )
-
-      print(
-          f"Connected! Controlling part '{part_name}' with {ndof} joints.\n"
-      )
-      session_context = icon_client.start_session([part_name])
-    except Exception as e:
-      print(
-          f"Warning: Failed to initialize ICON client: {e}. Jogging ('j')"
-          ' will be unavailable.'
-      )
-
-    if session_context:
-      with session_context as session:
+      if session_context:
+        with session_context as session:
+          run_manual_waypoint_loop(
+              world,
+              robot_ref,
+              waypoints,
+              session,
+              ndof,
+              part_name,
+              icon_client,
+              camera,
+              streamer,
+          )
+      else:
         run_manual_waypoint_loop(
             world,
             robot_ref,
             waypoints,
-            session,
-            ndof,
-            part_name,
-            icon_client,
+            None,
+            None,
+            None,
+            None,
             camera,
+            streamer,
         )
+
+      print(
+          'Completed manual waypoint collection. Total waypoints:'
+          f' {len(waypoints)}'
+      )
+      print('==================================\n')
     else:
-      run_manual_waypoint_loop(
-          world,
-          robot_ref,
-          waypoints,
-          None,
-          None,
-          None,
-          None,
-          camera,
-      )
-
-    print(
-        'Completed manual waypoint collection. Total waypoints:'
-        f' {len(waypoints)}'
-    )
-    print('==================================\n')
-  else:
-    # Use sample_calibration_poses_skill to sample automatically
-    if _MOVING_CAMERA.value:
-      calibration_type = (
-          calibration_type_pb2.CAMERA_TO_ROBOT_CALIBRATION_TYPE_MOVING_CAMERA
-      )
-    else:
-      calibration_type = (
-          calibration_type_pb2.CAMERA_TO_ROBOT_CALIBRATION_TYPE_STATIONARY_CAMERA
-      )
-
-    sample_calibration_poses_skill = skills.ai.intrinsic.sample_calibration_poses
-    rbp = sample_calibration_poses_skill.intrinsic_proto.skills.RandomizedBoxParams(
-        num_samples=_NUM_SAMPLES.value,
-        sample_box_halfsize=skills_pb2.VectorNdValue(
-            value=[
-                _SAMPLE_BOX_HALFSIZE_X.value,
-                _SAMPLE_BOX_HALFSIZE_Y.value,
-                _SAMPLE_BOX_HALFSIZE_Z.value,
-            ]
-        ),
-        rotation_randomization_angle_degrees=float(_RAND_ANGLE.value),
-        rotation_randomization_roll_angle_degrees=float(_RAND_ROLL_ANGLE.value),
-    )
-
-    sample_calibration_poses = sample_calibration_poses_skill(
-        calibration_type=calibration_type,
-        calibration_object=calibration_object_ref,
-        camera=camera_ref,
-        robot=robot_ref,
-        randomized_box_params=rbp,
-    )
-
-    print('Sampling calibration poses via executive...')
-    try:
-      executive.run(sample_calibration_poses)
-      res_proto = executive.get_value(sample_calibration_poses.result)
-      waypoints = list(res_proto.sample_calibration_poses_result)
-      print(f'Successfully sampled {len(waypoints)} calibration poses.')
-    except Exception as e:
-      print(f'Failed to sample calibration poses: {e}')
-      return
-
-  if waypoints:
-    if _EXPORT_WAYPOINTS_FILE.value:
-      export_path = _EXPORT_WAYPOINTS_FILE.value
-    else:
-      export_choice = read_input(
-          '\nDo you want to export the waypoints to a file? [y/n]: ',
-          ['y', 'n'],
-      )
-      if export_choice == 'y':
-        default_filename = f'waypoints_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.pbtxt'
-        export_path = input(
-            f'Enter file path to export [default: {default_filename}]: '
-        ).strip()
-        if not export_path:
-          export_path = default_filename
+      # Use sample_calibration_poses_skill to sample automatically
+      if _MOVING_CAMERA.value:
+        calibration_type = (
+            calibration_type_pb2.CAMERA_TO_ROBOT_CALIBRATION_TYPE_MOVING_CAMERA
+        )
       else:
-        export_path = None
-
-    if export_path:
-      try:
-        workspace_dir = os.environ.get('BUILD_WORKSPACE_DIRECTORY')
-        if workspace_dir and not os.path.isabs(export_path):
-          export_path = os.path.normpath(
-              os.path.join(workspace_dir, export_path)
-          )
-
-        result_proto = (
-            sample_calibration_poses_pb2.SampleCalibrationPosesResult()
+        calibration_type = (
+            calibration_type_pb2.CAMERA_TO_ROBOT_CALIBRATION_TYPE_STATIONARY_CAMERA
         )
-        result_proto.sample_calibration_poses_result.extend(waypoints)
-        with open(export_path, 'w') as f:
-          f.write(text_format.MessageToString(result_proto))
-        print(f'Successfully exported waypoints to {export_path}')
+
+      sample_calibration_poses_skill = (
+          skills.ai.intrinsic.sample_calibration_poses
+      )
+      rbp = sample_calibration_poses_skill.intrinsic_proto.skills.RandomizedBoxParams(
+          num_samples=_NUM_SAMPLES.value,
+          sample_box_halfsize=skills_pb2.VectorNdValue(
+              value=[
+                  _SAMPLE_BOX_HALFSIZE_X.value,
+                  _SAMPLE_BOX_HALFSIZE_Y.value,
+                  _SAMPLE_BOX_HALFSIZE_Z.value,
+              ]
+          ),
+          rotation_randomization_angle_degrees=float(_RAND_ANGLE.value),
+          rotation_randomization_roll_angle_degrees=float(_RAND_ROLL_ANGLE.value),
+      )
+
+      sample_calibration_poses = sample_calibration_poses_skill(
+          calibration_type=calibration_type,
+          calibration_object=calibration_object_ref,
+          camera=camera_ref,
+          robot=robot_ref,
+          randomized_box_params=rbp,
+      )
+
+      print('Sampling calibration poses via executive...')
+      try:
+        executive.run(sample_calibration_poses)
+        res_proto = executive.get_value(sample_calibration_poses.result)
+        waypoints = list(res_proto.sample_calibration_poses_result)
+        print(f'Successfully sampled {len(waypoints)} calibration poses.')
       except Exception as e:
-        print(f'Failed to export waypoints: {e}')
+        print(f'Failed to sample calibration poses: {e}')
+        try:
+          errors = executive.get_errors()
+          if errors and errors.errors:
+            print(f'{errors.summary}')
+        except Exception as err_e:
+          print(f'Could not fetch executive error details: {err_e}')
+        return
+
+    if waypoints:
+      if _EXPORT_WAYPOINTS_FILE.value:
+        export_path = _EXPORT_WAYPOINTS_FILE.value
+      else:
+        export_choice = read_input(
+            '\nDo you want to export the waypoints to a file? [y/n]: ',
+            ['y', 'n'],
+        )
+        if export_choice == 'y':
+          default_filename = f'waypoints_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.pbtxt'
+          export_path = input(
+              f'Enter file path to export [default: {default_filename}]: '
+          ).strip()
+          if not export_path:
+            export_path = default_filename
+        else:
+          export_path = None
+
+      if export_path:
+        try:
+          workspace_dir = os.environ.get('BUILD_WORKSPACE_DIRECTORY')
+          if workspace_dir and not os.path.isabs(export_path):
+            export_path = os.path.normpath(
+                os.path.join(workspace_dir, export_path)
+            )
+
+          result_proto = (
+              sample_calibration_poses_pb2.SampleCalibrationPosesResult()
+          )
+          for wp in waypoints:
+            result_proto.sample_calibration_poses_result.add().ParseFromString(
+                wp.SerializeToString()
+            )
+          with open(export_path, 'w') as f:
+            f.write(text_format.MessageToString(result_proto))
+          print(f'Successfully exported waypoints to {export_path}')
+        except Exception as e:
+          print(f'Failed to export waypoints: {e}')
+  finally:
+    if streamer is not None:
+      streamer.stop()
 
 
 if __name__ == '__main__':
