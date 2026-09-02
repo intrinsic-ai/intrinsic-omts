@@ -138,8 +138,8 @@ In [`src/hardware/vision.py`](../src/hardware/vision.py), configure `update_worl
 * `node_to_update`: `root/pre_grasp` (or `root/grasp`)
 
 SBL's world service automatically computes the world transform using the live robot kinematic tree:
-$$T_{\text{root}\to\text{pre\_grasp}} = T_{\text{root}\to\text{orbbec\_camera}} \cdot T_{\text{orbbec\_camera}\to\text{pre\_grasp}}$$
-No camera calibration matrices (`t_cam`, `r_mat`) are hardcoded in application code.
+$$T_{\text{root} \to \text{target}} = T_{\text{root} \to \text{camera}} \cdot T_{\text{camera} \to \text{target}}$$
+where `target` is `root/pre_grasp` or `root/grasp`. No camera calibration matrices (`t_cam`, `r_mat`) are hardcoded in application code.
 
 ### Tool Grasp Orientation Alignment in CEL
 The detected workpiece coordinate frame from FoundationPose has its top-face normal along $+X_{\text{part}}$, with edges along $+Y_{\text{part}}$ and $+Z_{\text{part}}$.
