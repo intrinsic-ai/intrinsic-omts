@@ -91,3 +91,16 @@ py_test(
     ],
 )
 
+py_test(
+    name = "test_script_utils",
+    srcs = ["test_script_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//src/utils:dynamic_frame_calculator",
+        "//src/utils:script_utils",
+        "@com_google_absl_py//absl/testing:absltest",
+    ],
+)
+
+
+

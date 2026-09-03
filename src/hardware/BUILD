@@ -43,6 +43,8 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//src/core:types",
+        "//src/utils:dynamic_frame_calculator",
+        "//src/utils:script_utils",
         "@com_google_absl_py//absl/logging",
         "@ioc//google3/intrinsic/assets:id_utils_py",
         "@ioc//google3/intrinsic/assets/proto:id_py_pb2",
@@ -69,3 +71,5 @@ py_library(
         ":vision",
     ],
 )
+
+
