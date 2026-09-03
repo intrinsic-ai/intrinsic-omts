@@ -61,6 +61,7 @@ intrinsic_solution(
         ":orbbec_gemini_driver_asset",
         ":foundationpose_mlmodel",
         ":rfdetr_mlmodel",
+        "//models/raw_stock_50x50x75",
     ] + select({
         ":is_lab_bb_01": [
             "@ioc//google3/intrinsic/apps/bluebird_caw/resources:caw_enclosure",
@@ -80,6 +81,7 @@ intrinsic_solution(
         ":robotiq_pinch_gripper",
         ":building_block",
         ":raw_stock_2x3x5",
+        ":raw_stock_50x50x75",
         ":gazebo_simulator",
         ":charuco_9x14_20mm_15mm_dict_5x5",
         ":calibration_service_instance",
@@ -160,6 +162,11 @@ intrinsic_asset_instance(
 intrinsic_asset_instance(
     name = "raw_stock_2x3x5",
     asset = "ai.intrinsic.raw_stock_2x3x5",
+)
+
+intrinsic_asset_instance(
+    name = "raw_stock_50x50x75",
+    asset = "ai.intrinsic.raw_stock_50x50x75",
 )
 
 intrinsic_asset_instance(
