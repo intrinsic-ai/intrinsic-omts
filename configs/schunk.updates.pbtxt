@@ -46,7 +46,7 @@ updates: {
         object_name: "schunk_egp_64nnb"
       }
     }
-    joint_positions: 0.0
-    joint_positions: 0.0
+    joint_positions: 0.01
+    joint_positions: 0.01
   }
 }
