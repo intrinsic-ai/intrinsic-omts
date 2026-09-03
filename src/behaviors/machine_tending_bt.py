@@ -34,10 +34,10 @@ def build_machine_tending_behavior_tree(
   """Assembles the complete machine tending sequence into an SBL Behavior Tree.
 
   Sequence:
-  1. Pick raw stock from infeed (view -> mock perception -> pre_grasp -> touch -> grasp -> linear retract).
+  1. Pick raw stock from infeed (view -> perception -> open gripper -> pre_grasp -> touch -> linear retract 3cm -> grasp -> linear retract).
   2. Load part into CNC vise (machine_approach -> pre_place_vise -> touch into vise -> clamp -> release -> retract).
   3. Standby & execute CNC machining cycle handshake (machine_approach standby -> door close -> cycle start -> complete).
-  4. Unclamp & extract finished part from CNC vise (machine_approach -> pre_place_vise -> touch -> grasp -> retract).
+  4. Unclamp & extract finished part from CNC vise (machine_approach -> pre_place_vise -> touch -> linear retract 3cm -> grasp -> retract).
   5. Return finished part back to infeed (pre_grasp -> touch table -> release -> retract -> view).
 
   Args:

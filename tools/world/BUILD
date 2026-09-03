@@ -39,3 +39,4 @@ py_binary(
         "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
     ],
 )
+

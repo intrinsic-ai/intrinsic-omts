@@ -38,6 +38,16 @@ class RobotInterface(abc.ABC):
     raise NotImplementedError
 
   @abc.abstractmethod
+  def build_move_relative_cartesian_task(
+      self,
+      translation: tuple[float, float, float],
+      motion_type: str = "LINEAR",
+      name: Optional[str] = None,
+  ) -> bt.Node:
+    """Builds a behavior tree task to move the robot tool relative to its current pose."""
+    raise NotImplementedError
+
+  @abc.abstractmethod
   def build_move_to_contact_task(
       self,
       direction: tuple[float, float, float] = (0.0, 0.0, 1.0),
@@ -58,6 +68,7 @@ class UrRobot(RobotInterface):
       arm_part_name: str = "ur_module",
       tool_object_name: str = "gripper",
       tool_frame_name: str = "tool_frame",
+      disable_collision_checking: bool = True,
   ) -> None:
     """Initializes UR robot adapter.
 
@@ -66,13 +77,30 @@ class UrRobot(RobotInterface):
         arm_part_name: Attribute name of robot arm in solution.world.
         tool_object_name: Object name for moving tool frame (default: 'gripper').
         tool_frame_name: Frame name under tool_object_name (default: 'tool_frame').
+        disable_collision_checking: Whether to disable collision checking in motion planning.
     """
     self._solution = solution
     self._arm_part_name = arm_part_name
     self._tool_object_name = tool_object_name
     self._tool_frame_name = tool_frame_name
+    self._disable_collision_checking = disable_collision_checking
     self._move_robot_skill = solution.skills.ai.intrinsic.move_robot
     self._move_to_contact_skill = solution.skills.ai.intrinsic.move_to_contact
+
+  def _get_collision_settings(self) -> Optional[Any]:
+    """Returns CollisionSettings with disabled collision checking if configured."""
+    if not self._disable_collision_checking:
+      return None
+    try:
+      if hasattr(self._move_robot_skill, "intrinsic_proto") and hasattr(
+          self._move_robot_skill.intrinsic_proto, "world"
+      ):
+        return self._move_robot_skill.intrinsic_proto.world.CollisionSettings(
+            disable_collision_checking=True
+        )
+    except (AttributeError, TypeError, ValueError):
+      pass
+    return None
 
   @property
   def arm_part(self) -> Any:
@@ -100,11 +128,20 @@ class UrRobot(RobotInterface):
         self.arm_part.joint_configurations, joint_configuration_name
     )
 
+    segment_kwargs: dict[str, Any] = {
+        "joint_position": joint_target,
+        "motion_type": (
+            self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType.JOINT
+        ),
+    }
+    col_settings = self._get_collision_settings()
+    if col_settings is not None:
+      segment_kwargs["collision_settings"] = col_settings
+
     skill_action = self._move_robot_skill(
         motion_segments=[
             self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
-                joint_position=joint_target,
-                motion_type=self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType.JOINT,
+                **segment_kwargs
             )
         ],
         arm_part=self.arm_part,
@@ -216,10 +253,10 @@ class UrRobot(RobotInterface):
               ),
           ]
       )
-      motion_segment = self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
-          constraint_intersection=constraint_intersection,
-          motion_type=motion_type_enum,
-      )
+      segment_kwargs = {
+          "constraint_intersection": constraint_intersection,
+          "motion_type": motion_type_enum,
+      }
     else:
       cartesian_pose = geometric_constraints_pb2.PoseEquality(
           moving_frame=self.tool_frame_reference,
@@ -235,10 +272,75 @@ class UrRobot(RobotInterface):
                 ),
             )
         )
-      motion_segment = self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
-          cartesian_pose=cartesian_pose,
-          motion_type=motion_type_enum,
+      segment_kwargs = {
+          "cartesian_pose": cartesian_pose,
+          "motion_type": motion_type_enum,
+      }
+
+    col_settings = self._get_collision_settings()
+    if col_settings is not None:
+      segment_kwargs["collision_settings"] = col_settings
+
+    motion_segment = self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
+        **segment_kwargs
+    )
+
+    skill_action = self._move_robot_skill(
+        motion_segments=[motion_segment],
+        arm_part=self.arm_part,
+    )
+    return bt.Task(action=skill_action, name=task_name)
+
+  def build_move_relative_cartesian_task(
+      self,
+      translation: tuple[float, float, float],
+      motion_type: str = "LINEAR",
+      name: Optional[str] = None,
+  ) -> bt.Node:
+    """Builds a relative Cartesian motion task along tool frames using RelativePoseEquality."""
+    task_name = (
+        name
+        or f"Move relative ({translation[0]:.3f}, {translation[1]:.3f}, {translation[2]:.3f}) [{motion_type}]"
+    )
+
+    if motion_type.upper() == "LINEAR":
+      motion_type_enum = (
+          self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType.LINEAR
       )
+    elif motion_type.upper() == "JOINT":
+      motion_type_enum = (
+          self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType.JOINT
+      )
+    else:
+      motion_type_enum = (
+          self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType.ANY
+      )
+
+    relative_cartesian_pose = geometric_constraints_pb2.RelativePoseEquality(
+        moving_frame=self.tool_frame_reference,
+        relative_pose=pose_pb2.Pose(
+            position=point_pb2.Point(
+                x=translation[0], y=translation[1], z=translation[2]
+            ),
+            orientation=quaternion_pb2.Quaternion(
+                x=0.0, y=0.0, z=0.0, w=1.0
+            ),
+        ),
+    )
+    segment_kwargs = {
+        "relative_cartesian_pose": relative_cartesian_pose,
+        "motion_type": motion_type_enum,
+    }
+
+    col_settings = self._get_collision_settings()
+    if col_settings is not None:
+      segment_kwargs["collision_settings"] = col_settings
+
+    motion_segment = (
+        self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
+            **segment_kwargs
+        )
+    )
 
     skill_action = self._move_robot_skill(
         motion_segments=[motion_segment],
@@ -305,6 +407,18 @@ class MockRobot(RobotInterface):
     task_name = name or f"Mock Move to {target_desc} ({motion_type})"
     self.executed_commands.append(
         f"move_cartesian:{target_desc}:{motion_type}:z_rot={allow_tool_z_rotation}"
+    )
+    return bt.Sequence([])
+
+  def build_move_relative_cartesian_task(
+      self,
+      translation: tuple[float, float, float],
+      motion_type: str = "LINEAR",
+      name: Optional[str] = None,
+  ) -> bt.Node:
+    task_name = name or f"Mock Move Relative ({translation}) [{motion_type}]"
+    self.executed_commands.append(
+        f"move_relative_cartesian:{translation}:{motion_type}"
     )
     return bt.Sequence([])
 

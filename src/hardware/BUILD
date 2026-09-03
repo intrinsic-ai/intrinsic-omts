@@ -52,6 +52,7 @@ py_library(
         "@ioc//google3/intrinsic/solutions:behavior_tree",
         "@ioc//google3/intrinsic/solutions:cel",
         "@ioc//google3/intrinsic/solutions:deployments",
+        "@ioc//google3/intrinsic/solutions:proto_building",
         "@ioc//google3/intrinsic/solutions:provided",
         "@ioc//google3/intrinsic/world/public/proto:object_world_refs_py_pb2",
     ],

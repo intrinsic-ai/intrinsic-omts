@@ -44,13 +44,13 @@ _GRIPPER_JOINT_NAME = flags.DEFINE_string(
 )
 _GRIPPER_OPEN_POSITION = flags.DEFINE_float(
     "gripper_open_position",
-    0.0,
-    "Robotiq finger position in meters for open state (0.0 = fully open).",
+    0.025,
+    "Robotiq finger position in meters for open state (0.025 = fully open).",
 )
 _GRIPPER_CLOSE_POSITION = flags.DEFINE_float(
     "gripper_close_position",
-    0.025,
-    "Robotiq finger position in meters for close/grasp state (0.025 = fully closed).",
+    0.0,
+    "Robotiq finger position in meters for close/grasp state (0.0 = fully closed).",
 )
 _GRIPPER_ACTION_NAME = flags.DEFINE_string(
     "gripper_action_name",
@@ -160,8 +160,8 @@ def run_machine_tending_cycle(
     mock_hardware: bool = False,
     gripper_type: str = "robotiq",
     gripper_joint_name: str = "robotiq_hande_left_finger_joint",
-    gripper_open_position: float = 0.0,
-    gripper_close_position: float = 0.025,
+    gripper_open_position: float = 0.025,
+    gripper_close_position: float = 0.0,
     gripper_action_name: Optional[str] = None,
     gripper_dio_open_pin: int = 0,
     gripper_dio_close_pin: int = 1,
