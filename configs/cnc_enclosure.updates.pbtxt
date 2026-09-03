@@ -26,9 +26,9 @@ updates: {
     }
     a_t_b {
       position {
-        x: -0.5
-        y: 0.0
-        z: 1.01
+        x: -0.55
+        y: -0.10
+        z: 1.02
       }
       orientation {
         x: 0
