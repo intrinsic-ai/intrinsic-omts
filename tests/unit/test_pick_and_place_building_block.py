@@ -44,12 +44,12 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
     self.assertIn("dynamic_preplace", poses)
     self.assertIn("dynamic_place", poses)
 
-    # Grasp pose
+    # Grasp pose with default pi/2 offset (yaw = pi/2 + pi/2 = pi)
     self.assertAlmostEqual(poses["dynamic_grasp"][0][0], 0.10)
     self.assertAlmostEqual(poses["dynamic_grasp"][0][1], 0.20)
     self.assertAlmostEqual(poses["dynamic_grasp"][0][2], 0.30)
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 0.70710678)
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], 0.70710678)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 0.0, places=6)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], 1.0, places=6)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][2], 0.0)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][3], 0.0)
 
@@ -57,22 +57,22 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
     self.assertAlmostEqual(poses["dynamic_pregrasp"][0][0], 0.10)
     self.assertAlmostEqual(poses["dynamic_pregrasp"][0][1], 0.20)
     self.assertAlmostEqual(poses["dynamic_pregrasp"][0][2], 0.40)
-    self.assertAlmostEqual(poses["dynamic_pregrasp"][1][0], 0.70710678)
-    self.assertAlmostEqual(poses["dynamic_pregrasp"][1][1], 0.70710678)
+    self.assertAlmostEqual(poses["dynamic_pregrasp"][1][0], 0.0, places=6)
+    self.assertAlmostEqual(poses["dynamic_pregrasp"][1][1], 1.0, places=6)
 
     # Place pose
     self.assertAlmostEqual(poses["dynamic_place"][0][0], 0.30)
     self.assertAlmostEqual(poses["dynamic_place"][0][1], 0.25)
     self.assertAlmostEqual(poses["dynamic_place"][0][2], 0.30)
-    self.assertAlmostEqual(poses["dynamic_place"][1][0], 0.70710678)
-    self.assertAlmostEqual(poses["dynamic_place"][1][1], 0.70710678)
+    self.assertAlmostEqual(poses["dynamic_place"][1][0], 0.0, places=6)
+    self.assertAlmostEqual(poses["dynamic_place"][1][1], 1.0, places=6)
 
     # Preplace pose
     self.assertAlmostEqual(poses["dynamic_preplace"][0][0], 0.30)
     self.assertAlmostEqual(poses["dynamic_preplace"][0][1], 0.25)
     self.assertAlmostEqual(poses["dynamic_preplace"][0][2], 0.40)
-    self.assertAlmostEqual(poses["dynamic_preplace"][1][0], 0.70710678)
-    self.assertAlmostEqual(poses["dynamic_preplace"][1][1], 0.70710678)
+    self.assertAlmostEqual(poses["dynamic_preplace"][1][0], 0.0, places=6)
+    self.assertAlmostEqual(poses["dynamic_preplace"][1][1], 1.0, places=6)
 
   def test_compute_dynamic_frame_poses_pose3d(self):
     pose = Pose3D(x=0.15, y=0.25, z=0.35, qx=1.0, qy=0.0, qz=0.0, qw=0.0)
@@ -91,8 +91,8 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
     self.assertAlmostEqual(poses["dynamic_place"][0][2], 0.35)
     self.assertAlmostEqual(poses["dynamic_preplace"][0][0], 0.33)
     self.assertAlmostEqual(poses["dynamic_preplace"][0][2], 0.47)
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 1.0)
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], 0.0)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 0.70710678, places=6)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], 0.70710678, places=6)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][2], 0.0)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][3], 0.0)
 
@@ -108,7 +108,7 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
         place_offset_y=0.00,
     )
 
-    expected_ori = (0.7071067811865476, 0.7071067811865475, 0.0, 0.0)
+    expected_ori = (0.0, 1.0, 0.0, 0.0)
     for k in [
         "dynamic_grasp",
         "dynamic_pregrasp",
@@ -125,8 +125,11 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
         position=pos,
         orientation=ori,
     )
-    downward_canonical = (1.0, 0.0, 0.0, 0.0)
-    self.assertEqual(poses["dynamic_grasp"][1], downward_canonical)
+    downward_canonical = (0.7071067811865476, 0.7071067811865475, 0.0, 0.0)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], downward_canonical[0])
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], downward_canonical[1])
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][2], downward_canonical[2])
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][3], downward_canonical[3])
 
   def test_compute_dynamic_frame_poses_45_deg_yaw(self):
     pos = (0.10, 0.20, 0.30)
@@ -136,9 +139,10 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
         position=pos,
         orientation=ori,
     )
-    # Expected top-down: qx = cos(pi/8), qy = sin(pi/8)
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 0.92387953, places=5)
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], 0.38268343, places=5)
+    # Expected with pi/2 offset: total_yaw = 3pi/4 ->
+    # qx = cos(3pi/8), qy = sin(3pi/8)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 0.38268343, places=5)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], 0.92387953, places=5)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][2], 0.0, places=5)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][3], 0.0, places=5)
 
@@ -150,9 +154,10 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
         position=pos,
         orientation=ori,
     )
-    # Expected top-down: qx = cos(pi/2) = 0.0, qy = sin(pi/2) = 1.0
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 0.0, places=5)
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], 1.0, places=5)
+    # Expected with pi/2 offset: total_yaw = 3pi/2 ->
+    # qx = cos(3pi/4) = -0.70710678, qy = sin(3pi/4) = 0.70710678
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], -0.70710678, places=5)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], 0.70710678, places=5)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][2], 0.0, places=5)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][3], 0.0, places=5)
 
@@ -164,10 +169,9 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
         position=pos,
         orientation=ori,
     )
-    # Expected top-down: qx = cos(-pi/4) = 0.70710678,
-    #                    qy = sin(-pi/4) = -0.70710678
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 0.70710678, places=5)
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], -0.70710678, places=5)
+    # Expected with pi/2 offset: total_yaw = 0 -> qx = 1.0, qy = 0.0
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 1.0, places=5)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], 0.0, places=5)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][2], 0.0, places=5)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][3], 0.0, places=5)
 
@@ -181,9 +185,11 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
     )
     # Local X is vertical (+Z). Primary horizontal axis is local Y
     # with direction (0.99311, -0.11690), yielding yaw = -0.11721 rad.
-    # Expected top-down: qx = cos(yaw/2) = 0.99828, qy = sin(yaw/2) = -0.05856
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 0.9982827, places=4)
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], -0.0585787, places=4)
+    # Total yaw = -0.11721 + pi/2 = 1.453586 rad.
+    # Expected top-down: qx = cos(total_yaw/2) = 0.74730,
+    #                    qy = sin(total_yaw/2) = 0.66449
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 0.7472986, places=4)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], 0.6644883, places=4)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][2], 0.0, places=5)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][3], 0.0, places=5)
 
@@ -197,9 +203,9 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
     )
     # Local Y is vertical. Primary horizontal axis is local Z (0, -1, 0),
     # yielding yaw = -pi/2 (-90 deg).
-    # Expected top-down: qx = cos(-pi/4), qy = sin(-pi/4) = -0.70710678
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 0.70710678, places=5)
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], -0.70710678, places=5)
+    # Total yaw = -pi/2 + pi/2 = 0 -> qx = 1.0, qy = 0.0
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 1.0, places=5)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], 0.0, places=5)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][2], 0.0, places=5)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][3], 0.0, places=5)
 
@@ -212,12 +218,22 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
         orientation=ori,
     )
     # Local Z is vertical. Primary horizontal axis is local X (1, 0, 0),
-    # yielding yaw = 0.
-    # Expected top-down: qx = 1.0, qy = 0.0
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 1.0, places=5)
-    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], 0.0, places=5)
+    # yielding yaw = 0. Total yaw = pi/2 -> qx = cos(pi/4), qy = sin(pi/4)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 0.70710678, places=5)
+    self.assertAlmostEqual(poses["dynamic_grasp"][1][1], 0.70710678, places=5)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][2], 0.0, places=5)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][3], 0.0, places=5)
+
+  def test_compute_dynamic_frame_poses_custom_zero_offset(self):
+    pos = (0.10, 0.20, 0.30)
+    ori = (0.0, 0.0, 0.0, 1.0)
+    poses = compute_dynamic_frame_poses(
+        position=pos,
+        orientation=ori,
+        grasp_yaw_offset_rad=0.0,
+    )
+    downward_canonical = (1.0, 0.0, 0.0, 0.0)
+    self.assertEqual(poses["dynamic_grasp"][1], downward_canonical)
 
   def test_select_best_estimate(self):
     est1 = mock.MagicMock(score=-19.2566)

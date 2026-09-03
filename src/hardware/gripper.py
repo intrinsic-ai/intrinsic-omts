@@ -92,8 +92,8 @@ class RobotiqGripper(GripperInterface):
       self,
       solution: Any,
       joint_name: str = "robotiq_hande_left_finger_joint",
-      open_position: float = 0.0,
-      close_position: float = 0.025,
+      open_position: float = 0.025,
+      close_position: float = 0.0,
       action_name: Optional[str] = None,
   ) -> None:
     """Initializes the Robotiq gripper adapter.
@@ -103,9 +103,9 @@ class RobotiqGripper(GripperInterface):
         joint_name: Name of the active finger joint (default:
           "robotiq_hande_left_finger_joint").
         open_position: Finger joint position in meters for open state (default:
-          0.0).
+          0.025).
         close_position: Finger joint position in meters for closed state
-          (default: 0.025).
+          (default: 0.0).
         action_name: Optional ROS action controller name for gripper_cmd_skill.
     """
     self._solution = solution

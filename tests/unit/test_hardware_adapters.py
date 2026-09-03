@@ -81,7 +81,7 @@ class HardwareAdaptersTest(absltest.TestCase):
     self.assertEqual(open_task.name, "Open Robotiq Gripper")
     mock_joint_state_cls.assert_called_with(
         name=["robotiq_hande_left_finger_joint"],
-        position=[0.0],
+        position=[0.025],
     )
     gripper_cmd_mock.assert_called_with(
         command=mock_joint_state_cls.return_value
@@ -91,7 +91,7 @@ class HardwareAdaptersTest(absltest.TestCase):
     self.assertEqual(close_task.name, "Close Robotiq Gripper")
     mock_joint_state_cls.assert_called_with(
         name=["robotiq_hande_left_finger_joint"],
-        position=[0.025],
+        position=[0.0],
     )
     gripper_cmd_mock.assert_called_with(
         command=mock_joint_state_cls.return_value

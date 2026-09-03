@@ -92,6 +92,11 @@ _PLACE_OFFSET_Y = flags.DEFINE_float(
     0.00,
     "Y offset in meters from detected pose to place target pose.",
 )
+_GRASP_YAW_OFFSET_RAD = flags.DEFINE_float(
+    "grasp_yaw_offset_rad",
+    math.pi / 2.0,
+    "Yaw angle offset in radians applied to dynamic grasp frames.",
+)
 _APPROACH_HEIGHT_M = flags.DEFINE_float(
     "approach_height_m",
     0.10,
@@ -340,13 +345,14 @@ def compute_dynamic_frame_poses(
     approach_height_m: float = 0.10,
     place_offset_x: float = 0.20,
     place_offset_y: float = 0.00,
+    grasp_yaw_offset_rad: float = math.pi / 2.0,
 ) -> dict[
     str, tuple[tuple[float, float, float], tuple[float, float, float, float]]
 ]:
   """Computes pregrasp, grasp, preplace, and place poses from 6D pose.
 
   Aligns the downward gripper TCP orientation along -Z with the detected
-  workpiece yaw angle.
+  workpiece yaw angle plus grasp_yaw_offset_rad.
   """
   if isinstance(position, Pose3D):
     pos_x, pos_y, pos_z = position.x, position.y, position.z
@@ -424,10 +430,12 @@ def compute_dynamic_frame_poses(
     else:
       yaw = 0.0
 
-  # Downward top-down orientation: R_z(yaw) * R_x(pi)
+  total_yaw = yaw + grasp_yaw_offset_rad
+
+  # Downward top-down orientation: R_z(total_yaw) * R_x(pi)
   grasp_ori = (
-      math.cos(yaw / 2.0),
-      math.sin(yaw / 2.0),
+      math.cos(total_yaw / 2.0),
+      math.sin(total_yaw / 2.0),
       0.0,
       0.0,
   )
@@ -588,6 +596,7 @@ def run_pick_and_place_loop(
     place_offset_x: float = 0.20,
     place_offset_y: float = 0.00,
     approach_height_m: float = 0.10,
+    grasp_yaw_offset_rad: float = math.pi / 2.0,
     gripper_action_name: str = "/gripper/gripper_action_controller/gripper_cmd",
     gripper_joint_name: str = "robotiq_hande_left_finger_joint",
     gripper_open_pos: float = 0.025,
@@ -728,6 +737,7 @@ def run_pick_and_place_loop(
         approach_height_m=approach_height_m,
         place_offset_x=place_offset_x * offset_sign,
         place_offset_y=place_offset_y * offset_sign,
+        grasp_yaw_offset_rad=grasp_yaw_offset_rad,
     )
 
     # 4. Inject dynamic frames and update workpiece pose in solution.world
@@ -790,6 +800,7 @@ def main(argv: Sequence[str]) -> None:
       place_offset_x=_PLACE_OFFSET_X.value,
       place_offset_y=_PLACE_OFFSET_Y.value,
       approach_height_m=_APPROACH_HEIGHT_M.value,
+      grasp_yaw_offset_rad=_GRASP_YAW_OFFSET_RAD.value,
       gripper_action_name=_GRIPPER_ACTION_NAME.value,
       gripper_joint_name=_GRIPPER_JOINT_NAME.value,
       gripper_open_pos=_GRIPPER_OPEN_POS.value,
