@@ -1,6 +1,7 @@
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@ioc//google3/intrinsic/assets/build_defs:asset.bzl", "intrinsic_asset_instance")
+load("@ioc//google3/intrinsic/assets/scene_objects/build_defs:scene_object.bzl", "intrinsic_scene_object")
 load("@ioc//google3/intrinsic/config:def.bzl", "intrinsic_solution")
 load("@ioc//incode/intrinsic_inference/assets/inference_service/bazel:intrinsic_mlmodel.bzl", "intrinsic_mlmodel")
 load("//bazel:imported_asset.bzl", "imported_asset_bundle")
@@ -71,6 +72,7 @@ intrinsic_solution(
         ],
         "//conditions:default": [
             "@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_ioc",
+            "//models/cnc_enclosure",
             "//models/omts_enclosure",
         ],
     }),
@@ -94,12 +96,24 @@ intrinsic_solution(
         ":pose_estimator_service",
         ":train_service",
         # ":moveit_ros_bridge",
-    ],
+    ] + select({
+        ":is_lab_bb_01": [
+        ],
+        "//conditions:default": [
+            ":cnc_enclosure",
+        ],
+    }),
     object_world_updates = [
         "//configs:ur_module.attachments.updates.pbtxt",
         "//configs:scene.updates.pbtxt",
         "//configs:align_robot.updates.pbtxt",
-    ],
+    ] + select({
+        ":is_lab_bb_01": [
+        ],
+        "//conditions:default": [
+            "//configs:cnc_enclosure.updates.pbtxt",
+        ],
+    }),
 )
 
 # Default aliases
@@ -130,6 +144,11 @@ intrinsic_asset_instance(
         "//conditions:default": "ai.intrinsic.omts_enclosure",
     }),
     instance_name = "enclosure",
+)
+
+intrinsic_asset_instance(
+    name = "cnc_enclosure",
+    asset = "ai.intrinsic.cnc_enclosure",
 )
 
 intrinsic_asset_instance(
