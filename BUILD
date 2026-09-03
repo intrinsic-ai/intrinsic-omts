@@ -68,6 +68,7 @@ intrinsic_solution(
         ],
         "//conditions:default": [
             "@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_ioc",
+            "//models/camera_mount",
             "//models/cnc_enclosure",
             "//models/omts_enclosure",
             "//models/schunk_egp_64nnb",
@@ -95,6 +96,7 @@ intrinsic_solution(
         ":is_lab_bb_01": [
         ],
         "//conditions:default": [
+            ":camera_mount",
             ":cnc_enclosure",
             ":schunk_egp_64nnb",
         ],
@@ -108,6 +110,7 @@ intrinsic_solution(
         ],
         "//conditions:default": [
             "//configs:cnc_enclosure.updates.pbtxt",
+            "//configs:omts_camera_mount.updates.pbtxt",
             "//configs:schunk.updates.pbtxt",
         ],
     }),
@@ -136,6 +139,11 @@ intrinsic_asset_instance(
 intrinsic_asset_instance(
     name = "cnc_enclosure",
     asset = "ai.intrinsic.cnc_enclosure",
+)
+
+intrinsic_asset_instance(
+    name = "camera_mount",
+    asset = "ai.intrinsic.camera_mount",
 )
 
 intrinsic_asset_instance(
