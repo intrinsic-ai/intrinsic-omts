@@ -23,7 +23,7 @@ def build_pick_from_infeed_subtree(
     view_frame_name: str = "view",
     pregrasp_frame_name: str = "pre_grasp",
     grasp_frame_name: str = "grasp",
-    approach_offset_z: float = 0.06,
+    approach_offset_z: float = 0.08,
 ) -> bt.Node:
   """Builds the Behavior Tree subtree for locating and grasping a raw workpiece.
 
@@ -105,7 +105,7 @@ def build_pick_from_infeed_subtree(
       create_compliant_touchdown_task(
           robot=robot,
           direction=(0.0, 0.0, 1.0),
-          contact_force_newtons=5.0,
+          contact_force_newtons=15.0,
           task_name="Step 05: Compliant Touchdown to Part (+Z Tool)",
       ),
       create_relative_retract_task(
