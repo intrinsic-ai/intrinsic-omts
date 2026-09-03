@@ -40,42 +40,12 @@ updates: {
   }
 }
 updates: {
-  update_transform {
-    node_a {
+  update_object_joints {
+    object {
       by_name {
-        object {
-          object_name: "enclosure"
-        }
+        object_name: "cnc_enclosure"
       }
     }
-    node_b {
-      by_name {
-        frame {
-          object_name: "cnc_enclosure"
-          frame_name: "door_link"
-        }
-      }
-    }
-    node_to_update: {
-      by_name {
-        frame {
-          object_name: "cnc_enclosure"
-          frame_name: "door_link"
-        }
-      }
-    }
-    a_t_b {
-      position {
-        x: 0.4
-        y: 0.0
-        z: 0.0
-      }
-      orientation {
-        x: 0.0
-        y: 0.0
-        z: 0.0
-        w: 1.0
-      }
-    }
+    joint_positions: 0.4
   }
 }
