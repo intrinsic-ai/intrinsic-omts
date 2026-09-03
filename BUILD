@@ -107,8 +107,8 @@ intrinsic_solution(
         ":is_lab_bb_01": [
         ],
         "//conditions:default": [
-            "//configs:camera_mount.updates.pbtxt",
             "//configs:cnc_enclosure.updates.pbtxt",
+            "//configs:omts_camera_mount.updates.pbtxt",
         ],
     }),
 )
