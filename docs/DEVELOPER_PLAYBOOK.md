@@ -29,11 +29,19 @@ bazel build //:omts_solution --//:lab=lab_bb_01
 ```
 
 ### Running Unit Tests
-All unit tests run offline using mocks and mock SBL constructs:
+All unit tests run offline using hermetic mocks and mock SBL constructs:
 
 ```bash
-bazel test //tests/...
+# Run all unit tests
+bazel test //tests/unit:all
+
+# Run a specific unit test target
+bazel test //tests/unit:test_behaviors
+bazel test //tests/unit:test_hardware_adapters
+bazel test //tests/unit:test_script_utils
 ```
+
+There are currently 8 offline unit test suites: `test_infeed`, `test_tray`, `test_workpiece`, `test_behaviors`, `test_hardware_adapters`, `test_move_to_frame`, `test_store_frame`, and `test_script_utils`.
 
 ---
 
@@ -45,15 +53,20 @@ OMTS provides diagnostic and interactive jogging utilities under [`tools/`](../t
 Applies `.pbtxt` world update files live to the running solution without restarting the cluster:
 
 ```bash
-bazel run //tools/world:apply_scene_updates
+bazel run //tools/world:apply_scene_updates -- --address=localhost:17080
 ```
 
 * **Files applied by default:**
   * [`configs/ur_module.attachments.updates.pbtxt`](../configs/ur_module.attachments.updates.pbtxt) (robot mounting, gripper, and tool frame attachments).
-  * [`configs/scene.updates.pbtxt`](../configs/scene.updates.pbtxt) (pre-defined scene frames: `view`, `pre_grasp`, `grasp`, `machine_approach`, `place_vise`).
+  * [`configs/lab_bb_01_orbbec_gemini.updates.pbtxt`](../configs/lab_bb_01_orbbec_gemini.updates.pbtxt) (camera wrist mounting and flange parentage).
+  * [`configs/scene.updates.pbtxt`](../configs/scene.updates.pbtxt) (pre-defined scene frames: `view`, `pre_grasp`, `grasp`, `machine_approach`, `pre_place_vise`, `place_vise`).
   * [`configs/align_robot.updates.pbtxt`](../configs/align_robot.updates.pbtxt) (base mounting pose).
-  * [`configs/lab_bb_01_orbbec_gemini.updates.pbtxt`](../configs/lab_bb_01_orbbec_gemini.updates.pbtxt) (camera wrist mounting).
 * **Automated Cleanup:** Checks for and deletes stale `detected_workpiece` objects to prevent SBL name collisions.
+
+> [!CRITICAL]
+> **Camera Reparenting on Solution Startup:**
+> When the Intrinsic solution container or simulation restarts, `orbbec_camera` defaults to a child of `root` at the origin `Pose3(identity, [0, 0, 0])`.
+> You **must** run `bazel run //tools/world:apply_scene_updates` after starting the solution. Without applying `lab_bb_01_orbbec_gemini.updates.pbtxt`, `world.get_transform(root, camera.sensor)` evaluates to identity, causing dynamic grasp calculations to place `pre_grasp` at raw optical coordinates behind the robot base column (~`[-0.058, 0.009, 0.392]`), failing IK with `move_robot:10301`.
 
 ### B. World Inspector (`tools/world:inspect_world`)
 Inspects active objects, kinematic links, frames, joint configurations, and live transforms:
@@ -65,7 +78,7 @@ bazel run //tools/world:inspect_world -- --address=localhost:17080
 * Outputs:
   * Tree of all objects and child frames in the active belief world.
   * Joint configurations defined on robots.
-  * Live Cartesian poses for `flange`, `tool_frame`, `view`, `pre_grasp`, and `grasp`.
+  * Live Cartesian poses for `flange`, `tool_frame`, `view`, `pre_grasp`, `grasp`, `camera.sensor`, and `raw_stock_2x3x5`.
 
 ### C. Interactive Robot Jogger (`tools/jogging:move_to_frame`)
 Discovers all frames in the scene and prompts interactively to move the robot to any target frame:
@@ -74,7 +87,7 @@ Discovers all frames in the scene and prompts interactively to move the robot to
 # Interactive frame selection
 bazel run //tools/jogging:move_to_frame -- --address=localhost:17080
 
-# Move directly to a specific frame
+# Move directly to view frame
 bazel run //tools/jogging:move_to_frame -- --address=localhost:17080 --frame=view
 
 # Move linearly to pre_grasp
@@ -87,8 +100,10 @@ bazel run //tools/jogging:move_to_frame -- --address=localhost:17080 --frame=pre
 
 | Error Code / Message | Root Cause | Resolution |
 | :--- | :--- | :--- |
-| `ai.intrinsic.move_robot:10301: IK solver couldn't find any solutions` | 1. Tool orientation misaligned (e.g. tool $+Z$ pointing horizontal or upward).<br>2. Target frame position outside robot reach. | 1. Ensure tool orientation aligns with downward approach via $\mathbf{q}_{\text{tool}} = \mathbf{q}_{\text{part}} \cdot [0.5, 0.5, 0.5, 0.5]$.<br>2. Run `bazel run //tools/world:inspect_world` to verify target $(x, y, z)$. |
+| `ai.intrinsic.move_robot:10301: IK solver couldn't find any solutions` | 1. **Camera unattached:** `orbbec_camera` defaulted to root `[0,0,0]`, causing raw optical detections to place `pre_grasp` behind the robot base (~`[-0.058, 0.009, 0.392]`).<br>2. Tool orientation misaligned or target outside reachable envelope. | 1. Run `bazel run //tools/world:apply_scene_updates` to reattach `orbbec_camera` to `ur_module/flange`.<br>2. Run `bazel run //tools/world:inspect_world` to verify target $(x, y, z)$. |
+| `ai.intrinsic.move_to_contact:10301: Stabilize action timed out without making contact` | 1. Contact force threshold set too high for light contact.<br>2. Tool motion direction pointing away from surface. | 1. Use `contact_force_newtons=10.0` or `15.0`.<br>2. Ensure `FixedVector.direction = (0.0, 0.0, 1.0)` in moving tool frame (+Z tool points toward table/workpiece). |
+| `ai.intrinsic.executive:13001: Execution failed (PROTECTIVE_STOP)` | UR arm or ICON entered protective stop due to torque/wrench limits or abrupt contact. | 1. Clear faults on the UR teach pendant.<br>2. Use compliant `move_to_contact` instead of rigid Cartesian moves when touching surfaces.<br>3. Verify workpiece grasp orientation uses symmetric candidate selection to prevent wrist joint 6 wrap. |
 | `ai.intrinsic.move_robot:10601: Frame with name ... does not exist on object` | Attempted to target an object reference instead of a valid frame in `PoseEquality`. | Ensure `target_frame` references a valid frame (`FrameReferenceByName(object_name="root", frame_name="pre_grasp")`). Do not target raw objects. |
-| `ai.intrinsic.create_object:3: New object name cannot be used here` | Object with the specified name already exists in the belief world. | Issue a `DeleteObjectRequest` via `world.batch_update(...)` before executing the tree. |
-| `ai.intrinsic.executive:13001: Execution failed (PROTECTIVE_STOP)` | UR arm or ICON entered protective stop due to contact or torque limits. | 1. Clear faults on the UR teach pendant.<br>2. Run `clear-faults` and world reset on cluster.<br>3. Verify motion constraints before re-running. |
+| `ai.intrinsic.create_object:3: New object name cannot be used here` | Object with the specified name already exists in the belief world. | Issue a `DeleteObjectRequest` via `world.batch_update(...)` or use `apply_scene_updates`. |
 | `ModuleNotFoundError: No module named 'intrinsic'` | Python command run directly via system Python instead of Bazel runfiles. | Always execute scripts via `bazel run //path:target` to resolve dependencies within the hermetic sandbox. |
+
