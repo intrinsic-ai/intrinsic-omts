@@ -10,6 +10,7 @@ exports_files([
     "omts_gemini_device_config.textproto",
     "orbbec_gemini_driver_manifest.textproto",
     "scene.updates.pbtxt",
+    "schunk.updates.pbtxt",
     "ur_module.attachments.updates.pbtxt",
     "ur_module_config.textproto",
     "pose_estimator_config.textproto",
