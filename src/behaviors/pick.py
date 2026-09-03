@@ -4,6 +4,7 @@ from intrinsic.solutions import behavior_tree as bt
 from src.behaviors.motions import (
     create_compliant_touchdown_task,
     create_move_to_frame_task,
+    create_relative_retract_task,
 )
 from src.core.infeed import InfeedMode, InfeedStrategy, PerceptionInfeedStrategy
 from src.core.workpiece import Workpiece
@@ -22,7 +23,7 @@ def build_pick_from_infeed_subtree(
     view_frame_name: str = "view",
     pregrasp_frame_name: str = "pre_grasp",
     grasp_frame_name: str = "grasp",
-    approach_offset_z: float = 0.10,
+    approach_offset_z: float = 0.06,
 ) -> bt.Node:
   """Builds the Behavior Tree subtree for locating and grasping a raw workpiece.
 
@@ -31,10 +32,12 @@ def build_pick_from_infeed_subtree(
   2. Perception acquisition & dynamic grasp frame update step:
      - capture RGB-D -> estimate 6D pose -> dynamically update root/pre_grasp and root/grasp
        via indirect transforms from the camera with zero hardcoded extrinsics.
-  3. Move to dynamic pre_grasp frame (ANY Cartesian motion with tool Z rotation relaxed).
-  4. Perform compliant touchdown (move_to_contact in +Z tool).
-  5. Close gripper to grasp part.
-  6. Retract arm linearly back up to pre_grasp (LINEAR Cartesian motion).
+  3. Open gripper fingers before approach.
+  4. Move to dynamic pre_grasp frame (ANY Cartesian motion with tool Z rotation relaxed).
+  5. Perform compliant touchdown (move_to_contact in +Z tool).
+  6. Linear retract 3 cm along tool -Z to align finger pads with part before closing.
+  7. Close gripper to grasp part.
+  8. Retract arm linearly back up to pre_grasp (LINEAR Cartesian motion).
 
   Args:
       robot: Robot controller adapter.
@@ -91,26 +94,32 @@ def build_pick_from_infeed_subtree(
     ])
 
   tasks.extend([
+      gripper.build_open_task(name="Step 03: Open Gripper"),
       create_move_to_frame_task(
           robot=robot,
           frame_name=pregrasp_frame_name,
           parent_object=parent_object,
           motion_type="ANY",
-          task_name=f"Step 03: Move to Dynamic Pre-Grasp ({parent_object}/{pregrasp_frame_name})",
+          task_name=f"Step 04: Move to Dynamic Pre-Grasp ({parent_object}/{pregrasp_frame_name})",
       ),
       create_compliant_touchdown_task(
           robot=robot,
           direction=(0.0, 0.0, 1.0),
-          contact_force_newtons=10.0,
-          task_name="Step 04: Compliant Touchdown to Part (+Z Tool)",
+          contact_force_newtons=5.0,
+          task_name="Step 05: Compliant Touchdown to Part (+Z Tool)",
       ),
-      gripper.build_close_task(name="Step 05: Close Gripper (Grasp Part)"),
+      create_relative_retract_task(
+          robot=robot,
+          distance_meters=0.03,
+          task_name="Step 06: Linear Retract (3 cm, -Z Tool)",
+      ),
+      gripper.build_close_task(name="Step 07: Close Gripper (Grasp Part)"),
       create_move_to_frame_task(
           robot=robot,
           frame_name=pregrasp_frame_name,
           parent_object=parent_object,
           motion_type="LINEAR",
-          task_name=f"Step 06: Linear Retract to Pre-Grasp ({parent_object}/{pregrasp_frame_name})",
+          task_name=f"Step 08: Linear Retract to Pre-Grasp ({parent_object}/{pregrasp_frame_name})",
       ),
   ])
 

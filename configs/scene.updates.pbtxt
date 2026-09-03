@@ -52,10 +52,11 @@ updates {
       position {
         x: 0.47
         y: 0.37
-        z: 0.73
+        z: 0.78
       }
       orientation {
-        x: 1.0
+        x: 0.7071
+        y: 0.7071
       }
     }
     parent_object_with_filter {
@@ -77,7 +78,8 @@ updates {
         z: 0.7
       }
       orientation {
-        x: 1.0
+        x: 0.7071
+        y: 0.7071
       }
     }
     parent_object_with_filter {
@@ -99,7 +101,8 @@ updates {
         z: 0.8
       }
       orientation {
-        x: 1.0
+        x: 0.7071
+        y: 0.7071
       }
     }
     parent_object_with_filter {

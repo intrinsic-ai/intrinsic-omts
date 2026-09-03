@@ -11,6 +11,7 @@ from intrinsic.world.public.proto import object_world_updates_pb2
 
 DEFAULT_UPDATE_FILES = [
     "configs/ur_module.attachments.updates.pbtxt",
+    "configs/lab_bb_01_orbbec_gemini.updates.pbtxt",
     "configs/scene.updates.pbtxt",
     "configs/align_robot.updates.pbtxt",
 ]

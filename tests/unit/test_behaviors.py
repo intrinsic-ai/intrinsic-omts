@@ -56,14 +56,16 @@ class BehaviorsTest(absltest.TestCase):
     )
 
     self.assertIsNotNone(pick_subtree)
-    # Sequence of 6 steps:
+    # Sequence of 8 steps:
     # 1: Move to view (ANY)
     # 2: Mock Perception
-    # 3: Move to pre_grasp (ANY)
-    # 4: Compliant Touchdown (-Z)
-    # 5: Mock Close Gripper
-    # 6: Linear Retract to pre_grasp (LINEAR)
-    self.assertEqual(len(pick_subtree.children), 6)
+    # 3: Mock Open Gripper
+    # 4: Move to pre_grasp (ANY)
+    # 5: Compliant Touchdown (+Z Tool)
+    # 6: Linear Retract 3cm (-Z Tool)
+    # 7: Mock Close Gripper
+    # 8: Linear Retract to pre_grasp (LINEAR)
+    self.assertEqual(len(pick_subtree.children), 8)
 
   def test_build_load_machine_subtree_steps(self):
     load_subtree = build_load_machine_subtree(
@@ -103,16 +105,17 @@ class BehaviorsTest(absltest.TestCase):
     )
 
     self.assertIsNotNone(unload_subtree)
-    # Sequence of 8 steps:
+    # Sequence of 9 steps:
     # 1: Open CNC Door (Mock)
     # 2: Open CNC Vise (Mock)
     # 3: Move to machine_approach (ANY)
     # 4: Move to pre_place_vise (ANY)
     # 5: Compliant Touchdown to Machined Part (+Z Tool)
-    # 6: Grasp Machined Part (Mock)
-    # 7: Retract Arm to pre_place_vise (LINEAR)
-    # 8: Retract Arm to machine_approach (LINEAR)
-    self.assertEqual(len(unload_subtree.children), 8)
+    # 6: Linear Retract 3cm (-Z Tool)
+    # 7: Grasp Machined Part (Mock)
+    # 8: Retract Arm to pre_place_vise (LINEAR)
+    # 9: Retract Arm to machine_approach (LINEAR)
+    self.assertEqual(len(unload_subtree.children), 9)
 
   def test_build_return_to_infeed_subtree_steps(self):
     return_subtree = build_return_to_infeed_subtree(

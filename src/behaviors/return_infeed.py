@@ -52,7 +52,7 @@ def build_return_to_infeed_subtree(
       create_compliant_touchdown_task(
           robot=robot,
           direction=(0.0, 0.0, 1.0),
-          contact_force_newtons=10.0,
+          contact_force_newtons=5.0,
           task_name="Step 13b: Compliant Touchdown to Table Surface (+Z Tool)",
       ),
       gripper.build_open_task(name="Step 13c: Release Finished Part"),

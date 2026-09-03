@@ -5,6 +5,7 @@ from intrinsic.solutions import behavior_tree as bt
 from src.behaviors.motions import (
     create_compliant_touchdown_task,
     create_move_to_frame_task,
+    create_relative_retract_task,
 )
 from src.core.workpiece import Workpiece
 from src.hardware.gripper import GripperInterface
@@ -30,9 +31,10 @@ def build_unload_machine_subtree(
   12a. Move robot arm to machine entry approach position (ANY Cartesian motion).
   12b. Move robot arm to vise grasp approach position (ANY Cartesian motion).
   12c. Compliantly align with part via move_to_contact (+Z compliant touchdown).
-  12d. Close gripper to grasp part (Mock).
-  12e. Retract arm to vise approach position (LINEAR Cartesian motion).
-  12f. Retract arm to machine entry approach position (LINEAR Cartesian motion).
+  12d. Linear retract 3 cm along tool -Z to align finger pads with part before closing.
+  12e. Close gripper to grasp part (Mock).
+  12f. Retract arm to vise approach position (LINEAR Cartesian motion).
+  12g. Retract arm to machine entry approach position (LINEAR Cartesian motion).
 
   Args:
       robot: Robot controller adapter.
@@ -70,21 +72,27 @@ def build_unload_machine_subtree(
           contact_force_newtons=5.0,
           task_name="Step 12c: Compliant Touchdown to Machined Part (+Z Tool)",
       ),
-      gripper.build_close_task(name="Step 12d: Grasp Machined Part"),
+      create_relative_retract_task(
+          robot=robot,
+          distance_meters=0.03,
+          task_name="Step 12d: Linear Retract (3 cm, -Z Tool)",
+      ),
+      gripper.build_close_task(name="Step 12e: Grasp Machined Part"),
       create_move_to_frame_task(
           robot=robot,
           frame_name=preplace_vise_frame_name,
           parent_object=parent_object,
           motion_type="LINEAR",
-          task_name=f"Step 12e: Retract Machined Part from Vise ({parent_object}/{preplace_vise_frame_name})",
+          task_name=f"Step 12f: Retract Machined Part from Vise ({parent_object}/{preplace_vise_frame_name})",
       ),
       create_move_to_frame_task(
           robot=robot,
           frame_name=machine_approach_frame_name,
           parent_object=parent_object,
           motion_type="LINEAR",
-          task_name=f"Step 12f: Retract Machined Part from Machine ({parent_object}/{machine_approach_frame_name})",
+          task_name=f"Step 12g: Retract Machined Part from Machine ({parent_object}/{machine_approach_frame_name})",
       ),
   ]
 
   return bt.Sequence(name="4. Unload Machine Subtree", children=tasks)
+

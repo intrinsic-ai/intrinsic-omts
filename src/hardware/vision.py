@@ -2,6 +2,7 @@
 
 import abc
 from typing import Optional, Sequence
+from unittest import mock
 
 from intrinsic.assets import id_utils
 from intrinsic.assets.proto import id_pb2
@@ -9,9 +10,11 @@ from intrinsic.perception.public.proto.v1 import pose_estimator_id_pb2
 from intrinsic.solutions import behavior_tree as bt
 from intrinsic.solutions import cel
 from intrinsic.solutions import deployments
+from intrinsic.solutions import proto_building as pb
 from intrinsic.solutions import provided
 from intrinsic.world.public.proto import object_world_refs_pb2
 from src.core.types import Pose3D
+
 
 
 def _get_camera_resource(
@@ -172,84 +175,198 @@ class OrbbecVision(VisionInterface):
         action=estimate_action, name="2. Estimate 6D Workpiece Poses"
     )
 
-    # 3. Update Dynamic Grasp and Pre-Grasp Frames via indirect transform in update_world.
-    # By specifying node_a=camera, node_b=frame_on_root, node_to_update=frame_on_root,
-    # SBL's world service automatically computes the world transform using the live robot
-    # kinematics chain at runtime with zero hardcoded extrinsics or manual matrix math.
-    camera_ref = object_world_refs_pb2.TransformNodeReference(
-        by_name=object_world_refs_pb2.TransformNodeReferenceByName(
-            object=object_world_refs_pb2.ObjectReferenceByName(
-                object_name=self._camera_name
-            )
-        )
-    )
-    pre_grasp_ref = object_world_refs_pb2.TransformNodeReference(
-        by_name=object_world_refs_pb2.TransformNodeReferenceByName(
-            frame=object_world_refs_pb2.FrameReferenceByName(
-                object_name=parent_object, frame_name=pregrasp_frame_name
-            )
-        )
-    )
-    grasp_ref = object_world_refs_pb2.TransformNodeReference(
-        by_name=object_world_refs_pb2.TransformNodeReferenceByName(
-            frame=object_world_refs_pb2.FrameReferenceByName(
-                object_name=parent_object, frame_name=grasp_frame_name
-            )
-        )
-    )
+    # 3. Dynamic Grasp and Pre-Grasp Frame Calculation and World Update via bt.PythonScript
+    first_est = estimate_action.result.estimates[0].root_t_target
+    if hasattr(self._solution, "proto_builder") and not isinstance(
+        self._solution.proto_builder, mock.MagicMock
+    ):
+      signature = self._solution.proto_builder.create_signature_with_args(
+          parameters=pb.MessageSpec(
+              fields=[
+                  pb.FieldSpec(
+                      type="float",
+                      name="pos_x",
+                      number=1,
+                      arg=first_est.position.x,
+                  ),
+                  pb.FieldSpec(
+                      type="float",
+                      name="pos_y",
+                      number=2,
+                      arg=first_est.position.y,
+                  ),
+                  pb.FieldSpec(
+                      type="float",
+                      name="pos_z",
+                      number=3,
+                      arg=first_est.position.z,
+                  ),
+                  pb.FieldSpec(
+                      type="float",
+                      name="ori_x",
+                      number=4,
+                      arg=first_est.orientation.x,
+                  ),
+                  pb.FieldSpec(
+                      type="float",
+                      name="ori_y",
+                      number=5,
+                      arg=first_est.orientation.y,
+                  ),
+                  pb.FieldSpec(
+                      type="float",
+                      name="ori_z",
+                      number=6,
+                      arg=first_est.orientation.z,
+                  ),
+                  pb.FieldSpec(
+                      type="float",
+                      name="ori_w",
+                      number=7,
+                      arg=first_est.orientation.w,
+                  ),
+                  pb.FieldSpec(
+                      type="float",
+                      name="approach_offset_z",
+                      number=8,
+                      arg=approach_offset_z,
+                  ),
+                  pb.FieldSpec(
+                      type="string",
+                      name="parent_object",
+                      number=9,
+                      arg=parent_object,
+                  ),
+                  pb.FieldSpec(
+                      type="string",
+                      name="pregrasp_frame_name",
+                      number=10,
+                      arg=pregrasp_frame_name,
+                  ),
+                  pb.FieldSpec(
+                      type="string",
+                      name="grasp_frame_name",
+                      number=11,
+                      arg=grasp_frame_name,
+                  ),
+                  pb.FieldSpec(
+                      type="string",
+                      name="camera_name",
+                      number=12,
+                      arg=self._camera_name,
+                  ),
+              ]
+          ),
+      )
+    else:
+      signature = None
 
-    update_world_skill = skills.ai.intrinsic.update_world
-    uw_proto = update_world_skill.intrinsic_proto
+    python_code = """
+import math
+from intrinsic.math.python import data_types
 
-    detected_pos = estimate_action.result.estimates[0].root_t_target.position
-    detected_rot = estimate_action.result.estimates[0].root_t_target.orientation
+world = context.object_world
+parent_obj = getattr(world, params.parent_object, getattr(world, "root", None))
 
-    # Align workpiece orientation with downward gripper approach:
-    # Q_tool = Q_part * [0.5, 0.5, 0.5, 0.5]
-    qx, qy, qz, qw = detected_rot.x, detected_rot.y, detected_rot.z, detected_rot.w
-    tool_orientation = uw_proto.Quaternion(
-        x=cel.CelExpression(f"0.5 * ({qw} + {qx} + {qy} - {qz})"),
-        y=cel.CelExpression(f"0.5 * ({qw} - {qx} + {qy} + {qz})"),
-        z=cel.CelExpression(f"0.5 * ({qw} + {qx} - {qy} + {qz})"),
-        w=cel.CelExpression(f"0.5 * ({qw} - {qx} - {qy} - {qz})"),
-    )
+# Resolve camera sensor transform in parent object (root)
+camera_obj = getattr(world, params.camera_name, None)
+if camera_obj is None:
+  for obj_name in ["ur_module", "robot", "root"]:
+    p = getattr(world, obj_name, None)
+    if p is not None and hasattr(p, params.camera_name):
+      camera_obj = getattr(p, params.camera_name)
+      break
 
-    # Standoff in camera optical frame: reduce distance along optical Z by approach_offset_z
-    pre_grasp_update = uw_proto.world.ObjectWorldUpdate(
-        update_transform=uw_proto.world.UpdateTransformRequest(
-            node_a=camera_ref,
-            node_b=pre_grasp_ref,
-            node_to_update=pre_grasp_ref,
-            a_t_b=uw_proto.Pose(
-                position=uw_proto.Point(
-                    x=detected_pos.x,
-                    y=detected_pos.y,
-                    z=cel.CelExpression(f"{detected_pos.z} - {approach_offset_z}"),
-                ),
-                orientation=tool_orientation,
-            ),
-        )
-    )
-    grasp_update = uw_proto.world.ObjectWorldUpdate(
-        update_transform=uw_proto.world.UpdateTransformRequest(
-            node_a=camera_ref,
-            node_b=grasp_ref,
-            node_to_update=grasp_ref,
-            a_t_b=uw_proto.Pose(
-                position=detected_pos,
-                orientation=tool_orientation,
-            ),
-        )
-    )
+camera_sensor_node = getattr(camera_obj, "sensor", camera_obj) if camera_obj else None
+root_t_camera = world.get_transform(parent_obj, camera_sensor_node) if camera_sensor_node else None
 
-    update_world_action = update_world_skill(
-        updates=uw_proto.world.ObjectWorldUpdates(
-            updates=[pre_grasp_update, grasp_update]
-        )
+# Construct detected pose in camera frame
+cam_q = data_types.Quaternion([params.ori_x, params.ori_y, params.ori_z, params.ori_w])
+cam_pose = data_types.Pose3(data_types.Rotation3(cam_q), [params.pos_x, params.pos_y, params.pos_z])
+
+if root_t_camera is not None:
+  root_t_target = root_t_camera * cam_pose
+else:
+  root_t_target = cam_pose
+
+target_pos = root_t_target.translation
+target_rot = root_t_target.rotation
+
+# Determine longest axis alignment in root XY plane:
+# Local X is the longest axis (5"), local Z is the medium axis (3"), local Y is the thickness (2").
+ax = target_rot.rotate_point([1.0, 0.0, 0.0])
+az = target_rot.rotate_point([0.0, 0.0, 1.0])
+
+if abs(float(ax[2])) < 0.7:
+  vx, vy = float(ax[0]), float(ax[1])
+else:
+  vx, vy = float(az[0]), float(az[1])
+
+theta_longest = math.atan2(vy, vx)
+# Grasp on the short side of the workpiece (rotated 90° around Z relative to long-side grasp):
+psi = theta_longest
+
+half_psi = psi / 2.0
+c1 = (math.cos(half_psi), math.sin(half_psi), 0.0, 0.0)
+c2 = (-math.sin(half_psi), math.cos(half_psi), 0.0, 0.0)
+candidates = [
+    c1,
+    (-c1[0], -c1[1], 0.0, 0.0),
+    c2,
+    (-c2[0], -c2[1], 0.0, 0.0),
+]
+
+tool_obj = getattr(world, "gripper", None)
+tool_node = getattr(tool_obj, "tool_frame", None) if tool_obj else None
+cur_tool_tf = world.get_transform(parent_obj, tool_node) if tool_node else None
+
+if cur_tool_tf is not None:
+  cur_q = cur_tool_tf.rotation.quaternion
+  grasp_ori = max(
+      candidates,
+      key=lambda c: (
+          c[0] * float(cur_q.x)
+          + c[1] * float(cur_q.y)
+          + c[2] * float(cur_q.z)
+          + c[3] * float(cur_q.w)
+      ),
+  )
+else:
+  grasp_ori = c1
+
+grasp_pos = (float(target_pos[0]), float(target_pos[1]), float(target_pos[2]))
+pregrasp_pos = (float(target_pos[0]), float(target_pos[1]), float(target_pos[2]) + params.approach_offset_z)
+
+frame_poses = {
+    params.pregrasp_frame_name: (pregrasp_pos, grasp_ori),
+    params.grasp_frame_name: (grasp_pos, grasp_ori),
+}
+
+existing_frames = set()
+if hasattr(parent_obj, "list_frames"):
+  existing_frames = set(parent_obj.list_frames())
+elif hasattr(parent_obj, "__dict__"):
+  existing_frames = set(parent_obj.__dict__.keys())
+
+for fname, (pos, ori) in frame_poses.items():
+  pose = data_types.Pose3(
+      data_types.Rotation3(data_types.Quaternion([ori[0], ori[1], ori[2], ori[3]])),
+      [pos[0], pos[1], pos[2]],
+  )
+  if fname in existing_frames or hasattr(parent_obj, fname):
+    frame_node = getattr(parent_obj, fname)
+    world.update_transform(node_a=parent_obj, node_b=frame_node, a_t_b=pose)
+  else:
+    world.create_frame(frame_name=fname, parent=parent_obj, parent_t_frame=pose)
+"""
+
+    calc_script = bt.PythonScript(
+        signature_with_args=signature,
+        function_body=python_code,
     )
-    update_world_task = bt.Task(
-        action=update_world_action,
-        name="3. Update Dynamic Grasp & Pre-Grasp Frames",
+    calc_task = bt.Task(
+        action=calc_script,
+        name="3. Calculate & Update Dynamic Grasp & Pre-Grasp Frames",
     )
 
     return bt.Sequence(
@@ -257,7 +374,7 @@ class OrbbecVision(VisionInterface):
         children=[
             capture_task,
             estimate_task,
-            update_world_task,
+            calc_task,
         ],
     )
 

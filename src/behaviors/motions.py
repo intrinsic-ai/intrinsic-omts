@@ -58,3 +58,27 @@ def create_compliant_touchdown_task(
       timeout_seconds=timeout_seconds,
       name=task_name or "Compliant Touchdown",
   )
+
+
+def create_relative_retract_task(
+    robot: RobotInterface,
+    distance_meters: float = 0.03,
+    task_name: Optional[str] = None,
+) -> bt.Node:
+  """Builds a relative Cartesian linear retract task along the tool -Z axis.
+
+  Args:
+      robot: Robot controller adapter.
+      distance_meters: Positive distance in meters to retract along tool -Z (default: 0.03m / 3cm).
+      task_name: Optional custom descriptive name for the behavior tree task.
+
+  Returns:
+      Executable behavior tree Node commanding relative Cartesian LINEAR motion.
+  """
+  retract_distance = -abs(distance_meters)
+  return robot.build_move_relative_cartesian_task(
+      translation=(0.0, 0.0, retract_distance),
+      motion_type="LINEAR",
+      name=task_name or f"Relative Retract ({abs(distance_meters) * 100:.1f} cm, -Z Tool)",
+  )
+
