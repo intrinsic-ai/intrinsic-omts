@@ -69,7 +69,7 @@ def build_unload_machine_subtree(
       create_compliant_touchdown_task(
           robot=robot,
           direction=(0.0, 0.0, 1.0),
-          contact_force_newtons=5.0,
+          contact_force_newtons=15.0,
           task_name="Step 12c: Compliant Touchdown to Machined Part (+Z Tool)",
       ),
       create_relative_retract_task(

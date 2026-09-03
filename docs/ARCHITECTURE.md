@@ -51,10 +51,10 @@ All hardware interactions are mediated by abstract interfaces in [`src/hardware/
 
 | Interface | Implementations | Key Responsibilities |
 | :--- | :--- | :--- |
-| [`RobotInterface`](../src/hardware/robot.py) | `UrRobot`, `MockRobot` | Joint motions (`build_move_joint_task`), Cartesian motions (`build_move_cartesian_task`), and compliant contact (`build_move_to_contact_task`). |
-| [`GripperInterface`](../src/hardware/gripper.py) | `DioGripper`, `MockGripper` | Gripper open/close tasks and grasp confirmation. |
+| [`RobotInterface`](../src/hardware/robot.py) | `UrRobot`, `MockRobot` | Joint motions (`build_move_joint_task`), absolute Cartesian motions (`build_move_cartesian_task`), relative linear Cartesian motions (`build_move_relative_cartesian_task`), and compliant contact (`build_move_to_contact_task`). |
+| [`GripperInterface`](../src/hardware/gripper.py) | `DioGripper`, `RobotiqGripper`, `MockGripper` | Gripper open/close tasks and stroke position control. |
 | [`CncMachineInterface`](../src/hardware/machine.py) | `DioCncMachine`, `MockCncMachine` | Door actuation, pneumatic vise clamping, cycle start pulsing, and cycle complete waiting. |
-| [`VisionInterface`](../src/hardware/vision.py) | `OrbbecVision`, `MockVision` | RGB-D image acquisition, 6D pose estimation, and dynamic world frame updates. |
+| [`VisionInterface`](../src/hardware/vision.py) | `OrbbecVision`, `MockVision` | RGB-D image acquisition, 6D pose estimation, and in-tree dynamic frame calculation via `bt.PythonScript`. |
 
 This abstraction ensures that high-level process behavior trees remain decoupled from the underlying hardware interfaces, facilitating offline unit testing without real hardware or simulators.
 
@@ -65,11 +65,19 @@ This abstraction ensures that high-level process behavior trees remain decoupled
 Infeed handling is decoupled into interchangeable strategy classes in [`src/core/infeed.py`](../src/core/infeed.py):
 
 ### A. Vision-Guided Infeed (`PerceptionInfeedStrategy`)
-* Used for parts placed randomly on the infeed table or tray.
+* Used for raw workpieces placed arbitrarily on the infeed table or tray.
 * Moves robot to a calibrated `view` frame.
-* Triggers Orbbec RGB-D capture and FoundationPose multi-view inference.
-* Dynamically updates `root/pre_grasp` and `root/grasp` via indirect transform updates in `update_world`.
-* Moves to dynamic pre-grasp, executes compliant touchdown (`move_to_contact`), grasps the part, and retracts linearly.
+* Triggers a 3-step Behavior Tree perception pipeline:
+  1. `capture_images`: Captures synchronized RGB-D frames from the camera.
+  2. `estimate_pose_multi_view`: Runs FoundationPose inference connected to the `pose_estimator_service`.
+  3. `bt.PythonScript`: Dynamically calculates grasp geometry and updates ObjectWorld frames.
+* **In-Tree Frame Calculation & Clean Script Injection:**
+  * Logic is maintained as a standard typed module in [`src/utils/dynamic_frame_calculator.py`](../src/utils/dynamic_frame_calculator.py) and injected via [`src/utils/script_utils.py:load_python_script`](../src/utils/script_utils.py).
+  * Resolves live camera sensor transform in root (`world.get_transform(parent_obj, camera_sensor_node)`).
+  * Computes part pose in root: $\mathbf{T}_{\text{root} \to \text{target}} = \mathbf{T}_{\text{root} \to \text{camera}} \cdot \mathbf{T}_{\text{camera} \to \text{target}}$.
+  * **Short-Side Grasp Alignment:** Identifies the workpiece horizontal longest axis ($\theta_{\text{longest}}$) and sets tool yaw $\psi = \theta_{\text{longest}}$ to grasp along the short side.
+  * **Geodesic Orientation Optimization:** Evaluates the 4 symmetrically equivalent grasp quaternions for parallel-jaw grippers ($\mathbf{q}$, $-\mathbf{q}$, $\mathbf{q} \cdot \mathbf{R}_z(180^\circ)$, $-\mathbf{q} \cdot \mathbf{R}_z(180^\circ)$) and selects the candidate closest to current tool orientation to prevent wrist joint 6 wrapping and protective stops.
+  * Dynamically updates or creates `root/pre_grasp` (with standoff) and `root/grasp` in the SBL `ObjectWorld`.
 
 ### B. Blind Grid Pallet Infeed (`GridInfeedStrategy`)
 * Used for structured part pallets, blister packs, or fixtures.
@@ -81,39 +89,58 @@ Infeed handling is decoupled into interchangeable strategy classes in [`src/core
 
 ## 4. Master Machine Tending Cycle
 
-The master Behavior Tree assembled in [`src/behaviors/machine_tending_bt.py`](../src/behaviors/machine_tending_bt.py) executes the following 13-step sequence:
+The master Behavior Tree assembled in [`src/behaviors/machine_tending_bt.py`](../src/behaviors/machine_tending_bt.py) executes the complete machine tending cycle across 5 modular subtrees:
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Robot as UR Robot
+    participant Gripper as Gripper
     participant Vision as Orbbec Camera
     participant CNC as CNC Machine & Vise
-    participant World as World Model
+    participant World as SBL ObjectWorld
 
-    Note over Robot,World: Phase 1: Infeed Acquisition
-    Robot->>Robot: Move to view frame
+    Note over Robot,World: 1. Infeed Pick Subtree
+    Robot->>Robot: Move to view frame (ANY)
     Vision->>Vision: Capture RGB-D & run FoundationPose
-    Vision->>World: update_world (root/pre_grasp, root/grasp)
-    Robot->>Robot: Move to root/pre_grasp (0.10m standoff)
-    Robot->>Robot: Compliant Touchdown (+Z tool contact)
-    Robot->>Robot: Close Gripper (Grasp Part)
-    Robot->>Robot: Linear Retract to root/pre_grasp
+    Vision->>World: PythonScript dynamic frame update (root/pre_grasp, root/grasp)
+    Gripper->>Gripper: Open Gripper fingers
+    Robot->>Robot: Move to root/pre_grasp (ANY)
+    Robot->>Robot: Compliant Touchdown (+Z tool contact, 15N)
+    Robot->>Robot: Linear Retract 3 cm (-Z tool relative motion)
+    Gripper->>Gripper: Close Gripper (Grasp Part)
+    Robot->>Robot: Linear Retract to root/pre_grasp (LINEAR)
 
-    Note over Robot,World: Phase 2: Machine Loading
+    Note over Robot,World: 2. Machine Loading Subtree
     CNC->>CNC: Open Door & Open Vise (DIO)
-    Robot->>Robot: Move to machine_approach entry frame
-    Robot->>Robot: Move to pre_place_vise insertion frame
-    Robot->>Robot: Compliant Seating into Vise (+Z tool contact)
+    Robot->>Robot: Move to machine_approach entry frame (ANY)
+    Robot->>Robot: Move to pre_place_vise insertion frame (ANY)
+    Robot->>Robot: Compliant Seating into Vise (+Z tool contact, 15N)
     CNC->>CNC: Clamp Vise (DIO)
-    Robot->>Robot: Open Gripper
-    Robot->>Robot: Linear Retract to pre_place_vise
-    Robot->>Robot: Retract to machine_approach
+    Gripper->>Gripper: Open Gripper (Release Part)
+    Robot->>Robot: Linear Retract to pre_place_vise (LINEAR)
+    Robot->>Robot: Retract to machine_approach (LINEAR)
 
-    Note over Robot,World: Phase 3: Machining & Extraction
+    Note over Robot,World: 3. Machining Handshake Subtree
+    Robot->>Robot: Standby at machine_approach
     CNC->>CNC: Close Door & Pulse Cycle Start (DIO)
-    CNC->>CNC: Wait for Machining Cycle Complete
+    CNC->>CNC: Wait for Machining Cycle Complete (DIO input / timeout)
+
+    Note over Robot,World: 4. Machine Unload Subtree
     CNC->>CNC: Open Door & Open Vise (DIO)
-    Robot->>Robot: Approach Vise & Grasp Finished Part
-    Robot->>Robot: Retract to Outfeed / Return
+    Robot->>Robot: Move to machine_approach (ANY)
+    Robot->>Robot: Move to pre_place_vise (ANY)
+    Robot->>Robot: Compliant Touchdown to Machined Part (+Z tool contact, 15N)
+    Robot->>Robot: Linear Retract 3 cm (-Z tool relative motion)
+    Gripper->>Gripper: Close Gripper (Grasp Part)
+    Robot->>Robot: Linear Retract to pre_place_vise (LINEAR)
+    Robot->>Robot: Retract to machine_approach (LINEAR)
+
+    Note over Robot,World: 5. Return / Outfeed Subtree
+    Robot->>Robot: Move to root/pre_grasp (ANY)
+    Robot->>Robot: Compliant Touchdown to Table (+Z tool contact, 5N)
+    Gripper->>Gripper: Open Gripper (Release Finished Part)
+    Robot->>Robot: Linear Retract from Table (LINEAR)
+    Robot->>Robot: Return to view frame (ANY)
 ```
+

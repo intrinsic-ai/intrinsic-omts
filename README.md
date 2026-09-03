@@ -20,18 +20,21 @@ OMTS orchestrates a complete machine tending cycle. It features a dual-infeed st
 ```mermaid
 flowchart TD
     subgraph INFEED["1. Infeed & Acquisition"]
-        A1[Move to view frame] --> A2[Capture RGBD & Estimate 6D Pose]
-        A2 --> A3[Move & Touch Part via move_to_contact]
-        A3 --> A4[Grasp Part & Store initial_infeed_pose]
+        A1[Move to view frame via move_robot] --> A2[Capture RGBD & Estimate 6D Pose]
+        A2 --> A3[Update Dynamic Frames via PythonScript]
+        A3 --> A4[Open Gripper Fingers]
+        A4 --> A5[Move to root/pre_grasp via move_robot]
+        A5 --> A6[Touch Part via move_to_contact]
+        A6 --> A7[Linear Retract 3 cm along -Z tool]
+        A7 --> A8[Grasp Part & Retract to root/pre_grasp]
     end
 
     subgraph CNC_LOAD["2. Machine Loading & Fixturing"]
-        B1[Open CNC Door via dio_set_output] --> B2[Open CNC Vise via dio_set_output]
-        B2 --> B3[Approach Machine Entry via move_robot]
-        B3 --> B4[Approach Vise Insertion Frame via move_robot]
-        B4 --> B5[Seat Part into Vise via move_to_contact]
-        B5 --> B6[Close & Clamp Vise via dio_set_output]
-        B6 --> B7[Open Gripper & Retract Arm out of Machine]
+        B1[Open CNC Door & Vise via dio_set_output] --> B2[Approach Machine Entry via move_robot]
+        B2 --> B3[Approach Vise Insertion Frame via move_robot]
+        B3 --> B4[Seat Part into Vise via move_to_contact]
+        B4 --> B5[Close & Clamp Vise via dio_set_output]
+        B5 --> B6[Open Gripper & Retract Arm out of Machine]
     end
 
     subgraph MACHINING["3. Machining Cycle Handshake"]
@@ -41,11 +44,10 @@ flowchart TD
     end
 
     subgraph CNC_UNLOAD["4. Part Extraction"]
-        D1[Open CNC Door via dio_set_output] --> D2[Open CNC Vise via dio_set_output]
-        D2 --> D3[Approach Machine Entry via move_robot]
-        D3 --> D4[Approach Machined Part via move_robot]
-        D4 --> D5[Align & Touch Part via move_to_contact]
-        D5 --> D6[Grasp Part & Retract Arm out of Machine]
+        D1[Open CNC Door & Vise via dio_set_output] --> D2[Approach Machine Entry & Part via move_robot]
+        D2 --> D3[Align & Touch Part via move_to_contact]
+        D3 --> D4[Linear Retract 3 cm along -Z tool]
+        D4 --> D5[Grasp Part & Retract Arm out of Machine]
     end
 
     subgraph OUTFEED["5. Infeed Return / Outfeed Placement"]
@@ -166,8 +168,8 @@ bazel run //:omts_solution -c opt --config=lab_bb_01 -- --address localhost:1708
 Connect to the running deployment and execute the machine tending sequence:
 
 ```bash
-# Run in Perception mode (3D vision-guided picking):
-bazel run //src:omts_app -- --address=localhost:17080 --infeed_mode=perception
+# Run in Perception mode (3D vision-guided picking + Robotiq gripper):
+bazel run //src:omts_app -- --address=localhost:17080 --infeed_mode=perception --gripper_type=robotiq
 
 # Run in Blind Grid mode (deterministic tray slots):
 bazel run //src:omts_app -- --address=localhost:17080 --infeed_mode=grid
@@ -178,9 +180,9 @@ bazel run //src:omts_app -- --address=localhost:17080 --infeed_mode=grid
 ## 6. Testing & Developer Tools
 
 ### Unit Tests
-Run offline unit tests (no physical cluster required):
+Run offline unit tests (no physical cluster or robot required, covers 8 test suites):
 ```bash
-bazel test //tests/...
+bazel test //tests/unit:all
 ```
 
 ### Developer CLI Tools
