@@ -26,20 +26,21 @@ def main(argv: Sequence[str] | None = None) -> None:
   world = solution.world
 
   print("\n=== Objects in Active Belief World ===")
-  objects = world.list_objects()
-  for obj_name in objects:
-    print(f" - {obj_name}")
-    try:
-      obj = getattr(world, obj_name)
-      if hasattr(obj, "joint_configurations") and list(
-          obj.joint_configurations.keys()
-      ):
-        print("   Joint Configurations:")
-        for cfg_name in obj.joint_configurations.keys():
-          cfg = obj.joint_configurations[cfg_name]
-          print(f"     * {cfg_name}: {list(cfg.joint_position)}")
-    except Exception:
-      pass
+  if hasattr(world, "cnc_enclosure"):
+    cnc = world.cnc_enclosure
+    print(f"\n--- cnc_enclosure inspect ---")
+    print(f"  Type: {type(cnc)}")
+    print(f"  Dir: {[m for m in dir(cnc) if not m.startswith('_')]}")
+    if hasattr(cnc, "joint_names"):
+      print(f"  Joint names: {cnc.joint_names}")
+    if hasattr(cnc, "joint_configurations"):
+      print(f"  Joint configs: {list(cnc.joint_configurations.keys())}")
+      for k in cnc.joint_configurations.keys():
+        print(f"    {k}: {cnc.joint_configurations[k].joint_position}")
+    if hasattr(cnc, "list_frames"):
+      print(f"  Frames: {cnc.list_frames()}")
+    if hasattr(cnc, "frames"):
+      print(f"  Frames attr: {cnc.frames}")
 
   print("\n=== Solution Resources ===")
   try:

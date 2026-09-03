@@ -6,7 +6,7 @@ from intrinsic.solutions import behavior_tree as bt
 
 
 class CncMachineInterface(abc.ABC):
-  """Abstract interface for CNC machine door, vise clamping, and cycle signals."""
+  """Abstract interface for CNC door, vise, and cycle signals."""
 
   @abc.abstractmethod
   def build_open_door_task(self, name: Optional[str] = None) -> bt.Node:
@@ -53,7 +53,9 @@ class DioCncMachine(CncMachineInterface):
       vise_close_pin: int = 5,
       cycle_start_pin: int = 6,
       cycle_done_input_pin: int = 0,
-      device_name: str = "ur_module",
+      output_block_name: str = "standard_out",
+      input_block_name: str = "standard_in",
+      device_name: Optional[str] = None,
       is_mock: bool = False,
   ) -> None:
     self._solution = solution
@@ -63,45 +65,77 @@ class DioCncMachine(CncMachineInterface):
     self._vise_close_pin = vise_close_pin
     self._cycle_start_pin = cycle_start_pin
     self._cycle_done_input_pin = cycle_done_input_pin
+    self._output_block_name = output_block_name
+    self._input_block_name = input_block_name
     self._device_name = device_name
     self._is_mock = is_mock
     self._dio_set_skill = solution.skills.ai.intrinsic.dio_set_output
     self._dio_read_skill = solution.skills.ai.intrinsic.dio_read_input
 
+  def _build_dio_set_task(
+      self, pin: int, state: bool, task_name: str
+  ) -> bt.Node:
+    if hasattr(self._dio_set_skill, "intrinsic_proto") and hasattr(
+        self._dio_set_skill.intrinsic_proto, "skills"
+    ):
+      block_cls = self._dio_set_skill.intrinsic_proto.skills.DioOutputBlock
+    elif hasattr(self._dio_set_skill, "DioOutputBlock"):
+      block_cls = self._dio_set_skill.DioOutputBlock
+    else:
+      block_cls = getattr(
+          getattr(self._dio_set_skill, "ai", None), "intrinsic", None
+      )
+      if block_cls and hasattr(block_cls, "DioOutputBlock"):
+        block_cls = block_cls.DioOutputBlock
+      else:
+        block_cls = None
+
+    if block_cls is not None:
+      block = block_cls(
+          block_name=self._output_block_name,
+          indices=[pin],
+          values=[state],
+      )
+      action = self._dio_set_skill(dio_output_blocks=[block])
+    else:
+      action = self._dio_set_skill(
+          dio_output_blocks=[{
+              "block_name": self._output_block_name,
+              "indices": [pin],
+              "values": [state],
+          }]
+      )
+    return bt.Task(action=action, name=task_name)
+
   def build_open_door_task(self, name: Optional[str] = None) -> bt.Node:
     task_name = name or "Open CNC Door (DIO)"
-    action = self._dio_set_skill(
-        pin=self._door_open_pin, state=True, device_name=self._device_name
+    return self._build_dio_set_task(
+        pin=self._door_open_pin, state=True, task_name=task_name
     )
-    return bt.Task(action=action, name=task_name)
 
   def build_close_door_task(self, name: Optional[str] = None) -> bt.Node:
     task_name = name or "Close CNC Door (DIO)"
-    action = self._dio_set_skill(
-        pin=self._door_close_pin, state=True, device_name=self._device_name
+    return self._build_dio_set_task(
+        pin=self._door_close_pin, state=True, task_name=task_name
     )
-    return bt.Task(action=action, name=task_name)
 
   def build_open_vise_task(self, name: Optional[str] = None) -> bt.Node:
     task_name = name or "Open CNC Vise (DIO)"
-    action = self._dio_set_skill(
-        pin=self._vise_open_pin, state=True, device_name=self._device_name
+    return self._build_dio_set_task(
+        pin=self._vise_open_pin, state=True, task_name=task_name
     )
-    return bt.Task(action=action, name=task_name)
 
   def build_close_vise_task(self, name: Optional[str] = None) -> bt.Node:
     task_name = name or "Clamp CNC Vise (DIO)"
-    action = self._dio_set_skill(
-        pin=self._vise_close_pin, state=True, device_name=self._device_name
+    return self._build_dio_set_task(
+        pin=self._vise_close_pin, state=True, task_name=task_name
     )
-    return bt.Task(action=action, name=task_name)
 
   def build_trigger_cycle_task(self, name: Optional[str] = None) -> bt.Node:
     task_name = name or "Trigger CNC Machining Cycle (DIO)"
-    action = self._dio_set_skill(
-        pin=self._cycle_start_pin, state=True, device_name=self._device_name
+    return self._build_dio_set_task(
+        pin=self._cycle_start_pin, state=True, task_name=task_name
     )
-    return bt.Task(action=action, name=task_name)
 
   def build_wait_cycle_complete_task(
       self, timeout_seconds: float = 30.0, name: Optional[str] = None
@@ -110,14 +144,16 @@ class DioCncMachine(CncMachineInterface):
     if self._is_mock:
       return bt.Task(
           action=bt.PythonScript(
-              function_body='print("[MockCNC] Wait for cycle complete (bypassed)")'
+              function_body=(
+                  'print("[MockCNC] Wait for cycle complete (bypassed)")'
+              )
           ),
           name=f"{task_name} (Mock Bypassed)",
       )
 
     read_action = self._dio_read_skill(
-        pin=self._cycle_done_input_pin,
-        device_name=self._device_name,
+        block_name=self._input_block_name,
+        timeout=timeout_seconds,
     )
     return bt.Task(action=read_action, name=task_name)
 

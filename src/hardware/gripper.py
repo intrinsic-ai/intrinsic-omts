@@ -27,31 +27,62 @@ class DioGripper(GripperInterface):
       solution: Any,
       open_pin: int = 0,
       close_pin: int = 1,
-      device_name: str = "ur_module",
+      output_block_name: str = "standard_out",
+      device_name: Optional[str] = None,
   ) -> None:
     self._solution = solution
     self._open_pin = open_pin
     self._close_pin = close_pin
+    self._output_block_name = output_block_name
     self._device_name = device_name
     self._dio_set_skill = solution.skills.ai.intrinsic.dio_set_output
 
+  def _build_dio_set_task(
+      self, pin: int, state: bool, task_name: str
+  ) -> bt.Node:
+    if hasattr(self._dio_set_skill, "intrinsic_proto") and hasattr(
+        self._dio_set_skill.intrinsic_proto, "skills"
+    ):
+      block_cls = self._dio_set_skill.intrinsic_proto.skills.DioOutputBlock
+    elif hasattr(self._dio_set_skill, "DioOutputBlock"):
+      block_cls = self._dio_set_skill.DioOutputBlock
+    else:
+      block_cls = getattr(
+          getattr(self._dio_set_skill, "ai", None), "intrinsic", None
+      )
+      if block_cls and hasattr(block_cls, "DioOutputBlock"):
+        block_cls = block_cls.DioOutputBlock
+      else:
+        block_cls = None
+
+    if block_cls is not None:
+      block = block_cls(
+          block_name=self._output_block_name,
+          indices=[pin],
+          values=[state],
+      )
+      action = self._dio_set_skill(dio_output_blocks=[block])
+    else:
+      action = self._dio_set_skill(
+          dio_output_blocks=[{
+              "block_name": self._output_block_name,
+              "indices": [pin],
+              "values": [state],
+          }]
+      )
+    return bt.Task(action=action, name=task_name)
+
   def build_open_task(self, name: Optional[str] = None) -> bt.Node:
     task_name = name or "Open Gripper (DIO)"
-    action = self._dio_set_skill(
-        pin=self._open_pin,
-        state=True,
-        device_name=self._device_name,
+    return self._build_dio_set_task(
+        pin=self._open_pin, state=True, task_name=task_name
     )
-    return bt.Task(action=action, name=task_name)
 
   def build_close_task(self, name: Optional[str] = None) -> bt.Node:
     task_name = name or "Close Gripper (DIO)"
-    action = self._dio_set_skill(
-        pin=self._close_pin,
-        state=True,
-        device_name=self._device_name,
+    return self._build_dio_set_task(
+        pin=self._close_pin, state=True, task_name=task_name
     )
-    return bt.Task(action=action, name=task_name)
 
 
 class RobotiqGripper(GripperInterface):

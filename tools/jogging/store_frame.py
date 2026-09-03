@@ -1,4 +1,4 @@
-"""Script to store the current robot tool frame pose as a frame in scene.updates.pbtxt."""
+"""Stores the robot tool frame pose as a frame in scene.updates.pbtxt."""
 
 import argparse
 import os
@@ -13,14 +13,20 @@ from intrinsic.world.public.proto import object_world_updates_pb2
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   """Parses command line arguments."""
   parser = argparse.ArgumentParser(
-      description="Store current robot tool frame pose as a named frame in scene.updates.pbtxt."
+      description=(
+          "Store current robot tool frame pose as a named frame in"
+          " scene.updates.pbtxt."
+      )
   )
   parser.add_argument(
       "name",
       nargs="?",
       default=None,
       type=str,
-      help="Name of the frame to store/overwrite (e.g. 'view', 'grasp', 'pre_grasp').",
+      help=(
+          "Name of the frame to store/overwrite (e.g. 'view', 'grasp',"
+          " 'pre_grasp')."
+      ),
   )
   parser.add_argument(
       "--address",
@@ -32,7 +38,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
       "--parent_object",
       type=str,
       default="root",
-      help="Parent object name in SBL world for the stored frame (default: 'root').",
+      help=(
+          "Parent object name in SBL world for the stored frame (default:"
+          " 'root')."
+      ),
   )
   parser.add_argument(
       "--tool_object",
@@ -44,7 +53,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
       "--tool_frame",
       type=str,
       default="tool_frame",
-      help="Tool frame name on tool_object in SBL world (default: 'tool_frame').",
+      help=(
+          "Tool frame name on tool_object in SBL world (default: 'tool_frame')."
+      ),
   )
   parser.add_argument(
       "--scene_updates_file",
@@ -60,18 +71,19 @@ def find_scene_updates_file(filepath: str) -> str:
   if os.path.isabs(filepath) and os.path.exists(filepath):
     return filepath
 
-  # Check BUILD_WORKSPACE_DIRECTORY first if invoked via 'bazel run'
+  # Check BUILD_WORKING_DIRECTORY first if invoked via 'bazel run'
+  working_dir = os.environ.get("BUILD_WORKING_DIRECTORY")
+  if working_dir:
+    ws_file = os.path.join(working_dir, filepath)
+    if os.path.exists(ws_file) or os.path.exists(os.path.dirname(ws_file)):
+      return ws_file
+
+  # Check BUILD_WORKSPACE_DIRECTORY
   workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")
   if workspace_dir:
     ws_file = os.path.join(workspace_dir, filepath)
     if os.path.exists(ws_file) or os.path.exists(os.path.dirname(ws_file)):
       return ws_file
-
-  # Check direct workspace path
-  direct_ws = "/usr/local/google/home/mschweiger/workspaces/omts"
-  ws_file = os.path.join(direct_ws, filepath)
-  if os.path.exists(ws_file) or os.path.exists(os.path.dirname(ws_file)):
-    return ws_file
 
   # Check runfiles
   runfiles_dir = os.environ.get("PYTHON_RUNFILES") or os.environ.get(
@@ -91,7 +103,7 @@ def get_current_tool_pose(
     tool_object_name: str = "gripper",
     tool_frame_name: str = "tool_frame",
 ) -> tuple[tuple[float, float, float], tuple[float, float, float, float]]:
-  """Retrieves the current (position, orientation) of the tool frame relative to parent object.
+  """Retrieves the current tool frame pose relative to parent object.
 
   Args:
     world: SBL ObjectWorld instance.
@@ -311,7 +323,8 @@ def main(argv: Sequence[str] | None = None) -> None:
   frame_name = args.name
   if not frame_name:
     frame_name = input(
-        "Enter frame name to store/overwrite (e.g. 'view', 'grasp', 'pre_grasp'): "
+        "Enter frame name to store/overwrite"
+        " (e.g. 'view', 'grasp', 'pre_grasp'): "
     ).strip()
     if not frame_name:
       print("Error: A frame name must be specified.")

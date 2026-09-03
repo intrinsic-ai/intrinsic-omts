@@ -8,6 +8,7 @@ from src.hardware.gripper import DioGripper
 from src.hardware.gripper import MockGripper
 from src.hardware.gripper import RobotiqGripper
 from src.hardware.gripper import SideloadedGripperCmd
+from src.hardware.machine import DioCncMachine
 from src.hardware.machine import MockCncMachine
 from src.hardware.robot import MockRobot
 from src.hardware.robot import UrRobot
@@ -37,22 +38,34 @@ class HardwareAdaptersTest(absltest.TestCase):
     mock_solution = mock.MagicMock()
     dio_set_mock = mock.MagicMock()
     dio_set_mock.return_value = bt.PythonScript(function_body="pass")
+    mock_block_cls = mock.MagicMock()
+    dio_set_mock.intrinsic_proto.skills.DioOutputBlock = mock_block_cls
     mock_solution.skills.ai.intrinsic.dio_set_output = dio_set_mock
 
     gripper = DioGripper(
         solution=mock_solution,
         open_pin=0,
         close_pin=1,
-        device_name="ur_module",
+        output_block_name="standard_out",
     )
 
     open_task = gripper.build_open_task()
     self.assertEqual(open_task.name, "Open Gripper (DIO)")
-    dio_set_mock.assert_called_with(pin=0, state=True, device_name="ur_module")
+    mock_block_cls.assert_called_with(
+        block_name="standard_out", indices=[0], values=[True]
+    )
+    dio_set_mock.assert_called_with(
+        dio_output_blocks=[mock_block_cls.return_value]
+    )
 
     close_task = gripper.build_close_task()
     self.assertEqual(close_task.name, "Close Gripper (DIO)")
-    dio_set_mock.assert_called_with(pin=1, state=True, device_name="ur_module")
+    mock_block_cls.assert_called_with(
+        block_name="standard_out", indices=[1], values=[True]
+    )
+    dio_set_mock.assert_called_with(
+        dio_output_blocks=[mock_block_cls.return_value]
+    )
 
   def test_robotiq_gripper_defaults(self):
     mock_solution = mock.MagicMock()
@@ -125,6 +138,67 @@ class HardwareAdaptersTest(absltest.TestCase):
     self.assertTrue(machine.cycle_triggered)
     machine.build_wait_cycle_complete_task()
     self.assertIn("wait_cycle_complete", machine.command_log)
+
+  def test_dio_cnc_machine(self):
+    mock_solution = mock.MagicMock()
+    dio_set_mock = mock.MagicMock()
+    dio_set_mock.return_value = bt.PythonScript(function_body="pass")
+    mock_block_cls = mock.MagicMock()
+    dio_set_mock.intrinsic_proto.skills.DioOutputBlock = mock_block_cls
+    dio_read_mock = mock.MagicMock()
+    dio_read_mock.return_value = bt.PythonScript(function_body="pass")
+    mock_solution.skills.ai.intrinsic.dio_set_output = dio_set_mock
+    mock_solution.skills.ai.intrinsic.dio_read_input = dio_read_mock
+
+    machine = DioCncMachine(
+        solution=mock_solution,
+        door_open_pin=2,
+        door_close_pin=3,
+        vise_open_pin=4,
+        vise_close_pin=5,
+        cycle_start_pin=6,
+        cycle_done_input_pin=0,
+        output_block_name="standard_out",
+        input_block_name="standard_in",
+    )
+
+    open_door_task = machine.build_open_door_task()
+    self.assertEqual(open_door_task.name, "Open CNC Door (DIO)")
+    mock_block_cls.assert_called_with(
+        block_name="standard_out", indices=[2], values=[True]
+    )
+
+    close_door_task = machine.build_close_door_task()
+    self.assertEqual(close_door_task.name, "Close CNC Door (DIO)")
+    mock_block_cls.assert_called_with(
+        block_name="standard_out", indices=[3], values=[True]
+    )
+
+    open_vise_task = machine.build_open_vise_task()
+    self.assertEqual(open_vise_task.name, "Open CNC Vise (DIO)")
+    mock_block_cls.assert_called_with(
+        block_name="standard_out", indices=[4], values=[True]
+    )
+
+    close_vise_task = machine.build_close_vise_task()
+    self.assertEqual(close_vise_task.name, "Clamp CNC Vise (DIO)")
+    mock_block_cls.assert_called_with(
+        block_name="standard_out", indices=[5], values=[True]
+    )
+
+    trigger_task = machine.build_trigger_cycle_task()
+    self.assertEqual(
+        trigger_task.name, "Trigger CNC Machining Cycle (DIO)"
+    )
+    mock_block_cls.assert_called_with(
+        block_name="standard_out", indices=[6], values=[True]
+    )
+
+    wait_task = machine.build_wait_cycle_complete_task()
+    self.assertEqual(wait_task.name, "Wait for CNC Cycle Complete")
+    dio_read_mock.assert_called_with(
+        block_name="standard_in", timeout=30.0
+    )
 
   def test_mock_vision(self):
     vision = MockVision()
@@ -242,7 +316,9 @@ class HardwareAdaptersTest(absltest.TestCase):
     joint_task = robot.build_move_joint_task("home")
     self.assertIsInstance(joint_task, bt.Task)
     mock_move_robot.intrinsic_proto.skills.MotionSegment.assert_called()
-    call_kwargs = mock_move_robot.intrinsic_proto.skills.MotionSegment.call_args.kwargs
+    call_kwargs = (
+        mock_move_robot.intrinsic_proto.skills.MotionSegment.call_args.kwargs
+    )
     self.assertIn("collision_settings", call_kwargs)
 
   def test_ur_robot_settling_timeout(self):
@@ -257,17 +333,14 @@ class HardwareAdaptersTest(absltest.TestCase):
     )
     # Default settling timeout passed to skill
     robot.build_move_joint_task("home")
-    mock_move_robot.intrinsic_proto.skills.ExecutionParameters.assert_called_with(
-        settling_timeout_seconds=10.0
-    )
+    exec_params = mock_move_robot.intrinsic_proto.skills.ExecutionParameters
+    exec_params.assert_called_with(settling_timeout_seconds=10.0)
     call_kwargs = mock_move_robot.call_args.kwargs
     self.assertIn("execution_parameters", call_kwargs)
 
     # Override settling timeout per call
     robot.build_move_cartesian_task("view", settling_timeout_seconds=15.0)
-    mock_move_robot.intrinsic_proto.skills.ExecutionParameters.assert_called_with(
-        settling_timeout_seconds=15.0
-    )
+    exec_params.assert_called_with(settling_timeout_seconds=15.0)
     call_kwargs_cart = mock_move_robot.call_args.kwargs
     self.assertIn("execution_parameters", call_kwargs_cart)
 

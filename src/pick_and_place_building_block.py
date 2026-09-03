@@ -20,6 +20,9 @@ from src.core.types import Pose3D
 from src.hardware.gripper import GripperInterface
 from src.hardware.gripper import MockGripper
 from src.hardware.gripper import SideloadedGripperCmd
+from src.hardware.machine import CncMachineInterface
+from src.hardware.machine import DioCncMachine
+from src.hardware.machine import MockCncMachine
 from src.hardware.robot import MockRobot
 from src.hardware.robot import RobotInterface
 from src.hardware.robot import UrRobot
@@ -113,6 +116,16 @@ _GRIPPER_CLOSE_POS = flags.DEFINE_float(
     "gripper_close_pos",
     0.000,
     "Position in meters for closed gripper finger state.",
+)
+_CNC_DOOR_OPEN_PIN = flags.DEFINE_integer(
+    "cnc_door_open_pin",
+    2,
+    "Digital output pin index to open CNC enclosure door.",
+)
+_CNC_DEVICE_NAME = flags.DEFINE_string(
+    "cnc_device_name",
+    "ur_module",
+    "Device name owning CNC DIO pins.",
 )
 _MOCK_HARDWARE = flags.DEFINE_bool(
     "mock_hardware",
@@ -579,6 +592,8 @@ def run_pick_and_place_loop(
     gripper_joint_name: str = "robotiq_hande_left_finger_joint",
     gripper_open_pos: float = 0.025,
     gripper_close_pos: float = 0.000,
+    cnc_door_open_pin: int = 2,
+    cnc_device_name: str = "ur_module",
     mock_hardware: bool = False,
     disable_collision_checking: bool = True,
     alternate_place_offset: bool = True,
@@ -587,6 +602,7 @@ def run_pick_and_place_loop(
     retry_delay_sec: float = 2.0,
     settling_timeout_seconds: float = 10.0,
     solution: Any | None = None,
+    machine: CncMachineInterface | None = None,
 ) -> int:
   """Runs the main pick and place loop for building blocks."""
   if solution is None:
@@ -597,6 +613,16 @@ def run_pick_and_place_loop(
           "Connecting to Intrinsic solution at %s...", solution_address
       )
       solution = deployments.connect(address=solution_address)
+
+  if machine is None:
+    if mock_hardware:
+      machine = MockCncMachine()
+    else:
+      machine = DioCncMachine(
+          solution=solution,
+          door_open_pin=cnc_door_open_pin,
+          device_name=cnc_device_name,
+      )
 
   if mock_hardware:
     robot: RobotInterface = MockRobot()
@@ -625,6 +651,11 @@ def run_pick_and_place_loop(
     perception_resource = get_perception_service_resource(
         solution, service_name
     )
+
+  # Open CNC enclosure door before anything else
+  logging.info("Opening CNC enclosure door at startup...")
+  open_door_task = machine.build_open_door_task()
+  solution.executive.run(open_door_task)
 
   cycle_count = 0
   while num_cycles <= 0 or cycle_count < num_cycles:
@@ -717,6 +748,7 @@ def run_pick_and_place_loop(
     tree = build_building_block_pick_place_tree(
         robot=robot,
         gripper=gripper,
+        machine=machine,
         parent_object=parent_object,
         pregrasp_frame_name="dynamic_pregrasp",
         grasp_frame_name="dynamic_grasp",
@@ -762,6 +794,8 @@ def main(argv: Sequence[str]) -> None:
       gripper_joint_name=_GRIPPER_JOINT_NAME.value,
       gripper_open_pos=_GRIPPER_OPEN_POS.value,
       gripper_close_pos=_GRIPPER_CLOSE_POS.value,
+      cnc_door_open_pin=_CNC_DOOR_OPEN_PIN.value,
+      cnc_device_name=_CNC_DEVICE_NAME.value,
       mock_hardware=_MOCK_HARDWARE.value,
       disable_collision_checking=_DISABLE_COLLISION_CHECKING.value,
       alternate_place_offset=_ALTERNATE_PLACE_OFFSET.value,

@@ -234,6 +234,72 @@ class BehaviorsTest(absltest.TestCase):
     )
     self.assertEqual(self.gripper.command_log, ["open", "close", "open"])
 
+  def test_build_building_block_pick_place_tree_with_machine(self):
+    tree = build_building_block_pick_place_tree(
+        robot=self.robot,
+        gripper=self.gripper,
+        machine=self.machine,
+        parent_object="root",
+        pregrasp_frame_name="dynamic_pregrasp",
+        grasp_frame_name="dynamic_grasp",
+        preplace_frame_name="dynamic_preplace",
+        place_frame_name="dynamic_place",
+        view_frame_name="view",
+    )
+
+    self.assertIsNotNone(tree)
+    self.assertEqual(len(tree.root.children), 11)
+    self.assertEqual(
+        tree.root.children[1].name,
+        "2. Open Gripper (Prepare Grasp)",
+    )
+    self.assertEqual(
+        tree.root.children[2].name,
+        "3. Open CNC Vise (Prepare Vise)",
+    )
+    self.assertEqual(
+        tree.root.children[3].name,
+        "4. Move to Grasp (root/dynamic_grasp)",
+    )
+    self.assertTrue(self.machine.vise_open)
+    self.assertIn("open_vise", self.machine.command_log)
+
+  def test_build_building_block_pick_place_tree_with_vision_and_machine(self):
+    tree = build_building_block_pick_place_tree(
+        robot=self.robot,
+        gripper=self.gripper,
+        machine=self.machine,
+        vision=self.vision,
+        target_object="ai.intrinsic.raw_stock_2x3x5",
+        pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator",
+        parent_object="root",
+        pregrasp_frame_name="dynamic_pregrasp",
+        grasp_frame_name="dynamic_grasp",
+        preplace_frame_name="dynamic_preplace",
+        place_frame_name="dynamic_place",
+        view_frame_name="view",
+    )
+
+    self.assertIsNotNone(tree)
+    self.assertEqual(len(tree.root.children), 12)
+    self.assertEqual(
+        tree.root.children[1].name,
+        "2. Estimate & Update Pose (ai.intrinsic.raw_stock_2x3x5)",
+    )
+    self.assertEqual(
+        tree.root.children[2].name,
+        "3. Open Gripper (Prepare Grasp)",
+    )
+    self.assertEqual(
+        tree.root.children[3].name,
+        "4. Open CNC Vise (Prepare Vise)",
+    )
+    self.assertEqual(
+        tree.root.children[4].name,
+        "5. Move to Grasp (root/dynamic_grasp)",
+    )
+    self.assertTrue(self.machine.vise_open)
+
 
 if __name__ == "__main__":
   absltest.main()

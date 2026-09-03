@@ -7,6 +7,7 @@ from intrinsic.world.public.proto import object_world_updates_pb2
 from src.behaviors.building_block_bt import build_building_block_pick_place_tree
 from src.core.types import Pose3D
 from src.hardware.gripper import MockGripper
+from src.hardware.machine import MockCncMachine
 from src.hardware.robot import MockRobot
 from src.pick_and_place_building_block import compute_dynamic_frame_poses
 from src.pick_and_place_building_block import extract_pose_from_estimate
@@ -179,7 +180,7 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
         orientation=ori,
     )
     # Local X is vertical (+Z). Primary horizontal axis is local Y
-    # with direction (0.99311, -0.11690), yielding yaw = -0.11721 rad (-6.716 deg).
+    # with direction (0.99311, -0.11690), yielding yaw = -0.11721 rad.
     # Expected top-down: qx = cos(yaw/2) = 0.99828, qy = sin(yaw/2) = -0.05856
     self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 0.9982827, places=4)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][1], -0.0585787, places=4)
@@ -196,7 +197,7 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
     )
     # Local Y is vertical. Primary horizontal axis is local Z (0, -1, 0),
     # yielding yaw = -pi/2 (-90 deg).
-    # Expected top-down: qx = cos(-pi/4) = 0.70710678, qy = sin(-pi/4) = -0.70710678
+    # Expected top-down: qx = cos(-pi/4), qy = sin(-pi/4) = -0.70710678
     self.assertAlmostEqual(poses["dynamic_grasp"][1][0], 0.70710678, places=5)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][1], -0.70710678, places=5)
     self.assertAlmostEqual(poses["dynamic_grasp"][1][2], 0.0, places=5)
@@ -559,6 +560,9 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
     with (
         mock.patch("src.pick_and_place_building_block.UrRobot") as mock_ur,
         mock.patch(
+            "src.pick_and_place_building_block.DioCncMachine"
+        ) as mock_dio_cnc,
+        mock.patch(
             "src.pick_and_place_building_block.get_camera_resource"
         ),
         mock.patch(
@@ -570,6 +574,8 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
     ):
       mock_robot_inst = mock.MagicMock()
       mock_ur.return_value = mock_robot_inst
+      mock_cnc_inst = mock.MagicMock()
+      mock_dio_cnc.return_value = mock_cnc_inst
       run_pick_and_place_loop(
           mock_hardware=False,
           move_to_view_first=True,
@@ -581,6 +587,101 @@ class PickAndPlaceBuildingBlockTest(absltest.TestCase):
       self.assertEqual(
           mock_ur.call_args.kwargs.get("default_settling_timeout_seconds"),
           20.0,
+      )
+
+  def test_run_pick_and_place_loop_opens_cnc_door_at_startup_mock(self):
+    mock_solution = mock.MagicMock()
+    mock_root = mock.MagicMock()
+    mock_root.list_frames.return_value = []
+    del mock_root.dynamic_pregrasp
+    del mock_root.dynamic_grasp
+    del mock_root.dynamic_preplace
+    del mock_root.dynamic_place
+    setattr(mock_solution.world, "root", mock_root)
+
+    mock_machine = MockCncMachine()
+
+    mock_estimate = mock.MagicMock()
+    mock_estimate.score = 0.96
+    mock_estimate.position = (0.15, 0.25, 0.70)
+    mock_estimate.orientation = (1.0, 0.0, 0.0, 0.0)
+    del mock_estimate.root_t_target
+    del mock_estimate.pose
+
+    mock_result = mock.MagicMock()
+    mock_result.estimates = [mock_estimate]
+    mock_solution.executive.get_value.return_value = mock_result
+
+    completed_cycles = run_pick_and_place_loop(
+        solution_address="localhost:17080",
+        mock_hardware=True,
+        move_to_view_first=False,
+        num_cycles=1,
+        solution=mock_solution,
+        machine=mock_machine,
+    )
+
+    self.assertEqual(completed_cycles, 1)
+    self.assertTrue(mock_machine.door_open)
+    self.assertIn("open_door", mock_machine.command_log)
+    self.assertTrue(mock_machine.vise_open)
+    self.assertIn("open_vise", mock_machine.command_log)
+    self.assertGreaterEqual(mock_solution.executive.run.call_count, 1)
+
+  def test_run_pick_and_place_loop_opens_cnc_door_at_startup_live(self):
+    mock_solution = mock.MagicMock()
+    mock_root = mock.MagicMock()
+    mock_root.list_frames.return_value = []
+    setattr(mock_solution.world, "root", mock_root)
+
+    mock_estimate = mock.MagicMock()
+    mock_estimate.score = 0.99
+    mock_estimate.position = (0.1, 0.2, 0.3)
+    mock_estimate.orientation = (1.0, 0.0, 0.0, 0.0)
+    del mock_estimate.root_t_target
+    del mock_estimate.pose
+
+    mock_result = mock.MagicMock()
+    mock_result.estimates = [mock_estimate]
+    mock_solution.executive.get_value.return_value = mock_result
+
+    with (
+        mock.patch("src.pick_and_place_building_block.UrRobot") as mock_ur,
+        mock.patch(
+            "src.pick_and_place_building_block.DioCncMachine"
+        ) as mock_dio_machine_cls,
+        mock.patch(
+            "src.pick_and_place_building_block.get_camera_resource"
+        ),
+        mock.patch(
+            "src.pick_and_place_building_block.get_perception_service_resource"
+        ),
+        mock.patch(
+            "src.pick_and_place_building_block.SideloadedGripperCmd"
+        ),
+    ):
+      mock_robot_inst = mock.MagicMock()
+      mock_ur.return_value = mock_robot_inst
+      mock_machine_inst = mock.MagicMock()
+      mock_dio_machine_cls.return_value = mock_machine_inst
+
+      run_pick_and_place_loop(
+          mock_hardware=False,
+          move_to_view_first=False,
+          num_cycles=1,
+          solution=mock_solution,
+      )
+
+      mock_dio_machine_cls.assert_called_once_with(
+          solution=mock_solution,
+          door_open_pin=2,
+          device_name="ur_module",
+      )
+      mock_machine_inst.build_open_door_task.assert_called_once()
+      first_executive_call = mock_solution.executive.run.call_args_list[0]
+      self.assertEqual(
+          first_executive_call,
+          mock.call(mock_machine_inst.build_open_door_task.return_value),
       )
 
 

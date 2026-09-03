@@ -159,8 +159,31 @@ py_test(
         "//src/behaviors:building_block_bt",
         "//src/core:types",
         "//src/hardware:gripper",
+        "//src/hardware:machine",
         "//src/hardware:robot",
         "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
+    ],
+)
+
+py_test(
+    name = "test_control_machine",
+    srcs = ["test_control_machine.py"],
+    deps = [
+        "//src/hardware:machine",
+        "//tools/machine:control_machine_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//google3/intrinsic/solutions:execution",
+    ],
+)
+
+py_test(
+    name = "test_apply_scene_updates",
+    srcs = ["test_apply_scene_updates.py"],
+    deps = [
+        "//tools/world:apply_scene_updates_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@com_google_protobuf//:protobuf_python",
         "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
     ],
 )

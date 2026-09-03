@@ -29,6 +29,7 @@ py_library(
         "//src/behaviors:motions",
         "//src/core:types",
         "//src/hardware:gripper",
+        "//src/hardware:machine",
         "//src/hardware:robot",
         "@com_google_absl_py//absl:app",
         "@com_google_absl_py//absl/flags",
