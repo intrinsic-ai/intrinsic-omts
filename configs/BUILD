@@ -2,6 +2,7 @@ package(default_visibility = ["//visibility:public"])
 
 exports_files([
     "align_robot.updates.pbtxt",
+    "camera_mount.updates.pbtxt",
     "cnc_enclosure.updates.pbtxt",
     "icon_config.textproto",
     "lab_bb_01_gemini_device_config.textproto",
