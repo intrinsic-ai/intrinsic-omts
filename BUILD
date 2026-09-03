@@ -71,6 +71,7 @@ intrinsic_solution(
             "//models/camera_mount",
             "//models/cnc_enclosure",
             "//models/omts_enclosure",
+            "//models/schunk_egp_64nnb",
         ],
     }),
     default_operation_mode = "real",
@@ -97,6 +98,7 @@ intrinsic_solution(
         "//conditions:default": [
             ":camera_mount",
             ":cnc_enclosure",
+            ":schunk_egp_64nnb",
         ],
     }),
     object_world_updates = [
@@ -109,6 +111,7 @@ intrinsic_solution(
         "//conditions:default": [
             "//configs:cnc_enclosure.updates.pbtxt",
             "//configs:omts_camera_mount.updates.pbtxt",
+            "//configs:schunk.updates.pbtxt",
         ],
     }),
 )
@@ -250,8 +253,11 @@ intrinsic_asset_instance(
     instance_name = "orbbec_gemini_driver",
 )
 
-
-
+intrinsic_asset_instance(
+    name = "schunk_egp_64nnb",
+    asset = "ai.intrinsic.schunk_egp_64nnb",
+    instance_name = "schunk_egp_64nnb",
+)
 
 copy_file(
     name = "rfdetr_segmentation_config_pbtxt",
