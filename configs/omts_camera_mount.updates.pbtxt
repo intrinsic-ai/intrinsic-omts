@@ -1,0 +1,72 @@
+# proto-file: intrinsic/world/public/proto/object_world_updates.proto
+# proto-message: intrinsic_proto.world.ObjectWorldUpdates
+
+updates: {
+  update_transform {
+    node_a {
+      by_name {
+        frame: {
+          object_name: "ur_module"
+          frame_name: "flange"
+        }
+      }
+    }
+    node_b {
+      by_name {
+        object {
+          object_name: "camera_mount"
+        }
+      }
+    }
+    node_to_update: {
+      by_name {
+        object {
+          object_name: "camera_mount"
+        }
+      }
+    }
+    a_t_b {
+      position {
+        x: 0
+        y: 0
+        z: 0
+      }
+      orientation {
+        x: 0
+        y: 0
+        z: 1
+        w: 0
+      }
+    }
+  }
+}
+
+updates: {
+  reparent_object: {
+    object: {
+      by_name: {
+        object_name: "camera_mount"
+      }
+    }
+    new_parent: {
+      reference: {
+        by_name: {
+          object_name: "ur_module"
+        }
+      }
+      entity_filter: {
+        include_final_entity: true
+      }
+    }
+  }
+}
+
+updates {
+  update_kinematic_object_properties: {
+    object {
+      by_name {
+        object_name: "ur_module"
+      }
+    }
+  }
+}

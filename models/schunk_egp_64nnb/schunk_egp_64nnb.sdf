@@ -1,0 +1,165 @@
+<?xml version="1.0" ?>
+<sdf xmlns:intrinsic="https://intrinsic.ai/" version="1.9">
+  <model name="schunk_egp_64nnb">
+    <link name="base_link">
+      <visual name="base_visual">
+        <geometry>
+          <mesh>
+            <uri>base_visual.glb</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <collision name="schunk-5522664 gehaeuse egp 64_collider_box">
+        <pose>0.0004 0.0 0.05735 0.0 0.0 0.0</pose>
+        <geometry>
+          <box>
+            <size>0.0648 0.035 0.1147</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="schunk-9700901 halter fuer nhs du 4_collider_box">
+        <pose>0.03425 0.008 0.08045 0.0 0.0 0.0</pose>
+        <geometry>
+          <box>
+            <size>0.0075 0.012 0.012</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="schunk-9700901 halter fuer nhs du 4001_collider_box">
+        <pose>0.03425 -0.008 0.08045 0.0 0.0 0.0</pose>
+        <geometry>
+          <box>
+            <size>0.0075 0.012 0.012</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="schunk-snt016581 stecker egp_collider_cylinder">
+        <pose>0.0367 0.0 0.0319 -0.0 1.570796 0.0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.005774</radius>
+            <length>0.01</length>
+          </cylinder>
+        </geometry>
+      </collision>
+    </link>
+    <link name="jaw_l_link">
+      <pose relative_to="jaw_l_link_joint_prismatic"/>
+      <visual name="jaw_l_visual">
+        <geometry>
+          <mesh>
+            <uri>jaw_l_visual.glb</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <collision name="schunk-5510836 huelse mpg 64_collider_cylinder">
+        <pose>0.0365 0.006 0.10445 -0.0 1.570796 0.0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.00275</radius>
+            <length>0.019</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <collision name="schunk-9965220-scheibe d5_5003_collider_cylinder">
+        <pose>-0.0252 0.006 0.10445 -0.0 1.570796 0.0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.00275</radius>
+            <length>0.004</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <collision name="schunk-5522668 halter-5522668004_collider_box">
+        <pose>0.005 0.005798 0.10505 0.0 0.0 0.0</pose>
+        <geometry>
+          <box>
+            <size>0.0564 0.011405 0.0192</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="schunk-5522661 finger egp 64002_collider_box.001">
+        <pose>-0.017 0.00075 0.12265 0.0 0.0 0.0</pose>
+        <geometry>
+          <box>
+            <size>0.01 0.0215 0.0158</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <link name="jaw_r_link">
+      <pose relative_to="jaw_r_link_joint_prismatic"/>
+      <visual name="jaw_r_visual">
+        <geometry>
+          <mesh>
+            <uri>jaw_r_visual.glb</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <collision name="schunk-9965220-scheibe d5_5001_collider_cylinder">
+        <pose>-0.0352 -0.006 0.10445 -0.0 1.570796 0.0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.00275</radius>
+            <length>0.004</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <collision name="schunk-9965220-scheibe d5_5_collider_cylinder">
+        <pose>0.0252 -0.006 0.10445 -0.0 1.570796 0.0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.00275</radius>
+            <length>0.004</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <collision name="schunk-5522668 halter-5522668005_collider_box">
+        <pose>-0.005 -0.005825 0.10505 0.0 0.0 0.0</pose>
+        <geometry>
+          <box>
+            <size>0.0564 0.01135 0.0192</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="schunk-5522661 finger egp 64002_collider_box">
+        <pose>0.017 0.0 0.12265 0.0 0.0 0.0</pose>
+        <geometry>
+          <box>
+            <size>0.01 0.02 0.0158</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <joint name="jaw_l_link_joint_prismatic" type="prismatic">
+      <pose relative_to="base_link">0.0 0.0 0.0 0 0 0</pose>
+      <parent>base_link</parent>
+      <child>jaw_l_link</child>
+      <axis>
+        <xyz>-1.0 0.0 0.0</xyz>
+        <limit>
+          <lower>0.0</lower>
+          <upper>0.01</upper>
+        </limit>
+      </axis>
+    </joint>
+    <joint name="jaw_r_link_joint_prismatic" type="prismatic">
+      <pose relative_to="base_link">0.0 0.0 0.0 0 0 0</pose>
+      <parent>base_link</parent>
+      <child>jaw_r_link</child>
+      <axis>
+        <xyz>1.0 0.0 0.0</xyz>
+        <limit>
+          <lower>0.0</lower>
+          <upper>0.01</upper>
+        </limit>
+      </axis>
+    </joint>
+    <frame name="jaw_r_frame" attached_to="base_link" intrinsic:create_entity="true">
+      <pose>0.022 0.0 0.12255 0.0 -0.0 0.0</pose>
+    </frame>
+    <frame name="jaw_l_frame" attached_to="base_link" intrinsic:create_entity="true">
+      <pose>-0.022 0.0 0.12255 0.0 -0.0 3.141593</pose>
+    </frame>
+  </model>
+</sdf>

@@ -1,0 +1,52 @@
+# proto-file: intrinsic/world/public/proto/object_world_updates.proto
+# proto-message: intrinsic_proto.world.ObjectWorldUpdates
+
+updates: {
+  update_transform {
+    node_a {
+      by_name {
+        object {
+          object_name: "cnc_enclosure"
+        }
+      }
+    }
+    node_b {
+      by_name {
+        object {
+          object_name: "schunk_egp_64nnb"
+        }
+      }
+    }
+    node_to_update: {
+      by_name {
+        object {
+          object_name: "schunk_egp_64nnb"
+        }
+      }
+    }
+    a_t_b {
+      position {
+        x: -0.2
+        y: -0.045
+        z: 0.05
+      }
+      orientation {
+        x: 0
+        y: 0
+        z: 0
+        w: 1
+      }
+    }
+  }
+}
+updates: {
+  update_object_joints {
+    object {
+      by_name {
+        object_name: "schunk_egp_64nnb"
+      }
+    }
+    joint_positions: 0.01
+    joint_positions: 0.01
+  }
+}

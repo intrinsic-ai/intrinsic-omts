@@ -61,6 +61,7 @@ intrinsic_solution(
         ":orbbec_gemini_driver_asset",
         ":foundationpose_mlmodel",
         ":rfdetr_mlmodel",
+        "//models/raw_stock_50x50x75",
     ] + select({
         ":is_lab_bb_01": [
             "@ioc//google3/intrinsic/apps/bluebird_caw/resources:caw_enclosure",
@@ -68,8 +69,10 @@ intrinsic_solution(
         ],
         "//conditions:default": [
             "@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_ioc",
+            "//models/camera_mount",
             "//models/cnc_enclosure",
             "//models/omts_enclosure",
+            "//models/schunk_egp_64nnb",
         ],
     }),
     default_operation_mode = "real",
@@ -78,6 +81,7 @@ intrinsic_solution(
         ":robotiq_pinch_gripper",
         ":building_block",
         ":raw_stock_2x3x5",
+        ":raw_stock_50x50x75",
         ":gazebo_simulator",
         ":charuco_9x14_20mm_15mm_dict_5x5",
         ":calibration_service_instance",
@@ -94,7 +98,9 @@ intrinsic_solution(
         ":is_lab_bb_01": [
         ],
         "//conditions:default": [
+            ":camera_mount",
             ":cnc_enclosure",
+            ":schunk_egp_64nnb",
         ],
     }),
     object_world_updates = [
@@ -106,6 +112,8 @@ intrinsic_solution(
         ],
         "//conditions:default": [
             "//configs:cnc_enclosure.updates.pbtxt",
+            "//configs:omts_camera_mount.updates.pbtxt",
+            "//configs:schunk.updates.pbtxt",
         ],
     }),
 )
@@ -136,6 +144,11 @@ intrinsic_asset_instance(
 )
 
 intrinsic_asset_instance(
+    name = "camera_mount",
+    asset = "ai.intrinsic.camera_mount",
+)
+
+intrinsic_asset_instance(
     name = "robotiq_pinch_gripper",
     asset = "ai.intrinsic.robotiq_gripper",
     instance_name = "gripper",
@@ -149,6 +162,11 @@ intrinsic_asset_instance(
 intrinsic_asset_instance(
     name = "raw_stock_2x3x5",
     asset = "ai.intrinsic.raw_stock_2x3x5",
+)
+
+intrinsic_asset_instance(
+    name = "raw_stock_50x50x75",
+    asset = "ai.intrinsic.raw_stock_50x50x75",
 )
 
 intrinsic_asset_instance(
@@ -242,8 +260,11 @@ intrinsic_asset_instance(
     instance_name = "orbbec_gemini_driver",
 )
 
-
-
+intrinsic_asset_instance(
+    name = "schunk_egp_64nnb",
+    asset = "ai.intrinsic.schunk_egp_64nnb",
+    instance_name = "schunk_egp_64nnb",
+)
 
 copy_file(
     name = "rfdetr_segmentation_config_pbtxt",
