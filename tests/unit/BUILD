@@ -5,7 +5,6 @@ package(default_visibility = ["//visibility:public"])
 py_test(
     name = "test_tray",
     srcs = ["test_tray.py"],
-    srcs_version = "PY3",
     deps = [
         "//src/core:tray",
         "//src/core:types",
@@ -16,7 +15,6 @@ py_test(
 py_test(
     name = "test_workpiece",
     srcs = ["test_workpiece.py"],
-    srcs_version = "PY3",
     deps = [
         "//src/core:types",
         "//src/core:workpiece",
@@ -27,7 +25,6 @@ py_test(
 py_test(
     name = "test_infeed",
     srcs = ["test_infeed.py"],
-    srcs_version = "PY3",
     deps = [
         "//src/core:infeed",
         "//src/core:tray",
@@ -39,7 +36,6 @@ py_test(
 py_test(
     name = "test_hardware_adapters",
     srcs = ["test_hardware_adapters.py"],
-    srcs_version = "PY3",
     deps = [
         "//src/hardware:gripper",
         "//src/hardware:machine",
@@ -53,7 +49,6 @@ py_test(
 py_test(
     name = "test_behaviors",
     srcs = ["test_behaviors.py"],
-    srcs_version = "PY3",
     deps = [
         "//src/behaviors:machine_tending_bt",
         "//src/core:infeed",
@@ -69,7 +64,6 @@ py_test(
 py_test(
     name = "test_move_to_frame",
     srcs = ["test_move_to_frame.py"],
-    srcs_version = "PY3",
     deps = [
         "//src/hardware:robot",
         "//tools/jogging:move_to_frame_lib",
@@ -82,7 +76,6 @@ py_test(
 py_test(
     name = "test_store_frame",
     srcs = ["test_store_frame.py"],
-    srcs_version = "PY3",
     deps = [
         "//tools/jogging:store_frame_lib",
         "@com_google_absl_py//absl/testing:absltest",
@@ -94,13 +87,9 @@ py_test(
 py_test(
     name = "test_script_utils",
     srcs = ["test_script_utils.py"],
-    srcs_version = "PY3",
     deps = [
         "//src/utils:dynamic_frame_calculator",
         "//src/utils:script_utils",
         "@com_google_absl_py//absl/testing:absltest",
     ],
 )
-
-
-

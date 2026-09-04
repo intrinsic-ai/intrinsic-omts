@@ -1,7 +1,8 @@
 """Math and geometric transform utility functions for OMTS."""
 
 import math
-from typing import Sequence
+from collections.abc import Sequence
+
 from src.core.types import Pose3D
 
 
@@ -27,11 +28,11 @@ def interpolate_poses(pose_a: Pose3D, pose_b: Pose3D, alpha: float) -> Pose3D:
   """Linearly interpolates translation between pose_a and pose_b by alpha in [0, 1]."""
   alpha = max(0.0, min(1.0, alpha))
   return Pose3D(
-      x=pose_a.x + alpha * (pose_b.x - pose_a.x),
-      y=pose_a.y + alpha * (pose_b.y - pose_a.y),
-      z=pose_a.z + alpha * (pose_b.z - pose_a.z),
-      qx=pose_b.qx,
-      qy=pose_b.qy,
-      qz=pose_b.qz,
-      qw=pose_b.qw,
+    x=pose_a.x + alpha * (pose_b.x - pose_a.x),
+    y=pose_a.y + alpha * (pose_b.y - pose_a.y),
+    z=pose_a.z + alpha * (pose_b.z - pose_a.z),
+    qx=pose_b.qx,
+    qy=pose_b.qy,
+    qz=pose_b.qz,
+    qw=pose_b.qw,
   )

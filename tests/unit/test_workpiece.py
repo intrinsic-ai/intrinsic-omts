@@ -1,12 +1,12 @@
 """Unit tests for Workpiece domain model state lifecycle."""
 
 from absl.testing import absltest
+
 from src.core.types import PartState, Pose3D
 from src.core.workpiece import Workpiece
 
 
 class WorkpieceTest(absltest.TestCase):
-
   def test_lifecycle_state_transitions(self):
     part = Workpiece(id="test_part_01", cad_model_name="raw_stock_2x3x5")
     self.assertEqual(part.state, PartState.RAW)

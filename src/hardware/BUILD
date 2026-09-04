@@ -5,7 +5,6 @@ package(default_visibility = ["//visibility:public"])
 py_library(
     name = "robot",
     srcs = ["robot.py"],
-    srcs_version = "PY3",
     deps = [
         "//src/core:types",
         "@intrinsic_apis//intrinsic/math/proto:point_py_pb2",
@@ -22,7 +21,6 @@ py_library(
 py_library(
     name = "gripper",
     srcs = ["gripper.py"],
-    srcs_version = "PY3",
     deps = [
         "@ioc//google3/intrinsic/solutions:behavior_tree",
     ],
@@ -31,7 +29,6 @@ py_library(
 py_library(
     name = "machine",
     srcs = ["machine.py"],
-    srcs_version = "PY3",
     deps = [
         "@ioc//google3/intrinsic/solutions:behavior_tree",
     ],
@@ -40,7 +37,6 @@ py_library(
 py_library(
     name = "vision",
     srcs = ["vision.py"],
-    srcs_version = "PY3",
     deps = [
         "//src/core:types",
         "//src/utils:dynamic_frame_calculator",
@@ -63,7 +59,6 @@ py_library(
 py_library(
     name = "hardware",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     deps = [
         ":gripper",
         ":machine",
@@ -71,5 +66,3 @@ py_library(
         ":vision",
     ],
 )
-
-

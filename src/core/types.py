@@ -1,9 +1,7 @@
 """Core data types, enums, and geometric primitives for OMTS."""
 
-from dataclasses import dataclass
 import enum
-import math
-from typing import Sequence
+from dataclasses import dataclass
 
 
 class PartState(enum.Enum):

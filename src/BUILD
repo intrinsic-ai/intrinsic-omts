@@ -6,7 +6,6 @@ py_binary(
     name = "omts_app",
     srcs = ["main.py"],
     main = "main.py",
-    srcs_version = "PY3",
     deps = [
         "//src/behaviors",
         "//src/core",

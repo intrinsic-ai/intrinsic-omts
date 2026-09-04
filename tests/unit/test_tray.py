@@ -1,21 +1,21 @@
 """Unit tests for Tray domain model and slot indexing."""
 
 from absl.testing import absltest
-from src.core.tray import Tray, TraySlot
-from src.core.types import Pose3D, SlotState
+
+from src.core.tray import Tray
+from src.core.types import SlotState
 
 
 class TrayTest(absltest.TestCase):
-
   def setUp(self):
     super().setUp()
     self.tray = Tray(
-        name="test_tray",
-        rows=2,
-        cols=3,
-        pitch_x=0.05,
-        pitch_y=0.08,
-        origin_frame="test_tray_origin",
+      name="test_tray",
+      rows=2,
+      cols=3,
+      pitch_x=0.05,
+      pitch_y=0.08,
+      origin_frame="test_tray_origin",
     )
 
   def test_initial_state_empty(self):

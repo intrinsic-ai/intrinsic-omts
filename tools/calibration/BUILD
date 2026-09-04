@@ -6,7 +6,6 @@ py_binary(
     name = "calibrate_camera",
     srcs = ["calibrate_camera_to_robot.py"],
     main = "calibrate_camera_to_robot.py",
-    srcs_version = "PY3",
     deps = [
         "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
         "@com_google_absl_py//absl:app",
@@ -33,7 +32,6 @@ py_binary(
     name = "sample_calibration_poses",
     srcs = ["sample_calibration_poses.py"],
     main = "sample_calibration_poses.py",
-    srcs_version = "PY3",
     deps = [
         "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
         "@com_google_absl_py//absl:app",
@@ -55,4 +53,3 @@ py_binary(
         "@ioc//google3/intrinsic/util/grpc:interceptor",
     ],
 )
-

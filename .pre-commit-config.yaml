@@ -1,0 +1,17 @@
+# Pre-commit configuration for OMTS
+# See https://pre-commit.com for more information
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/keith/pre-commit-buildifier
+    rev: 6.4.0.1
+    hooks:
+      - id: buildifier
+        args: [-r]
+      - id: buildifier-lint
+        args: [--lint=fix, -r]

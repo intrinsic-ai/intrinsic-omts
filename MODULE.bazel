@@ -147,13 +147,10 @@ gh.download(
     sha256 = "e367c3dd6b98bbee3f603009ea670f38d604d2bbb8a5ef5f430cd3797833b17a",
     tag = "v0.0.1",
 )
-
 use_repo(
     gh,
+    "foundationpose_py312_bundle",
     "moveit_ros_bridge_bundle",
     "orbbec_gemini_driver_bundle",
     "segmentation_weights_bundle",
-    "foundationpose_py312_bundle",
 )
-
-

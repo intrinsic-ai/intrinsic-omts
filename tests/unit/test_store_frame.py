@@ -8,14 +8,16 @@ from absl.testing import absltest
 from google.protobuf import text_format
 from intrinsic.math.python import data_types
 from intrinsic.world.public.proto import object_world_updates_pb2
-from tools.jogging.store_frame import get_current_tool_pose
-from tools.jogging.store_frame import parse_args
-from tools.jogging.store_frame import save_frame_to_scene_updates
-from tools.jogging.store_frame import update_live_world_frame
+
+from tools.jogging.store_frame import (
+  get_current_tool_pose,
+  parse_args,
+  save_frame_to_scene_updates,
+  update_live_world_frame,
+)
 
 
 class StoreFrameTest(absltest.TestCase):
-
   def setUp(self):
     super().setUp()
     self.temp_dir = tempfile.TemporaryDirectory()
@@ -30,18 +32,18 @@ class StoreFrameTest(absltest.TestCase):
     ori = (1.0, 0.0, 0.0, 0.0)
 
     saved_path = save_frame_to_scene_updates(
-        frame_name="test_grasp",
-        position=pos,
-        orientation=ori,
-        parent_object_name="root",
-        filepath=self.pbtxt_path,
+      frame_name="test_grasp",
+      position=pos,
+      orientation=ori,
+      parent_object_name="root",
+      filepath=self.pbtxt_path,
     )
 
     self.assertEqual(saved_path, self.pbtxt_path)
     self.assertTrue(os.path.exists(self.pbtxt_path))
 
     updates = object_world_updates_pb2.ObjectWorldUpdates()
-    with open(self.pbtxt_path, "r", encoding="utf-8") as f:
+    with open(self.pbtxt_path, encoding="utf-8") as f:
       content = f.read()
       text_format.Parse(content, updates)
 
@@ -49,7 +51,7 @@ class StoreFrameTest(absltest.TestCase):
     cf = updates.updates[0].create_frame
     self.assertEqual(cf.new_frame_name, "test_grasp")
     self.assertEqual(
-        cf.parent_object_with_filter.reference.by_name.object_name, "root"
+      cf.parent_object_with_filter.reference.by_name.object_name, "root"
     )
     self.assertAlmostEqual(cf.parent_t_new_frame.position.x, 0.15)
     self.assertAlmostEqual(cf.parent_t_new_frame.position.y, 0.25)
@@ -93,15 +95,15 @@ updates: {
     new_ori = (0.7071, 0.0, 0.0, 0.7071)
 
     save_frame_to_scene_updates(
-        frame_name="view",
-        position=new_pos,
-        orientation=new_ori,
-        parent_object_name="root",
-        filepath=self.pbtxt_path,
+      frame_name="view",
+      position=new_pos,
+      orientation=new_ori,
+      parent_object_name="root",
+      filepath=self.pbtxt_path,
     )
 
     updates = object_world_updates_pb2.ObjectWorldUpdates()
-    with open(self.pbtxt_path, "r", encoding="utf-8") as f:
+    with open(self.pbtxt_path, encoding="utf-8") as f:
       content = f.read()
       text_format.Parse(content, updates)
 
@@ -120,21 +122,21 @@ updates: {
     mock_gripper = mock.MagicMock()
     mock_tool_frame = mock.MagicMock()
 
-    setattr(mock_world, "root", mock_root)
-    setattr(mock_world, "gripper", mock_gripper)
-    setattr(mock_gripper, "tool_frame", mock_tool_frame)
+    mock_world.root = mock_root
+    mock_world.gripper = mock_gripper
+    mock_gripper.tool_frame = mock_tool_frame
 
     mock_pose = data_types.Pose3(
-        data_types.Rotation3(data_types.Quaternion([0.0, 0.0, 0.7071, 0.7071])),
-        [0.12, 0.34, 0.56],
+      data_types.Rotation3(data_types.Quaternion([0.0, 0.0, 0.7071, 0.7071])),
+      [0.12, 0.34, 0.56],
     )
     mock_world.get_transform.return_value = mock_pose
 
     pos, ori = get_current_tool_pose(
-        world=mock_world,
-        parent_object_name="root",
-        tool_object_name="gripper",
-        tool_frame_name="tool_frame",
+      world=mock_world,
+      parent_object_name="root",
+      tool_object_name="gripper",
+      tool_frame_name="tool_frame",
     )
 
     self.assertAlmostEqual(pos[0], 0.12)
@@ -149,15 +151,15 @@ updates: {
     mock_world = mock.MagicMock()
     mock_root = mock.MagicMock()
     mock_root.list_frames.return_value = ["view"]
-    setattr(mock_world, "root", mock_root)
-    setattr(mock_root, "view", mock.MagicMock())
+    mock_world.root = mock_root
+    mock_root.view = mock.MagicMock()
 
     update_live_world_frame(
-        world=mock_world,
-        frame_name="view",
-        position=(0.34, 0.37, 0.85),
-        orientation=(1.0, 0.0, 0.0, 0.0),
-        parent_object_name="root",
+      world=mock_world,
+      frame_name="view",
+      position=(0.34, 0.37, 0.85),
+      orientation=(1.0, 0.0, 0.0, 0.0),
+      parent_object_name="root",
     )
 
     mock_world.update_transform.assert_called_once()
@@ -166,14 +168,14 @@ updates: {
     mock_world = mock.MagicMock()
     mock_root = mock.MagicMock()
     mock_root.list_frames.return_value = []
-    setattr(mock_world, "root", mock_root)
+    mock_world.root = mock_root
 
     update_live_world_frame(
-        world=mock_world,
-        frame_name="new_frame",
-        position=(0.15, 0.25, 0.71),
-        orientation=(1.0, 0.0, 0.0, 0.0),
-        parent_object_name="root",
+      world=mock_world,
+      frame_name="new_frame",
+      position=(0.15, 0.25, 0.71),
+      orientation=(1.0, 0.0, 0.0, 0.0),
+      parent_object_name="root",
     )
 
     mock_world.batch_update.assert_called_once()

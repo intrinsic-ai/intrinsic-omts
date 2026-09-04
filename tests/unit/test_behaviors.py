@@ -1,6 +1,7 @@
 """Unit tests for Behavior Tree construction and structure."""
 
 from absl.testing import absltest
+
 from src.behaviors.load_machine import build_load_machine_subtree
 from src.behaviors.machine_tending_bt import build_machine_tending_behavior_tree
 from src.behaviors.pick import build_pick_from_infeed_subtree
@@ -15,7 +16,6 @@ from src.hardware.vision import MockVision
 
 
 class BehaviorsTest(absltest.TestCase):
-
   def setUp(self):
     super().setUp()
     self.robot = MockRobot()
@@ -27,13 +27,13 @@ class BehaviorsTest(absltest.TestCase):
 
   def test_build_master_behavior_tree_hierarchy(self):
     tree = build_machine_tending_behavior_tree(
-        robot=self.robot,
-        gripper=self.gripper,
-        machine=self.machine,
-        vision=self.vision,
-        infeed_strategy=self.infeed_strategy,
-        workpiece=self.workpiece,
-        tree_name="Test Machine Tending Master Tree",
+      robot=self.robot,
+      gripper=self.gripper,
+      machine=self.machine,
+      vision=self.vision,
+      infeed_strategy=self.infeed_strategy,
+      workpiece=self.workpiece,
+      tree_name="Test Machine Tending Master Tree",
     )
 
     self.assertIsNotNone(tree)
@@ -44,15 +44,15 @@ class BehaviorsTest(absltest.TestCase):
 
   def test_build_infeed_pick_subtree_steps(self):
     pick_subtree = build_pick_from_infeed_subtree(
-        robot=self.robot,
-        gripper=self.gripper,
-        vision=self.vision,
-        infeed_strategy=self.infeed_strategy,
-        workpiece=self.workpiece,
-        parent_object="root",
-        view_frame_name="view",
-        pregrasp_frame_name="pre_grasp",
-        grasp_frame_name="grasp",
+      robot=self.robot,
+      gripper=self.gripper,
+      vision=self.vision,
+      infeed_strategy=self.infeed_strategy,
+      workpiece=self.workpiece,
+      parent_object="root",
+      view_frame_name="view",
+      pregrasp_frame_name="pre_grasp",
+      grasp_frame_name="grasp",
     )
 
     self.assertIsNotNone(pick_subtree)
@@ -69,14 +69,14 @@ class BehaviorsTest(absltest.TestCase):
 
   def test_build_load_machine_subtree_steps(self):
     load_subtree = build_load_machine_subtree(
-        robot=self.robot,
-        gripper=self.gripper,
-        machine=self.machine,
-        workpiece=self.workpiece,
-        parent_object="root",
-        machine_approach_frame_name="machine_approach",
-        preplace_vise_frame_name="pre_place_vise",
-        place_vise_frame_name="place_vise",
+      robot=self.robot,
+      gripper=self.gripper,
+      machine=self.machine,
+      workpiece=self.workpiece,
+      parent_object="root",
+      machine_approach_frame_name="machine_approach",
+      preplace_vise_frame_name="pre_place_vise",
+      place_vise_frame_name="place_vise",
     )
 
     self.assertIsNotNone(load_subtree)
@@ -94,14 +94,14 @@ class BehaviorsTest(absltest.TestCase):
 
   def test_build_unload_machine_subtree_steps(self):
     unload_subtree = build_unload_machine_subtree(
-        robot=self.robot,
-        gripper=self.gripper,
-        machine=self.machine,
-        workpiece=self.workpiece,
-        parent_object="root",
-        machine_approach_frame_name="machine_approach",
-        preplace_vise_frame_name="pre_place_vise",
-        place_vise_frame_name="place_vise",
+      robot=self.robot,
+      gripper=self.gripper,
+      machine=self.machine,
+      workpiece=self.workpiece,
+      parent_object="root",
+      machine_approach_frame_name="machine_approach",
+      preplace_vise_frame_name="pre_place_vise",
+      place_vise_frame_name="place_vise",
     )
 
     self.assertIsNotNone(unload_subtree)
@@ -119,13 +119,13 @@ class BehaviorsTest(absltest.TestCase):
 
   def test_build_return_to_infeed_subtree_steps(self):
     return_subtree = build_return_to_infeed_subtree(
-        robot=self.robot,
-        gripper=self.gripper,
-        workpiece=self.workpiece,
-        parent_object="root",
-        pregrasp_frame_name="pre_grasp",
-        grasp_frame_name="grasp",
-        view_frame_name="view",
+      robot=self.robot,
+      gripper=self.gripper,
+      workpiece=self.workpiece,
+      parent_object="root",
+      pregrasp_frame_name="pre_grasp",
+      grasp_frame_name="grasp",
+      view_frame_name="view",
     )
 
     self.assertIsNotNone(return_subtree)
