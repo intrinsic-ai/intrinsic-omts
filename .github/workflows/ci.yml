@@ -24,10 +24,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Set up Buildifier
-        uses: bazelbuild/setup-buildifier@v1
-        with:
-          version: "latest"
+      - name: Install Buildifier
+        run: |
+          BUILDIFIER_URL="https://github.com/bazelbuild/buildtools/releases/latest/download/buildifier-linux-amd64"
+          sudo curl -sSL "${BUILDIFIER_URL}" -o /usr/local/bin/buildifier
+          sudo chmod +x /usr/local/bin/buildifier
+          buildifier --version
 
       - name: Check Bazel Formatting (Buildifier)
         run: |
