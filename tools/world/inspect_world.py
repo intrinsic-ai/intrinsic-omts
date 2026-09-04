@@ -15,20 +15,21 @@
 """Utility to inspect and list scene objects, frames, and joint configs in SBL world."""
 
 import argparse
-from typing import Sequence
+from collections.abc import Sequence
+
 from intrinsic.solutions import deployments
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   """Parses command line arguments."""
   parser = argparse.ArgumentParser(
-      description="Inspect objects and joint configurations in the solution world."
+    description="Inspect objects and joint configurations in the solution world."
   )
   parser.add_argument(
-      "--address",
-      type=str,
-      default="localhost:17080",
-      help="Solution address to connect to (default: localhost:17080).",
+    "--address",
+    type=str,
+    default="localhost:17080",
+    help="Solution address to connect to (default: localhost:17080).",
   )
   return parser.parse_args(argv)
 
@@ -46,7 +47,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     try:
       obj = getattr(world, obj_name)
       if hasattr(obj, "joint_configurations") and list(
-          obj.joint_configurations.keys()
+        obj.joint_configurations.keys()
       ):
         print("   Joint Configurations:")
         for cfg_name in obj.joint_configurations.keys():
@@ -70,19 +71,25 @@ def main(argv: Sequence[str] | None = None) -> None:
   try:
     if hasattr(world, "ur_module") and hasattr(world.ur_module, "flange"):
       print(
-          f"Flange in root: {world.get_transform(world.root, world.ur_module.flange)}"
+        f"Flange in root: {world.get_transform(world.root, world.ur_module.flange)}"
       )
     if hasattr(world, "gripper") and hasattr(world.gripper, "tool_frame"):
       print(
-          "Tool Frame in root:"
-          f" {world.get_transform(world.root, world.gripper.tool_frame)}"
+        "Tool Frame in root:"
+        f" {world.get_transform(world.root, world.gripper.tool_frame)}"
       )
     if hasattr(world.root, "view"):
-      print(f"View frame in root: {world.get_transform(world.root, world.root.view)}")
+      print(
+        f"View frame in root: {world.get_transform(world.root, world.root.view)}"
+      )
     if hasattr(world.root, "pre_grasp"):
-      print(f"Pre-grasp frame in root: {world.get_transform(world.root, world.root.pre_grasp)}")
+      print(
+        f"Pre-grasp frame in root: {world.get_transform(world.root, world.root.pre_grasp)}"
+      )
     if hasattr(world.root, "grasp"):
-      print(f"Grasp frame in root: {world.get_transform(world.root, world.root.grasp)}")
+      print(
+        f"Grasp frame in root: {world.get_transform(world.root, world.root.grasp)}"
+      )
   except Exception as e:
     print(f"   Error checking transforms: {e}")
 

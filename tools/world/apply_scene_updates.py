@@ -16,37 +16,39 @@
 
 import argparse
 import os
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from google.protobuf import text_format
 from intrinsic.solutions import deployments
-from intrinsic.world.public.proto import object_world_refs_pb2
-from intrinsic.world.public.proto import object_world_updates_pb2
+from intrinsic.world.public.proto import (
+  object_world_updates_pb2,
+)
 
 DEFAULT_UPDATE_FILES = [
-    "configs/ur_module.attachments.updates.pbtxt",
-    "configs/lab_bb_01_orbbec_gemini.updates.pbtxt",
-    "configs/scene.updates.pbtxt",
-    "configs/align_robot.updates.pbtxt",
+  "configs/ur_module.attachments.updates.pbtxt",
+  "configs/lab_bb_01_orbbec_gemini.updates.pbtxt",
+  "configs/scene.updates.pbtxt",
+  "configs/align_robot.updates.pbtxt",
 ]
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   """Parses command line arguments."""
   parser = argparse.ArgumentParser(
-      description="Apply ObjectWorldUpdates (.pbtxt) live to a running solution deployment."
+    description="Apply ObjectWorldUpdates (.pbtxt) live to a running solution deployment."
   )
   parser.add_argument(
-      "--address",
-      type=str,
-      default="localhost:17080",
-      help="Solution address to connect to (default: localhost:17080).",
+    "--address",
+    type=str,
+    default="localhost:17080",
+    help="Solution address to connect to (default: localhost:17080).",
   )
   parser.add_argument(
-      "--files",
-      nargs="*",
-      default=DEFAULT_UPDATE_FILES,
-      help="Path(s) to .pbtxt ObjectWorldUpdates files to apply in order.",
+    "--files",
+    nargs="*",
+    default=DEFAULT_UPDATE_FILES,
+    help="Path(s) to .pbtxt ObjectWorldUpdates files to apply in order.",
   )
   return parser.parse_args(argv)
 
@@ -55,10 +57,14 @@ def find_file(filepath: str) -> str:
   """Resolves file path in direct directory, workspace, or runfiles."""
   if os.path.exists(filepath):
     return filepath
-  ws_path = os.path.join("/usr/local/google/home/mschweiger/workspaces/omts", filepath)
+  ws_path = os.path.join(
+    "/usr/local/google/home/mschweiger/workspaces/omts", filepath
+  )
   if os.path.exists(ws_path):
     return ws_path
-  runfiles_dir = os.environ.get("PYTHON_RUNFILES") or os.environ.get("TEST_SRCDIR")
+  runfiles_dir = os.environ.get("PYTHON_RUNFILES") or os.environ.get(
+    "TEST_SRCDIR"
+  )
   if runfiles_dir:
     r_path = os.path.join(runfiles_dir, "_main", filepath)
     if os.path.exists(r_path):
@@ -67,7 +73,7 @@ def find_file(filepath: str) -> str:
 
 
 def adapt_updates_for_live_world(
-    world: Any, updates: object_world_updates_pb2.ObjectWorldUpdates
+  world: Any, updates: object_world_updates_pb2.ObjectWorldUpdates
 ) -> object_world_updates_pb2.ObjectWorldUpdates:
   """Converts create_frame requests into update_transform requests if frames already exist."""
   adapted = object_world_updates_pb2.ObjectWorldUpdates()
@@ -85,7 +91,10 @@ def adapt_updates_for_live_world(
       parent_obj = getattr(world, parent_name, None)
       frame_exists = False
       if parent_obj is not None:
-        if hasattr(parent_obj, "list_frames") and frame_name in parent_obj.list_frames():
+        if (
+          hasattr(parent_obj, "list_frames")
+          and frame_name in parent_obj.list_frames()
+        ):
           frame_exists = True
         elif hasattr(parent_obj, frame_name):
           frame_exists = True
@@ -113,19 +122,25 @@ def apply_pbtxt_file(world: Any, filepath: str) -> None:
   """Loads a .pbtxt file and pushes its updates to the active ObjectWorld."""
   resolved_path = find_file(filepath)
   if not os.path.exists(resolved_path):
-    print(f"[-] Warning: File not found: {filepath} (resolved: {resolved_path})")
+    print(
+      f"[-] Warning: File not found: {filepath} (resolved: {resolved_path})"
+    )
     return
 
   print(f"[+] Reading update file: {filepath}")
-  with open(resolved_path, "r", encoding="utf-8") as f:
+  with open(resolved_path, encoding="utf-8") as f:
     pbtxt_content = f.read()
 
   raw_updates = object_world_updates_pb2.ObjectWorldUpdates()
   text_format.Parse(pbtxt_content, raw_updates)
 
-  adapted_updates = adapt_updates_for_live_world(world=world, updates=raw_updates)
+  adapted_updates = adapt_updates_for_live_world(
+    world=world, updates=raw_updates
+  )
 
-  print(f"    Applying {len(adapted_updates.updates)} update rule(s) to live world...")
+  print(
+    f"    Applying {len(adapted_updates.updates)} update rule(s) to live world..."
+  )
   world.batch_update(adapted_updates)
   print(f"[✓] Successfully applied: {filepath}")
 
@@ -146,16 +161,18 @@ def main(argv: Sequence[str] | None = None) -> None:
       print("Frames on 'root':")
       if hasattr(world.root, "list_frames"):
         for f in world.root.list_frames():
-          print(f"  - {f}: {world.get_transform(world.root, getattr(world.root, f))}")
+          print(
+            f"  - {f}: {world.get_transform(world.root, getattr(world.root, f))}"
+          )
 
     if hasattr(world, "ur_module") and hasattr(world.ur_module, "flange"):
       print(
-          f"Flange in root: {world.get_transform(world.root, world.ur_module.flange)}"
+        f"Flange in root: {world.get_transform(world.root, world.ur_module.flange)}"
       )
     if hasattr(world, "gripper") and hasattr(world.gripper, "tool_frame"):
       print(
-          "Tool Frame in root:"
-          f" {world.get_transform(world.root, world.gripper.tool_frame)}"
+        "Tool Frame in root:"
+        f" {world.get_transform(world.root, world.gripper.tool_frame)}"
       )
   except Exception as e:
     print(f"Transform query error: {e}")

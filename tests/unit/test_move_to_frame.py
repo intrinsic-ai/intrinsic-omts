@@ -19,29 +19,35 @@ from unittest import mock
 from absl.testing import absltest
 from intrinsic.solutions import behavior_tree as bt
 from intrinsic.solutions import execution
-from tools.jogging.move_to_frame import list_available_frames
-from tools.jogging.move_to_frame import move_robot_to_frame
-from tools.jogging.move_to_frame import parse_args
-from tools.jogging.move_to_frame import prompt_for_frame
+
+from tools.jogging.move_to_frame import (
+  list_available_frames,
+  move_robot_to_frame,
+  parse_args,
+  prompt_for_frame,
+)
 
 
 class MoveToFrameTest(absltest.TestCase):
-
   def test_list_available_frames_with_list_frames(self):
     mock_world = mock.MagicMock()
     mock_world.root.list_frames.return_value = ["view", "grasp"]
-    mock_world.list_objects.return_value = ["root", "ur_module", "ksp3_160_vise"]
+    mock_world.list_objects.return_value = [
+      "root",
+      "ur_module",
+      "ksp3_160_vise",
+    ]
 
     mock_vise = mock.MagicMock()
     mock_vise.list_frames.return_value = ["approach_vise", "clamped_vise"]
-    setattr(mock_world, "ksp3_160_vise", mock_vise)
+    mock_world.ksp3_160_vise = mock_vise
 
     frames = list_available_frames(mock_world)
     expected = [
-        ("root", "view"),
-        ("root", "grasp"),
-        ("ksp3_160_vise", "approach_vise"),
-        ("ksp3_160_vise", "clamped_vise"),
+      ("root", "view"),
+      ("root", "grasp"),
+      ("ksp3_160_vise", "approach_vise"),
+      ("ksp3_160_vise", "clamped_vise"),
     ]
     self.assertEqual(frames, expected)
 
@@ -73,35 +79,35 @@ class MoveToFrameTest(absltest.TestCase):
 
   def test_move_robot_to_frame_success(self):
     mock_solution = mock.MagicMock()
-    mock_solution.skills.ai.intrinsic.move_robot.return_value = (
-        bt.PythonScript(function_body="pass")
+    mock_solution.skills.ai.intrinsic.move_robot.return_value = bt.PythonScript(
+      function_body="pass"
     )
     mock_solution.executive.run = mock.MagicMock()
 
     move_robot_to_frame(
-        solution=mock_solution,
-        target_frame_name="view",
-        target_object_name="root",
-        motion_type="ANY",
+      solution=mock_solution,
+      target_frame_name="view",
+      target_object_name="root",
+      motion_type="ANY",
     )
 
     mock_solution.executive.run.assert_called_once()
 
   def test_move_robot_to_frame_execution_error_handled(self):
     mock_solution = mock.MagicMock()
-    mock_solution.skills.ai.intrinsic.move_robot.return_value = (
-        bt.PythonScript(function_body="pass")
+    mock_solution.skills.ai.intrinsic.move_robot.return_value = bt.PythonScript(
+      function_body="pass"
     )
     mock_solution.executive.run.side_effect = execution.ExecutionFailedError(
-        "Trajectory planning failed"
+      "Trajectory planning failed"
     )
 
     # Should handle ExecutionFailedError without crashing
     move_robot_to_frame(
-        solution=mock_solution,
-        target_frame_name="invalid_frame",
-        target_object_name="root",
-        motion_type="LINEAR",
+      solution=mock_solution,
+      target_frame_name="invalid_frame",
+      target_object_name="root",
+      motion_type="LINEAR",
     )
 
   def test_parse_args_defaults(self):
@@ -115,7 +121,8 @@ class MoveToFrameTest(absltest.TestCase):
     self.assertEqual(args.tool_frame_name, "tool_frame")
 
   def test_parse_args_custom_values(self):
-    args = parse_args([
+    args = parse_args(
+      [
         "--address",
         "192.168.1.50:17080",
         "--frame",
@@ -130,7 +137,8 @@ class MoveToFrameTest(absltest.TestCase):
         "custom_gripper",
         "--tool_frame_name",
         "custom_tcp",
-    ])
+      ]
+    )
     self.assertEqual(args.address, "192.168.1.50:17080")
     self.assertEqual(args.frame, "view")
     self.assertEqual(args.parent_object, "root")

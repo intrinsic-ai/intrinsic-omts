@@ -35,12 +35,12 @@ class RobotiqGripper(GripperInterface):
   """Robotiq adaptive gripper controlled via gripper_cmd_skill."""
 
   def __init__(
-      self,
-      solution: Any,
-      joint_name: str = "robotiq_hande_left_finger_joint",
-      open_position: float = 0.025,
-      close_position: float = 0.0,
-      action_name: Optional[str] = None,
+    self,
+    solution: Any,
+    joint_name: str = "robotiq_hande_left_finger_joint",
+    open_position: float = 0.025,
+    close_position: float = 0.0,
+    action_name: Optional[str] = None,
   ) -> None:
     self._solution = solution
     self._joint_name = joint_name
@@ -51,8 +51,8 @@ class RobotiqGripper(GripperInterface):
 
   def build_open_task(self, name: Optional[str] = None) -> bt.Node:
     command = self._gripper_cmd_skill.ai.intrinsic.JointState(
-        name=[self._joint_name],
-        position=[self._open_position],
+      name=[self._joint_name],
+      position=[self._open_position],
     )
     kwargs = {"command": command}
     if self._action_name is not None:
@@ -62,8 +62,8 @@ class RobotiqGripper(GripperInterface):
 
   def build_close_task(self, name: Optional[str] = None) -> bt.Node:
     command = self._gripper_cmd_skill.ai.intrinsic.JointState(
-        name=[self._joint_name],
-        position=[self._close_position],
+      name=[self._joint_name],
+      position=[self._close_position],
     )
     kwargs = {"command": command}
     if self._action_name is not None:
@@ -91,10 +91,10 @@ For pneumatic double-acting cylinders or open/close solenoid valves:
 1. Map digital output pins into [`DioGripper`](../src/hardware/gripper.py):
    ```python
    gripper = DioGripper(
-       solution=solution,
-       open_pin=0,               # Digital output pin on controller/tool
-       close_pin=1,              # Digital output pin
-       device_name="ur_module",  # Device owning the I/O pins in solution
+     solution=solution,
+     open_pin=0,  # Digital output pin on controller/tool
+     close_pin=1,  # Digital output pin
+     device_name="ur_module",  # Device owning the I/O pins in solution
    )
    ```
 2. `DioGripper.build_open_task` and `DioGripper.build_close_task` dispatch `skills.ai.intrinsic.dio_set_output`.
@@ -118,7 +118,9 @@ class CncMachineInterface(abc.ABC):
   @abc.abstractmethod
   def build_trigger_cycle_task(self, name: Optional[str] = None) -> bt.Node: ...
   @abc.abstractmethod
-  def build_wait_cycle_complete_task(self, timeout_seconds: float = 30.0, name: Optional[str] = None) -> bt.Node: ...
+  def build_wait_cycle_complete_task(
+    self, timeout_seconds: float = 30.0, name: Optional[str] = None
+  ) -> bt.Node: ...
 ```
 
 ### Digital I/O Wiring (`DioCncMachine`)
@@ -127,14 +129,14 @@ Real machine and vise signals are mapped in [`DioCncMachine`](../src/hardware/ma
 
 ```python
 machine = DioCncMachine(
-    solution=solution,
-    door_open_pin=2,          # Digital output -> Door open solenoid
-    door_close_pin=3,         # Digital output -> Door close solenoid
-    vise_open_pin=4,          # Digital output -> Pneumatic vise unclamp
-    vise_close_pin=5,         # Digital output -> Pneumatic vise clamp
-    cycle_start_pin=6,        # Digital output -> CNC cycle start pulse
-    cycle_done_input_pin=0,   # Digital input <- M-code / cycle complete relay
-    device_name="ur_module",
+  solution=solution,
+  door_open_pin=2,  # Digital output -> Door open solenoid
+  door_close_pin=3,  # Digital output -> Door close solenoid
+  vise_open_pin=4,  # Digital output -> Pneumatic vise unclamp
+  vise_close_pin=5,  # Digital output -> Pneumatic vise clamp
+  cycle_start_pin=6,  # Digital output -> CNC cycle start pulse
+  cycle_done_input_pin=0,  # Digital input <- M-code / cycle complete relay
+  device_name="ur_module",
 )
 ```
 
@@ -149,9 +151,9 @@ During both infeed pick and machine unload:
 2. **Linear Retract:** Closing gripper fingers immediately at the touchdown depth causes the finger edges to pinch or collide with the top surface. Therefore, immediately following touchdown, the robot executes a $3\,\text{cm}$ ($0.03\,\text{m}$) relative `LINEAR` Cartesian motion along tool $-Z$:
    ```python
    create_relative_retract_task(
-       robot=robot,
-       relative_offset_z=-0.03,  # 3 cm linear retract along tool -Z
-       name="Linear Retract 3cm",
+     robot=robot,
+     relative_offset_z=-0.03,  # 3 cm linear retract along tool -Z
+     name="Linear Retract 3cm",
    )
    ```
    This is implemented via `RelativePoseEquality(relative_pose=Pose(position=(0.0, 0.0, -0.03)))` relative to the moving `tool_frame`.
@@ -177,14 +179,16 @@ To maintain clean code structure without inline string scripts in behavior build
 * Logic is maintained as a standard typed module in [`src/utils/dynamic_frame_calculator.py`](../src/utils/dynamic_frame_calculator.py).
 * Injected into `bt.PythonScript` via [`src/utils/script_utils.py:load_python_script`](../src/utils/script_utils.py):
   ```python
-  from src.utils.dynamic_frame_calculator import calculate_and_update_dynamic_frames
+  from src.utils.dynamic_frame_calculator import (
+    calculate_and_update_dynamic_frames,
+  )
   from src.utils.script_utils import load_python_script
 
   update_frames_task = bt.Task(
-      action=bt.PythonScript(
-          function_body=load_python_script(calculate_and_update_dynamic_frames)
-      ),
-      name="Calculate and Update Dynamic Grasp Frames",
+    action=bt.PythonScript(
+      function_body=load_python_script(calculate_and_update_dynamic_frames)
+    ),
+    name="Calculate and Update Dynamic Grasp Frames",
   )
   ```
 
@@ -245,10 +249,14 @@ Target frames are updated directly on `root`:
 * `root/pre_grasp`: Offset vertically by standoff distance ($10\,\text{cm}$ along tool $-Z$).
 
 ```python
-world.batch_update([
-    create_or_update_frame_request("root", "pre_grasp", pregrasp_pos, best_quat),
+world.batch_update(
+  [
+    create_or_update_frame_request(
+      "root", "pre_grasp", pregrasp_pos, best_quat
+    ),
     create_or_update_frame_request("root", "grasp", grasp_pos, best_quat),
-])
+  ]
+)
 ```
 This pattern eliminates `create_object:3` name collisions and `move_robot:10601` frame lookup failures.
 

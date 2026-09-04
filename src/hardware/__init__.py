@@ -14,32 +14,32 @@
 
 """Hardware abstractions and adapters for the Open Machine Tending Solution."""
 
-from src.hardware.gripper import DioGripper
-from src.hardware.gripper import GripperInterface
-from src.hardware.gripper import MockGripper
-from src.hardware.gripper import RobotiqGripper
-from src.hardware.machine import CncMachineInterface
-from src.hardware.machine import DioCncMachine
-from src.hardware.machine import MockCncMachine
-from src.hardware.robot import MockRobot
-from src.hardware.robot import RobotInterface
-from src.hardware.robot import UrRobot
-from src.hardware.vision import MockVision
-from src.hardware.vision import OrbbecVision
-from src.hardware.vision import VisionInterface
+from src.hardware.gripper import (
+  DioGripper,
+  GripperInterface,
+  MockGripper,
+  RobotiqGripper,
+)
+from src.hardware.machine import (
+  CncMachineInterface,
+  DioCncMachine,
+  MockCncMachine,
+)
+from src.hardware.robot import MockRobot, RobotInterface, UrRobot
+from src.hardware.vision import MockVision, OrbbecVision, VisionInterface
 
 __all__ = [
-    "CncMachineInterface",
-    "DioCncMachine",
-    "DioGripper",
-    "GripperInterface",
-    "MockCncMachine",
-    "MockGripper",
-    "MockRobot",
-    "MockVision",
-    "OrbbecVision",
-    "RobotInterface",
-    "RobotiqGripper",
-    "UrRobot",
-    "VisionInterface",
+  "CncMachineInterface",
+  "DioCncMachine",
+  "DioGripper",
+  "GripperInterface",
+  "MockCncMachine",
+  "MockGripper",
+  "MockRobot",
+  "MockVision",
+  "OrbbecVision",
+  "RobotInterface",
+  "RobotiqGripper",
+  "UrRobot",
+  "VisionInterface",
 ]

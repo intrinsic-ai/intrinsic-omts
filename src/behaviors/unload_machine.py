@@ -14,12 +14,12 @@
 
 """CNC machine unloading and extraction subtree."""
 
-from typing import Optional
 from intrinsic.solutions import behavior_tree as bt
+
 from src.behaviors.motions import (
-    create_compliant_touchdown_task,
-    create_move_to_frame_task,
-    create_relative_retract_task,
+  create_compliant_touchdown_task,
+  create_move_to_frame_task,
+  create_relative_retract_task,
 )
 from src.core.workpiece import Workpiece
 from src.hardware.gripper import GripperInterface
@@ -28,14 +28,14 @@ from src.hardware.robot import RobotInterface
 
 
 def build_unload_machine_subtree(
-    robot: RobotInterface,
-    gripper: GripperInterface,
-    machine: CncMachineInterface,
-    workpiece: Workpiece,
-    parent_object: str = "root",
-    machine_approach_frame_name: str = "machine_approach",
-    preplace_vise_frame_name: str = "pre_place_vise",
-    place_vise_frame_name: str = "place_vise",
+  robot: RobotInterface,
+  gripper: GripperInterface,
+  machine: CncMachineInterface,
+  workpiece: Workpiece,
+  parent_object: str = "root",
+  machine_approach_frame_name: str = "machine_approach",
+  preplace_vise_frame_name: str = "pre_place_vise",
+  place_vise_frame_name: str = "place_vise",
 ) -> bt.Node:
   """Builds the Behavior Tree subtree for unloading a finished part from the CNC.
 
@@ -64,49 +64,48 @@ def build_unload_machine_subtree(
       Behavior tree sequence node executing machine unloading.
   """
   tasks: list[bt.Node] = [
-      machine.build_open_door_task(name="Step 10: Open CNC Door"),
-      machine.build_open_vise_task(name="Step 11: Open CNC Vise"),
-      create_move_to_frame_task(
-          robot=robot,
-          frame_name=machine_approach_frame_name,
-          parent_object=parent_object,
-          motion_type="ANY",
-          task_name=f"Step 12a: Approach Machine Entry ({parent_object}/{machine_approach_frame_name})",
-      ),
-      create_move_to_frame_task(
-          robot=robot,
-          frame_name=preplace_vise_frame_name,
-          parent_object=parent_object,
-          motion_type="ANY",
-          task_name=f"Step 12b: Approach Machined Part ({parent_object}/{preplace_vise_frame_name})",
-      ),
-      create_compliant_touchdown_task(
-          robot=robot,
-          direction=(0.0, 0.0, 1.0),
-          contact_force_newtons=15.0,
-          task_name="Step 12c: Compliant Touchdown to Machined Part (+Z Tool)",
-      ),
-      create_relative_retract_task(
-          robot=robot,
-          distance_meters=0.03,
-          task_name="Step 12d: Linear Retract (3 cm, -Z Tool)",
-      ),
-      gripper.build_close_task(name="Step 12e: Grasp Machined Part"),
-      create_move_to_frame_task(
-          robot=robot,
-          frame_name=preplace_vise_frame_name,
-          parent_object=parent_object,
-          motion_type="LINEAR",
-          task_name=f"Step 12f: Retract Machined Part from Vise ({parent_object}/{preplace_vise_frame_name})",
-      ),
-      create_move_to_frame_task(
-          robot=robot,
-          frame_name=machine_approach_frame_name,
-          parent_object=parent_object,
-          motion_type="LINEAR",
-          task_name=f"Step 12g: Retract Machined Part from Machine ({parent_object}/{machine_approach_frame_name})",
-      ),
+    machine.build_open_door_task(name="Step 10: Open CNC Door"),
+    machine.build_open_vise_task(name="Step 11: Open CNC Vise"),
+    create_move_to_frame_task(
+      robot=robot,
+      frame_name=machine_approach_frame_name,
+      parent_object=parent_object,
+      motion_type="ANY",
+      task_name=f"Step 12a: Approach Machine Entry ({parent_object}/{machine_approach_frame_name})",
+    ),
+    create_move_to_frame_task(
+      robot=robot,
+      frame_name=preplace_vise_frame_name,
+      parent_object=parent_object,
+      motion_type="ANY",
+      task_name=f"Step 12b: Approach Machined Part ({parent_object}/{preplace_vise_frame_name})",
+    ),
+    create_compliant_touchdown_task(
+      robot=robot,
+      direction=(0.0, 0.0, 1.0),
+      contact_force_newtons=15.0,
+      task_name="Step 12c: Compliant Touchdown to Machined Part (+Z Tool)",
+    ),
+    create_relative_retract_task(
+      robot=robot,
+      distance_meters=0.03,
+      task_name="Step 12d: Linear Retract (3 cm, -Z Tool)",
+    ),
+    gripper.build_close_task(name="Step 12e: Grasp Machined Part"),
+    create_move_to_frame_task(
+      robot=robot,
+      frame_name=preplace_vise_frame_name,
+      parent_object=parent_object,
+      motion_type="LINEAR",
+      task_name=f"Step 12f: Retract Machined Part from Vise ({parent_object}/{preplace_vise_frame_name})",
+    ),
+    create_move_to_frame_task(
+      robot=robot,
+      frame_name=machine_approach_frame_name,
+      parent_object=parent_object,
+      motion_type="LINEAR",
+      task_name=f"Step 12g: Retract Machined Part from Machine ({parent_object}/{machine_approach_frame_name})",
+    ),
   ]
 
   return bt.Sequence(name="4. Unload Machine Subtree", children=tasks)
-

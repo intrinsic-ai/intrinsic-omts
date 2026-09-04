@@ -15,10 +15,11 @@
 """Interactive CLI tool to move the robot tool frame to a target frame in the scene."""
 
 import argparse
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
-from intrinsic.solutions import deployments
-from intrinsic.solutions import execution
+from intrinsic.solutions import deployments, execution
+
 from src.hardware.robot import UrRobot
 
 
@@ -63,12 +64,12 @@ def list_available_frames(world: Any) -> list[tuple[str, str]]:
   # Fallback / scene defaults if dynamic discovery returned nothing
   if not frames:
     default_scene_frames = [
-        ("root", "view"),
-        ("root", "pre_grasp"),
-        ("root", "grasp"),
-        ("root", "machine_approach"),
-        ("root", "pre_place_vise"),
-        ("root", "place_vise"),
+      ("root", "view"),
+      ("root", "pre_grasp"),
+      ("root", "grasp"),
+      ("root", "machine_approach"),
+      ("root", "pre_place_vise"),
+      ("root", "place_vise"),
     ]
     for parent, frame in default_scene_frames:
       frames.append((parent, frame))
@@ -85,7 +86,7 @@ def list_available_frames(world: Any) -> list[tuple[str, str]]:
 
 
 def prompt_for_frame(
-    available_frames: list[tuple[str, str]],
+  available_frames: list[tuple[str, str]],
 ) -> tuple[str, str] | None:
   """Prompts the user to select a target frame from the available list.
 
@@ -107,8 +108,8 @@ def prompt_for_frame(
   while True:
     try:
       choice = input(
-          f"\nEnter frame index (1-{len(available_frames)}) to move robot, or"
-          " 'q' to quit: "
+        f"\nEnter frame index (1-{len(available_frames)}) to move robot, or"
+        " 'q' to quit: "
       ).strip()
       if choice.lower() in ("q", "quit", "exit"):
         return None
@@ -117,22 +118,22 @@ def prompt_for_frame(
       if 1 <= idx <= len(available_frames):
         return available_frames[idx - 1]
       print(
-          "Invalid choice. Please enter a number between 1 and"
-          f" {len(available_frames)}."
+        "Invalid choice. Please enter a number between 1 and"
+        f" {len(available_frames)}."
       )
     except (ValueError, EOFError):
       print("Invalid input. Please enter a valid number or 'q'.")
 
 
 def move_robot_to_frame(
-    solution: Any,
-    target_frame_name: str,
-    target_object_name: str = "root",
-    motion_type: str = "ANY",
-    allow_tool_z_rotation: bool = False,
-    arm_part_name: str = "ur_module",
-    tool_object_name: str = "gripper",
-    tool_frame_name: str = "tool_frame",
+  solution: Any,
+  target_frame_name: str,
+  target_object_name: str = "root",
+  motion_type: str = "ANY",
+  allow_tool_z_rotation: bool = False,
+  arm_part_name: str = "ur_module",
+  tool_object_name: str = "gripper",
+  tool_frame_name: str = "tool_frame",
 ) -> None:
   """Plans and executes a Cartesian motion moving the robot tool to the target frame.
 
@@ -148,52 +149,55 @@ def move_robot_to_frame(
     tool_frame_name: Frame name on tool object to align (default: 'tool_frame').
   """
   print(
-      f"\nPlanning motion for '{arm_part_name}' moving tool"
-      f" '{tool_object_name}/{tool_frame_name}' ->"
-      f" '{target_object_name}/{target_frame_name}' (motion_type:"
-      f" {motion_type}, allow_tool_z_rot: {allow_tool_z_rotation})..."
+    f"\nPlanning motion for '{arm_part_name}' moving tool"
+    f" '{tool_object_name}/{tool_frame_name}' ->"
+    f" '{target_object_name}/{target_frame_name}' (motion_type:"
+    f" {motion_type}, allow_tool_z_rot: {allow_tool_z_rotation})..."
   )
   try:
     from intrinsic.world.public.proto import object_world_refs_pb2
+
     current_target_t = solution.world.get_transform(
-        solution.world.root,
-        solution.world.get_transform_node(
-            object_world_refs_pb2.TransformNodeReference(
-                by_name=object_world_refs_pb2.TransformNodeReferenceByName(
-                    frame=object_world_refs_pb2.FrameReferenceByName(
-                        object_name=target_object_name, frame_name=target_frame_name
-                    )
-                )
+      solution.world.root,
+      solution.world.get_transform_node(
+        object_world_refs_pb2.TransformNodeReference(
+          by_name=object_world_refs_pb2.TransformNodeReferenceByName(
+            frame=object_world_refs_pb2.FrameReferenceByName(
+              object_name=target_object_name, frame_name=target_frame_name
             )
-        ),
+          )
+        )
+      ),
     )
-    print(f"Current pose of '{target_object_name}/{target_frame_name}' in root: {current_target_t}")
+    print(
+      f"Current pose of '{target_object_name}/{target_frame_name}' in root: {current_target_t}"
+    )
   except Exception as te:
     print(f"Could not query target frame: {te}")
 
   robot = UrRobot(
-      solution=solution,
-      arm_part_name=arm_part_name,
-      tool_object_name=tool_object_name,
-      tool_frame_name=tool_frame_name,
+    solution=solution,
+    arm_part_name=arm_part_name,
+    tool_object_name=tool_object_name,
+    tool_frame_name=tool_frame_name,
   )
 
   task = robot.build_move_cartesian_task(
-      target_frame_name=target_frame_name,
-      target_object_name=target_object_name,
-      motion_type=motion_type,
-      allow_tool_z_rotation=allow_tool_z_rotation,
-      name=(
-          f"Move {tool_object_name}.{tool_frame_name} to"
-          f" {target_object_name}.{target_frame_name} ({motion_type})"
-      ),
+    target_frame_name=target_frame_name,
+    target_object_name=target_object_name,
+    motion_type=motion_type,
+    allow_tool_z_rotation=allow_tool_z_rotation,
+    name=(
+      f"Move {tool_object_name}.{tool_frame_name} to"
+      f" {target_object_name}.{target_frame_name} ({motion_type})"
+    ),
   )
 
   try:
     solution.executive.run(task)
     print(
-        f"[✓] Successfully moved robot to"
-        f" '{target_object_name}/{target_frame_name}'."
+      f"[✓] Successfully moved robot to"
+      f" '{target_object_name}/{target_frame_name}'."
     )
   except execution.ExecutionFailedError as e:
     print(f"\n[!] Motion execution failed: {e}")
@@ -206,56 +210,56 @@ def move_robot_to_frame(
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   """Parses command line arguments."""
   parser = argparse.ArgumentParser(
-      description="Developer CLI tool to move robot to a scene frame."
+    description="Developer CLI tool to move robot to a scene frame."
   )
   parser.add_argument(
-      "--address",
-      type=str,
-      default="localhost:17080",
-      help="Solution gRPC address to connect to (default: localhost:17080).",
+    "--address",
+    type=str,
+    default="localhost:17080",
+    help="Solution gRPC address to connect to (default: localhost:17080).",
   )
   parser.add_argument(
-      "--frame",
-      type=str,
-      default=None,
-      help="Target frame name to move to. If omitted, prompts interactively.",
+    "--frame",
+    type=str,
+    default=None,
+    help="Target frame name to move to. If omitted, prompts interactively.",
   )
   parser.add_argument(
-      "--parent_object",
-      type=str,
-      default="root",
-      help="Parent object of target frame in world (default: 'root').",
+    "--parent_object",
+    type=str,
+    default="root",
+    help="Parent object of target frame in world (default: 'root').",
   )
   parser.add_argument(
-      "--motion_type",
-      type=str,
-      default="ANY",
-      choices=["ANY", "LINEAR", "JOINT"],
-      help="Motion trajectory type: ANY (default), LINEAR, or JOINT.",
+    "--motion_type",
+    type=str,
+    default="ANY",
+    choices=["ANY", "LINEAR", "JOINT"],
+    help="Motion trajectory type: ANY (default), LINEAR, or JOINT.",
   )
   parser.add_argument(
-      "--arm_part_name",
-      type=str,
-      default="ur_module",
-      help="Robot arm part name in solution.world (default: 'ur_module').",
+    "--arm_part_name",
+    type=str,
+    default="ur_module",
+    help="Robot arm part name in solution.world (default: 'ur_module').",
   )
   parser.add_argument(
-      "--tool_object_name",
-      type=str,
-      default="gripper",
-      help="End-effector tool object name (default: 'gripper').",
+    "--tool_object_name",
+    type=str,
+    default="gripper",
+    help="End-effector tool object name (default: 'gripper').",
   )
   parser.add_argument(
-      "--tool_frame_name",
-      type=str,
-      default="tool_frame",
-      help="Tool frame name on tool_object_name (default: 'tool_frame').",
+    "--tool_frame_name",
+    type=str,
+    default="tool_frame",
+    help="Tool frame name on tool_object_name (default: 'tool_frame').",
   )
   parser.add_argument(
-      "--allow_tool_z_rotation",
-      action="store_true",
-      default=False,
-      help="Allow free rotation around tool Z approach axis using PositionEquality + RotationCone.",
+    "--allow_tool_z_rotation",
+    action="store_true",
+    default=False,
+    help="Allow free rotation around tool Z approach axis using PositionEquality + RotationCone.",
   )
   return parser.parse_args(argv)
 
@@ -269,14 +273,14 @@ def main(argv: Sequence[str] | None = None) -> None:
 
   if args.frame:
     move_robot_to_frame(
-        solution=solution,
-        target_frame_name=args.frame,
-        target_object_name=args.parent_object,
-        motion_type=args.motion_type,
-        allow_tool_z_rotation=args.allow_tool_z_rotation,
-        arm_part_name=args.arm_part_name,
-        tool_object_name=args.tool_object_name,
-        tool_frame_name=args.tool_frame_name,
+      solution=solution,
+      target_frame_name=args.frame,
+      target_object_name=args.parent_object,
+      motion_type=args.motion_type,
+      allow_tool_z_rotation=args.allow_tool_z_rotation,
+      arm_part_name=args.arm_part_name,
+      tool_object_name=args.tool_object_name,
+      tool_frame_name=args.tool_frame_name,
     )
     return
 
@@ -293,14 +297,14 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     parent_obj, frame_name = selected
     move_robot_to_frame(
-        solution=solution,
-        target_frame_name=frame_name,
-        target_object_name=parent_obj,
-        motion_type=args.motion_type,
-        allow_tool_z_rotation=args.allow_tool_z_rotation,
-        arm_part_name=args.arm_part_name,
-        tool_object_name=args.tool_object_name,
-        tool_frame_name=args.tool_frame_name,
+      solution=solution,
+      target_frame_name=frame_name,
+      target_object_name=parent_obj,
+      motion_type=args.motion_type,
+      allow_tool_z_rotation=args.allow_tool_z_rotation,
+      arm_part_name=args.arm_part_name,
+      tool_object_name=args.tool_object_name,
+      tool_frame_name=args.tool_frame_name,
     )
 
 

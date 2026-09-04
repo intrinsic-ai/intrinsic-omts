@@ -15,7 +15,7 @@
 """Pallet and grid tray domain model for blind infeed/outfeed."""
 
 from dataclasses import dataclass
-from typing import Optional
+
 from src.core.types import Pose3D, SlotState
 from src.core.workpiece import Workpiece
 
@@ -34,7 +34,7 @@ class TraySlot:
   row: int
   col: int
   state: SlotState = SlotState.EMPTY
-  workpiece: Optional[Workpiece] = None
+  workpiece: Workpiece | None = None
 
 
 class Tray:
@@ -50,13 +50,13 @@ class Tray:
   """
 
   def __init__(
-      self,
-      name: str,
-      rows: int,
-      cols: int,
-      pitch_x: float,
-      pitch_y: float,
-      origin_frame: str,
+    self,
+    name: str,
+    rows: int,
+    cols: int,
+    pitch_x: float,
+    pitch_y: float,
+    origin_frame: str,
   ) -> None:
     if rows <= 0 or cols <= 0:
       raise ValueError("Tray rows and columns must be strictly positive.")
@@ -67,26 +67,32 @@ class Tray:
     self.pitch_y = pitch_y
     self.origin_frame = origin_frame
     self._slots: list[list[TraySlot]] = [
-        [TraySlot(row=r, col=c) for c in range(cols)] for r in range(rows)
+      [TraySlot(row=r, col=c) for c in range(cols)] for r in range(rows)
     ]
 
   def get_slot(self, row: int, col: int) -> TraySlot:
     """Returns the TraySlot at (row, col)."""
     if not (0 <= row < self.rows and 0 <= col < self.cols):
-      raise IndexError(f"Slot ({row}, {col}) out of bounds for tray '{self.name}'.")
+      raise IndexError(
+        f"Slot ({row}, {col}) out of bounds for tray '{self.name}'."
+      )
     return self._slots[row][col]
 
   def get_slot_relative_pose(self, row: int, col: int) -> Pose3D:
     """Calculates relative 3D pose of slot (row, col) from the tray origin frame."""
     if not (0 <= row < self.rows and 0 <= col < self.cols):
-      raise IndexError(f"Slot ({row}, {col}) out of bounds for tray '{self.name}'.")
+      raise IndexError(
+        f"Slot ({row}, {col}) out of bounds for tray '{self.name}'."
+      )
     return Pose3D(
-        x=col * self.pitch_x,
-        y=row * self.pitch_y,
-        z=0.0,
+      x=col * self.pitch_x,
+      y=row * self.pitch_y,
+      z=0.0,
     )
 
-  def get_next_available_slot(self, target_state: SlotState = SlotState.OCCUPIED) -> Optional[TraySlot]:
+  def get_next_available_slot(
+    self, target_state: SlotState = SlotState.OCCUPIED
+  ) -> TraySlot | None:
     """Finds the next slot matching target_state in row-major order."""
     for r in range(self.rows):
       for c in range(self.cols):
@@ -100,8 +106,8 @@ class Tray:
       for c in range(self.cols):
         part_id = f"{self.name}_r{r}_c{c}"
         self._slots[r][c].workpiece = Workpiece(
-            id=part_id,
-            cad_model_name=part_cad_model,
+          id=part_id,
+          cad_model_name=part_cad_model,
         )
         self._slots[r][c].state = SlotState.OCCUPIED
 

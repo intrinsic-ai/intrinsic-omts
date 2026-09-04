@@ -15,10 +15,11 @@
 """Infeed part localization and picking subtree."""
 
 from intrinsic.solutions import behavior_tree as bt
+
 from src.behaviors.motions import (
-    create_compliant_touchdown_task,
-    create_move_to_frame_task,
-    create_relative_retract_task,
+  create_compliant_touchdown_task,
+  create_move_to_frame_task,
+  create_relative_retract_task,
 )
 from src.core.infeed import InfeedMode, InfeedStrategy, PerceptionInfeedStrategy
 from src.core.workpiece import Workpiece
@@ -28,16 +29,16 @@ from src.hardware.vision import VisionInterface
 
 
 def build_pick_from_infeed_subtree(
-    robot: RobotInterface,
-    gripper: GripperInterface,
-    vision: VisionInterface,
-    infeed_strategy: InfeedStrategy,
-    workpiece: Workpiece,
-    parent_object: str = "root",
-    view_frame_name: str = "view",
-    pregrasp_frame_name: str = "pre_grasp",
-    grasp_frame_name: str = "grasp",
-    approach_offset_z: float = 0.08,
+  robot: RobotInterface,
+  gripper: GripperInterface,
+  vision: VisionInterface,
+  infeed_strategy: InfeedStrategy,
+  workpiece: Workpiece,
+  parent_object: str = "root",
+  view_frame_name: str = "view",
+  pregrasp_frame_name: str = "pre_grasp",
+  grasp_frame_name: str = "grasp",
+  approach_offset_z: float = 0.08,
 ) -> bt.Node:
   """Builds the Behavior Tree subtree for locating and grasping a raw workpiece.
 
@@ -72,69 +73,73 @@ def build_pick_from_infeed_subtree(
 
   if infeed_strategy.mode == InfeedMode.PERCEPTION:
     target_object_id = (
-        infeed_strategy.scene_object_id
-        if isinstance(infeed_strategy, PerceptionInfeedStrategy)
-        else "ai.intrinsic.raw_stock_2x3x5"
+      infeed_strategy.scene_object_id
+      if isinstance(infeed_strategy, PerceptionInfeedStrategy)
+      else "ai.intrinsic.raw_stock_2x3x5"
     )
     pose_estimator_id = (
-        infeed_strategy.pose_estimator_id
-        if isinstance(infeed_strategy, PerceptionInfeedStrategy)
-        else "ai.intrinsic.raw_stock_2x3x5_estimator"
+      infeed_strategy.pose_estimator_id
+      if isinstance(infeed_strategy, PerceptionInfeedStrategy)
+      else "ai.intrinsic.raw_stock_2x3x5_estimator"
     )
     min_instances = (
-        infeed_strategy.min_num_instances
-        if isinstance(infeed_strategy, PerceptionInfeedStrategy)
-        else 1
+      infeed_strategy.min_num_instances
+      if isinstance(infeed_strategy, PerceptionInfeedStrategy)
+      else 1
     )
 
-    tasks.extend([
+    tasks.extend(
+      [
         create_move_to_frame_task(
-            robot=robot,
-            frame_name=view_frame_name,
-            parent_object=parent_object,
-            motion_type="ANY",
-            task_name=f"Step 01: Move to View Frame ({parent_object}/{view_frame_name})",
-        ),
-        vision.build_perception_and_spawn_task(
-            target_scene_object_id=target_object_id,
-            pose_estimator_id=pose_estimator_id,
-            min_num_instances=min_instances,
-            approach_offset_z=approach_offset_z,
-            parent_object=parent_object,
-            pregrasp_frame_name=pregrasp_frame_name,
-            grasp_frame_name=grasp_frame_name,
-            name="Step 02: Perception & Dynamic Grasp Frame Update Pipeline",
-        ),
-    ])
-
-  tasks.extend([
-      gripper.build_open_task(name="Step 03: Open Gripper"),
-      create_move_to_frame_task(
           robot=robot,
-          frame_name=pregrasp_frame_name,
+          frame_name=view_frame_name,
           parent_object=parent_object,
           motion_type="ANY",
-          task_name=f"Step 04: Move to Dynamic Pre-Grasp ({parent_object}/{pregrasp_frame_name})",
+          task_name=f"Step 01: Move to View Frame ({parent_object}/{view_frame_name})",
+        ),
+        vision.build_perception_and_spawn_task(
+          target_scene_object_id=target_object_id,
+          pose_estimator_id=pose_estimator_id,
+          min_num_instances=min_instances,
+          approach_offset_z=approach_offset_z,
+          parent_object=parent_object,
+          pregrasp_frame_name=pregrasp_frame_name,
+          grasp_frame_name=grasp_frame_name,
+          name="Step 02: Perception & Dynamic Grasp Frame Update Pipeline",
+        ),
+      ]
+    )
+
+  tasks.extend(
+    [
+      gripper.build_open_task(name="Step 03: Open Gripper"),
+      create_move_to_frame_task(
+        robot=robot,
+        frame_name=pregrasp_frame_name,
+        parent_object=parent_object,
+        motion_type="ANY",
+        task_name=f"Step 04: Move to Dynamic Pre-Grasp ({parent_object}/{pregrasp_frame_name})",
       ),
       create_compliant_touchdown_task(
-          robot=robot,
-          direction=(0.0, 0.0, 1.0),
-          contact_force_newtons=15.0,
-          task_name="Step 05: Compliant Touchdown to Part (+Z Tool)",
+        robot=robot,
+        direction=(0.0, 0.0, 1.0),
+        contact_force_newtons=15.0,
+        task_name="Step 05: Compliant Touchdown to Part (+Z Tool)",
       ),
       create_relative_retract_task(
-          robot=robot,
-          distance_meters=0.03,
-          task_name="Step 06: Linear Retract (3 cm, -Z Tool)",
+        robot=robot,
+        distance_meters=0.03,
+        task_name="Step 06: Linear Retract (3 cm, -Z Tool)",
       ),
       gripper.build_close_task(name="Step 07: Close Gripper (Grasp Part)"),
       create_move_to_frame_task(
-          robot=robot,
-          frame_name=pregrasp_frame_name,
-          parent_object=parent_object,
-          motion_type="LINEAR",
-          task_name=f"Step 08: Linear Retract to Pre-Grasp ({parent_object}/{pregrasp_frame_name})",
+        robot=robot,
+        frame_name=pregrasp_frame_name,
+        parent_object=parent_object,
+        motion_type="LINEAR",
+        task_name=f"Step 08: Linear Retract to Pre-Grasp ({parent_object}/{pregrasp_frame_name})",
       ),
-  ])
+    ]
+  )
 
   return bt.Sequence(name="1. Infeed Pick Subtree", children=tasks)

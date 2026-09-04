@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout OMTS
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Buildifier
+        run: |
+          BUILDIFIER_URL="https://github.com/bazelbuild/buildtools/releases/latest/download/buildifier-linux-amd64"
+          sudo curl -sSL "${BUILDIFIER_URL}" -o /usr/local/bin/buildifier
+          sudo chmod +x /usr/local/bin/buildifier
+          buildifier --version
+
+      - name: Check Bazel Formatting (Buildifier)
+        run: |
+          echo "Checking Bazel file formatting..."
+          buildifier --mode=check -r .
+
+      - name: Check Bazel Linting (Buildifier)
+        run: |
+          echo "Checking Bazel file linting..."
+          buildifier --lint=warn -r .
+
+      - name: Install Python Linters
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Check Python Code Linting (Ruff)
+        run: |
+          echo "Checking Python code linting..."
+          ruff check .
+
+      - name: Check Python Code Formatting (Ruff)
+        run: |
+          echo "Checking Python code formatting..."
+          ruff format --check .

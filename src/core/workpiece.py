@@ -15,7 +15,7 @@
 """Workpiece domain model for machine tending."""
 
 from dataclasses import dataclass
-from typing import Optional
+
 from src.core.types import PartState, Pose3D
 
 
@@ -37,7 +37,7 @@ class Workpiece:
   state: PartState = PartState.RAW
   grasp_offset: Pose3D = Pose3D(x=0.0, y=0.0, z=0.05)
   insertion_depth: float = 0.03
-  initial_infeed_pose: Optional[Pose3D] = None
+  initial_infeed_pose: Pose3D | None = None
 
   def mark_detected(self, detected_pose: Pose3D) -> None:
     """Updates part state to DETECTED and records its initial location."""

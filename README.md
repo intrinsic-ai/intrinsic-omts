@@ -1,7 +1,8 @@
 # Open Machine Tending Solution (OMTS)
 
-OMTS is an open-source reference application for automated machine tending (e.g. CNC milling, turning, press braking, and fixture loading) built on top of **Intrinsic Open Core (IOC)** using the **Solution Building Library (SBL)** Python SDK.
+[![CI](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml/badge.svg)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml)
 
+OMTS is an open-source reference application for automated machine tending (e.g. CNC milling, turning, press braking, and fixture loading) built on top of **Intrinsic Open Core (IOC)** using the **Solution Building Library (SBL)** Python SDK.
 
 ---
 
@@ -131,16 +132,16 @@ workspaces/
 This dependency is configured in [`MODULE.bazel`](MODULE.bazel) via local path overrides:
 
 ```python
-bazel_dep(name = "insrc", repo_name = "ioc")
+bazel_dep(name="insrc", repo_name="ioc")
 local_path_override(
-    module_name = "insrc",
-    path = "../ioc",
+  module_name="insrc",
+  path="../ioc",
 )
 
-bazel_dep(name = "intrinsic_apis", version = "0.0.1")
+bazel_dep(name="intrinsic_apis", version="0.0.1")
 local_path_override(
-    module_name = "intrinsic_apis",
-    path = "../ioc/incode/intrinsic_apis",
+  module_name="intrinsic_apis",
+  path="../ioc/incode/intrinsic_apis",
 )
 ```
 
@@ -258,3 +259,30 @@ bazel test //tests/unit:all
   --service_name="pose_estimator_service" \
   --min_num_instances=1
   ```
+
+---
+
+## 3. Code Quality & Formatting
+
+OMTS enforces formatting and linting checks on all pull requests via GitHub Actions CI. Formatting is enforced as a check rather than auto-applied in CI, ensuring developers retain full control over their code before submitting.
+
+### Local Formatting
+Format both Bazel (`buildifier`) and Python (`ruff`) files locally using:
+
+```bash
+./tools/format.sh
+```
+
+### Local Linting & Pre-PR Verification
+Run the exact checks executed in CI before pushing your branch:
+
+```bash
+./tools/lint.sh
+```
+
+### Git Pre-Commit Hooks (Optional)
+If you use [`pre-commit`](https://pre-commit.com/), install hooks to verify or format files automatically upon commit:
+
+```bash
+pre-commit install
+```

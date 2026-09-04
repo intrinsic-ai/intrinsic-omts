@@ -15,35 +15,35 @@
 """Script to store current robot joint configuration with a given name in SBL world."""
 
 import argparse
-from typing import Sequence
+from collections.abc import Sequence
 
-from intrinsic.solutions import deployments
-from intrinsic.solutions import worlds
+from intrinsic.solutions import deployments, worlds
 from intrinsic.world.proto import object_world_updates_pb2
+
 from src.utils.math_utils import normalize_joint_angles
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   """Parses command line arguments."""
   parser = argparse.ArgumentParser(
-      description="Store current robot joint position as a named joint configuration."
+    description="Store current robot joint position as a named joint configuration."
   )
   parser.add_argument(
-      "name",
-      type=str,
-      help="Name of the joint configuration to store (e.g. 'home', 'view_pose').",
+    "name",
+    type=str,
+    help="Name of the joint configuration to store (e.g. 'home', 'view_pose').",
   )
   parser.add_argument(
-      "--address",
-      type=str,
-      default="localhost:17080",
-      help="Solution address to connect to (default: localhost:17080).",
+    "--address",
+    type=str,
+    default="localhost:17080",
+    help="Solution address to connect to (default: localhost:17080).",
   )
   parser.add_argument(
-      "--robot_name",
-      type=str,
-      default="ur_module",
-      help="Name of the robot object in the world (default: ur_module).",
+    "--robot_name",
+    type=str,
+    default="ur_module",
+    help="Name of the robot object in the world (default: ur_module).",
   )
   return parser.parse_args(argv)
 
@@ -64,32 +64,38 @@ def main(argv: Sequence[str] | None = None) -> None:
   current_joint_positions = list(robot.joint_positions)
   normalized_joint_positions = normalize_joint_angles(current_joint_positions)
 
-  print(f"Current joint positions for '{args.robot_name}': {current_joint_positions}")
+  print(
+    f"Current joint positions for '{args.robot_name}': {current_joint_positions}"
+  )
   print(f"Normalized joint positions: {normalized_joint_positions}")
 
   named_config = object_world_updates_pb2.NamedJointConfiguration(
-      name=args.name,
-      joint_positions=normalized_joint_positions,
+    name=args.name,
+    joint_positions=normalized_joint_positions,
   )
 
   print(f"Storing joint configuration '{args.name}' to active belief world...")
   world.update_kinematic_object_joint_configurations(
-      kinematic_object=robot,
-      named_joint_configurations_to_set=[named_config],
+    kinematic_object=robot,
+    named_joint_configurations_to_set=[named_config],
   )
 
-  print(f"Storing joint configuration '{args.name}' to initial world ('init_world')...")
+  print(
+    f"Storing joint configuration '{args.name}' to initial world ('init_world')..."
+  )
   try:
     init_world = worlds.ObjectWorld.connect(
-        address=args.address,
-        world_id="init_world",
+      address=args.address,
+      world_id="init_world",
     )
     init_robot = getattr(init_world, args.robot_name)
     init_world.update_kinematic_object_joint_configurations(
-        kinematic_object=init_robot,
-        named_joint_configurations_to_set=[named_config],
+      kinematic_object=init_robot,
+      named_joint_configurations_to_set=[named_config],
     )
-    print(f"Saved named joint configuration '{args.name}' permanently to init_world.")
+    print(
+      f"Saved named joint configuration '{args.name}' permanently to init_world."
+    )
   except Exception as e:
     print(f"Warning: Could not update init_world: {e}")
 

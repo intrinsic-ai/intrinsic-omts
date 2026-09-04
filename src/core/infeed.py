@@ -15,9 +15,10 @@
 """Infeed strategy definitions for vision vs. blind grid acquisition."""
 
 import abc
-from typing import Optional, Sequence
+from collections.abc import Sequence
+
 from src.core.tray import Tray, TraySlot
-from src.core.types import InfeedMode, Pose3D
+from src.core.types import InfeedMode
 from src.core.workpiece import Workpiece
 
 
@@ -31,7 +32,7 @@ class InfeedStrategy(abc.ABC):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def get_target_part(self) -> Optional[Workpiece]:
+  def get_target_part(self) -> Workpiece | None:
     """Retrieves or instantiates the next workpiece to process."""
     raise NotImplementedError
 
@@ -40,14 +41,14 @@ class PerceptionInfeedStrategy(InfeedStrategy):
   """Vision-guided infeed strategy for randomly placed parts."""
 
   def __init__(
-      self,
-      camera_name: str = "orbbec_camera",
-      pose_estimator_id: str = "ai.intrinsic.raw_stock_2x3x5_estimator",
-      scene_object_id: str = "ai.intrinsic.raw_stock_2x3x5",
-      sensor_ids: Sequence[int] = (1, 4),
-      min_num_instances: int = 1,
-      refinement_iters: int = 3,
-      view_frame_name: str = "view",
+    self,
+    camera_name: str = "orbbec_camera",
+    pose_estimator_id: str = "ai.intrinsic.raw_stock_2x3x5_estimator",
+    scene_object_id: str = "ai.intrinsic.raw_stock_2x3x5",
+    sensor_ids: Sequence[int] = (1, 4),
+    min_num_instances: int = 1,
+    refinement_iters: int = 3,
+    view_frame_name: str = "view",
   ) -> None:
     self.camera_name = camera_name
     self.pose_estimator_id = pose_estimator_id
@@ -62,7 +63,7 @@ class PerceptionInfeedStrategy(InfeedStrategy):
   def mode(self) -> InfeedMode:
     return InfeedMode.PERCEPTION
 
-  def get_target_part(self) -> Optional[Workpiece]:
+  def get_target_part(self) -> Workpiece | None:
     """Instantiates a new workpiece representation for vision acquisition."""
     self._current_part_count += 1
     return Workpiece(id=f"workpiece_{self._current_part_count - 1}")
@@ -78,13 +79,13 @@ class GridInfeedStrategy(InfeedStrategy):
   def mode(self) -> InfeedMode:
     return InfeedMode.GRID
 
-  def get_target_part(self) -> Optional[Workpiece]:
+  def get_target_part(self) -> Workpiece | None:
     """Retrieves the next occupied slot's workpiece from the tray."""
     slot = self.tray.get_next_available_slot()
     if slot is not None:
       return slot.workpiece
     return None
 
-  def get_next_slot(self) -> Optional[TraySlot]:
+  def get_next_slot(self) -> TraySlot | None:
     """Returns the next slot to pick from."""
     return self.tray.get_next_available_slot()

@@ -1,0 +1,32 @@
+[tool.ruff]
+line-length = 80
+indent-width = 2
+target-version = "py311"
+exclude = [
+    ".git",
+    "bazel-*",
+    ".venv",
+    "venv",
+    "logs",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort (import ordering)
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # Line too long (handled by formatter)
+    "B904",  # Within an `except` clause, raise exceptions with `raise ... from err`
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src", "tools", "tests", "configs"]
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"

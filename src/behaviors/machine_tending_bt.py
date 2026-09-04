@@ -14,8 +14,8 @@
 
 """Master Behavior Tree builder for the Open Machine Tending Solution."""
 
-from typing import Optional
 from intrinsic.solutions import behavior_tree as bt
+
 from src.behaviors.load_machine import build_load_machine_subtree
 from src.behaviors.machining import build_machining_handshake_subtree
 from src.behaviors.pick import build_pick_from_infeed_subtree
@@ -30,20 +30,20 @@ from src.hardware.vision import VisionInterface
 
 
 def build_machine_tending_behavior_tree(
-    robot: RobotInterface,
-    gripper: GripperInterface,
-    machine: CncMachineInterface,
-    vision: VisionInterface,
-    infeed_strategy: InfeedStrategy,
-    workpiece: Workpiece,
-    parent_object: str = "root",
-    view_frame_name: str = "view",
-    pregrasp_frame_name: str = "pre_grasp",
-    grasp_frame_name: str = "grasp",
-    machine_approach_frame_name: str = "machine_approach",
-    preplace_vise_frame_name: str = "pre_place_vise",
-    place_vise_frame_name: str = "place_vise",
-    tree_name: str = "OMTS Machine Tending Master Cycle",
+  robot: RobotInterface,
+  gripper: GripperInterface,
+  machine: CncMachineInterface,
+  vision: VisionInterface,
+  infeed_strategy: InfeedStrategy,
+  workpiece: Workpiece,
+  parent_object: str = "root",
+  view_frame_name: str = "view",
+  pregrasp_frame_name: str = "pre_grasp",
+  grasp_frame_name: str = "grasp",
+  machine_approach_frame_name: str = "machine_approach",
+  preplace_vise_frame_name: str = "pre_place_vise",
+  place_vise_frame_name: str = "place_vise",
+  tree_name: str = "OMTS Machine Tending Master Cycle",
 ) -> bt.BehaviorTree:
   """Assembles the complete machine tending sequence into an SBL Behavior Tree.
 
@@ -74,65 +74,65 @@ def build_machine_tending_behavior_tree(
       Executable SBL BehaviorTree instance.
   """
   pick_subtree = build_pick_from_infeed_subtree(
-      robot=robot,
-      gripper=gripper,
-      vision=vision,
-      infeed_strategy=infeed_strategy,
-      workpiece=workpiece,
-      parent_object=parent_object,
-      view_frame_name=view_frame_name,
-      pregrasp_frame_name=pregrasp_frame_name,
-      grasp_frame_name=grasp_frame_name,
+    robot=robot,
+    gripper=gripper,
+    vision=vision,
+    infeed_strategy=infeed_strategy,
+    workpiece=workpiece,
+    parent_object=parent_object,
+    view_frame_name=view_frame_name,
+    pregrasp_frame_name=pregrasp_frame_name,
+    grasp_frame_name=grasp_frame_name,
   )
 
   load_subtree = build_load_machine_subtree(
-      robot=robot,
-      gripper=gripper,
-      machine=machine,
-      workpiece=workpiece,
-      parent_object=parent_object,
-      machine_approach_frame_name=machine_approach_frame_name,
-      preplace_vise_frame_name=preplace_vise_frame_name,
-      place_vise_frame_name=place_vise_frame_name,
+    robot=robot,
+    gripper=gripper,
+    machine=machine,
+    workpiece=workpiece,
+    parent_object=parent_object,
+    machine_approach_frame_name=machine_approach_frame_name,
+    preplace_vise_frame_name=preplace_vise_frame_name,
+    place_vise_frame_name=place_vise_frame_name,
   )
 
   machining_subtree = build_machining_handshake_subtree(
-      robot=robot,
-      machine=machine,
-      parent_object=parent_object,
-      standby_frame_name=machine_approach_frame_name,
+    robot=robot,
+    machine=machine,
+    parent_object=parent_object,
+    standby_frame_name=machine_approach_frame_name,
   )
 
   unload_subtree = build_unload_machine_subtree(
-      robot=robot,
-      gripper=gripper,
-      machine=machine,
-      workpiece=workpiece,
-      parent_object=parent_object,
-      machine_approach_frame_name=machine_approach_frame_name,
-      preplace_vise_frame_name=preplace_vise_frame_name,
-      place_vise_frame_name=place_vise_frame_name,
+    robot=robot,
+    gripper=gripper,
+    machine=machine,
+    workpiece=workpiece,
+    parent_object=parent_object,
+    machine_approach_frame_name=machine_approach_frame_name,
+    preplace_vise_frame_name=preplace_vise_frame_name,
+    place_vise_frame_name=place_vise_frame_name,
   )
 
   return_subtree = build_return_to_infeed_subtree(
-      robot=robot,
-      gripper=gripper,
-      workpiece=workpiece,
-      parent_object=parent_object,
-      pregrasp_frame_name=pregrasp_frame_name,
-      grasp_frame_name=grasp_frame_name,
-      view_frame_name=view_frame_name,
+    robot=robot,
+    gripper=gripper,
+    workpiece=workpiece,
+    parent_object=parent_object,
+    pregrasp_frame_name=pregrasp_frame_name,
+    grasp_frame_name=grasp_frame_name,
+    view_frame_name=view_frame_name,
   )
 
   root_sequence = bt.Sequence(
-      name="OMTS Master Machine Tending Pipeline",
-      children=[
-          pick_subtree,
-          load_subtree,
-          machining_subtree,
-          unload_subtree,
-          return_subtree,
-      ],
+    name="OMTS Master Machine Tending Pipeline",
+    children=[
+      pick_subtree,
+      load_subtree,
+      machining_subtree,
+      unload_subtree,
+      return_subtree,
+    ],
   )
 
   return bt.BehaviorTree(name=tree_name, root=root_sequence)

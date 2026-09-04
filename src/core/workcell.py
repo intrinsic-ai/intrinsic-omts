@@ -14,9 +14,9 @@
 
 """Workcell state tracking and process metrics."""
 
-from dataclasses import dataclass, field
 import time
-from typing import Optional
+from dataclasses import dataclass
+
 from src.core.tray import Tray
 from src.core.types import FixtureState, MachineDoorState
 from src.core.workpiece import Workpiece
@@ -37,14 +37,14 @@ class WorkcellState:
       cycle_start_timestamp: Unix timestamp when current cycle started.
   """
 
-  current_workpiece: Optional[Workpiece] = None
-  workpiece_in_machine: Optional[Workpiece] = None
-  infeed_tray: Optional[Tray] = None
+  current_workpiece: Workpiece | None = None
+  workpiece_in_machine: Workpiece | None = None
+  infeed_tray: Tray | None = None
   door_state: MachineDoorState = MachineDoorState.CLOSED
   vise_state: FixtureState = FixtureState.OPEN
   cycles_completed: int = 0
   cycles_failed: int = 0
-  cycle_start_timestamp: Optional[float] = None
+  cycle_start_timestamp: float | None = None
 
   def start_new_cycle(self, workpiece: Workpiece) -> None:
     """Begins a new tending cycle with the given workpiece."""

@@ -19,30 +19,33 @@ import inspect
 import os
 import sys
 import types
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 
 def _read_source_from_file(filepath: str) -> str:
   """Reads file content, checking direct path and Bazel runfiles."""
   if os.path.exists(filepath):
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
       return f.read()
 
   # Check Bazel runfiles
-  runfiles_dir = os.environ.get("PYTHON_RUNFILES") or os.environ.get("TEST_SRCDIR")
+  runfiles_dir = os.environ.get("PYTHON_RUNFILES") or os.environ.get(
+    "TEST_SRCDIR"
+  )
   if runfiles_dir:
     r_path = os.path.join(runfiles_dir, "_main", filepath)
     if os.path.exists(r_path):
-      with open(r_path, "r", encoding="utf-8") as f:
+      with open(r_path, encoding="utf-8") as f:
         return f.read()
 
   raise FileNotFoundError(f"Could not locate source file: {filepath}")
 
 
 def load_python_script(
-    source: Union[types.ModuleType, Callable[..., Any], str],
-    function_name: Optional[str] = None,
-    call_args: Optional[str] = "context, params",
+  source: types.ModuleType | Callable[..., Any] | str,
+  function_name: str | None = None,
+  call_args: str | None = "context, params",
 ) -> str:
   """Extracts executable Python source code from a module, function, or file for SBL bt.PythonScript.
 
@@ -69,7 +72,7 @@ def load_python_script(
   if callable(source) and not isinstance(source, types.ModuleType):
     target_func_name = target_func_name or getattr(source, "__name__", None)
     mod = inspect.getmodule(source) or sys.modules.get(
-        getattr(source, "__module__", "")
+      getattr(source, "__module__", "")
     )
     if mod is not None:
       try:
@@ -83,7 +86,7 @@ def load_python_script(
         module_source = inspect.getsource(source)
       except (OSError, TypeError) as err:
         raise ValueError(
-            f"Unable to extract source for function {source}: {err}"
+          f"Unable to extract source for function {source}: {err}"
         ) from err
 
   elif isinstance(source, types.ModuleType):
@@ -103,9 +106,9 @@ def load_python_script(
       # Treat as module dot-path
       mod = importlib.import_module(source)
       return load_python_script(
-          source=mod,
-          function_name=function_name,
-          call_args=call_args,
+        source=mod,
+        function_name=function_name,
+        call_args=call_args,
       )
   else:
     raise ValueError(f"Unsupported source type: {type(source)}")
