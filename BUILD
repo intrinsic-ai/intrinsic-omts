@@ -56,7 +56,7 @@ intrinsic_solution(
         "@ioc//google3/intrinsic/perception/skills/multi_view:estimate_pose_multi_view_skill",
         "@ioc//google3/intrinsic/world/skills/create_object:create_object_skill",
         "@ioc//google3/intrinsic/skills/apps:update_world_skill",
-        ":moveit_flowstate_ros_bridge_asset",
+        ":flowstate_ros_bridge_asset",
         ":orbbec_gemini_driver_asset",
         ":foundationpose_mlmodel",
         ":rfdetr_mlmodel",
@@ -92,7 +92,7 @@ intrinsic_solution(
         ":inference_service",
         ":pose_estimator_service",
         ":train_service",
-        ":moveit_ros_bridge",
+        ":flowstate_ros_bridge",
     ] + select({
         ":is_lab_bb_01": [
         ],
@@ -237,15 +237,15 @@ intrinsic_asset_instance(
 )
 
 imported_asset_bundle(
-    name = "moveit_flowstate_ros_bridge_asset",
-    bundle = "@moveit_ros_bridge_bundle//:moveit_flowstate_ros_bridge.bundle.tar",
-    manifest = "//configs:moveit_service_manifest.textproto",
+    name = "flowstate_ros_bridge_asset",
+    bundle = "@flowstate_ros_bridge_bundle//:flowstate_ros_bridge.bundle.tar",
+    manifest = "//configs:flowstate_ros_bridge_manifest.textproto",
 )
 
 intrinsic_asset_instance(
-    name = "moveit_ros_bridge",
-    asset = "ai.intrinsic.moveit_flowstate_ros_bridge",
-    instance_name = "moveit_ros_bridge",
+    name = "flowstate_ros_bridge",
+    asset = "ai.intrinsic.flowstate_ros_bridge",
+    instance_name = "flowstate_ros_bridge",
 )
 
 imported_asset_bundle(
