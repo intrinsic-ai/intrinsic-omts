@@ -119,8 +119,8 @@ go_deps.gazelle_override(
 
 gh = use_extension("//bazel:gh_release.bzl", "gh_release")
 gh.download(
-    name = "moveit_ros_bridge_bundle",
-    pattern = "moveit_flowstate_ros_bridge.bundle.tar",
+    name = "flowstate_ros_bridge_bundle",
+    pattern = "flowstate_ros_bridge.bundle.tar",
     repo = "intrinsic-ai/intrinsic-omts",
     tag = "v0.0.1",
 )
@@ -149,8 +149,8 @@ gh.download(
 )
 use_repo(
     gh,
+    "flowstate_ros_bridge_bundle",
     "foundationpose_py312_bundle",
-    "moveit_ros_bridge_bundle",
     "orbbec_gemini_driver_bundle",
     "segmentation_weights_bundle",
 )
