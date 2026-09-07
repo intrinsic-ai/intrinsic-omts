@@ -149,8 +149,8 @@ gh.download(
 )
 use_repo(
     gh,
-    "foundationpose_py312_bundle",
     "flowstate_ros_bridge_bundle",
+    "foundationpose_py312_bundle",
     "orbbec_gemini_driver_bundle",
     "segmentation_weights_bundle",
 )
