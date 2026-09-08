@@ -74,14 +74,6 @@ omts/
 ├── BUILD                                # Defines intrinsic_solution(:omts_solution) & aliases
 │
 ├── configs/                             # Workcell Textproto / Pbtxt configurations
-│   ├── scene.updates.pbtxt              # Target scene frames (view, pre_grasp, machine_approach, etc.)
-│   ├── ur_module.attachments.updates.pbtxt # Robot mounting, gripper attachment & tool_frame
-│   ├── align_robot.updates.pbtxt        # Enclosure-to-robot base transform
-│   ├── icon_config.textproto            # ICON mainloop controller configuration
-│   ├── ur_module_config.textproto       # Universal Robots hardware module config
-│   ├── lab_bb_01_gemini_device_config.textproto # Orbbec Gemini 335Le camera config (Lab BB-01)
-│   ├── omts_gemini_device_config.textproto      # Orbbec Gemini 335Le camera config (OMTS)
-│   └── motion_planner_config.textproto  # Motion planning & collision checking config
 │
 ├── assets/                              # 3D models, meshes, and catalog assets
 │   ├── meshes/                          # STL / GLB meshes (trays, CNC enclosure, raw stock)
@@ -262,7 +254,7 @@ bazel test //tests/unit:all
 
 ---
 
-## 3. Code Quality & Formatting
+## 7. Code Quality & Formatting
 
 OMTS enforces formatting and linting checks on all pull requests via GitHub Actions CI. Formatting is enforced as a check rather than auto-applied in CI, ensuring developers retain full control over their code before submitting.
 
