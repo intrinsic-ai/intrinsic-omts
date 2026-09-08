@@ -7,7 +7,7 @@ py_library(
     srcs = ["motions.py"],
     deps = [
         "//src/hardware:robot",
-        "@ioc//google3/intrinsic/solutions:behavior_tree",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -21,7 +21,7 @@ py_library(
         "//src/hardware:gripper",
         "//src/hardware:robot",
         "//src/hardware:vision",
-        "@ioc//google3/intrinsic/solutions:behavior_tree",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -34,7 +34,7 @@ py_library(
         "//src/hardware:gripper",
         "//src/hardware:machine",
         "//src/hardware:robot",
-        "@ioc//google3/intrinsic/solutions:behavior_tree",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -45,7 +45,7 @@ py_library(
         ":motions",
         "//src/hardware:machine",
         "//src/hardware:robot",
-        "@ioc//google3/intrinsic/solutions:behavior_tree",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -58,7 +58,7 @@ py_library(
         "//src/hardware:gripper",
         "//src/hardware:machine",
         "//src/hardware:robot",
-        "@ioc//google3/intrinsic/solutions:behavior_tree",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -70,7 +70,7 @@ py_library(
         "//src/core:workpiece",
         "//src/hardware:gripper",
         "//src/hardware:robot",
-        "@ioc//google3/intrinsic/solutions:behavior_tree",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -89,7 +89,7 @@ py_library(
         "//src/hardware:machine",
         "//src/hardware:robot",
         "//src/hardware:vision",
-        "@ioc//google3/intrinsic/solutions:behavior_tree",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
