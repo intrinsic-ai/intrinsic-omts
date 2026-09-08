@@ -42,12 +42,14 @@ class DioGripper(GripperInterface):
     solution: Any,
     open_pin: int = 0,
     close_pin: int = 1,
-    device_name: str = "ur_module",
+    output_block_name: str = "standard_out",
+    device_name: str | None = "ur_module",
   ) -> None:
     self._solution = solution
     self._open_pin = open_pin
     self._close_pin = close_pin
-    self._device_name = device_name
+    self._output_block_name = output_block_name
+    self._device_name = device_name or "ur_module"
     self._dio_set_skill = solution.skills.ai.intrinsic.dio_set_output
 
   def build_open_task(self, name: str | None = None) -> bt.Node:
@@ -153,4 +155,57 @@ class MockGripper(GripperInterface):
         function_body='print("[MockGripper] Gripper Closed (Part Grasped)")'
       ),
       name=task_name,
+    )
+
+
+class SideloadedGripperCmd(GripperInterface):
+  """Gripper adapter using sideloaded ai.intrinsic.gripper_cmd_skill."""
+
+  def __init__(
+    self,
+    solution: Any,
+    action_name: str = "/gripper/gripper_action_controller/gripper_cmd",
+    joint_name: str = "robotiq_hande_left_finger_joint",
+    open_position: float = 0.025,
+    close_position: float = 0.000,
+  ) -> None:
+    """Initializes the sideloaded gripper command adapter.
+
+    Args:
+      solution: Live SBL solution handle containing deployed skills.
+      action_name: Controller action name for gripper_cmd_skill.
+      joint_name: Name of the active finger joint.
+      open_position: Finger joint position in meters for open state.
+      close_position: Finger joint position in meters for closed state.
+    """
+    self._solution = solution
+    self._action_name = action_name
+    self._joint_name = joint_name
+    self.open_position = open_position
+    self.close_position = close_position
+
+  def _build_cmd_task(self, position: float, task_name: str) -> bt.Node:
+    cmd_skill = self._solution.skills.ai.intrinsic.gripper_cmd_skill
+    joint_state = cmd_skill.ai.intrinsic.JointState()
+    joint_state.name = [self._joint_name]
+    joint_state.position = [position]
+
+    action = cmd_skill(
+      action_name=self._action_name,
+      command=joint_state,
+    )
+    return bt.Task(action=action, name=task_name)
+
+  def build_open_task(self, name: str | None = None) -> bt.Node:
+    """Builds a behavior tree task to open the gripper."""
+    return self._build_cmd_task(
+      position=self.open_position,
+      task_name=name or "Open Gripper (gripper_cmd)",
+    )
+
+  def build_close_task(self, name: str | None = None) -> bt.Node:
+    """Builds a behavior tree task to close/grasp with the gripper."""
+    return self._build_cmd_task(
+      position=self.close_position,
+      task_name=name or "Close Gripper (gripper_cmd)",
     )

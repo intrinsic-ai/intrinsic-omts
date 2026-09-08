@@ -17,7 +17,12 @@ from unittest import mock
 from absl.testing import absltest
 from intrinsic.solutions import behavior_tree as bt
 
-from src.hardware.gripper import DioGripper, MockGripper, RobotiqGripper
+from src.hardware.gripper import (
+  DioGripper,
+  MockGripper,
+  RobotiqGripper,
+  SideloadedGripperCmd,
+)
 from src.hardware.machine import MockCncMachine
 from src.hardware.robot import MockRobot
 from src.hardware.vision import MockVision, OrbbecVision
@@ -128,6 +133,41 @@ class HardwareAdaptersTest(absltest.TestCase):
     gripper_cmd_mock.assert_called_with(
       command=mock_joint_state_cls.return_value,
       action_name="/custom/action",
+    )
+
+  def test_sideloaded_gripper_cmd(self):
+    mock_solution = mock.MagicMock()
+    mock_cmd_skill = mock.MagicMock()
+    mock_cmd_skill.return_value = bt.PythonScript(function_body="pass")
+    mock_joint_state = mock.MagicMock()
+    mock_cmd_skill.ai.intrinsic.JointState.return_value = mock_joint_state
+    mock_solution.skills.ai.intrinsic.gripper_cmd_skill = mock_cmd_skill
+
+    gripper = SideloadedGripperCmd(
+      solution=mock_solution,
+      action_name="/gripper/gripper_action_controller/gripper_cmd",
+      joint_name="robotiq_hande_left_finger_joint",
+      open_position=0.025,
+      close_position=0.000,
+    )
+
+    open_task = gripper.build_open_task()
+    self.assertIsInstance(open_task, bt.Task)
+    self.assertEqual(open_task.name, "Open Gripper (gripper_cmd)")
+    self.assertEqual(mock_joint_state.name, ["robotiq_hande_left_finger_joint"])
+    self.assertEqual(mock_joint_state.position, [0.025])
+    mock_cmd_skill.assert_called_with(
+      action_name="/gripper/gripper_action_controller/gripper_cmd",
+      command=mock_joint_state,
+    )
+
+    close_task = gripper.build_close_task()
+    self.assertIsInstance(close_task, bt.Task)
+    self.assertEqual(close_task.name, "Close Gripper (gripper_cmd)")
+    self.assertEqual(mock_joint_state.position, [0.000])
+    mock_cmd_skill.assert_called_with(
+      action_name="/gripper/gripper_action_controller/gripper_cmd",
+      command=mock_joint_state,
     )
 
   def test_mock_cnc_machine(self):
