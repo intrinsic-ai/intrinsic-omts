@@ -31,7 +31,7 @@ from intrinsic.assets.proto import (
   installed_assets_pb2_grpc,
   view_pb2,
 )
-from intrinsic.perception.public.proto.v1 import (
+from intrinsic.perception.proto.v1 import (
   pose_estimation_config_pb2,
   pose_range_pb2,
   target_pb2,
