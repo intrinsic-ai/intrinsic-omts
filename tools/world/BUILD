@@ -21,6 +21,15 @@ py_binary(
     ],
 )
 
+py_library(
+    name = "apply_scene_updates_lib",
+    srcs = ["apply_scene_updates.py"],
+    deps = [
+        "@ioc//google3/intrinsic/solutions:deployments",
+        "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
+    ],
+)
+
 py_binary(
     name = "apply_scene_updates",
     srcs = ["apply_scene_updates.py"],
@@ -32,7 +41,6 @@ py_binary(
     ],
     main = "apply_scene_updates.py",
     deps = [
-        "@ioc//google3/intrinsic/solutions:deployments",
-        "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
+        ":apply_scene_updates_lib",
     ],
 )

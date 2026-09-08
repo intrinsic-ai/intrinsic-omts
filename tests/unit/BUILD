@@ -104,3 +104,12 @@ py_test(
         "@ioc//google3/intrinsic/solutions:execution",
     ],
 )
+
+py_test(
+    name = "test_apply_scene_updates",
+    srcs = ["test_apply_scene_updates.py"],
+    deps = [
+        "//tools/world:apply_scene_updates_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+    ],
+)

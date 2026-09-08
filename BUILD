@@ -108,6 +108,7 @@ intrinsic_solution(
         "//configs:align_robot.updates.pbtxt",
     ] + select({
         ":is_lab_bb_01": [
+            "//configs:lab_bb_01_orbbec_gemini.updates.pbtxt",
         ],
         "//conditions:default": [
             "//configs:cnc_enclosure.updates.pbtxt",
