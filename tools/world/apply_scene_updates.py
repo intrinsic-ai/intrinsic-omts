@@ -50,6 +50,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     default=DEFAULT_UPDATE_FILES,
     help="Path(s) to .pbtxt ObjectWorldUpdates files to apply in order.",
   )
+  parser.add_argument(
+    "--reset_sim",
+    action=argparse.BooleanOptionalAction,
+    default=True,
+    help=(
+      "Whether to reset simulation to synchronize sim_world and reload Gazebo"
+      " when connected to a simulated solution (default: True)."
+    ),
+  )
   return parser.parse_args(argv)
 
 
@@ -176,6 +185,19 @@ def main(argv: Sequence[str] | None = None) -> None:
       )
   except Exception as e:
     print(f"Transform query error: {e}")
+
+  if (
+    args.reset_sim and solution.is_simulated and solution.simulator is not None
+  ):
+    print(
+      "\n[+] Solution is simulated. Resetting simulation to synchronize"
+      " Gazebo with updated Belief World..."
+    )
+    try:
+      solution.simulator.reset()
+      print("[✓] Simulation reset successfully executed.")
+    except Exception as e:
+      print(f"[-] Warning: Failed to reset simulation: {e}")
 
   print("\n[✓] Live world updates complete.")
 
