@@ -24,7 +24,7 @@ from intrinsic.math.proto import (
   quaternion_pb2,
   vector3_pb2,
 )
-from intrinsic.motion_planning.public.proto.v1 import geometric_constraints_pb2
+from intrinsic.motion_planning.proto.v1 import geometric_constraints_pb2
 from intrinsic.solutions import behavior_tree as bt
 from intrinsic.world.public.proto import object_world_refs_pb2
 

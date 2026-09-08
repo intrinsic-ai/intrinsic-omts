@@ -42,7 +42,7 @@ py_test(
         "//src/hardware:robot",
         "//src/hardware:vision",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//google3/intrinsic/solutions:behavior_tree",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -68,8 +68,8 @@ py_test(
         "//src/hardware:robot",
         "//tools/jogging:move_to_frame_lib",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//google3/intrinsic/solutions:behavior_tree",
         "@ioc//google3/intrinsic/solutions:execution",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
