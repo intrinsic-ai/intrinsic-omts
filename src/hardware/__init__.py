@@ -19,6 +19,7 @@ from src.hardware.gripper import (
   GripperInterface,
   MockGripper,
   RobotiqGripper,
+  SideloadedGripperCmd,
 )
 from src.hardware.machine import (
   CncMachineInterface,
@@ -40,6 +41,7 @@ __all__ = [
   "OrbbecVision",
   "RobotInterface",
   "RobotiqGripper",
+  "SideloadedGripperCmd",
   "UrRobot",
   "VisionInterface",
 ]

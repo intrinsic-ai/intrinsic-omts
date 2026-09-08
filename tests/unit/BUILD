@@ -93,3 +93,14 @@ py_test(
         "@com_google_absl_py//absl/testing:absltest",
     ],
 )
+
+py_test(
+    name = "test_control_gripper",
+    srcs = ["test_control_gripper.py"],
+    deps = [
+        "//src/hardware:gripper",
+        "//tools/gripper:control_gripper_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//google3/intrinsic/solutions:execution",
+    ],
+)

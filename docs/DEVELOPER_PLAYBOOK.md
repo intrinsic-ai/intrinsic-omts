@@ -41,7 +41,7 @@ bazel test //tests/unit:test_hardware_adapters
 bazel test //tests/unit:test_script_utils
 ```
 
-There are currently 8 offline unit test suites: `test_infeed`, `test_tray`, `test_workpiece`, `test_behaviors`, `test_hardware_adapters`, `test_move_to_frame`, `test_store_frame`, and `test_script_utils`.
+There are currently 9 offline unit test suites: `test_infeed`, `test_tray`, `test_workpiece`, `test_behaviors`, `test_hardware_adapters`, `test_move_to_frame`, `test_store_frame`, `test_script_utils`, and `test_control_gripper`.
 
 ---
 
@@ -92,6 +92,26 @@ bazel run //tools/jogging:move_to_frame -- --address=localhost:17080 --frame=vie
 
 # Move linearly to pre_grasp
 bazel run //tools/jogging:move_to_frame -- --address=localhost:17080 --frame=pre_grasp --motion_type=LINEAR
+```
+
+### D. Gripper Controller (`tools/gripper:control_gripper`)
+Commands robotic end-effectors (Robotiq Hand-e, DIO, sideloaded, or mock) via interactive CLI menu or direct command-line arguments:
+
+```bash
+# Interactive terminal menu (open, close, quit)
+bazel run //tools/gripper:control_gripper -- --address=localhost:17080
+
+# Command open directly on live Robotiq gripper
+bazel run //tools/gripper:control_gripper -- --address=localhost:17080 --action=open
+
+# Command close directly on live Robotiq gripper
+bazel run //tools/gripper:control_gripper -- --address=localhost:17080 --action=close
+
+# Command pneumatic / digital I/O gripper
+bazel run //tools/gripper:control_gripper -- --address=localhost:17080 --gripper_type=dio --open_pin=0 --close_pin=1 --action=open
+
+# Offline mock mode for testing without a live solution
+bazel run //tools/gripper:control_gripper -- --mock --action=open
 ```
 
 ---
