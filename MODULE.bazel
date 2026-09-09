@@ -31,6 +31,7 @@ archive_override(
 )
 
 bazel_dep(name = "bazel_skylib", version = "1.9.0")
+bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(name = "abseil-py", version = "2.1.0", repo_name = "com_google_absl_py")
 bazel_dep(name = "grpc", version = "1.69.0", repo_name = "com_github_grpc_grpc")
 bazel_dep(name = "rules_cuda", version = "0.3.0")

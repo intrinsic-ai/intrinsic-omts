@@ -1,0 +1,8 @@
+src/
+dist/
+build/
+build_cpp*
+*.so
+*.tar.gz
+__pycache__/
+models/
