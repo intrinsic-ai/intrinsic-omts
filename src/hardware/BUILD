@@ -47,12 +47,12 @@ py_library(
         "@ioc//google3/intrinsic/math/python:proto_conversion",
         "@ioc//google3/intrinsic/perception/public/proto/v1:pose_estimator_id_py_pb2",
         "@ioc//google3/intrinsic/perception/skills/multi_view:estimate_pose_multi_view_py_pb2",
-        "@ioc//google3/intrinsic/solutions:deployments",
-        "@ioc//google3/intrinsic/solutions:provided",
         "@ioc//google3/intrinsic/world/public/proto:object_world_refs_py_pb2",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:cel",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:proto_building",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:provided",
     ],
 )
 
