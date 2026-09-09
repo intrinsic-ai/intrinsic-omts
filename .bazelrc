@@ -9,6 +9,10 @@ common --incompatible_disallow_empty_glob=false
 # Static linking to workaround OpenCV symbol lookup errors: https://github.com/bazelbuild/rules_foreign_cc/issues/1164
 common --dynamic_mode=off
 
+# Custom downloader configs. This makes it so that external URLs to download dependencies from
+# can be rewritten at build time and, for example, support custom mirrors.
+common --downloader_config=bazel/content_mirror/permissive.cfg
+
 # Java toolchain
 common --java_runtime_version=remotejdk_11
 
