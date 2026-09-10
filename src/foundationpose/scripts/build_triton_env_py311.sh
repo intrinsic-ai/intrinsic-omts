@@ -106,24 +106,27 @@ docker run --rm \
   -v "${DIST_DIR}:/output" \
   "${TRITON_IMAGE}" \
   /bin/bash -c "apt-get update -qq && \
-      apt-get install -y -qq cmake g++ libeigen3-dev libopencv-dev libassimp-dev pybind11-dev python3.11-dev python3.11-venv python3-pip patchelf && \
-      python3.11 -m pip install pybind11 --break-system-packages --quiet && \
+      apt-get install -y -qq software-properties-common && \
+      add-apt-repository -y ppa:deadsnakes/ppa && \
+      apt-get update -qq && \
+      apt-get install -y -qq cmake g++ libeigen3-dev libopencv-dev libassimp-dev pybind11-dev python3.11-dev python3.11-venv patchelf && \
+      rm -rf /tmp/env_311 && \
+      python3.11 -m venv /tmp/env_311 && \
+      /tmp/env_311/bin/pip install --upgrade pip pybind11 --quiet && \
       echo '----------------------------------------------------------------------' && \
       echo '  Compiling foundationpose_cpp.so (CMake standalone build for Py3.11)...' && \
       echo '----------------------------------------------------------------------' && \
       mkdir -p /tmp/build_cpp && \
       cmake -S /workspace/cpp -B /tmp/build_cpp -DCMAKE_BUILD_TYPE=Release \
         -DISAAC_ROS_DIR=/workspace/src/isaac_ros_pose_estimation \
-        -DPYTHON_EXECUTABLE=\$(which python3.11) \
+        -DPython3_EXECUTABLE=/tmp/env_311/bin/python \
+        -Dpybind11_DIR=\$(/tmp/env_311/bin/python -m pybind11 --cmakedir) \
         -DCMAKE_CUDA_ARCHITECTURES='75;80;86;89;90;100;120' && \
       cmake --build /tmp/build_cpp -j\$(nproc) && \
       cp /tmp/build_cpp/foundationpose_cpp.*.so /output/foundationpose_cpp.so && \
       echo '----------------------------------------------------------------------' && \
       echo '  Building Python 3.11 env.tar.gz with onnxruntime-gpu (CUDA 12)...    ' && \
       echo '----------------------------------------------------------------------' && \
-      rm -rf /tmp/env_311 && \
-      python3.11 -m venv /tmp/env_311 && \
-      /tmp/env_311/bin/pip install --upgrade pip --quiet && \
       /tmp/env_311/bin/pip install numpy==1.26.4 'onnxruntime-gpu==1.21.1' opencv-python-headless trimesh scipy pillow --quiet && \
       cp /output/foundationpose_cpp.so /tmp/env_311/lib/python3.11/site-packages/foundationpose_cpp.so && \
       RPATH_STR='\$ORIGIN:\$ORIGIN/..:\$ORIGIN/../..:\$ORIGIN/../../..:\$ORIGIN/../../../..:\$ORIGIN/../../../../..:\$ORIGIN/numpy.libs:\$ORIGIN/scipy.libs:\$ORIGIN/opencv_python_headless.libs:\$ORIGIN/pillow.libs:\$ORIGIN/shapely.libs:\$ORIGIN/h5py.libs:\$ORIGIN/pyzmq.libs:\$ORIGIN/simsimd.libs:\$ORIGIN/../numpy.libs:\$ORIGIN/../scipy.libs:\$ORIGIN/../opencv_python_headless.libs:\$ORIGIN/../pillow.libs:\$ORIGIN/../shapely.libs:\$ORIGIN/../pyzmq.libs:\$ORIGIN/../simsimd.libs:\$ORIGIN/../../numpy.libs:\$ORIGIN/../../scipy.libs:\$ORIGIN/../../opencv_python_headless.libs:\$ORIGIN/../../pillow.libs:\$ORIGIN/../../shapely.libs:\$ORIGIN/../../pyzmq.libs:\$ORIGIN/../../simsimd.libs:\$ORIGIN/../../../numpy.libs:\$ORIGIN/../../../scipy.libs:\$ORIGIN/../../../opencv_python_headless.libs:\$ORIGIN/../../../pillow.libs:\$ORIGIN/../../../shapely.libs:\$ORIGIN/../../../pyzmq.libs:\$ORIGIN/../../../simsimd.libs:\$ORIGIN/../../../../numpy.libs:\$ORIGIN/../../../../scipy.libs:\$ORIGIN/../../../../opencv_python_headless.libs:\$ORIGIN/../../../../pillow.libs:\$ORIGIN/../../../../shapely.libs:\$ORIGIN/../../../../pyzmq.libs:\$ORIGIN/../../../../simsimd.libs:\$ORIGIN/../../../../../numpy.libs:\$ORIGIN/../../../../../scipy.libs:\$ORIGIN/../../../../../opencv_python_headless.libs:\$ORIGIN/../../../../../pillow.libs:\$ORIGIN/../../../../../shapely.libs:\$ORIGIN/../../../../../pyzmq.libs:\$ORIGIN/../../../../../simsimd.libs' && \

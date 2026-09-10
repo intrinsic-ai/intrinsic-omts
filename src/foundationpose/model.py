@@ -19,41 +19,18 @@ import io
 import os
 import sys
 import time
-
-import triton_python_backend_utils as pb_utils
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-if current_dir not in sys.path:
-  sys.path.insert(0, current_dir)
-
+import traceback
 import cv2
 import foundationpose_cpp
 import numpy as np
 import onnxruntime as ort
 import trimesh
 
+import triton_python_backend_utils as pb_utils
 
-def fibonacci_sphere(samples=42):
-  points = []
-  phi = np.pi * (np.sqrt(5.0) - 1.0)  # golden angle in radians
-  for i in range(samples):
-    y = 1 - (i / float(samples - 1)) * 2
-    radius = np.sqrt(1 - y * y)
-    theta = phi * i
-    x = np.cos(theta) * radius
-    z = np.sin(theta) * radius
-    points.append([x, y, z])
-  return np.array(points, dtype=np.float32)
-
-
-def look_at(eye, target, up=np.array([0, 1, 0], dtype=np.float32)):
-  zaxis = eye - target
-  zaxis = zaxis / (np.linalg.norm(zaxis) + 1e-8)
-  xaxis = np.cross(up, zaxis)
-  xaxis = xaxis / (np.linalg.norm(xaxis) + 1e-8)
-  yaxis = np.cross(zaxis, xaxis)
-  R = np.stack([xaxis, yaxis, zaxis], axis=1)
-  return R
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+  sys.path.insert(0, current_dir)
 
 
 class TritonPythonModel:
@@ -112,7 +89,10 @@ class TritonPythonModel:
     poses = foundationpose_cpp.sample_initial_poses(
         mask_uint8, depth_fp32, K_fp32, num_views, 60.0
     )
-    print(f"[FoundationPose Triton]: Sampled {len(poses)} candidate poses")
+    sys.stderr.write(
+        f"[FoundationPose Triton]: Sampled {len(poses)} candidate poses\n"
+    )
+    sys.stderr.flush()
     return poses
 
   def _compute_crop_window_tf(
@@ -129,35 +109,14 @@ class TritonPythonModel:
 
   def _prepare_real_crop_6ch(
       self,
-      rgb_np,
-      depth_np,
       K_np,
       poses_np,
       mesh_diameter,
+      xyz_map,
+      rgb_float,
       res=(160, 160),
-      xyz_map=None,
-      rgb_float=None,
   ):
     N_cand = len(poses_np)
-    H_orig, W_orig = depth_np.shape[:2]
-
-    if rgb_float is None:
-      if rgb_np.shape[:2] != (H_orig, W_orig):
-        rgb_np = cv2.resize(rgb_np, (W_orig, H_orig))
-      rgb_float = (
-          (rgb_np.astype(np.float32) / 255.0)
-          if rgb_np.dtype == np.uint8
-          else rgb_np.astype(np.float32)
-      )
-
-    if xyz_map is None:
-      fx, fy, cx, cy = K_np[0, 0], K_np[1, 1], K_np[0, 2], K_np[1, 2]
-      ys_grid, xs_grid = np.indices((H_orig, W_orig), dtype=np.float32)
-      X_cam = (xs_grid - cx) * depth_np / fx
-      Y_cam = (ys_grid - cy) * depth_np / fy
-      Z_cam = depth_np.copy()
-      xyz_map = np.stack([X_cam, Y_cam, Z_cam], axis=-1).astype(np.float32)
-
     tfs = self._compute_crop_window_tf(
         poses_np, K_np, mesh_diameter=mesh_diameter, out_size=res
     )
@@ -189,6 +148,33 @@ class TritonPythonModel:
     batch_patches = np.ascontiguousarray(batch_patches, dtype=np.float32)
     tfs = np.ascontiguousarray(tfs, dtype=np.float32)
     return batch_patches, tfs
+
+  def _prepare_model_inputs(
+      self,
+      chunk_poses_np,
+      K_np,
+      mesh_vertices,
+      mesh_faces,
+      mesh_diameter,
+      xyz_map,
+      rgb_float,
+  ):
+    in2, tfs_np = self._prepare_real_crop_6ch(
+        K_np,
+        chunk_poses_np,
+        mesh_diameter,
+        xyz_map=xyz_map,
+        rgb_float=rgb_float,
+    )
+    in1 = self._render_views_nvdiffrast_6ch(
+        mesh_vertices,
+        mesh_faces,
+        chunk_poses_np,
+        K_np,
+        tfs_np,
+        mesh_diameter,
+    )
+    return in1, in2
 
   def _render_views_nvdiffrast_6ch(
       self,
@@ -455,32 +441,15 @@ class TritonPythonModel:
             chunk_poses_np = candidate_poses_np[chunk_start:chunk_end].copy()
 
             for iteration in range(num_iterations):
-              in2, tfs_np = self._prepare_real_crop_6ch(
-                  rgb_np,
-                  depth_np,
-                  K_np,
+              in1, in2 = self._prepare_model_inputs(
                   chunk_poses_np,
-                  mesh_diameter,
-                  xyz_map=xyz_map,
-                  rgb_float=rgb_float,
-              )
-              in1 = self._render_views_nvdiffrast_6ch(
+                  K_np,
                   mesh_vertices,
                   mesh_faces,
-                  chunk_poses_np,
-                  K_np,
-                  tfs_np,
                   mesh_diameter,
+                  xyz_map,
+                  rgb_float,
               )
-
-              sys.stderr.write(
-                  f"  [Refine Iteration {iteration+1}/{num_iterations}]"
-                  f" chunk [{chunk_start}:{chunk_end}]"
-                  f" in1={in1.shape} ({in1.dtype},"
-                  f" contiguous={in1.flags['C_CONTIGUOUS']}), in2={in2.shape}"
-                  f" ({in2.dtype}, contiguous={in2.flags['C_CONTIGUOUS']})...\n"
-              )
-              sys.stderr.flush()
 
               refine_outs = self.refine_session.run(
                   None, {"input1": in1, "input2": in2}
@@ -496,31 +465,15 @@ class TritonPythonModel:
                   0.34906585,
               )
 
-            in2, tfs_np = self._prepare_real_crop_6ch(
-                rgb_np,
-                depth_np,
-                K_np,
+            in1, in2 = self._prepare_model_inputs(
                 chunk_poses_np,
-                mesh_diameter,
-                xyz_map=xyz_map,
-                rgb_float=rgb_float,
-            )
-            in1 = self._render_views_nvdiffrast_6ch(
+                K_np,
                 mesh_vertices,
                 mesh_faces,
-                chunk_poses_np,
-                K_np,
-                tfs_np,
                 mesh_diameter,
+                xyz_map,
+                rgb_float,
             )
-
-            sys.stderr.write(
-                f"  [Score Run] chunk [{chunk_start}:{chunk_end}]"
-                f" in1={in1.shape} ({in1.dtype},"
-                f" contiguous={in1.flags['C_CONTIGUOUS']}), in2={in2.shape}"
-                f" ({in2.dtype}, contiguous={in2.flags['C_CONTIGUOUS']})...\n"
-            )
-            sys.stderr.flush()
 
             score_outs = self.score_session.run(
                 None, {"input1": in1, "input2": in2}
@@ -581,8 +534,6 @@ class TritonPythonModel:
             pb_utils.InferenceResponse(output_tensors=[out_r, out_t, out_s])
         )
       except Exception as e:
-        import traceback
-
         sys.stderr.write(
             "[ERROR in FoundationPose execute]:"
             f" {e}\n{traceback.format_exc()}\n"
