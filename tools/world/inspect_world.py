@@ -56,6 +56,17 @@ def main(argv: Sequence[str] | None = None) -> None:
     except Exception:
       pass
 
+  print("\n=== Solution Skills ===")
+  try:
+    if hasattr(solution.skills, "ai") and hasattr(
+      solution.skills.ai, "intrinsic"
+    ):
+      for skill_name in dir(solution.skills.ai.intrinsic):
+        if not skill_name.startswith("_"):
+          print(f" - ai.intrinsic.{skill_name}")
+  except Exception as e:
+    print(f"   Error listing skills: {e}")
+
   print("\n=== Solution Resources ===")
   try:
     solution.resources.update()

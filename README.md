@@ -196,7 +196,7 @@ bazel test //tests/unit:all
 
 - **Interactive Joint & Teleop Jogging:**
   ```bash
-  bazel run //tools/jogging:jog_interactive -- --host=localhost --port=17080
+  bazel run //tools/jogging:jog_interactive -- --instance=icon --host=localhost --port=17080
   ```
 
 - **Move Robot Tool Frame to a Target Scene Frame:**
