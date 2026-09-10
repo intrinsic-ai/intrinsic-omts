@@ -8,52 +8,48 @@ import select
 import sys
 import termios
 import time
-from typing import Self, Sequence
 import tty
+from collections.abc import Sequence
+from typing import Self
 
-from absl import app
-from absl import flags
-from absl import logging
 import grpc
-
+from absl import app, flags, logging
 from intrinsic.icon.actions import joint_jogging_pb2
 from intrinsic.icon.proto import joint_space_pb2
-from intrinsic.icon.python import actions
-from intrinsic.icon.python import errors
-from intrinsic.icon.python import icon_api
+from intrinsic.icon.python import actions, errors, icon_api
 from intrinsic.kinematics.types import joint_limits_pb2
 from intrinsic.util.grpc import connection
 
 _HOST = flags.DEFINE_string(
-    "host",
-    "localhost",
-    "ICON server gRPC connection host.",
+  "host",
+  "localhost",
+  "ICON server gRPC connection host.",
 )
 _PORT = flags.DEFINE_integer(
-    "port",
-    17080,
-    "ICON server gRPC connection port.",
+  "port",
+  17080,
+  "ICON server gRPC connection port.",
 )
 _INSTANCE = flags.DEFINE_string(
-    "instance",
-    None,
-    "The instance of ICON if behind an ingress.",
-    required=True,
+  "instance",
+  None,
+  "The instance of ICON if behind an ingress.",
+  required=True,
 )
 _PART_NAME = flags.DEFINE_string(
-    "part_name",
-    "",
-    "Specific part name to control in ICON. If empty, uses the first controllable part.",
+  "part_name",
+  "",
+  "Specific part name to control in ICON. If empty, uses the first controllable part.",
 )
 _MAX_VELOCITY = flags.DEFINE_float(
-    "max_velocity",
-    0.1,
-    "Joint jogging velocity in rad/s (default 0.1 rad/s ≈ 5.7 deg/s).",
+  "max_velocity",
+  0.1,
+  "Joint jogging velocity in rad/s (default 0.1 rad/s ≈ 5.7 deg/s).",
 )
 _DEADMAN_TIMEOUT_SEC = flags.DEFINE_float(
-    "deadman_timeout_sec",
-    0.2,
-    "Time window in seconds after which velocity resets to zero if no key is received.",
+  "deadman_timeout_sec",
+  0.2,
+  "Time window in seconds after which velocity resets to zero if no key is received.",
 )
 _POLLING_RATE_SEC = 0.05
 
@@ -77,12 +73,12 @@ class Key(enum.StrEnum):
       return cls.UNKNOWN
 
     aliases = {
-        # Cursor keys in SS3
-        "\x1bOC": cls.RIGHT,
-        "\x1bOD": cls.LEFT,
-        # Quit aliases
-        "Q": cls.QUIT,
-        "\x03": cls.QUIT,  # Ctrl+C
+      # Cursor keys in SS3
+      "\x1bOC": cls.RIGHT,
+      "\x1bOD": cls.LEFT,
+      # Quit aliases
+      "Q": cls.QUIT,
+      "\x03": cls.QUIT,  # Ctrl+C
     }
     if value in aliases:
       return aliases[value]
@@ -115,7 +111,10 @@ def raw_terminal_mode(fd: int = sys.stdin.fileno()):
   even if the process exits unexpectedly.
   """
   old_settings = termios.tcgetattr(fd)
-  restore_terminal = lambda: termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+  def restore_terminal() -> None:
+    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
   atexit.register(restore_terminal)
   try:
     tty.setcbreak(fd)
@@ -156,7 +155,7 @@ def read_key(timeout: float | None = _POLLING_RATE_SEC) -> Key | None:
 
 
 def resolve_part_name(
-    icon_client: icon_api.Client, requested_part: str | None = None
+  icon_client: icon_api.Client, requested_part: str | None = None
 ) -> str:
   """Resolves the controllable robot part to use from available parts."""
   parts = icon_client.list_parts()
@@ -170,14 +169,14 @@ def resolve_part_name(
   controllable_parts = [p for p in parts if p != "icon"]
   if not controllable_parts:
     raise LookupError(
-        f"No controllable robot parts found on ICON server (available parts: {parts})."
+      f"No controllable robot parts found on ICON server (available parts: {parts})."
     )
 
   if requested_part:
     if requested_part not in controllable_parts:
       raise ValueError(
-          f"Requested part '{requested_part}' is not a controllable part on the"
-          f" server (controllable parts: {controllable_parts})."
+        f"Requested part '{requested_part}' is not a controllable part on the"
+        f" server (controllable parts: {controllable_parts})."
       )
     return requested_part
 
@@ -189,7 +188,7 @@ def resolve_part_name(
 
 
 def get_part_joint_info(
-    icon_client: icon_api.Client, part_name: str
+  icon_client: icon_api.Client, part_name: str
 ) -> tuple[int, joint_limits_pb2.JointLimits]:
   """Retrieves the number of DoFs and application joint limits for a part."""
   ndof = None
@@ -203,7 +202,9 @@ def get_part_joint_info(
       break
 
   if ndof is None or part_config is None:
-    raise ValueError(f"Could not retrieve configuration for part '{part_name}'.")
+    raise ValueError(
+      f"Could not retrieve configuration for part '{part_name}'."
+    )
 
   if not part_config.generic_config.HasField("joint_limits_config"):
     raise ValueError(f"Part '{part_name}' is missing joint_limits_config.")
@@ -212,7 +213,7 @@ def get_part_joint_info(
 
 
 def send_velocity_command(
-    stream: icon_api.Stream, velocities: Sequence[float]
+  stream: icon_api.Stream, velocities: Sequence[float]
 ) -> None:
   """Sends a streaming joint velocity command to the action stream.
 
@@ -229,25 +230,25 @@ def send_velocity_command(
       emergency-stop faults.
   """
   cmd = joint_jogging_pb2.JointJoggingStreamingParams(
-      goal_velocity=joint_space_pb2.JointVec(joints=velocities)
+    goal_velocity=joint_space_pb2.JointVec(joints=velocities)
   )
   stream.write(cmd)
 
 
 def jog_joint_loop(
-    stream: icon_api.Stream,
-    joint_idx: int,
-    ndof: int,
-    max_velocity: float,
-    deadman_timeout_sec: float,
-    polling_rate_sec: float = _POLLING_RATE_SEC,
+  stream: icon_api.Stream,
+  joint_idx: int,
+  ndof: int,
+  max_velocity: float,
+  deadman_timeout_sec: float,
+  polling_rate_sec: float = _POLLING_RATE_SEC,
 ) -> None:
   """Runs the real-time interactive jogging loop for a single joint."""
   logging.info("--- Live control for joint %d ---", joint_idx)
   logging.info(
-      "Hold Left/Right arrow keys to jog (±%.3f rad/s)."
-      " Release or press Space to stop, 'q' to return.",
-      max_velocity,
+    "Hold Left/Right arrow keys to jog (±%.3f rad/s)."
+    " Release or press Space to stop, 'q' to return.",
+    max_velocity,
   )
 
   with raw_terminal_mode():
@@ -290,26 +291,26 @@ def jog_joint_loop(
       # flooding the terminal scrollback.
       status = "JOGGING" if current_direction != 0.0 else "IDLE"
       sys.stdout.write(
-          f"\r[{status}] Joint {joint_idx}: {goal_velocity[joint_idx]:+.3f} rad/s   "
+        f"\r[{status}] Joint {joint_idx}: {goal_velocity[joint_idx]:+.3f} rad/s   "
       )
       sys.stdout.flush()
 
 
 def run_jogging_session(
-    icon_client: icon_api.Client,
-    part_name: str,
-    ndof: int,
-    app_limits: joint_limits_pb2.JointLimits,
+  icon_client: icon_api.Client,
+  part_name: str,
+  ndof: int,
+  app_limits: joint_limits_pb2.JointLimits,
 ) -> None:
   """Starts an ICON session and manages the interactive joint selection loop."""
   fixed_params = joint_jogging_pb2.JointJoggingFixedParams(
-      joint_limits=app_limits
+    joint_limits=app_limits
   )
   action_desc = actions.Action(
-      action_id=0,
-      action_type="intrinsic.joint_jogging",
-      part_name_or_slot_part_map={"arm": part_name},
-      params=fixed_params,
+    action_id=0,
+    action_type="intrinsic.joint_jogging",
+    part_name_or_slot_part_map={"arm": part_name},
+    params=fixed_params,
   )
 
   with icon_client.start_session([part_name]) as session:
@@ -321,7 +322,7 @@ def run_jogging_session(
       try:
         logging.info("-" * 50)
         joint_input = input(
-            f"Enter joint index to rotate (0 to {ndof-1}) or '{Key.QUIT}' to quit: "
+          f"Enter joint index to rotate (0 to {ndof - 1}) or '{Key.QUIT}' to quit: "
         ).strip()
         if joint_input.lower() == Key.QUIT:
           logging.info("Exiting jogging...")
@@ -330,16 +331,16 @@ def run_jogging_session(
         joint_idx = int(joint_input)
         if not (0 <= joint_idx < ndof):
           logging.error(
-              "Invalid joint index. Must be between 0 and %d.", ndof - 1
+            "Invalid joint index. Must be between 0 and %d.", ndof - 1
           )
           continue
 
         jog_joint_loop(
-            stream=stream,
-            joint_idx=joint_idx,
-            ndof=ndof,
-            max_velocity=_MAX_VELOCITY.value,
-            deadman_timeout_sec=_DEADMAN_TIMEOUT_SEC.value,
+          stream=stream,
+          joint_idx=joint_idx,
+          ndof=ndof,
+          max_velocity=_MAX_VELOCITY.value,
+          deadman_timeout_sec=_DEADMAN_TIMEOUT_SEC.value,
         )
 
       except ValueError:
@@ -355,22 +356,20 @@ def main(argv: Sequence[str]) -> None:
     raise app.UsageError("Too many command-line arguments.")
 
   logging.info(
-      "Connecting to ICON at %s:%d (instance: '%s')...",
-      _HOST.value,
-      _PORT.value,
-      _INSTANCE.value,
+    "Connecting to ICON at %s:%d (instance: '%s')...",
+    _HOST.value,
+    _PORT.value,
+    _INSTANCE.value,
   )
   icon_client = icon_api.Client.connect_with_params(
-      connection.ConnectionParams(
-          f"{_HOST.value}:{_PORT.value}", _INSTANCE.value
-      )
+    connection.ConnectionParams(f"{_HOST.value}:{_PORT.value}", _INSTANCE.value)
   )
 
   try:
     part_name = resolve_part_name(icon_client, _PART_NAME.value or None)
     ndof, app_limits = get_part_joint_info(icon_client, part_name)
     logging.info(
-        "Connected! Controlling part '%s' with %d joints.", part_name, ndof
+      "Connected! Controlling part '%s' with %d joints.", part_name, ndof
     )
     run_jogging_session(icon_client, part_name, ndof, app_limits)
   except grpc.RpcError as e:
