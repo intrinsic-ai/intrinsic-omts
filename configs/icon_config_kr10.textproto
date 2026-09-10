@@ -1,0 +1,95 @@
+[type.googleapis.com/intrinsic_proto.icon.IconMainConfig]:  {
+  control_frequency_hz:  250
+  services:  {
+    world_service_from_grpc:  {
+      world_id:  "world"
+    }
+    kinematics_from_world_service:  true
+    assembly_from_world_service:  true
+  }
+  realtime_control_config:  {
+    parts_by_name:  {
+      key:  "adio"
+      value:  {
+        part_type_name:  "HalADIOPart"
+        config:  {
+          [type.googleapis.com/intrinsic_proto.icon.HalADIOPartConfig]:  {
+            digital_inputs:  {
+              interface:  {
+                module_name:  "kuka_rsi_hal_module"
+                interface_name:  "digital_output_status"
+              }
+              export_name:  "standard_out_status"
+            }
+            digital_inputs:  {
+              interface:  {
+                module_name:  "kuka_rsi_hal_module"
+                interface_name:  "digital_input_status"
+              }
+              export_name:  "standard_in"
+            }
+            digital_outputs:  {
+              interface:  {
+                module_name:  "kuka_rsi_hal_module"
+                interface_name:  "digital_output_command"
+              }
+              export_name:  "standard_out"
+            }
+          }
+        }
+        safety_action_type_name:  "intrinsic.empty"
+      }
+    }
+    parts_by_name:  {
+      key:  "arm"
+      value:  {
+        part_type_name:  "HalArmPart"
+        config:  {
+          [type.googleapis.com/intrinsic_proto.icon.HalArmPartConfig]:  {
+            joint_position_command:  {
+              module_name:  "kuka_rsi_hal_module"
+              interface_name:  "joint_position_command"
+            }
+            joint_position_state:  {
+              module_name:  "kuka_rsi_hal_module"
+              interface_name:  "joint_position_state"
+            }
+            joint_velocity_state:  {
+              module_name:  "kuka_rsi_hal_module"
+              interface_name:  "joint_velocity_state"
+            }
+            payload_command:  {
+              module_name:  "kuka_rsi_hal_module"
+              interface_name:  "payload_command"
+            }
+            payload_state:  {
+              module_name:  "kuka_rsi_hal_module"
+              interface_name:  "payload_state"
+            }
+            linear_joint_acceleration_filter_config:  {
+              joint_position_process_noise:  0.001
+              joint_velocity_process_noise:  0.001
+              joint_acceleration_process_noise:  0.5
+              joint_jerk_process_noise:  1250
+              joint_position_measurement_noise:  0.0001
+              joint_velocity_measurement_noise:  0.001
+              dare_settings:  {
+                max_iterations:  3000
+              }
+            }
+          }
+        }
+        safety_action_type_name:  "intrinsic.stop"
+        hardware_resource_name:  "kuka_rsi_hal_module"
+      }
+    }
+    safety_hardware_interface:  {
+      module_name:  "kuka_rsi_hal_module"
+      interface_name:  "safety_status"
+    }
+  }
+  hardware_module_names:  "kuka_rsi_hal_module"
+  hardware_module_that_drives_clock:  "kuka_rsi_hal_module"
+  hardware_module_read_write_timeout_seconds:  1
+  deactivated_hardware_configuration:  {}
+}
