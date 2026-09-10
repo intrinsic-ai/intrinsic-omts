@@ -278,3 +278,22 @@ If you use [`pre-commit`](https://pre-commit.com/), install hooks to verify or f
 ```bash
 pre-commit install
 ```
+
+---
+
+## 8. Licensing information about NVIDIA FoundationPose
+
+OMTS uses the FoundationPose model by NVIDIA for RGB-D pose estimation.
+FoundationPose is packaged into an MlModelAsset in the [OMTS BUILD file](BUILD#L338-L339) at build time by the user.
+The integration of FoundationPose is comprised of two components:
+
+1. A library for orchestration that was derived from NVIDIA's [Isaac ROS Pose Estimation Repository](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_pose_estimation) and is licensed under the Apache 2.0 license. More information on how this library is packaged can be found in the [FoundationPose README](src/foundationpose/README.md). More information on Isaac ROS FoundationPose can be found in the [NVIDIA's Isaac ROS FoundationPose documentation](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/isaac_ros_foundationpose/index.html).
+
+2. The FoundationPose model weights (.onnx files) are not included in this repository and are not covered by the Apache 2.0 license. They are downloaded at build time directly from NVIDIA's NGC catalog by the user (configured in [`MODULE.bazel`](MODULE.bazel#L77-L93)).
+   - The models are hosted at:
+     - [https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.0_onnx/files/refine_model.onnx](https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.0_onnx/files/refine_model.onnx)
+     - [https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.0_onnx/files/score_model.onnx](https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.0_onnx/files/score_model.onnx)
+
+   - License: [NVIDIA Open Model License](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/).
+
+By building this project, you download the model weights directly from NVIDIA and accept the NVIDIA Open Model License for those weights. Intrinsic does not distribute these weights.

@@ -31,6 +31,7 @@ archive_override(
 )
 
 bazel_dep(name = "bazel_skylib", version = "1.9.0")
+bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(name = "abseil-py", version = "2.1.0", repo_name = "com_google_absl_py")
 bazel_dep(name = "grpc", version = "1.69.0", repo_name = "com_github_grpc_grpc")
 bazel_dep(name = "rules_cuda", version = "0.3.0")
@@ -77,18 +78,18 @@ http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_
 http_file(
     name = "foundationpose_refine_onnx",
     downloaded_file_path = "foundationpose_refine.onnx",
-    sha256 = "dcc695a19c4bcfe5e1d909a22d8f652d8ec8bab1e19bd1544c6b45f2d3595cf7",
+    sha256 = "06ad19f2c3598cb76733feec084d3f6802e7ff143882ec42ba368df7e38ae094",
     urls = [
-        "https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.1_onnx/files/refine_model.onnx",
+        "https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.0_onnx/files/refine_model.onnx",
     ],
 )
 
 http_file(
     name = "foundationpose_score_onnx",
     downloaded_file_path = "foundationpose_score.onnx",
-    sha256 = "0bf1026c0db7320ebf9a548ecf0d3c810c8dbd377948630bd3e5af1d49440503",
+    sha256 = "49a4f5f094358913670733ec31e856b96271c869f9949aa3a0361cf7cf8f0be8",
     urls = [
-        "https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.1_onnx/files/score_model.onnx",
+        "https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.0_onnx/files/score_model.onnx",
     ],
 )
 
