@@ -31,10 +31,10 @@ py_binary(
         "@com_google_absl_py//absl/flags",
         "@com_google_absl_py//absl/logging",
         "@intrinsic_apis//intrinsic/kinematics/types:joint_limits_py_pb2",
+        "@ioc//google3/intrinsic/util/grpc:connection",
         "@ioc//incode/intrinsic_control/intrinsic/icon/actions:joint_jogging_py_pb2",
         "@ioc//incode/intrinsic_control/intrinsic/icon/proto:joint_space_py_pb2",
         "@ioc//incode/intrinsic_control/intrinsic/icon/python:icon",
-        "@ioc//google3/intrinsic/util/grpc:connection",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
     ],
 )
