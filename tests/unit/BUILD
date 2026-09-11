@@ -79,7 +79,7 @@ py_test(
     deps = [
         "//tools/jogging:store_frame_lib",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//google3/intrinsic/math/python:data_types",
+        "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
         "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
     ],
 )
