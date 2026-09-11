@@ -16,7 +16,7 @@ py_binary(
     srcs = ["align_tool_frame.py"],
     main = "align_tool_frame.py",
     deps = [
-        "@ioc//google3/intrinsic/math/python:data_types",
+        "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
     ],
 )

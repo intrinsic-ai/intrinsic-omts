@@ -19,7 +19,7 @@ py_library(
     name = "dynamic_frame_calculator",
     srcs = ["dynamic_frame_calculator.py"],
     deps = [
-        "@ioc//google3/intrinsic/math/python:data_types",
+        "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
     ],
 )
 

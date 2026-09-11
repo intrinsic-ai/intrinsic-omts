@@ -31,10 +31,10 @@ py_binary(
         "@com_google_absl_py//absl/flags",
         "@com_google_absl_py//absl/logging",
         "@intrinsic_apis//intrinsic/kinematics/types:joint_limits_py_pb2",
-        "@ioc//google3/intrinsic/icon/actions:joint_jogging_py_pb2",
-        "@ioc//google3/intrinsic/icon/proto:joint_space_py_pb2",
-        "@ioc//google3/intrinsic/icon/python:icon",
         "@ioc//google3/intrinsic/util/grpc:connection",
+        "@ioc//incode/intrinsic_control/intrinsic/icon/actions:joint_jogging_py_pb2",
+        "@ioc//incode/intrinsic_control/intrinsic/icon/proto:joint_space_py_pb2",
+        "@ioc//incode/intrinsic_control/intrinsic/icon/python:icon",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
     ],
 )
@@ -46,8 +46,8 @@ py_library(
         "//configs:scene.updates.pbtxt",
     ],
     deps = [
-        "@ioc//google3/intrinsic/math/python:data_types",
         "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
+        "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
     ],
 )
