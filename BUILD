@@ -46,10 +46,10 @@ intrinsic_solution(
         "@ioc//incode/motion_planning/skills:clear_motion_planner_service_cache_skill",
         "@ioc//incode/motion_planning/skills:preplan_motion_skill",
         "@ioc//incode/motion_planning/skills:move_robot_skill",
-        "@ioc//google3/intrinsic/icon/machines/common:generic_icon_mainloop_type",
+        "@ioc//incode/intrinsic_control/intrinsic/icon/machines/common:generic_icon_mainloop_type",
         "@ioc//google3/intrinsic/manipulation/skills/force:move_to_contact_skill",
-        "@ioc//google3/intrinsic/icon/skills:dio_read_input_skill",
-        "@ioc//google3/intrinsic/icon/skills:dio_set_output_skill",
+        "@ioc//incode/intrinsic_control/intrinsic/icon/skills:dio_read_input_skill",
+        "@ioc//incode/intrinsic_control/intrinsic/icon/skills:dio_set_output_skill",
         "@ioc//incode/intrinsic_inference/assets/inference_service:inference_service_asset",
         "@ioc//incode/intrinsic_perception/intrinsic/perception/service/ioc_pose_estimator:ioc_pose_estimator_service_asset",
         "@ioc//incode/intrinsic_perception/intrinsic/perception/service/ioc_train_service:ioc_train_service_asset",
@@ -66,10 +66,10 @@ intrinsic_solution(
     ] + select({
         ":is_lab_bb_01": [
             "@ioc//google3/intrinsic/apps/bluebird_caw/resources:caw_enclosure",
-            "@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_ioc",
+            "@ioc//incode/intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_ioc",
         ],
         "//conditions:default": [
-            "@ioc//google3/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_ioc",
+            "@ioc//incode/intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_ioc",
             "//models/camera_mount",
             "//models/cnc_enclosure",
             "//models/omts_enclosure",
