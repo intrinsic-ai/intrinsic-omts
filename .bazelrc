@@ -5,6 +5,9 @@ common --enable_workspace=false
 # Disable empty glob check
 common --incompatible_disallow_empty_glob=false
 
+# Build optimized (-O2 -DNDEBUG) by default.
+# Override on the command line with `-c dbg` / `-c fastbuild`.
+build --compilation_mode=opt
 
 # Static linking to workaround OpenCV symbol lookup errors: https://github.com/bazelbuild/rules_foreign_cc/issues/1164
 common --dynamic_mode=off
