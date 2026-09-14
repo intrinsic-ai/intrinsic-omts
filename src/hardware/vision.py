@@ -19,7 +19,7 @@ from collections.abc import Sequence
 from unittest import mock
 
 from intrinsic.assets import id_utils
-from intrinsic.perception.public.proto.v1 import pose_estimator_id_pb2
+from intrinsic.perception.proto.v1 import pose_estimator_id_pb2
 from intrinsic.solutions import behavior_tree as bt
 from intrinsic.solutions import deployments, provided
 from intrinsic.solutions import proto_building as pb
