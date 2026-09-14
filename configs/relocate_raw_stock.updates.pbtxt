@@ -1,0 +1,117 @@
+# proto-file: intrinsic/world/public/proto/object_world_updates.proto
+# proto-message: intrinsic_proto.world.ObjectWorldUpdates
+
+updates: {
+  update_transform: {
+    node_a {
+      by_name {
+        object {
+          object_name: "root"
+        }
+      }
+    }
+    node_b {
+      by_name {
+        object {
+          object_name: "raw_stock_50x50x75_1"
+        }
+      }
+    }
+    node_to_update: {
+      by_name {
+        object {
+          object_name: "raw_stock_50x50x75_1"
+        }
+      }
+    }
+    a_t_b {
+      position {
+        x: 0.3
+        y: -0.4
+        z: 1.03
+      }
+      orientation {
+        x: 0.0
+        y: 0.0
+        z: 0.0
+        w: 1.0
+      }
+    }
+  }
+}
+updates: {
+  update_transform: {
+    node_a {
+      by_name {
+        object {
+          object_name: "root"
+        }
+      }
+    }
+    node_b {
+      by_name {
+        object {
+          object_name: "raw_stock_50x50x75_2"
+        }
+      }
+    }
+    node_to_update: {
+      by_name {
+        object {
+          object_name: "raw_stock_50x50x75_2"
+        }
+      }
+    }
+    a_t_b {
+      position {
+        x: 0.18
+        y: -0.45
+        z: 1.03
+      }
+      orientation {
+        x: -0.00000216329792333
+        y: -0.00000033358045621
+        z: 0.23725838678028435
+        w: 0.97144658005349227
+      }
+    }
+  }
+}
+updates: {
+  update_transform: {
+    node_a {
+      by_name {
+        object {
+          object_name: "root"
+        }
+      }
+    }
+    node_b {
+      by_name {
+        object {
+          object_name: "raw_stock_50x50x75_3"
+        }
+      }
+    }
+    node_to_update: {
+      by_name {
+        object {
+          object_name: "raw_stock_50x50x75_3"
+        }
+      }
+    }
+    a_t_b {
+      position {
+        x: 0.2
+        y: -0.32
+        z: 1.03
+      }
+      orientation {
+        x: -0.00000189021118062
+        y: 0.00000110373706899
+        z: -0.42771762814722547
+        w: 0.90391240204309653
+      }
+    }
+  }
+}
