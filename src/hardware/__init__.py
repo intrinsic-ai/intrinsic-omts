@@ -14,6 +14,11 @@
 
 """Hardware abstractions and adapters for the Open Machine Tending Solution."""
 
+from src.hardware.grasp_planner import (
+  GraspPlannerInterface,
+  MockGraspPlanner,
+  MoveItGraspPlanner,
+)
 from src.hardware.gripper import (
   DioGripper,
   GripperInterface,
@@ -33,11 +38,14 @@ __all__ = [
   "CncMachineInterface",
   "DioCncMachine",
   "DioGripper",
+  "GraspPlannerInterface",
   "GripperInterface",
   "MockCncMachine",
+  "MockGraspPlanner",
   "MockGripper",
   "MockRobot",
   "MockVision",
+  "MoveItGraspPlanner",
   "OrbbecVision",
   "RobotInterface",
   "RobotiqGripper",

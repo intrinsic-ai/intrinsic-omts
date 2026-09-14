@@ -55,6 +55,7 @@ All hardware interactions are mediated by abstract interfaces in [`src/hardware/
 | [`GripperInterface`](../src/hardware/gripper.py) | `DioGripper`, `RobotiqGripper`, `MockGripper` | Gripper open/close tasks and stroke position control. |
 | [`CncMachineInterface`](../src/hardware/machine.py) | `DioCncMachine`, `MockCncMachine` | Door actuation, pneumatic vise clamping, cycle start pulsing, and cycle complete waiting. |
 | [`VisionInterface`](../src/hardware/vision.py) | `OrbbecVision`, `MockVision` | RGB-D image acquisition, 6D pose estimation, and in-tree dynamic frame calculation via `bt.PythonScript`. |
+| [`GraspPlannerInterface`](../src/hardware/grasp_planner.py) | `MoveItGraspPlanner`, `MockGraspPlanner` | Model-based grasp planning via the sideloaded `ai.intrinsic.moveit_plan_grasp_skill`, publishing the top-ranked grasp and pre-grasp poses into the Object World Service. |
 
 This abstraction ensures that high-level process behavior trees remain decoupled from the underlying hardware interfaces, facilitating offline unit testing without real hardware or simulators.
 

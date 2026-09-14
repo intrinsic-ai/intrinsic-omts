@@ -240,6 +240,20 @@ bazel test //tests/unit:all
   bazel run //tools/jogging:move_to_frame -- --address=localhost:17080 --frame=view --motion_type=ANY
   ```
 
+- **Plan a Grasp and Approach the Resulting Pre-Grasp Frame:**
+  ```bash
+  # Dry run: plan and publish root/grasp and root/pre_grasp without moving:
+  bazel run //tools/grasping:plan_and_move -- --address=localhost:17080 --plan_only
+
+  # Or plan and approach the pre-grasp of a specific part:
+  bazel run //tools/grasping:plan_and_move -- --address=localhost:17080 --target_object=raw_stock_50x50x75_2
+
+  # Or rank grasps across several parts and approach the best one:
+  bazel run //tools/grasping:plan_and_move -- --address=localhost:17080 \
+      --target_object=raw_stock_50x50x75_1,raw_stock_50x50x75_2,raw_stock_50x50x75_3
+  ```
+  Defaults to `raw_stock_50x50x75_1`. Requires `moveit_planning_service` to be running and `ai.intrinsic.moveit_plan_grasp_skill` to be installed in the solution.
+
 - **Store & Teach Scene Frames (persists & overwrites in scene.updates.pbtxt):**
   ```bash
   # Store current tool_frame pose with specified frame name:
@@ -275,7 +289,7 @@ bazel test //tests/unit:all
   ```bash
   bazel run //tools/calibration:sample_calibration_poses -- --address=localhost:17080
   ```
-  
+
 - **Run Camera-to-Robot Calibration:**
   ```bash
   bazel run //tools/calibration:calibrate_camera -- --address=localhost:17080

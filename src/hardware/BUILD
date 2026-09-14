@@ -19,6 +19,15 @@ py_library(
 )
 
 py_library(
+    name = "grasp_planner",
+    srcs = ["grasp_planner.py"],
+    deps = [
+        "@ioc//google3/intrinsic/world/public/proto:object_world_refs_py_pb2",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+    ],
+)
+
+py_library(
     name = "gripper",
     srcs = ["gripper.py"],
     deps = [
@@ -60,6 +69,7 @@ py_library(
     name = "hardware",
     srcs = ["__init__.py"],
     deps = [
+        ":grasp_planner",
         ":gripper",
         ":machine",
         ":robot",
