@@ -27,7 +27,7 @@ import grpc
 from absl import app, flags
 from intrinsic.assets import id_utils
 from intrinsic.math.python import proto_conversion
-from intrinsic.perception.public.proto.v1 import pose_estimator_id_pb2
+from intrinsic.perception.proto.v1 import pose_estimator_id_pb2
 from intrinsic.perception.skills.multi_view import estimate_pose_multi_view_pb2
 from intrinsic.solutions import deployments, execution, provided
 

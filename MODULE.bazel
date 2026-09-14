@@ -1,15 +1,37 @@
 module(name = "omts")
 
+# Intrinsic Open Core, pinned to an intrinsic-ai/ioc-staging revision.
+#
+# IOC is built from source as part of the OMTS build. Bazel clones it directly,
+# so no manual sibling checkout is required.
+#
+# IOC_COMMIT is pinned rather than the tag because git tags are mutable. It is
+# the commit that `v0.0.1-rc4` points at:
+#   git ls-remote https://github.com/intrinsic-ai/ioc-staging.git \
+#     refs/tags/<tag>^{}
+#
+# ioc-staging is currently private, and its binary assets are stored in Git LFS,
+# so fetching requires git credentials for the repository and a working
+# `git-lfs` installation. See README.md for setup.
+IOC_RELEASE = "v0.0.1-rc4"  # buildifier: disable=unused-variable
+
+IOC_COMMIT = "36a439997f61e7b8e6d264cde82e53fb05b00afe"
+
+IOC_REMOTE = "https://github.com/intrinsic-ai/ioc-staging.git"
+
 bazel_dep(name = "insrc", repo_name = "ioc")
-local_path_override(
+git_override(
     module_name = "insrc",
-    path = "../ioc",
+    commit = IOC_COMMIT,
+    remote = IOC_REMOTE,
 )
 
 bazel_dep(name = "intrinsic_apis", version = "0.0.1")
-local_path_override(
+git_override(
     module_name = "intrinsic_apis",
-    path = "../ioc/incode/intrinsic_apis",
+    commit = IOC_COMMIT,
+    remote = IOC_REMOTE,
+    strip_prefix = "incode/intrinsic_apis",
 )
 
 archive_override(

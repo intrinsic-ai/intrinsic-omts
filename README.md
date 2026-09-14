@@ -113,32 +113,58 @@ OMTS adheres to clean separation of concerns:
 
 ## 4. Prerequisites & Workspace Setup
 
-For local development, the `omts` workspace expects the exported **`ioc`** repository to be located in an adjacent sibling directory:
-
-```
-workspaces/
-├── ioc/          # Intrinsic Open Core platform workspace
-└── omts/         # OMTS application workspace
-```
-
-This dependency is configured in [`MODULE.bazel`](MODULE.bazel) via local path overrides:
+Bazel fetches Intrinsic Open Core itself, so no manual `ioc` checkout is
+required. The dependency is configured in [`MODULE.bazel`](MODULE.bazel) and
+pinned to an immutable commit:
 
 ```python
 bazel_dep(name="insrc", repo_name="ioc")
-local_path_override(
+git_override(
   module_name="insrc",
-  path="../ioc",
+  commit=IOC_COMMIT,
+  remote="https://github.com/intrinsic-ai/ioc-staging.git",
 )
 
 bazel_dep(name="intrinsic_apis", version="0.0.1")
-local_path_override(
+git_override(
   module_name="intrinsic_apis",
-  path="../ioc/incode/intrinsic_apis",
+  commit=IOC_COMMIT,
+  remote="https://github.com/intrinsic-ai/ioc-staging.git",
+  strip_prefix="incode/intrinsic_apis",
 )
 ```
 
+Two host prerequisites follow from this:
+
+1. **Git LFS.** IOC stores its meshes, textures and model weights in Git LFS.
+   Bazel checks the repository out with plain `git`, so the smudge filter must
+   be installed globally or the working tree will contain pointer files instead
+   of real assets:
+
+   ```bash
+   sudo apt-get install git-lfs   # if not already present
+   git lfs install
+   ```
+
+2. **Read access to `intrinsic-ai/ioc-staging`.** The repository is currently
+   private. Any standard git credential setup works, for example:
+
+   ```bash
+   gh auth login
+   gh auth setup-git
+   ```
+
+To move to a different IOC revision, update `IOC_COMMIT` in `MODULE.bazel`. The
+commit behind a release tag can be resolved with:
+
+```bash
+git ls-remote https://github.com/intrinsic-ai/ioc-staging.git 'refs/tags/<tag>^{}'
+```
+
 > [!NOTE]
-> Once `ioc` is published to a public Git repository or the Bazel Central Registry (BCR), these `local_path_override` definitions will be replaced with standard remote dependencies or archive overrides.
+> Once `ioc` is public, the read-access requirement disappears and the
+> `git_override` definitions can be replaced with an `archive_override` against
+> a published release archive, which is faster and checksum-pinned.
 
 ---
 
