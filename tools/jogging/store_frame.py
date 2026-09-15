@@ -22,7 +22,7 @@ from typing import Any
 from google.protobuf import text_format
 from intrinsic.math.python import data_types
 from intrinsic.solutions import deployments
-from intrinsic.world.public.proto import object_world_updates_pb2
+from intrinsic.world.proto import object_world_updates_pb2
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:

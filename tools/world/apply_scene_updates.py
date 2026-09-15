@@ -21,7 +21,7 @@ from typing import Any
 
 from google.protobuf import text_format
 from intrinsic.solutions import deployments
-from intrinsic.world.public.proto import (
+from intrinsic.world.proto import (
   object_world_updates_pb2,
 )
 
