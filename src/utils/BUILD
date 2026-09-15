@@ -24,10 +24,20 @@ py_library(
 )
 
 py_library(
+    name = "execution_utils",
+    srcs = ["execution_utils.py"],
+    deps = [
+        "//src/core:types",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+    ],
+)
+
+py_library(
     name = "utils",
     srcs = ["__init__.py"],
     deps = [
         ":dynamic_frame_calculator",
+        ":execution_utils",
         ":math_utils",
         ":script_utils",
     ],

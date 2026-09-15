@@ -113,3 +113,14 @@ py_test(
         "@com_google_absl_py//absl/testing:absltest",
     ],
 )
+
+py_test(
+    name = "test_execution_utils",
+    srcs = ["test_execution_utils.py"],
+    deps = [
+        "//src/core:types",
+        "//src/utils:execution_utils",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+    ],
+)

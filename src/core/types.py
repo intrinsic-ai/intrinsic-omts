@@ -47,6 +47,24 @@ class InfeedMode(enum.Enum):
   GRID = "grid"
 
 
+class SimulationMode(enum.Enum):
+  """Execution mode requested from the Flowstate executive.
+
+  Mirrors `intrinsic_proto.executive.SimulationMode` without importing the
+  Intrinsic SDK, so that `src.core` stays dependency free.
+
+  Attributes:
+      REALITY: Full physics. Executes on real hardware, or in the simulator as
+        close to reality as possible.
+      PREVIEW: Executes skills in preview mode and visualizes world updates.
+      FAST_PREVIEW: Executes skills in preview mode without visualization.
+  """
+
+  REALITY = "reality"
+  PREVIEW = "preview"
+  FAST_PREVIEW = "fast_preview"
+
+
 class FixtureState(enum.Enum):
   """Status of the CNC machine vise or chuck clamping mechanism."""
 
