@@ -6,16 +6,16 @@ module(name = "omts")
 # so no manual sibling checkout is required.
 #
 # IOC_COMMIT is pinned rather than the tag because git tags are mutable. It is
-# the commit that `v0.0.1-rc4` points at:
+# the commit that `v0.0.1-rc5` points at:
 #   git ls-remote https://github.com/intrinsic-ai/ioc-staging.git \
 #     refs/tags/<tag>^{}
 #
 # ioc-staging is currently private, and its binary assets are stored in Git LFS,
 # so fetching requires git credentials for the repository and a working
 # `git-lfs` installation. See README.md for setup.
-IOC_RELEASE = "v0.0.1-rc4"  # buildifier: disable=unused-variable
+IOC_RELEASE = "v0.0.1-rc5"  # buildifier: disable=unused-variable
 
-IOC_COMMIT = "36a439997f61e7b8e6d264cde82e53fb05b00afe"
+IOC_COMMIT = "4796ef493bfd800de072cec58ea155b43df8787d"
 
 IOC_REMOTE = "https://github.com/intrinsic-ai/ioc-staging.git"
 
@@ -50,6 +50,13 @@ archive_override(
     urls = [
         "https://github.com/abseil/gloop/releases/download/20260828.0/gloop-20260828.0.tar.gz",
     ],
+)
+
+bazel_dep(name = "zenoh-c", version = "1.7.2.bcr.1")
+single_version_override(
+    module_name = "zenoh-c",
+    patch_strip = 1,
+    patches = ["//bazel/patches:zenohc.patch"],
 )
 
 bazel_dep(name = "bazel_skylib", version = "1.9.0")

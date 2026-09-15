@@ -88,7 +88,9 @@ omts/
 │
 ├── tools/                               # Developer & operational CLI tools
 │   ├── calibration/                     # Camera-to-robot & hand-eye calibration scripts
+│   ├── gripper/                         # Gripper actuation CLI (Robotiq, DIO, sideloaded, mock)
 │   ├── jogging/                         # Interactive robot teleoperation & pose teaching
+│   ├── pose_estimation/                 # Pose estimator registration & inference scripts
 │   └── world/                           # Scene updates, transform inspection & alignment
 │
 └── tests/                               # Test Suites
@@ -192,6 +194,10 @@ bazel run //src:omts_app -- --address=localhost:17080 --infeed_mode=perception -
 
 # Run in Blind Grid mode (deterministic tray slots):
 bazel run //src:omts_app -- --address=localhost:17080 --infeed_mode=grid
+
+# Run with an explicit executive execution mode
+# (reality = full physics, preview, fast_preview):
+bazel run //src:omts_app -- --address=localhost:17080 --simulation_mode=fast_preview
 ```
 
 ---
@@ -246,6 +252,23 @@ bazel test //tests/unit:all
 - **Store & Teach Named Joint Configurations:**
   ```bash
   bazel run //tools/jogging:store_joint_config -- home --address=localhost:17080
+  ```
+
+- **Control the Gripper (Robotiq, DIO, sideloaded, or mock):**
+  ```bash
+  # Interactive terminal menu (open, close, quit):
+  bazel run //tools/gripper:control_gripper -- --address=localhost:17080
+
+  # Command a live Robotiq gripper directly:
+  bazel run //tools/gripper:control_gripper -- --address=localhost:17080 --action=open
+  bazel run //tools/gripper:control_gripper -- --address=localhost:17080 --action=close
+
+  # Command a pneumatic / digital I/O gripper:
+  bazel run //tools/gripper:control_gripper -- --address=localhost:17080 \
+  --gripper_type=dio --open_pin=0 --close_pin=1 --action=open
+
+  # Offline mock mode (no solution deployment required):
+  bazel run //tools/gripper:control_gripper -- --mock --action=open
   ```
 
 - **Sample Poses for Camera-to-Robot Calibration:**

@@ -79,8 +79,8 @@ py_test(
     deps = [
         "//tools/jogging:store_frame_lib",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
         "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
+        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
@@ -111,5 +111,16 @@ py_test(
     deps = [
         "//tools/world:apply_scene_updates_lib",
         "@com_google_absl_py//absl/testing:absltest",
+    ],
+)
+
+py_test(
+    name = "test_execution_utils",
+    srcs = ["test_execution_utils.py"],
+    deps = [
+        "//src/core:types",
+        "//src/utils:execution_utils",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )

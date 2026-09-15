@@ -25,12 +25,14 @@ from src.core.infeed import (
   InfeedMode,
   PerceptionInfeedStrategy,
 )
+from src.core.types import SimulationMode
 from src.core.workcell import WorkcellState
 from src.core.workpiece import Workpiece
 from src.hardware.gripper import DioGripper, MockGripper, RobotiqGripper
 from src.hardware.machine import MockCncMachine
 from src.hardware.robot import MockRobot, UrRobot
 from src.hardware.vision import MockVision, OrbbecVision
+from src.utils.execution_utils import to_executive_simulation_mode
 
 _ADDRESS = flags.DEFINE_string(
   "address",
@@ -42,6 +44,15 @@ _INFEED_MODE = flags.DEFINE_enum_class(
   InfeedMode.PERCEPTION,
   InfeedMode,
   "Infeed strategy mode: 'perception' (3D vision) or 'grid' (slot math).",
+)
+_SIMULATION_MODE = flags.DEFINE_enum_class(
+  "simulation_mode",
+  None,
+  SimulationMode,
+  "Executive execution mode: 'reality' (full physics), 'preview' "
+  "(simulated with visualization), or 'fast_preview' (simulated without "
+  "visualization). If unset, the mode currently configured in the executive "
+  "is kept.",
 )
 _MOCK_HARDWARE = flags.DEFINE_bool(
   "mock_hardware",
@@ -175,6 +186,7 @@ def run_machine_tending_cycle(
   solution_address: str,
   infeed_mode: InfeedMode,
   mock_hardware: bool = False,
+  simulation_mode: SimulationMode | None = None,
   gripper_type: str = "robotiq",
   gripper_joint_name: str = "robotiq_hande_left_finger_joint",
   gripper_open_position: float = 0.025,
@@ -200,7 +212,17 @@ def run_machine_tending_cycle(
   preplace_vise_frame: str = "pre_place_vise",
   place_vise_frame: str = "place_vise",
 ) -> None:
-  """Executes one full machine tending cycle."""
+  """Executes one full machine tending cycle.
+
+  Args:
+      solution_address: gRPC address of the running solution deployment.
+      infeed_mode: Infeed strategy to use for part localization.
+      mock_hardware: If True, use offline mock hardware adapters.
+      simulation_mode: Executive execution mode to request for this run. If
+        None, the mode currently set in the executive is kept.
+      **: Remaining arguments configure hardware adapters, world entities and
+        motion target frame names; see the corresponding flag definitions.
+  """
   logging.info("Connecting to Intrinsic solution at %s...", solution_address)
   solution = deployments.connect(address=solution_address)
 
@@ -299,9 +321,14 @@ def run_machine_tending_cycle(
     place_vise_frame_name=place_vise_frame,
   )
 
-  logging.info("Executing OMTS Infeed, Acquisition & Vise Approach Pipeline...")
+  executive_simulation_mode = to_executive_simulation_mode(simulation_mode)
+  logging.info(
+    "Executing OMTS Infeed, Acquisition & Vise Approach Pipeline "
+    "(simulation mode: %s)...",
+    simulation_mode.value if simulation_mode else "executive default",
+  )
   try:
-    solution.executive.run(tree)
+    solution.executive.run(tree, simulation_mode=executive_simulation_mode)
     duration = workcell_state.record_cycle_success()
     logging.info(
       "Pipeline execution completed successfully in %.2fs.", duration
@@ -328,6 +355,7 @@ def main(argv: Sequence[str]) -> None:
     solution_address=_ADDRESS.value,
     infeed_mode=_INFEED_MODE.value,
     mock_hardware=_MOCK_HARDWARE.value,
+    simulation_mode=_SIMULATION_MODE.value,
     gripper_type=_GRIPPER_TYPE.value,
     gripper_joint_name=_GRIPPER_JOINT_NAME.value,
     gripper_open_position=_GRIPPER_OPEN_POSITION.value,

@@ -1,5 +1,5 @@
-load("@ioc//google3/intrinsic/assets/scene_objects/build_defs:scene_object.bzl", "intrinsic_scene_object")
-load("@ioc//google3/intrinsic/scene/build_defs:sdf_scene_object.bzl", "sdf_scene_object")
+load("@ioc//intrinsic/assets/scene_objects/build_defs:scene_object.bzl", "intrinsic_scene_object")
+load("@ioc//intrinsic/scene/build_defs:sdf_scene_object.bzl", "sdf_scene_object")
 
 package(default_visibility = ["//visibility:public"])
 
