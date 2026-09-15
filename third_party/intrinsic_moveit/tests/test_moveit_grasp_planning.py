@@ -16,14 +16,16 @@
 
 from absl.testing import absltest
 
-from src.behaviors.grasp_planning import build_grasp_planning_subtree
-from src.hardware.grasp_planner import (
+from src.hardware.robot import MockRobot
+from third_party.intrinsic_moveit.moveit_grasp_planner import (
   SURFACE_Z_NEG,
   SURFACE_Z_POS,
-  MockGraspPlanner,
+  MockMoveItGraspPlanner,
 )
-from src.hardware.robot import MockRobot
-from tools.grasping.plan_and_move import (
+from third_party.intrinsic_moveit.moveit_grasp_planning import (
+  build_moveit_grasp_planning_subtree,
+)
+from third_party.intrinsic_moveit.tools.moveit_plan_and_move import (
   DEFAULT_TARGET_OBJECT,
   resolve_target_objects,
 )
@@ -33,10 +35,10 @@ class GraspPlanningTest(absltest.TestCase):
   def setUp(self):
     super().setUp()
     self.robot = MockRobot()
-    self.grasp_planner = MockGraspPlanner()
+    self.grasp_planner = MockMoveItGraspPlanner()
 
   def test_subtree_contains_plan_and_approach_steps(self):
-    subtree = build_grasp_planning_subtree(
+    subtree = build_moveit_grasp_planning_subtree(
       grasp_planner=self.grasp_planner,
       robot=self.robot,
       candidate_objects=["raw_stock_50x50x75_1"],
@@ -50,7 +52,7 @@ class GraspPlanningTest(absltest.TestCase):
     )
 
   def test_default_candidate_object_matches_the_default_scene(self):
-    build_grasp_planning_subtree(
+    build_moveit_grasp_planning_subtree(
       grasp_planner=self.grasp_planner,
       move_to_pregrasp=False,
     )
@@ -60,7 +62,7 @@ class GraspPlanningTest(absltest.TestCase):
     )
 
   def test_plan_only_subtree_omits_approach(self):
-    subtree = build_grasp_planning_subtree(
+    subtree = build_moveit_grasp_planning_subtree(
       grasp_planner=self.grasp_planner,
       candidate_objects=["raw_stock_50x50x75_1"],
       move_to_pregrasp=False,
@@ -70,14 +72,14 @@ class GraspPlanningTest(absltest.TestCase):
 
   def test_approach_without_robot_raises(self):
     with self.assertRaises(ValueError):
-      build_grasp_planning_subtree(
+      build_moveit_grasp_planning_subtree(
         grasp_planner=self.grasp_planner,
         candidate_objects=["raw_stock_50x50x75_1"],
         move_to_pregrasp=True,
       )
 
   def test_multiple_candidate_objects_are_forwarded(self):
-    build_grasp_planning_subtree(
+    build_moveit_grasp_planning_subtree(
       grasp_planner=self.grasp_planner,
       robot=self.robot,
       candidate_objects=[
@@ -101,7 +103,7 @@ class GraspPlanningTest(absltest.TestCase):
     )
 
   def test_approach_targets_the_configured_pregrasp_frame(self):
-    build_grasp_planning_subtree(
+    build_moveit_grasp_planning_subtree(
       grasp_planner=self.grasp_planner,
       robot=self.robot,
       candidate_objects=["raw_stock_50x50x75_1"],
@@ -124,8 +126,8 @@ class GraspPlanningTest(absltest.TestCase):
 
   def test_empty_candidate_list_raises(self):
     with self.assertRaises(ValueError):
-      build_grasp_planning_subtree(
-        grasp_planner=MockGraspPlanner(),
+      build_moveit_grasp_planning_subtree(
+        grasp_planner=MockMoveItGraspPlanner(),
         robot=self.robot,
         candidate_objects=[],
       )

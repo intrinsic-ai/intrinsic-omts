@@ -26,8 +26,8 @@ updates: {
     }
     a_t_b {
       position {
-        x: 0.5
-        y: -0.2
+        x: 0.3
+        y: -0.3
         z: 1.03
       }
       orientation {
@@ -64,8 +64,8 @@ updates: {
     }
     a_t_b {
       position {
-        x: 0.38
-        y: -0.25
+        x: 0.18
+        y: -0.35
         z: 1.03
       }
       orientation {
@@ -97,44 +97,6 @@ updates: {
       by_name {
         object {
           object_name: "raw_stock_50x50x75_3"
-        }
-      }
-    }
-    a_t_b {
-      position {
-        x: 0.4
-        y: -0.12
-        z: 1.03
-      }
-      orientation {
-        x: -0.00000189021118062
-        y: 0.00000110373706899
-        z: -0.42771762814722547
-        w: 0.90391240204309653
-      }
-    }
-  }
-}
-updates: {
-  update_transform: {
-    node_a {
-      by_name {
-        object {
-          object_name: "root"
-        }
-      }
-    }
-    node_b {
-      by_name {
-        object {
-          object_name: "raw_stock_50x50x75_4"
-        }
-      }
-    }
-    node_to_update: {
-      by_name {
-        object {
-          object_name: "raw_stock_50x50x75_4"
         }
       }
     }

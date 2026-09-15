@@ -25,7 +25,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["src", "tools", "tests", "configs"]
+known-first-party = ["src", "third_party", "tools", "tests", "configs"]
 
 [tool.ruff.format]
 indent-style = "space"

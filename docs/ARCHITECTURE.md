@@ -27,11 +27,11 @@ flowchart TD
         ADAPTERS --> VISION_ADAPT[OrbbecVision]
         ADAPTERS --> GRIP_ADAPT[DioGripper / MockGripper]
         ADAPTERS --> CNC_ADAPT[DioCncMachine / MockCncMachine]
-        
+
         MAIN --> STRATEGY[Infeed Strategy]
         STRATEGY -.-> PERCEP[PerceptionInfeedStrategy]
         STRATEGY -.-> GRID[GridInfeedStrategy]
-        
+
         MAIN --> BT_BUILDER[Behavior Tree Builder]
         BT_BUILDER --> SUB_PICK[Pick Subtree]
         BT_BUILDER --> SUB_LOAD[Machine Load Subtree]
@@ -55,9 +55,10 @@ All hardware interactions are mediated by abstract interfaces in [`src/hardware/
 | [`GripperInterface`](../src/hardware/gripper.py) | `DioGripper`, `RobotiqGripper`, `MockGripper` | Gripper open/close tasks and stroke position control. |
 | [`CncMachineInterface`](../src/hardware/machine.py) | `DioCncMachine`, `MockCncMachine` | Door actuation, pneumatic vise clamping, cycle start pulsing, and cycle complete waiting. |
 | [`VisionInterface`](../src/hardware/vision.py) | `OrbbecVision`, `MockVision` | RGB-D image acquisition, 6D pose estimation, and in-tree dynamic frame calculation via `bt.PythonScript`. |
-| [`GraspPlannerInterface`](../src/hardware/grasp_planner.py) | `MoveItGraspPlanner`, `MockGraspPlanner` | Model-based grasp planning via the sideloaded `ai.intrinsic.moveit_plan_grasp_skill`, publishing the top-ranked grasp and pre-grasp poses into the Object World Service. |
 
 This abstraction ensures that high-level process behavior trees remain decoupled from the underlying hardware interfaces, facilitating offline unit testing without real hardware or simulators.
+
+Third-party integrations may add their own adapters without joining this table. [`MoveItGraspPlannerInterface`](../third_party/intrinsic_moveit/moveit_grasp_planner.py) is one: it consumes `RobotInterface` but is not part of the first-party HAL, and nothing here depends on it. See [`third_party/README.md`](../third_party/README.md).
 
 ---
 
@@ -144,4 +145,29 @@ sequenceDiagram
     Robot->>Robot: Linear Retract from Table (LINEAR)
     Robot->>Robot: Return to view frame (ANY)
 ```
+
+---
+
+## 5. Standalone Behavior Subtrees
+
+Not every subtree belongs to the master cycle. [`third_party/intrinsic_moveit/moveit_grasp_tour.py`](../third_party/intrinsic_moveit/moveit_grasp_tour.py) builds a self-contained rehearsal sequence, driven by [`//third_party/intrinsic_moveit/tools:moveit_grasp_tour`](../third_party/intrinsic_moveit/tools/moveit_grasp_tour.py), that visits a list of parts one at a time. It is a **third-party integration** and requires [intrinsic-moveit](https://github.com/intrinsic-ai/intrinsic-moveit) to have been integrated first:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Tour as Grasp Tour
+    participant Skill as moveit_plan_grasp_skill
+    participant Robot as UR Robot
+    participant World as SBL ObjectWorld
+
+    loop For each object, in order
+        Tour->>Skill: Plan grasp for this object alone
+        Skill->>World: Overwrite root/grasp and root/pre_grasp
+        Robot->>Robot: Move to root/pre_grasp (ANY)
+    end
+```
+
+It stops at the pre-grasp and never descends to the grasp pose, which makes it safe to run repeatedly while tuning a scene. This is the Infeed Pick subtree truncated at step 05: the touchdown, unstick, gripper close and return all belong to `pick.py`, where the gripper is in the loop.
+
+The plan is issued per object rather than once for all of them because `root/grasp` and `root/pre_grasp` are singletons that the skill overwrites in place. Pooling the candidates would rank them jointly and leave only the winner's pose in the world, so sequencing the plans is what lets a tour work without per-object frames.
 

@@ -62,18 +62,6 @@ py_test(
 )
 
 py_test(
-    name = "test_grasp_planning",
-    srcs = ["test_grasp_planning.py"],
-    deps = [
-        "//src/behaviors:grasp_planning",
-        "//src/hardware:grasp_planner",
-        "//src/hardware:robot",
-        "//tools/grasping:plan_and_move_lib",
-        "@com_google_absl_py//absl/testing:absltest",
-    ],
-)
-
-py_test(
     name = "test_move_to_frame",
     srcs = ["test_move_to_frame.py"],
     deps = [

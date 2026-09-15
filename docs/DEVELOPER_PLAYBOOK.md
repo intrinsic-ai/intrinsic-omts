@@ -25,7 +25,7 @@ OMTS supports multiple hardware cells via Bazel build flags:
 bazel build //:omts_solution
 
 # Lab BB-01 workcell (UR3e arm + CAW enclosure + Orbbec Gemini camera)
-bazel build //:omts_solution --//:lab=lab_bb_01
+bazel build //:omts_solution --config=lab_bb_01
 ```
 
 ### Running Unit Tests
@@ -62,6 +62,15 @@ bazel run //tools/world:apply_scene_updates -- --address=localhost:17080
   * [`configs/scene.updates.pbtxt`](../configs/scene.updates.pbtxt) (pre-defined scene frames: `view`, `pre_grasp`, `grasp`, `machine_approach`, `pre_place_vise`, `place_vise`).
   * [`configs/align_robot.updates.pbtxt`](../configs/align_robot.updates.pbtxt) (base mounting pose).
 * **Automated Cleanup:** Checks for and deletes stale `detected_workpiece` objects to prevent SBL name collisions.
+
+> [!TIP]
+> `apply_scene_updates` does **not** restore the raw stock poses — [`configs/relocate_raw_stock.updates.pbtxt`](../configs/relocate_raw_stock.updates.pbtxt) is not in its default file set. To put the whole scene back between demo runs, reset the world instead:
+>
+> ```bash
+> inctl world reset --address localhost:17080
+> ```
+>
+> This restores object poses only. It does not command the arm, so the robot stays wherever the last run left it; use [`tools/jogging:move_to_frame`](../tools/jogging/move_to_frame.py) if you need it back at a known pose.
 
 > [!CRITICAL]
 > **Camera Reparenting on Solution Startup:**
@@ -114,26 +123,17 @@ bazel run //tools/gripper:control_gripper -- --address=localhost:17080 --gripper
 bazel run //tools/gripper:control_gripper -- --mock --action=open
 ```
 
-### E. Grasp Planner (`tools/grasping:plan_and_move`)
-Plans a grasp with the MoveIt grasp planning service and moves the arm to the resulting pre-grasp frame. The skill writes the top-ranked grasp and pre-grasp poses back into the Object World Service, so the approach motion simply targets `root/pre_grasp` by name:
+### E. MoveIt Grasp Planning (third-party)
 
-```bash
-# Dry run: plan a grasp on raw_stock_50x50x75_1 without moving the arm
-bazel run //tools/grasping:plan_and_move -- --address=localhost:17080 --plan_only
+Model-based grasp planning and the `moveit_grasp_tour` rehearsal loop are a
+third-party integration, not part of OMTS. They are documented with the code
+they belong to, in
+[`third_party/intrinsic_moveit/README.md`](../third_party/intrinsic_moveit/README.md).
 
-# Plan and approach the pre-grasp of a specific part
-bazel run //tools/grasping:plan_and_move -- --address=localhost:17080 --target_object=raw_stock_50x50x75_2
-
-# Rank grasps across all three parts and approach the best one.
-# --target_object is repeatable and each value accepts a comma-separated list.
-bazel run //tools/grasping:plan_and_move -- --address=localhost:17080 \
-    --target_object=raw_stock_50x50x75_1,raw_stock_50x50x75_2,raw_stock_50x50x75_3
-
-# Widen the search to the four side faces with 8 rotations each
-bazel run //tools/grasping:plan_and_move -- --address=localhost:17080 --surfaces=0,1,2,3 --num_rotations=8
-```
-
-> Requires `moveit_planning_service` to be running and `ai.intrinsic.moveit_plan_grasp_skill` to be installed in the solution (`inctl asset install --address localhost:17080 <path-to-bundle>.tar`). The output frames `root/grasp` and `root/pre_grasp` must already exist; they are declared in [`configs/scene.updates.pbtxt`](../configs/scene.updates.pbtxt).
+> [!NOTE]
+> Nothing in `//:omts_solution` deploys them. The tools do nothing until the
+> [intrinsic-moveit](https://github.com/intrinsic-ai/intrinsic-moveit)
+> integration has been completed against your solution.
 
 ---
 
@@ -147,8 +147,4 @@ bazel run //tools/grasping:plan_and_move -- --address=localhost:17080 --surfaces
 | `ai.intrinsic.move_robot:10601: Frame with name ... does not exist on object` | Attempted to target an object reference instead of a valid frame in `PoseEquality`. | Ensure `target_frame` references a valid frame (`FrameReferenceByName(object_name="root", frame_name="pre_grasp")`). Do not target raw objects. |
 | `ai.intrinsic.create_object:3: New object name cannot be used here` | Object with the specified name already exists in the belief world. | Issue a `DeleteObjectRequest` via `world.batch_update(...)` or use `apply_scene_updates`. |
 | `ModuleNotFoundError: No module named 'intrinsic'` | Python command run directly via system Python instead of Bazel runfiles. | Always execute scripts via `bazel run //path:target` to resolve dependencies within the hermetic sandbox. |
-| `moveit_plan_grasp_skill: Robot model does not define the required end-effector or IK frame` | `--tool_frame_name` or `--end_effector_group` names something absent from the SRDF. Note `hande_tcp`, `hande_tool_frame` and `tool_frame` are all valid coincident aliases, so this is usually a typo or a hardware description that lacks the alias links. | Check the `hand` group in `robot_hardware.srdf` and pass a link listed there. |
-| `moveit_plan_grasp_skill: Output pregrasp frame could not be resolved in World Service` | The skill only updates pre-existing frames; it never creates them. | Run `bazel run //tools/world:apply_scene_updates` so `root/grasp` and `root/pre_grasp` exist before planning. |
-| `moveit_plan_grasp_skill: Target object was not found in the planning scene` | The part was moved moments before planning and the MoveIt scene has not caught up, or the object name does not resolve. | Raise `--settle_sec`, and confirm the name with `bazel run //tools/world:inspect_world`. |
-| `moveit_plan_grasp_skill: No reachable or collision-free grasp candidates found` | Only the top face is sampled by default, and the part may be out of reach or occluded in that approach direction. | Widen `--surfaces` (e.g. `--surfaces=0,1,2,3,4`) and/or raise `--num_rotations`. |
 

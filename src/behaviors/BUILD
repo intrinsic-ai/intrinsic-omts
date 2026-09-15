@@ -12,17 +12,6 @@ py_library(
 )
 
 py_library(
-    name = "grasp_planning",
-    srcs = ["grasp_planning.py"],
-    deps = [
-        ":motions",
-        "//src/hardware:grasp_planner",
-        "//src/hardware:robot",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
-    ],
-)
-
-py_library(
     name = "pick",
     srcs = ["pick.py"],
     deps = [
@@ -108,7 +97,6 @@ py_library(
     name = "behaviors",
     srcs = ["__init__.py"],
     deps = [
-        ":grasp_planning",
         ":load_machine",
         ":machine_tending_bt",
         ":machining",

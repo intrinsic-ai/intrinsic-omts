@@ -28,9 +28,15 @@ from typing import Any
 from intrinsic.solutions import deployments, execution
 from intrinsic.world.public.proto import object_world_refs_pb2
 
-from src.behaviors.grasp_planning import build_grasp_planning_subtree
-from src.hardware.grasp_planner import DEFAULT_TOOL_FRAME, MoveItGraspPlanner
 from src.hardware.robot import UrRobot
+from third_party.intrinsic_moveit.moveit_grasp_planner import (
+  DEFAULT_TOOL_FRAME,
+  SURFACE_ALL,
+  MoveItGraspPlanner,
+)
+from third_party.intrinsic_moveit.moveit_grasp_planning import (
+  build_moveit_grasp_planning_subtree,
+)
 
 # The default scene spawns raw_stock_50x50x75_1 .. _3. Object names must match
 # the world exactly: the planning service resolves an id by exact match, then
@@ -38,37 +44,48 @@ from src.hardware.robot import UrRobot
 DEFAULT_TARGET_OBJECT = "raw_stock_50x50x75_1"
 
 _EPILOG = """\
-examples (run through Bazel as
-  `bazel run //tools/grasping:plan_and_move -- <flags>`):
+examples (run through Bazel as `bazel run
+  //third_party/intrinsic_moveit/tools:moveit_plan_and_move -- <flags>`):
 
   # Dry run: plan a grasp on raw_stock_50x50x75_1 without moving the arm.
-  plan_and_move --plan_only
+  moveit_plan_and_move --plan_only --surfaces=0,1,4,5
 
   # Plan and approach the pre-grasp of a specific part.
-  plan_and_move --target_object=raw_stock_50x50x75_2
+  moveit_plan_and_move --surfaces=0,1,4,5 --target_object=raw_stock_50x50x75_2
 
   # Rank grasps across several parts and approach the best one. The flag is
   # repeatable and also accepts comma-separated names.
-  plan_and_move --target_object=raw_stock_50x50x75_1,raw_stock_50x50x75_2
-  plan_and_move --target_object=raw_stock_50x50x75_1 \\
+  moveit_plan_and_move --surfaces=0,1,4,5 \\
+      --target_object=raw_stock_50x50x75_1,raw_stock_50x50x75_2
+  moveit_plan_and_move --surfaces=0,1,4,5 \\
+      --target_object=raw_stock_50x50x75_1 \\
       --target_object=raw_stock_50x50x75_2 \\
       --target_object=raw_stock_50x50x75_3
 
-  # Widen the search to the four side faces with 8 rotations each.
-  plan_and_move --surfaces=0,1,2,3 --num_rotations=8
+  # Narrow further to force a strictly vertical approach, 8 rotations.
+  moveit_plan_and_move --surfaces=4 --num_rotations=8
 
 prerequisites:
+  This is a third-party integration. It does nothing until you have completed
+  the intrinsic-moveit integration; OMTS does not deploy any of it for you.
+
   * moveit_planning_service is running and reachable over Zenoh.
   * ai.intrinsic.moveit_plan_grasp_skill is installed in the target solution.
   * The output frames already exist in the world
     (see configs/scene.updates.pbtxt).
 
-See <path-to-repo>/GRASPING_DEMO.md for the full integration walkthrough.
+See third_party/intrinsic_moveit/README.md for the setup walkthrough.
 """
 
 
 def _parse_surfaces(raw: str) -> list[int]:
-  """Parses a comma-separated surface index list, validating the range."""
+  """Parses a surface index list or the literal 'all'.
+
+  An empty list is the planning service's own encoding for every surface, so
+  'all' is returned as `[]` rather than as an explicit 0..5 enumeration.
+  """
+  if raw.strip().lower() == "all":
+    return list(SURFACE_ALL)
   surfaces: list[int] = []
   for token in raw.split(","):
     token = token.strip()
@@ -78,8 +95,9 @@ def _parse_surfaces(raw: str) -> list[int]:
       index = int(token)
     except ValueError as exc:
       raise argparse.ArgumentTypeError(
-        f"Invalid surface index '{token}'. Expected a comma-separated list of"
-        " integers in 0..5 (0:+X, 1:-X, 2:+Y, 3:-Y, 4:+Z top, 5:-Z bottom)."
+        f"Invalid surface index '{token}'. Expected 'all' or a"
+        " comma-separated list of integers in 0..5 (0:+X, 1:-X, 2:+Y, 3:-Y,"
+        " 4:+Z top, 5:-Z bottom)."
       ) from exc
     if not 0 <= index <= 5:
       raise argparse.ArgumentTypeError(
@@ -89,7 +107,7 @@ def _parse_surfaces(raw: str) -> list[int]:
     surfaces.append(index)
   if not surfaces:
     raise argparse.ArgumentTypeError(
-      "--surfaces requires at least one index, e.g. --surfaces=4."
+      "--surfaces requires 'all' or at least one index, e.g. --surfaces=4."
     )
   return surfaces
 
@@ -239,13 +257,13 @@ def report_selected_object(
     print(f"Grasp was planned on '{ranked[0][1]}' (nearest candidate).")
 
 
-def plan_and_move(
+def moveit_plan_and_move(
   solution: Any,
   candidate_objects: Sequence[str],
   parent_object: str = "root",
   grasp_frame: str = "grasp",
   pregrasp_frame: str = "pre_grasp",
-  surfaces: Sequence[int] = (4,),
+  surfaces: Sequence[int] = SURFACE_ALL,
   num_rotations: int = 4,
   obj_dims_in_meters: tuple[float, float, float] | None = None,
   retract_dist_m: float = 0.1,
@@ -268,7 +286,8 @@ def plan_and_move(
     parent_object: Object owning the output frames.
     grasp_frame: Pre-existing frame updated to the planned grasp pose.
     pregrasp_frame: Pre-existing frame updated to the planned pre-grasp pose.
-    surfaces: Object surfaces to generate grasp candidates on.
+    surfaces: Object surfaces to generate grasp candidates on. Empty means
+      every surface.
     num_rotations: Grasp candidates per surface.
     obj_dims_in_meters: Optional explicit box dimensions in meters.
     retract_dist_m: Distance between the grasp and pre-grasp frames in meters.
@@ -311,7 +330,7 @@ def plan_and_move(
       tool_object_name=tool_object_name,
     )
 
-  subtree = build_grasp_planning_subtree(
+  subtree = build_moveit_grasp_planning_subtree(
     grasp_planner=grasp_planner,
     robot=robot,
     candidate_objects=candidate_objects,
@@ -327,9 +346,13 @@ def plan_and_move(
   )
 
   candidates = ", ".join(candidate_objects)
-  grasps_per_object = len(surfaces) * num_rotations
+  # An empty list means every surface, so the candidate estimate has to count
+  # all six faces rather than the zero entries actually present.
+  surface_count = len(surfaces) or 6
+  surface_label = str(list(surfaces)) if surfaces else "all"
+  grasps_per_object = surface_count * num_rotations
   print(
-    f"\nPlanning grasps for [{candidates}] on surfaces {list(surfaces)} with"
+    f"\nPlanning grasps for [{candidates}] on surfaces {surface_label} with"
     f" {num_rotations} rotations each ({grasps_per_object} candidates per"
     f" object, {grasps_per_object * len(candidate_objects)} total), tool frame"
     f" '{tool_frame_name}', group '{group_name}'..."
@@ -355,8 +378,9 @@ def plan_and_move(
       "\nCommon causes:\n"
       "  * moveit_planning_service is down or not bridged over Zenoh.\n"
       f"  * '{candidates}' is not present in the MoveIt planning scene.\n"
-      "  * No collision-free grasp reachable: widen --surfaces or raise"
-      " --num_rotations.\n"
+      "  * No collision-free grasp reachable. Every surface is sampled by\n"
+      "    default, so raise --num_rotations or relax --surfaces if you\n"
+      "    narrowed it.\n"
       f"  * Output frames '{parent_object}/{grasp_frame}' and"
       f" '{parent_object}/{pregrasp_frame}' do not exist in the world.",
       file=sys.stderr,
@@ -390,7 +414,7 @@ def plan_and_move(
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   """Parses command line arguments."""
   parser = argparse.ArgumentParser(
-    prog="plan_and_move",
+    prog="moveit_plan_and_move",
     description=(
       "Plan a grasp with the MoveIt grasp planning service and move the arm"
       " to the resulting pre-grasp frame."
@@ -444,11 +468,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   parser.add_argument(
     "--surfaces",
     type=_parse_surfaces,
-    default=[4],
+    default=list(SURFACE_ALL),
     metavar="LIST",
     help=(
       "Comma-separated object surfaces to sample: 0:+X, 1:-X, 2:+Y, 3:-Y,"
-      " 4:+Z top, 5:-Z bottom (default: 4)."
+      " 4:+Z top, 5:-Z bottom, or 'all' (default: all). Use 0,1,4,5 for"
+      " raw_stock_50x50x75 to bar end-cap grasps on its 75 mm Y axis."
     ),
   )
   parser.add_argument(
@@ -575,7 +600,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 1
 
   try:
-    succeeded = plan_and_move(
+    succeeded = moveit_plan_and_move(
       solution=solution,
       candidate_objects=target_objects,
       parent_object=args.parent_object,

@@ -11,6 +11,7 @@ OMTS is an open-source reference application for automated machine tending (e.g.
 * [**Architecture & System Design**](docs/ARCHITECTURE.md): SBL abstractions, behavior tree lifecycle, infeed strategy pattern, and domain models.
 * [**Extending Hardware & Real I/O**](docs/EXTENDING_HARDWARE.md): Guide for connecting real Robotiq grippers, pneumatic vises, CNC machine door interlocks, and 3D perception tracking.
 * [**Developer Playbook & Operations**](docs/DEVELOPER_PLAYBOOK.md): Bazel execution, unit tests, diagnostic tools (`inspect_world`, `apply_scene_updates`, `move_to_frame`), and troubleshooting gotchas.
+* [**Third-Party Integrations**](third_party/README.md): Optional integrations with software outside OMTS, such as MoveIt grasp planning. None of it is deployed by `//:omts_solution`.
 
 ---
 
@@ -92,6 +93,9 @@ omts/
 │   ├── jogging/                         # Interactive robot teleoperation & pose teaching
 │   ├── pose_estimation/                 # Pose estimator registration & inference scripts
 │   └── world/                           # Scene updates, transform inspection & alignment
+│
+├── third_party/                         # Opt-in integrations; nothing first-party depends on these
+│   └── intrinsic_moveit/                # MoveIt grasp planning (requires the intrinsic-moveit integration)
 │
 └── tests/                               # Test Suites
     ├── unit/                            # Offline unit tests (Mock SBL, tray math, domain state)
@@ -205,10 +209,11 @@ bazel run //src:omts_app -- --address=localhost:17080 --simulation_mode=fast_pre
 ## 6. Testing & Developer Tools
 
 ### Unit Tests
-Run offline unit tests (no physical cluster or robot required, covers 8 test suites):
+Run offline unit tests (no physical cluster or robot required):
 ```bash
 bazel test //tests/unit:all
 ```
+This covers first-party OMTS only. Integrations under [`third_party/`](third_party/) ship their own test packages.
 
 ### Developer CLI Tools
 
@@ -239,20 +244,6 @@ bazel test //tests/unit:all
   # Or move directly to a specified frame:
   bazel run //tools/jogging:move_to_frame -- --address=localhost:17080 --frame=view --motion_type=ANY
   ```
-
-- **Plan a Grasp and Approach the Resulting Pre-Grasp Frame:**
-  ```bash
-  # Dry run: plan and publish root/grasp and root/pre_grasp without moving:
-  bazel run //tools/grasping:plan_and_move -- --address=localhost:17080 --plan_only
-
-  # Or plan and approach the pre-grasp of a specific part:
-  bazel run //tools/grasping:plan_and_move -- --address=localhost:17080 --target_object=raw_stock_50x50x75_2
-
-  # Or rank grasps across several parts and approach the best one:
-  bazel run //tools/grasping:plan_and_move -- --address=localhost:17080 \
-      --target_object=raw_stock_50x50x75_1,raw_stock_50x50x75_2,raw_stock_50x50x75_3
-  ```
-  Defaults to `raw_stock_50x50x75_1`. Requires `moveit_planning_service` to be running and `ai.intrinsic.moveit_plan_grasp_skill` to be installed in the solution.
 
 - **Store & Teach Scene Frames (persists & overwrites in scene.updates.pbtxt):**
   ```bash
@@ -314,6 +305,13 @@ bazel test //tests/unit:all
   --service_name="pose_estimator_service" \
   --min_num_instances=1
   ```
+
+### Third-Party Integrations
+
+Grasp planning with MoveIt — including the `moveit_grasp_tour` rehearsal loop — is a third-party integration rather than part of OMTS, and lives under [`third_party/intrinsic_moveit/`](third_party/intrinsic_moveit/README.md).
+
+> [!NOTE]
+> `//:omts_solution` does not deploy the MoveIt planning service or grasp skill, and the tools do nothing until you have completed the [intrinsic-moveit](https://github.com/intrinsic-ai/intrinsic-moveit) integration against your solution. See [`third_party/intrinsic_moveit/README.md`](third_party/intrinsic_moveit/README.md) for the prerequisites and the tool reference.
 
 ---
 

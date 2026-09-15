@@ -25,12 +25,15 @@ from collections.abc import Sequence
 from intrinsic.solutions import behavior_tree as bt
 
 from src.behaviors.motions import create_move_to_frame_task
-from src.hardware.grasp_planner import SURFACE_Z_POS, GraspPlannerInterface
 from src.hardware.robot import RobotInterface
+from third_party.intrinsic_moveit.moveit_grasp_planner import (
+  SURFACE_Z_POS,
+  MoveItGraspPlannerInterface,
+)
 
 
-def build_grasp_planning_subtree(
-  grasp_planner: GraspPlannerInterface,
+def build_moveit_grasp_planning_subtree(
+  grasp_planner: MoveItGraspPlannerInterface,
   robot: RobotInterface | None = None,
   candidate_objects: Sequence[str] = ("raw_stock_50x50x75_1",),
   parent_object: str = "root",
@@ -39,6 +42,7 @@ def build_grasp_planning_subtree(
   surfaces: Sequence[int] = (SURFACE_Z_POS,),
   num_rotations: int = 4,
   obj_dims_in_meters: tuple[float, float, float] | None = None,
+  retract_dist_m: float | None = None,
   move_to_pregrasp: bool = True,
   motion_type: str = "ANY",
   allow_tool_z_rotation: bool = False,
@@ -64,6 +68,8 @@ def build_grasp_planning_subtree(
       normal.
     obj_dims_in_meters: Optional explicit box dimensions. When omitted, the
       planning service derives them from the MoveIt planning scene.
+    retract_dist_m: Distance in meters between the grasp and pre-grasp frames.
+      Falls back to the grasp planner's own default when omitted.
     move_to_pregrasp: Whether to append the approach motion. Set to False to
       validate grasp planning without moving the arm.
     motion_type: Motion segment type for the approach ('ANY', 'LINEAR',
@@ -85,13 +91,13 @@ def build_grasp_planning_subtree(
   """
   if not candidate_objects:
     raise ValueError(
-      "build_grasp_planning_subtree requires at least one candidate object"
-      " name. Object names must match the world exactly, including any"
+      "build_moveit_grasp_planning_subtree requires at least one candidate"
+      " object name. Object names must match the world exactly, including any"
       " instance suffix (e.g. 'raw_stock_50x50x75_1')."
     )
   if move_to_pregrasp and robot is None:
     raise ValueError(
-      "build_grasp_planning_subtree requires a robot adapter when"
+      "build_moveit_grasp_planning_subtree requires a robot adapter when"
       " move_to_pregrasp is True. Pass robot=... or set"
       " move_to_pregrasp=False to plan without moving the arm."
     )
@@ -105,6 +111,7 @@ def build_grasp_planning_subtree(
       surfaces=surfaces,
       num_rotations=num_rotations,
       obj_dims_in_meters=obj_dims_in_meters,
+      retract_dist_m=retract_dist_m,
       plan_id=plan_id,
       name=f"Plan Grasps ({', '.join(candidate_objects)})",
     )

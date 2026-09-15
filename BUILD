@@ -87,7 +87,6 @@ intrinsic_solution(
         ":raw_stock_50x50x75_1",
         ":raw_stock_50x50x75_2",
         ":raw_stock_50x50x75_3",
-        ":raw_stock_50x50x75_4",
         ":gazebo_simulator",
         ":charuco_9x14_20mm_15mm_dict_5x5",
         ":calibration_service_instance",
@@ -185,11 +184,6 @@ intrinsic_asset_instance(
 
 intrinsic_asset_instance(
     name = "raw_stock_50x50x75_3",
-    asset = "ai.intrinsic.raw_stock_50x50x75",
-)
-
-intrinsic_asset_instance(
-    name = "raw_stock_50x50x75_4",
     asset = "ai.intrinsic.raw_stock_50x50x75",
 )
 
