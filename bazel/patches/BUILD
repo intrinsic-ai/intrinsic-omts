@@ -1,1 +1,4 @@
-exports_files(["gloop.patch"])
+exports_files([
+    "gloop.patch",
+    "zenohc.patch",
+])
