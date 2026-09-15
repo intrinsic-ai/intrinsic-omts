@@ -38,10 +38,19 @@ jobs:
         with:
           python-version: "3.11"
 
+      # Pinned rather than tracking `latest`: buildtools v10.0.0 (2026-09-14)
+      # was published with no release assets at all, so
+      # releases/latest/download/... started returning 404 and broke this job
+      # on every branch. v8.5.1 is the newest release that ships binaries.
+      #
+      # curl needs --fail as well. Without it a 404 is written to the output
+      # file like any other response, and the job fails later and confusingly
+      # with "/usr/local/bin/buildifier: line 1: Not: command not found".
       - name: Install Buildifier
         run: |
-          BUILDIFIER_URL="https://github.com/bazelbuild/buildtools/releases/latest/download/buildifier-linux-amd64"
-          sudo curl -sSL "${BUILDIFIER_URL}" -o /usr/local/bin/buildifier
+          BUILDIFIER_VERSION="v8.5.1"
+          BUILDIFIER_URL="https://github.com/bazelbuild/buildtools/releases/download/${BUILDIFIER_VERSION}/buildifier-linux-amd64"
+          sudo curl -fsSL "${BUILDIFIER_URL}" -o /usr/local/bin/buildifier
           sudo chmod +x /usr/local/bin/buildifier
           buildifier --version
 
