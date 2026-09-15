@@ -250,7 +250,7 @@ jobs:
       # (bazel/content_mirror/permissive.cfg) instead.
       - name: Restore Bazel disk cache
         if: steps.force_submit.outputs.enabled != 'true'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.BAZEL_DISK_CACHE }}
           key: bazel-disk-${{ runner.os }}-${{ github.sha }}
@@ -305,7 +305,7 @@ jobs:
       # partial disk cache under a key that later runs restore from.
       - name: Save Bazel disk cache
         if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.force_submit.outputs.enabled != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.BAZEL_DISK_CACHE }}
           key: bazel-disk-${{ runner.os }}-${{ github.sha }}
