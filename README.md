@@ -194,6 +194,10 @@ bazel run //src:omts_app -- --address=localhost:17080 --infeed_mode=perception -
 
 # Run in Blind Grid mode (deterministic tray slots):
 bazel run //src:omts_app -- --address=localhost:17080 --infeed_mode=grid
+
+# Run with an explicit executive execution mode
+# (reality = full physics, preview, fast_preview):
+bazel run //src:omts_app -- --address=localhost:17080 --simulation_mode=fast_preview
 ```
 
 ---
