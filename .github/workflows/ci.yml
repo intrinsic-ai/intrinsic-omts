@@ -100,8 +100,15 @@ jobs:
       # Compiled outputs, cached between runs by actions/cache.
       BAZEL_DISK_CACHE: /home/runner/.cache/bazel-disk
     steps:
+      # lfs: true because *.glb is Git LFS tracked (.gitattributes). Without
+      # it the meshes under models/ are checked out as ~130 byte pointer files
+      # and every intrinsic_scene_object is built from a text stub instead of
+      # geometry. Nothing validates the glTF, so this fails silently. All
+      # seven meshes together are 5.6 MB.
       - name: Checkout OMTS
         uses: actions/checkout@v7
+        with:
+          lfs: true
 
       # Escape hatch: a pull request whose description contains a line reading
       # FORCE_SUBMIT=TRUE skips the Bazel steps below. Use it only when the
