@@ -82,19 +82,231 @@ jobs:
   build:
     name: Build & Test
     runs-on: ubuntu-24.04
-    # Placeholder.
-    #
-    # The Bazel steps added in #69 have never passed, and a red required check
-    # blocks every other PR. They are being reworked in #72; the outstanding
-    # problems are that analyzing //... needs a 33 GB output base plus a 13 GB
-    # repository cache on a runner that starts with ~25 GB free, and that the
-    # `gh` CLI used by //bazel:gh_release.bzl needs a token to read this
-    # repository's release assets.
-    #
-    # This job only keeps the `Build & Test` status check reporting, so that
-    # re-enabling the real one does not require a branch protection change.
+    # A cold run (no disk cache) measured 1h10m: 1m30s to reclaim disk, 9m30s to
+    # analyze //..., 59m to build and run //tests/.... 90 minutes left too
+    # little headroom for a slow runner, so allow 120.
+    timeout-minutes: 120
+    permissions:
+      # Read access to this repository's release assets, which
+      # //bazel:gh_release.bzl downloads with the `gh` CLI.
+      contents: read
+      # Read the pull request description, for the FORCE_SUBMIT check below.
+      pull-requests: read
+    env:
+      # `gh release download` runs inside a Bazel repository rule and inherits
+      # the environment of the Bazel client. intrinsic-omts is private, so
+      # without a token `gh` reports "release not found" for every asset.
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Compiled outputs, cached between runs by actions/cache.
+      BAZEL_DISK_CACHE: /home/runner/.cache/bazel-disk
     steps:
-      - name: No-op
+      # lfs: true because *.glb is Git LFS tracked (.gitattributes). Without
+      # it the meshes under models/ are checked out as ~130 byte pointer files
+      # and every intrinsic_scene_object is built from a text stub instead of
+      # geometry. Nothing validates the glTF, so this fails silently. All
+      # seven meshes together are 5.6 MB.
+      - name: Checkout OMTS
+        uses: actions/checkout@v7
+        with:
+          lfs: true
+
+      # Escape hatch: a pull request whose description contains a line reading
+      # FORCE_SUBMIT=TRUE skips the Bazel steps below. Use it only when the
+      # change cannot affect the build (documentation, unrelated tooling) or
+      # when the build is known-broken for reasons the pull request cannot fix.
+      # Lint & Format Check still runs, and pushes to main are never skipped,
+      # so whatever is merged this way is still built on main afterwards.
+      #
+      # The steps are skipped individually rather than the whole job: `Build &
+      # Test` is a required status check, and a job skipped by a job-level `if`
+      # reports nothing at all, which would leave the pull request permanently
+      # blocked instead of mergeable.
+      #
+      # The description is read through the API rather than from
+      # github.event.pull_request.body because re-running a workflow replays
+      # the original event payload. Adding the marker and pressing "Re-run all
+      # jobs" would otherwise have no effect, as the stored payload still holds
+      # the description as it was when the run was first triggered.
+      - name: Check for FORCE_SUBMIT
+        id: force_submit
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          echo "Bazel build and test are temporarily disabled."
-          echo "Tracking: https://github.com/intrinsic-ai/intrinsic-omts/pull/72"
+          force=false
+          if [[ -n "${PR_NUMBER}" ]]; then
+            body="$(gh pr view "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+              --json body --jq .body)"
+            # Anchored to a whole line so that merely discussing the marker in
+            # prose does not trigger it.
+            if grep -qiE '^[[:space:]]*FORCE_SUBMIT[[:space:]]*=[[:space:]]*TRUE[[:space:]]*$' <<<"${body}"; then
+              force=true
+            fi
+          fi
+          echo "enabled=${force}" >>"${GITHUB_OUTPUT}"
+          if [[ "${force}" == true ]]; then
+            echo "::warning title=Bazel build and tests skipped::FORCE_SUBMIT=TRUE is set in the pull request description. Nothing in this pull request has been built or tested."
+          fi
+
+      # Analyzing //... materialises a ~33 GB Bazel output base: the LLVM
+      # toolchain alone is 8.2 GB and the tritonserver OCI image another 8.0 GB.
+      # A stock ubuntu-24.04 runner only has ~25 GB free, so reclaim everything
+      # this job does not use (~35 GB). Bazel supplies its own hermetic Python,
+      # Go, Rust and C++ toolchains, so the preinstalled ones are dead weight.
+      #
+      # Note that the runner also exports ANDROID_HOME and ANDROID_SDK_ROOT.
+      # Bazel's android_sdk_repository picks those up and fails with "No
+      # Android SDK apis found" once the SDK is gone, so the Bazel steps below
+      # unset them.
+      - name: Free disk space
+        if: steps.force_submit.outputs.enabled != 'true'
+        run: |
+          df -h /
+          sudo rm -rf \
+            /opt/az \
+            /opt/ghc \
+            /opt/hostedtoolcache \
+            /usr/lib/google-cloud-sdk \
+            /usr/local/.ghcup \
+            /usr/local/lib/android \
+            /usr/local/lib/node_modules \
+            /usr/local/share/boost \
+            /usr/local/share/powershell \
+            /usr/share/dotnet \
+            /usr/share/miniconda \
+            /usr/share/swift
+          sudo docker image prune --all --force || true
+          df -h /
+
+      # The runner ships bazelisk as an npm package under
+      # /usr/local/lib/node_modules, which the step above deletes. Install it
+      # directly so this job does not depend on how the image packages it.
+      #
+      # /usr/local/bin/bazel is a symlink into that deleted npm tree, so it is
+      # dangling at this point. Writing through it fails ("curl: (23) Failure
+      # writing output to destination"), hence the explicit rm.
+      - name: Install Bazelisk
+        if: steps.force_submit.outputs.enabled != 'true'
+        run: |
+          BAZELISK_URL="https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-amd64"
+          sudo rm -f /usr/local/bin/bazel /usr/local/bin/bazelisk
+          sudo curl -sSL "${BAZELISK_URL}" -o /usr/local/bin/bazel
+          sudo chmod +x /usr/local/bin/bazel
+          bazel --version
+
+      # intrinsic-ai/ioc-staging is private and the default GITHUB_TOKEN is
+      # scoped to this repository only. IOC_STAGING_DEPLOY_KEY is the private
+      # half of a read-only deploy key registered on ioc-staging, so the
+      # credential is scoped to that one repository. Once ioc-staging is public
+      # this step, the secret and the deploy key can all be deleted.
+      - name: Configure access to ioc-staging
+        if: steps.force_submit.outputs.enabled != 'true'
+        env:
+          IOC_STAGING_DEPLOY_KEY: ${{ secrets.IOC_STAGING_DEPLOY_KEY }}
+        run: |
+          if [ -z "${IOC_STAGING_DEPLOY_KEY}" ]; then
+            echo "::error::IOC_STAGING_DEPLOY_KEY secret is not configured."
+            echo "It is the private half of the read-only deploy key on" \
+              "intrinsic-ai/ioc-staging."
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${IOC_STAGING_DEPLOY_KEY}" > ~/.ssh/ioc_staging
+          chmod 600 ~/.ssh/ioc_staging
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+          # Configured in ~/.ssh/config rather than core.sshCommand so that
+          # git-lfs, which invokes ssh itself, also picks the key up.
+          {
+            echo "Host github.com"
+            echo "  IdentityFile ~/.ssh/ioc_staging"
+            echo "  IdentitiesOnly yes"
+          } >> ~/.ssh/config
+          # MODULE.bazel clones ioc-staging over https, but a deploy key only
+          # authenticates over ssh. Rewrite just that one URL so the rest of
+          # github.com, including actions/checkout's own credentials, is
+          # untouched.
+          git config --global \
+            url."git@github.com:intrinsic-ai/ioc-staging.git".insteadOf \
+            "https://github.com/intrinsic-ai/ioc-staging.git"
+          # IOC keeps its binary assets in Git LFS. Bazel checks the repository
+          # out with plain `git`, so the LFS smudge filter has to be installed
+          # globally or the working tree ends up full of pointer files.
+          git lfs install --skip-repo
+          git lfs version
+
+      # actions/cache only writes on a fully green job, which means a run that
+      # fails in `Run unit tests` would throw away everything it compiled.
+      # Restore and save are therefore separate steps.
+      #
+      # Caches are only written from main: a cache created on a PR branch is
+      # visible to that PR alone, but still counts against the repository's
+      # 10 GB quota and evicts the entry every other branch reads from.
+      #
+      # Only the disk cache (compiled outputs) is cached. Bazel's repository
+      # cache is deliberately left out: fetching //... pulls ~13 GB of archives
+      # (LLVM, CUDA, TensorRT, the FoundationPose weights), which does not fit
+      # in the 10 GB quota and would evict everything else. Those archives are
+      # served by the mirror configured in .bazelrc
+      # (bazel/content_mirror/permissive.cfg) instead.
+      - name: Restore Bazel disk cache
+        if: steps.force_submit.outputs.enabled != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.BAZEL_DISK_CACHE }}
+          key: bazel-disk-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            bazel-disk-${{ runner.os }}-
+
+      # Analysis catches the class of breakage this job exists for: stale @ioc
+      # labels, missing dependencies and malformed BUILD files. It covers all
+      # of //..., which a full compile cannot on a GitHub-hosted runner (ICON,
+      # OpenCV, CUDA and the FoundationPose models do not fit).
+      #
+      # --keep_going reports every broken label in one run instead of aborting
+      # on the first one.
+      #
+      # An empty --repository_cache disables the repository cache. It is pure
+      # overhead here: it would hold a second, 13 GB copy of archives that are
+      # only ever fetched once per run, and the runner does not have room for
+      # both that and the 33 GB they extract into.
+      - name: Analyze all targets
+        if: steps.force_submit.outputs.enabled != 'true'
+        run: |
+          unset ANDROID_HOME ANDROID_SDK_ROOT ANDROID_NDK ANDROID_NDK_HOME \
+            ANDROID_NDK_ROOT ANDROID_NDK_LATEST_HOME
+          bazel \
+            build --nobuild \
+            --keep_going \
+            --repository_cache= \
+            //...
+          df -h /
+
+      - name: Run unit tests
+        if: steps.force_submit.outputs.enabled != 'true'
+        run: |
+          unset ANDROID_HOME ANDROID_SDK_ROOT ANDROID_NDK ANDROID_NDK_HOME \
+            ANDROID_NDK_ROOT ANDROID_NDK_LATEST_HOME
+          bazel \
+            test \
+            --repository_cache= \
+            --disk_cache="${BAZEL_DISK_CACHE}" \
+            --test_output=errors \
+            //tests/...
+          df -h /
+
+      # A full cold `bazel test //tests/...` produces about 350 MB of cached
+      # outputs, so no pruning is needed to stay inside the 10 GB quota. This
+      # step exists to notice if that ever stops being true.
+      - name: Report Bazel disk cache size
+        if: always() && steps.force_submit.outputs.enabled != 'true'
+        run: du -sh "${BAZEL_DISK_CACHE}" || true
+
+      # Never write a cache from a forced run: it would record an empty or
+      # partial disk cache under a key that later runs restore from.
+      - name: Save Bazel disk cache
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.force_submit.outputs.enabled != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.BAZEL_DISK_CACHE }}
+          key: bazel-disk-${{ runner.os }}-${{ github.sha }}
+
