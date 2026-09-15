@@ -21,6 +21,11 @@ service_def {
   real_spec {
     image {
       archive_filename: "hande-gripper-aquarium-hande-gripper.launch.xml.tar"
+      settings {
+        security_context {
+          privileged: true
+        }
+      }
     }
   }
   sim_spec {
