@@ -90,6 +90,8 @@ jobs:
       # Read access to this repository's release assets, which
       # //bazel:gh_release.bzl downloads with the `gh` CLI.
       contents: read
+      # Read the pull request description, for the FORCE_SUBMIT check below.
+      pull-requests: read
     env:
       # `gh release download` runs inside a Bazel repository rule and inherits
       # the environment of the Bazel client. intrinsic-omts is private, so
@@ -100,6 +102,43 @@ jobs:
     steps:
       - name: Checkout OMTS
         uses: actions/checkout@v7
+
+      # Escape hatch: a pull request whose description contains a line reading
+      # FORCE_SUBMIT=TRUE skips the Bazel steps below. Use it only when the
+      # change cannot affect the build (documentation, unrelated tooling) or
+      # when the build is known-broken for reasons the pull request cannot fix.
+      # Lint & Format Check still runs, and pushes to main are never skipped,
+      # so whatever is merged this way is still built on main afterwards.
+      #
+      # The steps are skipped individually rather than the whole job: `Build &
+      # Test` is a required status check, and a job skipped by a job-level `if`
+      # reports nothing at all, which would leave the pull request permanently
+      # blocked instead of mergeable.
+      #
+      # The description is read through the API rather than from
+      # github.event.pull_request.body because re-running a workflow replays
+      # the original event payload. Adding the marker and pressing "Re-run all
+      # jobs" would otherwise have no effect, as the stored payload still holds
+      # the description as it was when the run was first triggered.
+      - name: Check for FORCE_SUBMIT
+        id: force_submit
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          force=false
+          if [[ -n "${PR_NUMBER}" ]]; then
+            body="$(gh pr view "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+              --json body --jq .body)"
+            # Anchored to a whole line so that merely discussing the marker in
+            # prose does not trigger it.
+            if grep -qiE '^[[:space:]]*FORCE_SUBMIT[[:space:]]*=[[:space:]]*TRUE[[:space:]]*$' <<<"${body}"; then
+              force=true
+            fi
+          fi
+          echo "enabled=${force}" >>"${GITHUB_OUTPUT}"
+          if [[ "${force}" == true ]]; then
+            echo "::warning title=Bazel build and tests skipped::FORCE_SUBMIT=TRUE is set in the pull request description. Nothing in this pull request has been built or tested."
+          fi
 
       # Analyzing //... materialises a ~33 GB Bazel output base: the LLVM
       # toolchain alone is 8.2 GB and the tritonserver OCI image another 8.0 GB.
@@ -112,6 +151,7 @@ jobs:
       # Android SDK apis found" once the SDK is gone, so the Bazel steps below
       # unset them.
       - name: Free disk space
+        if: steps.force_submit.outputs.enabled != 'true'
         run: |
           df -h /
           sudo rm -rf \
@@ -138,6 +178,7 @@ jobs:
       # dangling at this point. Writing through it fails ("curl: (23) Failure
       # writing output to destination"), hence the explicit rm.
       - name: Install Bazelisk
+        if: steps.force_submit.outputs.enabled != 'true'
         run: |
           BAZELISK_URL="https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-amd64"
           sudo rm -f /usr/local/bin/bazel /usr/local/bin/bazelisk
@@ -151,6 +192,7 @@ jobs:
       # credential is scoped to that one repository. Once ioc-staging is public
       # this step, the secret and the deploy key can all be deleted.
       - name: Configure access to ioc-staging
+        if: steps.force_submit.outputs.enabled != 'true'
         env:
           IOC_STAGING_DEPLOY_KEY: ${{ secrets.IOC_STAGING_DEPLOY_KEY }}
         run: |
@@ -200,6 +242,7 @@ jobs:
       # served by the mirror configured in .bazelrc
       # (bazel/content_mirror/permissive.cfg) instead.
       - name: Restore Bazel disk cache
+        if: steps.force_submit.outputs.enabled != 'true'
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.BAZEL_DISK_CACHE }}
@@ -220,6 +263,7 @@ jobs:
       # only ever fetched once per run, and the runner does not have room for
       # both that and the 33 GB they extract into.
       - name: Analyze all targets
+        if: steps.force_submit.outputs.enabled != 'true'
         run: |
           unset ANDROID_HOME ANDROID_SDK_ROOT ANDROID_NDK ANDROID_NDK_HOME \
             ANDROID_NDK_ROOT ANDROID_NDK_LATEST_HOME
@@ -231,6 +275,7 @@ jobs:
           df -h /
 
       - name: Run unit tests
+        if: steps.force_submit.outputs.enabled != 'true'
         run: |
           unset ANDROID_HOME ANDROID_SDK_ROOT ANDROID_NDK ANDROID_NDK_HOME \
             ANDROID_NDK_ROOT ANDROID_NDK_LATEST_HOME
@@ -246,11 +291,13 @@ jobs:
       # outputs, so no pruning is needed to stay inside the 10 GB quota. This
       # step exists to notice if that ever stops being true.
       - name: Report Bazel disk cache size
-        if: always()
+        if: always() && steps.force_submit.outputs.enabled != 'true'
         run: du -sh "${BAZEL_DISK_CACHE}" || true
 
+      # Never write a cache from a forced run: it would record an empty or
+      # partial disk cache under a key that later runs restore from.
       - name: Save Bazel disk cache
-        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.force_submit.outputs.enabled != 'true'
         uses: actions/cache/save@v4
         with:
           path: ${{ env.BAZEL_DISK_CACHE }}
