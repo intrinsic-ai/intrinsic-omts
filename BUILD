@@ -31,7 +31,6 @@ intrinsic_solution(
     assets = [
         "@ioc//google3/intrinsic/resources/catalog/resourcedata/gripper:robotiq_pinch_gripper_resource_type",
         "@ioc//google3/intrinsic/resources/catalog/resourcedata/product/building_block",
-        "@ioc//google3/intrinsic/resources/catalog/resourcedata/product/imts:raw_stock_2x3x5",
         "@ioc//google3/intrinsic/simulation/gazebo/asset:gazebo_simulator_type",
         "@ioc//google3/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5",
         "@ioc//google3/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5_estimator",
@@ -62,6 +61,7 @@ intrinsic_solution(
         ":orbbec_gemini_driver_asset",
         ":foundationpose_mlmodel",
         ":rfdetr_mlmodel",
+        "//models/raw_stock_2x3x5",
         "//models/raw_stock_50x50x75",
     ] + select({
         ":is_lab_bb_01": [

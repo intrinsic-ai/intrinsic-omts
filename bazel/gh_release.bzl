@@ -1,5 +1,27 @@
 """Bazel repository rule and module extension to download GitHub release assets using the gh CLI."""
 
+# intrinsic-ai/intrinsic-omts is private, so `gh` has to be authenticated.
+# Interactively that is `gh auth login`; on a GitHub Actions runner it is one of
+# these variables. They are forwarded explicitly rather than relying on the
+# repository rule inheriting the client environment.
+_GH_TOKEN_VARS = ["GH_TOKEN", "GITHUB_TOKEN"]
+
+def _gh_environment(rctx):
+    """Returns the authentication environment to pass to the `gh` CLI.
+
+    Args:
+      rctx: the repository context.
+
+    Returns:
+      A dict holding the first GitHub token variable that is set, or an empty
+      dict when none is, in which case `gh` falls back to its own config file.
+    """
+    for name in _GH_TOKEN_VARS:
+        value = rctx.getenv(name)
+        if value:
+            return {name: value}
+    return {}
+
 def _gh_release_file_impl(rctx):
     repo = rctx.attr.repo
     tag = rctx.attr.tag
@@ -10,6 +32,7 @@ def _gh_release_file_impl(rctx):
     if not gh_path:
         fail("The 'gh' binary was not found in PATH. Please install or authenticate GitHub CLI.")
 
+    rctx.report_progress("Downloading %s from %s@%s" % (pattern, repo, tag))
     res = rctx.execute(
         [
             gh_path,
@@ -24,9 +47,20 @@ def _gh_release_file_impl(rctx):
             filename,
             "--clobber",
         ],
+        environment = _gh_environment(rctx),
     )
     if res.return_code != 0:
-        fail("Failed to download GitHub release asset: %s\n%s" % (res.stdout, res.stderr))
+        fail(("Failed to download asset '%s' of release %s@%s: %s\n%s\n" +
+              "%s is private, so `gh` must be authenticated: run `gh auth login` " +
+              "locally, or set GH_TOKEN in CI. An unauthenticated `gh` reports " +
+              "'release not found' rather than a permission error.") % (
+            pattern,
+            repo,
+            tag,
+            res.stdout,
+            res.stderr,
+            repo,
+        ))
 
     if rctx.attr.sha256:
         sh_res = rctx.execute(["sha256sum", filename])
