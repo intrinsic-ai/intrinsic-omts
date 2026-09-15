@@ -147,19 +147,40 @@ go_deps.gazelle_override(
     path = "github.com/googlecloudrobotics/core/src",
 )
 
+# Prebuilt asset bundles that are not built from source by this repository.
+# They all live in a single release so that the pin can be moved atomically;
+# v0.0.2 carries the v0.0.1 tarballs unchanged plus the two gripper bundles.
+OMTS_ASSETS_RELEASE = "v0.0.2"
+
 gh = use_extension("//bazel:gh_release.bzl", "gh_release")
 gh.download(
     name = "flowstate_ros_bridge_bundle",
     pattern = "flowstate_ros_bridge.bundle.tar",
     repo = "intrinsic-ai/intrinsic-omts",
-    tag = "v0.0.1",
+    sha256 = "ef2cabef6846d97994725984f769491dc90c73abc8ab195e14ac47770d94f183",
+    tag = OMTS_ASSETS_RELEASE,
+)
+gh.download(
+    name = "gripper_cmd_skill_bundle",
+    pattern = "gripper_cmd_skill.bundle.tar",
+    repo = "intrinsic-ai/intrinsic-omts",
+    sha256 = "c3d3e3a853cef112deaa8b8263b661e4a2c3b035d1fe142a02314da819af6284",
+    tag = OMTS_ASSETS_RELEASE,
+)
+gh.download(
+    name = "hande_gripper_service_bundle",
+    output = "hande_gripper_service.bundle.tar",
+    pattern = "hande-gripper-aquarium-hande-gripper.launch.xml.bundle.tar",
+    repo = "intrinsic-ai/intrinsic-omts",
+    sha256 = "b1e2e0f01e6017e6d785bae1330370598691cd5243eb786b94dec82a2f48864e",
+    tag = OMTS_ASSETS_RELEASE,
 )
 gh.download(
     name = "orbbec_gemini_driver_bundle",
     pattern = "orbbec_gemini_driver.bundle.tar",
     repo = "intrinsic-ai/intrinsic-omts",
     sha256 = "a7c30e1435d2f9d278b7999c02de7a90e24f9cba2ddbc9ba9f33f74fc68de031",
-    tag = "v0.0.1",
+    tag = OMTS_ASSETS_RELEASE,
 )
 gh.download(
     name = "segmentation_weights_bundle",
@@ -167,7 +188,7 @@ gh.download(
     pattern = "segmentation.tar.gz",
     repo = "intrinsic-ai/intrinsic-omts",
     sha256 = "decfe9edb9ffd9778bce9e5b815410a1780f21a85662e1d601468117678f4034",
-    tag = "v0.0.1",
+    tag = OMTS_ASSETS_RELEASE,
 )
 gh.download(
     name = "foundationpose_py312_bundle",
@@ -175,12 +196,14 @@ gh.download(
     pattern = "foundationpose_py312.tar.gz",
     repo = "intrinsic-ai/intrinsic-omts",
     sha256 = "e367c3dd6b98bbee3f603009ea670f38d604d2bbb8a5ef5f430cd3797833b17a",
-    tag = "v0.0.1",
+    tag = OMTS_ASSETS_RELEASE,
 )
 use_repo(
     gh,
     "flowstate_ros_bridge_bundle",
     "foundationpose_py312_bundle",
+    "gripper_cmd_skill_bundle",
+    "hande_gripper_service_bundle",
     "orbbec_gemini_driver_bundle",
     "segmentation_weights_bundle",
 )

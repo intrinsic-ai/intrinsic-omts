@@ -49,9 +49,13 @@ imported_asset_bundle = rule(
             doc = "The pre-built bundle tarball file.",
         ),
         "manifest": attr.label(
-            allow_single_file = [".textproto"],
+            allow_single_file = [".textproto", ".binpb"],
             mandatory = True,
-            doc = "Service/Asset manifest textproto matching the asset in the bundle.",
+            doc = "Manifest matching the asset in the bundle. assetlocalinfogen " +
+                  "parses Service, HardwareDevice, SceneObject and Data manifests " +
+                  "as textproto, but Skill and Process manifests as binary proto, " +
+                  "so the latter must be passed as a .binpb (for example extracted " +
+                  "from the bundle itself).",
         ),
         "asset_type": attr.string(
             default = "ASSET_TYPE_SERVICE",

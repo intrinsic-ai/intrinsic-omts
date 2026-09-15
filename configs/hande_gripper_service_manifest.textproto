@@ -1,0 +1,31 @@
+# proto-file: intrinsic/assets/services/proto/service_manifest.proto
+# proto-message: intrinsic_proto.services.ServiceManifest
+#
+# Mirrors the manifest shipped inside
+# hande-gripper-aquarium-hande-gripper.launch.xml.bundle.tar. Only the asset id
+# is consumed at build time (see //bazel:imported_asset.bzl); the bundle's own
+# manifest governs the deployment.
+
+metadata {
+  id {
+    package: "ai.intrinsic"
+    name: "hande_gripper_aquarium_hande_gripper_launch_xml"
+  }
+  display_name: "Hande Gripper.Launch.Xml Service"
+  vendor {
+    display_name: "Intrinsic"
+  }
+}
+
+service_def {
+  real_spec {
+    image {
+      archive_filename: "hande-gripper-aquarium-hande-gripper.launch.xml.tar"
+    }
+  }
+  sim_spec {
+    image {
+      archive_filename: "hande-gripper-aquarium-hande-gripper.launch.xml.tar"
+    }
+  }
+}
