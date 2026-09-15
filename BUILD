@@ -58,6 +58,8 @@ intrinsic_solution(
         "@ioc//intrinsic/skills/apps:attach_object_to_robot_skill",
         "@ioc//intrinsic/skills/apps:detach_object_skill",
         ":flowstate_ros_bridge_asset",
+        ":gripper_cmd_skill_asset",
+        ":hande_gripper_service_asset",
         ":orbbec_gemini_driver_asset",
         ":foundationpose_mlmodel",
         ":rfdetr_mlmodel",
@@ -95,6 +97,7 @@ intrinsic_solution(
         ":pose_estimator_service",
         ":train_service",
         ":flowstate_ros_bridge",
+        ":hande_gripper_service",
     ] + select({
         ":is_lab_bb_01": [
         ],
@@ -249,6 +252,35 @@ intrinsic_asset_instance(
     name = "flowstate_ros_bridge",
     asset = "ai.intrinsic.flowstate_ros_bridge",
     instance_name = "flowstate_ros_bridge",
+)
+
+# assetlocalinfogen parses skill manifests as binary proto, so the manifest is
+# taken straight out of the bundle rather than being maintained as a checked-in
+# copy that could drift from the released tarball.
+genrule(
+    name = "gripper_cmd_skill_manifest",
+    srcs = ["@gripper_cmd_skill_bundle//:gripper_cmd_skill.bundle.tar"],
+    outs = ["gripper_cmd_skill_manifest.binpb"],
+    cmd = "tar -xOf $< skill_manifest.binpb > $@",
+)
+
+imported_asset_bundle(
+    name = "gripper_cmd_skill_asset",
+    asset_type = "ASSET_TYPE_SKILL",
+    bundle = "@gripper_cmd_skill_bundle//:gripper_cmd_skill.bundle.tar",
+    manifest = ":gripper_cmd_skill_manifest.binpb",
+)
+
+imported_asset_bundle(
+    name = "hande_gripper_service_asset",
+    bundle = "@hande_gripper_service_bundle//:hande_gripper_service.bundle.tar",
+    manifest = "//configs:hande_gripper_service_manifest.textproto",
+)
+
+intrinsic_asset_instance(
+    name = "hande_gripper_service",
+    asset = "ai.intrinsic.hande_gripper_aquarium_hande_gripper_launch_xml",
+    instance_name = "hande_gripper",
 )
 
 imported_asset_bundle(
