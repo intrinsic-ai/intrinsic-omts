@@ -155,7 +155,7 @@ def move_robot_to_frame(
     f" {motion_type}, allow_tool_z_rot: {allow_tool_z_rotation})..."
   )
   try:
-    from intrinsic.world.public.proto import object_world_refs_pb2
+    from intrinsic.world.proto import object_world_refs_pb2
 
     current_target_t = solution.world.get_transform(
       solution.world.root,

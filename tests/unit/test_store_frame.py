@@ -21,7 +21,7 @@ from unittest import mock
 from absl.testing import absltest
 from google.protobuf import text_format
 from intrinsic.math.python import data_types
-from intrinsic.world.public.proto import object_world_updates_pb2
+from intrinsic.world.proto import object_world_updates_pb2
 
 from tools.jogging.store_frame import (
   get_current_tool_pose,

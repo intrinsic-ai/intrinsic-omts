@@ -30,12 +30,12 @@ py_binary(
         "@com_google_absl_py//absl:app",
         "@com_google_absl_py//absl/flags",
         "@com_google_absl_py//absl/logging",
+        "@intrinsic_apis//intrinsic/icon/proto:joint_space_py_pb2",
         "@intrinsic_apis//intrinsic/kinematics/types:joint_limits_py_pb2",
-        "@ioc//google3/intrinsic/util/grpc:connection",
         "@ioc//incode/intrinsic_control/intrinsic/icon/actions:joint_jogging_py_pb2",
-        "@ioc//incode/intrinsic_control/intrinsic/icon/proto:joint_space_py_pb2",
         "@ioc//incode/intrinsic_control/intrinsic/icon/python:icon",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
+        "@ioc//intrinsic/util/grpc:connection",
     ],
 )
 
@@ -46,9 +46,9 @@ py_library(
         "//configs:scene.updates.pbtxt",
     ],
     deps = [
-        "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
         "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
+        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
@@ -70,8 +70,8 @@ py_binary(
     main = "store_joint_config.py",
     deps = [
         "//src/utils:math_utils",
-        "@ioc//google3/intrinsic/world/public/proto:object_world_updates_py_pb2",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:worlds",
+        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )

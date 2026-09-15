@@ -30,8 +30,8 @@ from intrinsic.executive.proto import run_metadata_pb2
 from intrinsic.icon.proto import joint_space_pb2
 from intrinsic.icon.python import create_action_utils, icon_api
 from intrinsic.icon.python import errors as icon_errors
-from intrinsic.motion_planning.public.proto.v1 import geometric_constraints_pb2
-from intrinsic.perception.public.proto.v1 import (
+from intrinsic.motion_planning.proto.v1 import geometric_constraints_pb2
+from intrinsic.perception.proto.v1 import (
   camera_to_robot_calibration_pb2 as calibration_type_pb2,
 )
 from intrinsic.perception.skills.calibration import sample_calibration_poses_pb2

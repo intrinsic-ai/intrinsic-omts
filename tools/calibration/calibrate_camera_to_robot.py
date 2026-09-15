@@ -21,13 +21,13 @@ import sys
 from absl import app, flags
 from google.protobuf import text_format
 from intrinsic.math.proto import pose_pb2
-from intrinsic.perception.public.proto.v1 import (
+from intrinsic.perception.proto.v1 import (
   camera_to_robot_calibration_pb2 as calibration_type_pb2,
 )
 from intrinsic.perception.skills.calibration import sample_calibration_poses_pb2
 from intrinsic.solutions import behavior_tree as bt
 from intrinsic.solutions import deployments, execution, provided
-from intrinsic.world.public.proto import object_world_updates_pb2
+from intrinsic.world.proto import object_world_updates_pb2
 from intrinsic.world.python import object_world_ids
 
 # Command line input flags
