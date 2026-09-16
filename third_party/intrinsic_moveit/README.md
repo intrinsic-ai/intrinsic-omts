@@ -151,7 +151,7 @@ count and pre-grasp gap. Per-object overrides are appended to the object name as
 | :--- | :--- | :--- |
 | `surfaces` | Surface indices to sample, `0:+X 1:-X 2:+Y 3:-Y 4:+Z 5:-Z`, or `all` | `--surfaces` (default `all`) |
 | `rotations` | Grasp candidates per surface | `--num_rotations` (default `4`) |
-| `retract` | Gap in meters between the grasp and pre-grasp frames | `--retract_dist_m` (default: the planner's own 0.1 m) |
+| `retract` | Gap in meters between the grasp and pre-grasp frames | `--retract_dist_m` (default: the planner's own 0.05 m) |
 
 Narrowing the surface set does not improve the odds of finding *a* grasp — it
 removes candidates. Use it to choose which grasps are acceptable (`0,1,4,5` to

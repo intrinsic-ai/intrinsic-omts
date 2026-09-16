@@ -288,7 +288,7 @@ def run_tour(
   continue_on_failure: bool = False,
   motion_type: str = "ANY",
   allow_tool_z_rotation: bool = False,
-  timeout_ms: float = 10000.0,
+  timeout_ms: float = 15000.0,
   group_name: str = "ur_manipulator",
   end_effector_group: str = "hand",
   tool_frame_name: str = DEFAULT_TOOL_FRAME,
@@ -485,7 +485,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     help=(
       "Default gap in meters between the grasp and pre-grasp frames, i.e. how"
       " far above the part the tour stops. Omitted means the grasp planner's"
-      " own default (0.1 m)."
+      " own default (0.05 m)."
     ),
   )
   parser.add_argument(
@@ -552,8 +552,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   parser.add_argument(
     "--timeout_ms",
     type=float,
-    default=10000.0,
-    help="Grasp planning timeout in milliseconds (default: 10000).",
+    default=15000.0,
+    help="Grasp planning timeout in milliseconds (default: 15000).",
   )
   parser.add_argument(
     "--group_name",

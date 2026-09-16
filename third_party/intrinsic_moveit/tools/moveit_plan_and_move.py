@@ -266,8 +266,8 @@ def moveit_plan_and_move(
   surfaces: Sequence[int] = SURFACE_ALL,
   num_rotations: int = 4,
   obj_dims_in_meters: tuple[float, float, float] | None = None,
-  retract_dist_m: float = 0.1,
-  timeout_ms: float = 10000.0,
+  retract_dist_m: float = 0.05,
+  timeout_ms: float = 15000.0,
   group_name: str = "ur_manipulator",
   end_effector_group: str = "hand",
   tool_frame_name: str = DEFAULT_TOOL_FRAME,
@@ -495,14 +495,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   parser.add_argument(
     "--retract_dist_m",
     type=float,
-    default=0.1,
-    help="Grasp to pre-grasp standoff distance in meters (default: 0.1).",
+    default=0.05,
+    help="Grasp to pre-grasp standoff distance in meters (default: 0.05).",
   )
   parser.add_argument(
     "--timeout_ms",
     type=float,
-    default=10000.0,
-    help="Grasp planning timeout in milliseconds (default: 10000).",
+    default=15000.0,
+    help="Grasp planning timeout in milliseconds (default: 15000).",
   )
   parser.add_argument(
     "--motion_type",
