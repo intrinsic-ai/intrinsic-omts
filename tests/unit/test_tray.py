@@ -54,14 +54,14 @@ class TrayTest(absltest.TestCase):
       self.tray.get_slot_relative_pose(row=0, col=3)
 
   def test_populate_all_slots(self):
-    self.tray.populate_all_slots(part_cad_model="custom_model")
+    self.tray.populate_all_slots(asset_id="ai.intrinsic.custom_model")
     self.assertEqual(self.tray.count_slots_by_state(SlotState.OCCUPIED), 6)
 
     slot_0_0 = self.tray.get_next_available_slot(SlotState.OCCUPIED)
     self.assertIsNotNone(slot_0_0)
     self.assertEqual(slot_0_0.row, 0)
     self.assertEqual(slot_0_0.col, 0)
-    self.assertEqual(slot_0_0.workpiece.cad_model_name, "custom_model")
+    self.assertEqual(slot_0_0.workpiece.asset_id, "ai.intrinsic.custom_model")
 
 
 if __name__ == "__main__":

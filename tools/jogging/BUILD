@@ -7,6 +7,7 @@ py_library(
     srcs = ["move_to_frame.py"],
     deps = [
         "//src/hardware:robot",
+        "//src/utils:math_utils",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],
@@ -43,9 +44,10 @@ py_library(
     name = "store_frame_lib",
     srcs = ["store_frame.py"],
     data = [
-        "//configs:scene.updates.pbtxt",
+        "//configs:omts/scene.updates.pbtxt",
     ],
     deps = [
+        "//src/core:types",
         "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
@@ -56,11 +58,42 @@ py_binary(
     name = "store_frame",
     srcs = ["store_frame.py"],
     data = [
-        "//configs:scene.updates.pbtxt",
+        "//configs:omts/scene.updates.pbtxt",
     ],
     main = "store_frame.py",
     deps = [
         ":store_frame_lib",
+    ],
+)
+
+py_library(
+    name = "move_to_joint_lib",
+    srcs = ["move_to_joint.py"],
+    deps = [
+        "//src/core:types",
+        "//src/hardware:robot",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+    ],
+)
+
+py_binary(
+    name = "move_to_joint",
+    srcs = ["move_to_joint.py"],
+    main = "move_to_joint.py",
+    deps = [
+        ":move_to_joint_lib",
+    ],
+)
+
+py_library(
+    name = "store_joint_config_lib",
+    srcs = ["store_joint_config.py"],
+    deps = [
+        "//src/utils:math_utils",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:worlds",
+        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
@@ -69,9 +102,6 @@ py_binary(
     srcs = ["store_joint_config.py"],
     main = "store_joint_config.py",
     deps = [
-        "//src/utils:math_utils",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:worlds",
-        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
+        ":store_joint_config_lib",
     ],
 )

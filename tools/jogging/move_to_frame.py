@@ -21,20 +21,13 @@ from typing import Any
 from intrinsic.solutions import deployments, execution
 
 from src.hardware.robot import UrRobot
+from src.utils.math_utils import create_transform_node_ref
 
 
 def list_available_frames(world: Any) -> list[tuple[str, str]]:
-  """Discovers and returns all available (parent_object, frame_name) pairs in the world.
-
-  Args:
-    world: The connected SBL ObjectWorld instance.
-
-  Returns:
-    A list of (parent_object_name, frame_name) tuples found in the world.
-  """
+  """Discovers and returns all available (parent_object, frame_name) pairs."""
   frames: list[tuple[str, str]] = []
 
-  # Inspect root frames first
   if hasattr(world, "root"):
     root_obj = world.root
     if hasattr(root_obj, "list_frames"):
@@ -45,7 +38,6 @@ def list_available_frames(world: Any) -> list[tuple[str, str]]:
         frame_name = f if isinstance(f, str) else getattr(f, "name", str(f))
         frames.append(("root", frame_name))
 
-  # Inspect other scene objects
   if hasattr(world, "list_objects"):
     for obj_item in world.list_objects():
       obj_name = getattr(obj_item, "name", str(obj_item))
@@ -61,20 +53,19 @@ def list_available_frames(world: Any) -> list[tuple[str, str]]:
             frame_name = getattr(f, "name", str(f))
             frames.append((obj_name, frame_name))
 
-  # Fallback / scene defaults if dynamic discovery returned nothing
   if not frames:
     default_scene_frames = [
       ("root", "view"),
-      ("root", "pre_grasp"),
-      ("root", "grasp"),
+      ("root", "infeed_pre_grasp"),
+      ("root", "infeed_grasp"),
+      ("root", "transit"),
       ("root", "machine_approach"),
-      ("root", "pre_place_vise"),
-      ("root", "place_vise"),
+      ("root", "vise_pre_place"),
+      ("root", "vise_place"),
     ]
     for parent, frame in default_scene_frames:
       frames.append((parent, frame))
 
-  # Deduplicate while preserving insertion order
   seen = set()
   unique_frames: list[tuple[str, str]] = []
   for item in frames:
@@ -88,15 +79,7 @@ def list_available_frames(world: Any) -> list[tuple[str, str]]:
 def prompt_for_frame(
   available_frames: list[tuple[str, str]],
 ) -> tuple[str, str] | None:
-  """Prompts the user to select a target frame from the available list.
-
-  Args:
-    available_frames: List of (parent_object_name, frame_name) tuples.
-
-  Returns:
-    The selected (parent_object_name, frame_name) tuple, or None if the user
-    chose to quit.
-  """
+  """Prompts the user to select a target frame from the available list."""
   if not available_frames:
     print("No frames available in the scene.")
     return None
@@ -130,49 +113,29 @@ def move_robot_to_frame(
   target_frame_name: str,
   target_object_name: str = "root",
   motion_type: str = "ANY",
-  allow_tool_z_rotation: bool = False,
   arm_part_name: str = "ur_module",
   tool_object_name: str = "gripper",
   tool_frame_name: str = "tool_frame",
 ) -> None:
-  """Plans and executes a Cartesian motion moving the robot tool to the target frame.
-
-  Args:
-    solution: Connected SBL deployment instance.
-    target_frame_name: Frame name to move to (e.g. 'view', 'grasp').
-    target_object_name: Parent object of target frame in world (default:
-      'root').
-    motion_type: Motion segment type ('ANY', 'LINEAR', 'JOINT').
-    allow_tool_z_rotation: Whether to allow rotation around tool Z approach axis.
-    arm_part_name: Robot arm part name in solution.world (default: 'ur_module').
-    tool_object_name: End-effector tool object name (default: 'gripper').
-    tool_frame_name: Frame name on tool object to align (default: 'tool_frame').
-  """
+  """Plans and executes a Cartesian motion moving the robot tool to the target frame."""
   print(
     f"\nPlanning motion for '{arm_part_name}' moving tool"
     f" '{tool_object_name}/{tool_frame_name}' ->"
     f" '{target_object_name}/{target_frame_name}' (motion_type:"
-    f" {motion_type}, allow_tool_z_rot: {allow_tool_z_rotation})..."
+    f" {motion_type})..."
   )
   try:
-    from intrinsic.world.proto import object_world_refs_pb2
-
     current_target_t = solution.world.get_transform(
       solution.world.root,
       solution.world.get_transform_node(
-        object_world_refs_pb2.TransformNodeReference(
-          by_name=object_world_refs_pb2.TransformNodeReferenceByName(
-            frame=object_world_refs_pb2.FrameReferenceByName(
-              object_name=target_object_name, frame_name=target_frame_name
-            )
-          )
-        )
+        create_transform_node_ref(target_object_name, target_frame_name)
       ),
     )
     print(
-      f"Current pose of '{target_object_name}/{target_frame_name}' in root: {current_target_t}"
+      f"Current pose of '{target_object_name}/{target_frame_name}' in root:"
+      f" {current_target_t}"
     )
-  except Exception as te:
+  except Exception as te:  # pylint: disable=broad-exception-caught
     print(f"Could not query target frame: {te}")
 
   robot = UrRobot(
@@ -186,7 +149,6 @@ def move_robot_to_frame(
     target_frame_name=target_frame_name,
     target_object_name=target_object_name,
     motion_type=motion_type,
-    allow_tool_z_rotation=allow_tool_z_rotation,
     name=(
       f"Move {tool_object_name}.{tool_frame_name} to"
       f" {target_object_name}.{target_frame_name} ({motion_type})"
@@ -203,7 +165,7 @@ def move_robot_to_frame(
     print(f"\n[!] Motion execution failed: {e}")
     if hasattr(solution.executive, "get_errors"):
       print(f"Executive errors: {solution.executive.get_errors()}")
-  except Exception as e:
+  except Exception as e:  # pylint: disable=broad-exception-caught
     print(f"\n[!] Error during motion execution: {e}")
 
 
@@ -255,12 +217,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     default="tool_frame",
     help="Tool frame name on tool_object_name (default: 'tool_frame').",
   )
-  parser.add_argument(
-    "--allow_tool_z_rotation",
-    action="store_true",
-    default=False,
-    help="Allow free rotation around tool Z approach axis using PositionEquality + RotationCone.",
-  )
   return parser.parse_args(argv)
 
 
@@ -277,7 +233,6 @@ def main(argv: Sequence[str] | None = None) -> None:
       target_frame_name=args.frame,
       target_object_name=args.parent_object,
       motion_type=args.motion_type,
-      allow_tool_z_rotation=args.allow_tool_z_rotation,
       arm_part_name=args.arm_part_name,
       tool_object_name=args.tool_object_name,
       tool_frame_name=args.tool_frame_name,
@@ -301,7 +256,6 @@ def main(argv: Sequence[str] | None = None) -> None:
       target_frame_name=frame_name,
       target_object_name=parent_obj,
       motion_type=args.motion_type,
-      allow_tool_z_rotation=args.allow_tool_z_rotation,
       arm_part_name=args.arm_part_name,
       tool_object_name=args.tool_object_name,
       tool_frame_name=args.tool_frame_name,

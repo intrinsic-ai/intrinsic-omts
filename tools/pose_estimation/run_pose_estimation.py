@@ -95,6 +95,11 @@ _TIMEOUT_SEC = flags.DEFINE_integer(
   None,
   help="Optional inference timeout in seconds.",
 )
+_CAPTURE_ONLY = flags.DEFINE_bool(
+  "capture_only",
+  False,
+  help="Only execute capture_images skill and inspect image buffers.",
+)
 
 FLAGS = flags.FLAGS
 
@@ -331,10 +336,31 @@ def run_pose_estimation_pipeline(
   solution.executive.run(skills_to_run)
   print("Pipeline execution finished successfully.")
 
-  result: estimate_pose_multi_view_pb2.EstimatePoseMultiViewResult = (
-    solution.executive.get_value(estimate_pose_skill.result)
-  )
-  return result
+  if hasattr(solution.executive, "operation") and solution.executive.operation:
+    try:
+      keys = solution.executive.operation.blackboard.list_keys()
+      print(f"Available blackboard keys in operation: {keys}")
+    except Exception as e:
+      print(f"Error listing blackboard keys: {e}")
+
+  try:
+    result: estimate_pose_multi_view_pb2.EstimatePoseMultiViewResult = (
+      solution.executive.get_value(estimate_pose_skill.result)
+    )
+    return result
+  except Exception as e:
+    print(f"Direct executive.get_value failed: {e}")
+    if (
+      hasattr(solution.executive, "operation") and solution.executive.operation
+    ):
+      op_bb = solution.executive.operation.blackboard
+      for k in op_bb.list_keys():
+        if "estimate_pose" in k.key:
+          print(f"Found candidate estimate_pose key: {k}")
+          val = op_bb.get_value(k.key, scope=k.scope)
+          print(f"Retrieved candidate value: {type(val)}")
+          return val
+    raise
 
 
 def display_results(
@@ -429,6 +455,28 @@ def main(argv: Sequence[str]) -> None:
     )
   except ValueError as e:
     print(f"Failed to create pose estimation pipeline: {e}")
+    return
+
+  if _CAPTURE_ONLY.value:
+    print("Executing capture_images only on executive...")
+    try:
+      solution.executive.run(capture_skill)
+      print("capture_images executed successfully.")
+    except execution.ExecutionFailedError as e:
+      print(f"capture_images execution failed: {e}")
+      if hasattr(solution.executive, "get_errors"):
+        print(solution.executive.get_errors())
+      return
+
+    cap_res = solution.executive.get_value(capture_skill.result)
+    print("\n=== Capture Images Result Inspection ===")
+    print(f"Result type: {type(cap_res)}")
+    print(f"cap_res fields: {[f.name for f, _ in cap_res.ListFields()]}")
+    if hasattr(cap_res, "capture_data"):
+      cd = cap_res.capture_data
+      print(f"Capture data type: {type(cd)}")
+      print(f"Capture data fields: {[f.name for f, _ in cd.ListFields()]}")
+      print(f"Capture data proto string:\n{cd}")
     return
 
   try:

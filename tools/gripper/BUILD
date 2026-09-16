@@ -21,6 +21,7 @@ py_library(
     srcs = ["control_gripper.py"],
     deps = [
         "//src/hardware:gripper",
+        "//tools/common:cli",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],

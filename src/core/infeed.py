@@ -21,15 +21,16 @@ from src.core.tray import Tray, TraySlot
 from src.core.types import InfeedMode
 from src.core.workpiece import Workpiece
 
+__all__ = [
+  "GridInfeedStrategy",
+  "InfeedMode",
+  "InfeedStrategy",
+  "PerceptionInfeedStrategy",
+]
+
 
 class InfeedStrategy(abc.ABC):
   """Abstract base class defining how parts are localized and acquired."""
-
-  @property
-  @abc.abstractmethod
-  def mode(self) -> InfeedMode:
-    """Returns the infeed operational mode."""
-    raise NotImplementedError
 
   @abc.abstractmethod
   def get_target_part(self) -> Workpiece | None:
@@ -39,6 +40,8 @@ class InfeedStrategy(abc.ABC):
 
 class PerceptionInfeedStrategy(InfeedStrategy):
   """Vision-guided infeed strategy for randomly placed parts."""
+
+  mode: InfeedMode = InfeedMode.PERCEPTION
 
   def __init__(
     self,
@@ -50,6 +53,7 @@ class PerceptionInfeedStrategy(InfeedStrategy):
     refinement_iters: int = 3,
     view_frame_name: str = "view",
   ) -> None:
+    self.mode = InfeedMode.PERCEPTION
     self.camera_name = camera_name
     self.pose_estimator_id = pose_estimator_id
     self.scene_object_id = scene_object_id
@@ -59,25 +63,24 @@ class PerceptionInfeedStrategy(InfeedStrategy):
     self.view_frame_name = view_frame_name
     self._current_part_count = 0
 
-  @property
-  def mode(self) -> InfeedMode:
-    return InfeedMode.PERCEPTION
-
   def get_target_part(self) -> Workpiece | None:
     """Instantiates a new workpiece representation for vision acquisition."""
     self._current_part_count += 1
-    return Workpiece(id=f"workpiece_{self._current_part_count - 1}")
+    short_name = self.scene_object_id.split(".")[-1]
+    return Workpiece(
+      asset_id=self.scene_object_id,
+      object_name=short_name,
+    )
 
 
 class GridInfeedStrategy(InfeedStrategy):
   """Deterministic tray grid infeed strategy for blind acquisition."""
 
-  def __init__(self, tray: Tray) -> None:
-    self.tray = tray
+  mode: InfeedMode = InfeedMode.GRID
 
-  @property
-  def mode(self) -> InfeedMode:
-    return InfeedMode.GRID
+  def __init__(self, tray: Tray) -> None:
+    self.mode = InfeedMode.GRID
+    self.tray = tray
 
   def get_target_part(self) -> Workpiece | None:
     """Retrieves the next occupied slot's workpiece from the tray."""

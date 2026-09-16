@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""CLI utility to load and apply ObjectWorldUpdates (.pbtxt) live to a running solution."""
+"""CLI utility to load and apply ObjectWorldUpdates (.pbtxt) live."""
 
 import argparse
+import logging
 import os
 from collections.abc import Sequence
 from typing import Any
@@ -26,17 +27,22 @@ from intrinsic.world.proto import (
 )
 
 DEFAULT_UPDATE_FILES = [
-  "configs/ur_module.attachments.updates.pbtxt",
-  "configs/lab_bb_01_orbbec_gemini.updates.pbtxt",
-  "configs/scene.updates.pbtxt",
-  "configs/align_robot.updates.pbtxt",
+  "configs/common/ur_module.attachments.updates.pbtxt",
+  "configs/omts/scene.updates.pbtxt",
+  "configs/omts/align_robot.updates.pbtxt",
+  "configs/omts/cnc_enclosure.updates.pbtxt",
+  "configs/omts/schunk.updates.pbtxt",
+  "configs/omts/camera_mount.updates.pbtxt",
+  "configs/omts/orbbec_gemini.updates.pbtxt",
 ]
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   """Parses command line arguments."""
   parser = argparse.ArgumentParser(
-    description="Apply ObjectWorldUpdates (.pbtxt) live to a running solution deployment."
+    description=(
+      "Apply ObjectWorldUpdates (.pbtxt) live to a running solution deployment."
+    )
   )
   parser.add_argument(
     "--address",
@@ -64,13 +70,26 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def find_file(filepath: str) -> str:
   """Resolves file path in direct directory, workspace, or runfiles."""
+  if os.path.isabs(filepath) and os.path.exists(filepath):
+    return filepath
+
+  # Check BUILD_WORKING_DIRECTORY first if invoked via 'bazel run'
+  working_dir = os.environ.get("BUILD_WORKING_DIRECTORY")
+  if working_dir:
+    w_path = os.path.join(working_dir, filepath)
+    if os.path.exists(w_path):
+      return w_path
+
+  # Check BUILD_WORKSPACE_DIRECTORY
+  workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")
+  if workspace_dir:
+    ws_path = os.path.join(workspace_dir, filepath)
+    if os.path.exists(ws_path):
+      return ws_path
+
   if os.path.exists(filepath):
     return filepath
-  ws_path = os.path.join(
-    "/usr/local/google/home/mschweiger/workspaces/omts", filepath
-  )
-  if os.path.exists(ws_path):
-    return ws_path
+
   runfiles_dir = os.environ.get("PYTHON_RUNFILES") or os.environ.get(
     "TEST_SRCDIR"
   )
@@ -78,13 +97,17 @@ def find_file(filepath: str) -> str:
     r_path = os.path.join(runfiles_dir, "_main", filepath)
     if os.path.exists(r_path):
       return r_path
+    r_path2 = os.path.join(runfiles_dir, filepath)
+    if os.path.exists(r_path2):
+      return r_path2
+
   return filepath
 
 
 def adapt_updates_for_live_world(
   world: Any, updates: object_world_updates_pb2.ObjectWorldUpdates
 ) -> object_world_updates_pb2.ObjectWorldUpdates:
-  """Converts create_frame requests into update_transform requests if frames already exist."""
+  """Converts create_frame into update_transform if frames exist."""
   adapted = object_world_updates_pb2.ObjectWorldUpdates()
 
   for update in updates.updates:
@@ -100,13 +123,10 @@ def adapt_updates_for_live_world(
       parent_obj = getattr(world, parent_name, None)
       frame_exists = False
       if parent_obj is not None:
-        if (
-          hasattr(parent_obj, "list_frames")
-          and frame_name in parent_obj.list_frames()
-        ):
-          frame_exists = True
-        elif hasattr(parent_obj, frame_name):
-          frame_exists = True
+        if hasattr(parent_obj, "list_frames"):
+          frame_exists = frame_name in parent_obj.list_frames()
+        else:
+          frame_exists = hasattr(parent_obj, frame_name)
 
       if frame_exists:
         # Frame already exists; convert create_frame to update_transform
@@ -121,6 +141,46 @@ def adapt_updates_for_live_world(
       else:
         # New frame; keep create_frame
         adapted.updates.add().CopyFrom(update)
+    elif update.HasField("update_transform"):
+      ut = update.update_transform
+      target_obj_name = None
+      if (
+        ut.node_to_update.HasField("by_name")
+        and ut.node_to_update.by_name.HasField("object")
+        and ut.node_to_update.by_name.object.object_name
+      ):
+        target_obj_name = ut.node_to_update.by_name.object.object_name
+      elif (
+        ut.node_b.HasField("by_name")
+        and ut.node_b.by_name.HasField("object")
+        and ut.node_b.by_name.object.object_name
+      ):
+        target_obj_name = ut.node_b.by_name.object.object_name
+
+      if target_obj_name is not None and target_obj_name != "root":
+        obj_exists = False
+        if hasattr(world, "list_objects"):
+          try:
+            objs = world.list_objects()
+            existing = {
+              o
+              if isinstance(o, str)
+              else (getattr(o, "name", None) or getattr(o, "id", None))
+              for o in objs
+            }
+            obj_exists = target_obj_name in existing
+          except Exception:  # pylint: disable=broad-exception-caught
+            obj_exists = hasattr(world, target_obj_name)
+        else:
+          obj_exists = hasattr(world, target_obj_name)
+
+        if not obj_exists:
+          logging.info(
+            "Skipping update_transform for missing object: %s", target_obj_name
+          )
+          continue
+
+      adapted.updates.add().CopyFrom(update)
     else:
       adapted.updates.add().CopyFrom(update)
 
@@ -148,7 +208,8 @@ def apply_pbtxt_file(world: Any, filepath: str) -> None:
   )
 
   print(
-    f"    Applying {len(adapted_updates.updates)} update rule(s) to live world..."
+    f"    Applying {len(adapted_updates.updates)} update rule(s) to live"
+    " world..."
   )
   world.batch_update(adapted_updates)
   print(f"[✓] Successfully applied: {filepath}")
@@ -171,12 +232,14 @@ def main(argv: Sequence[str] | None = None) -> None:
       if hasattr(world.root, "list_frames"):
         for f in world.root.list_frames():
           print(
-            f"  - {f}: {world.get_transform(world.root, getattr(world.root, f))}"
+            f"  - {f}:"
+            f" {world.get_transform(world.root, getattr(world.root, f))}"
           )
 
     if hasattr(world, "ur_module") and hasattr(world.ur_module, "flange"):
       print(
-        f"Flange in root: {world.get_transform(world.root, world.ur_module.flange)}"
+        "Flange in root:"
+        f" {world.get_transform(world.root, world.ur_module.flange)}"
       )
     if hasattr(world, "gripper") and hasattr(world.gripper, "tool_frame"):
       print(

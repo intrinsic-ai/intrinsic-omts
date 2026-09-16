@@ -14,14 +14,18 @@
 
 """CNC machine unloading and extraction subtree."""
 
+from typing import Any
+
 from intrinsic.solutions import behavior_tree as bt
 
 from src.behaviors.motions import (
-  create_compliant_touchdown_task,
+  Touchdown,
+  create_clear_motion_planner_cache_task,
   create_move_to_frame_task,
-  create_relative_retract_task,
+  create_seated_approach_tasks,
 )
 from src.core.workpiece import Workpiece
+from src.core.world import World
 from src.hardware.gripper import GripperInterface
 from src.hardware.machine import CncMachineInterface
 from src.hardware.robot import RobotInterface
@@ -34,78 +38,111 @@ def build_unload_machine_subtree(
   workpiece: Workpiece,
   parent_object: str = "root",
   machine_approach_frame_name: str = "machine_approach",
-  preplace_vise_frame_name: str = "pre_place_vise",
-  place_vise_frame_name: str = "place_vise",
+  vise_approach_frame_name: str = "vise_pre_place",
+  vise_place_frame_name: str = "vise_place",
+  touchdown: Touchdown | None = None,
+  grasp_offset_z: float = 0.0,
+  solution: Any | None = None,
+  name: str = "5. Unload Machine Subtree",
+  clear_motion_planner_cache: bool = False,
+  enable_object_reparenting: bool = False,
+  **kwargs: Any,
 ) -> bt.Node:
-  """Builds the Behavior Tree subtree for unloading a finished part from the CNC.
-
-  Steps (10-12 in OMTS pipeline):
-  10. Open CNC door (DIO / Mock).
-  11. Open CNC vise (DIO / Mock).
-  12a. Move robot arm to machine entry approach position (ANY Cartesian motion).
-  12b. Move robot arm to vise grasp approach position (ANY Cartesian motion).
-  12c. Compliantly align with part via move_to_contact (+Z compliant touchdown).
-  12d. Linear retract 3 cm along tool -Z to align finger pads with part before closing.
-  12e. Close gripper to grasp part (Mock).
-  12f. Retract arm to vise approach position (LINEAR Cartesian motion).
-  12g. Retract arm to machine entry approach position (LINEAR Cartesian motion).
-
-  Args:
-      robot: Robot controller adapter.
-      gripper: End-effector gripper adapter.
-      machine: CNC machine controller adapter.
-      workpiece: Workpiece instance being unloaded.
-      parent_object: Name of parent object for target frames (default: 'root').
-      machine_approach_frame_name: Name of machine entry approach frame (default: 'machine_approach').
-      preplace_vise_frame_name: Name of pre-place vise approach frame (default: 'pre_place_vise').
-      place_vise_frame_name: Name of place vise frame (default: 'place_vise').
-
-  Returns:
-      Behavior tree sequence node executing machine unloading.
-  """
+  """Builds Behavior Tree subtree for unloading a machined part from the CNC."""
   tasks: list[bt.Node] = [
-    machine.build_open_door_task(name="Step 10: Open CNC Door"),
-    machine.build_open_vise_task(name="Step 11: Open CNC Vise"),
     create_move_to_frame_task(
       robot=robot,
       frame_name=machine_approach_frame_name,
       parent_object=parent_object,
       motion_type="ANY",
-      task_name=f"Step 12a: Approach Machine Entry ({parent_object}/{machine_approach_frame_name})",
+      solution=solution,
+      task_name=(
+        f"Step 5a: Move to Machine Approach ({parent_object}/{machine_approach_frame_name})"
+      ),
     ),
     create_move_to_frame_task(
       robot=robot,
-      frame_name=preplace_vise_frame_name,
-      parent_object=parent_object,
-      motion_type="ANY",
-      task_name=f"Step 12b: Approach Machined Part ({parent_object}/{preplace_vise_frame_name})",
-    ),
-    create_compliant_touchdown_task(
-      robot=robot,
-      direction=(0.0, 0.0, 1.0),
-      contact_force_newtons=15.0,
-      task_name="Step 12c: Compliant Touchdown to Machined Part (+Z Tool)",
-    ),
-    create_relative_retract_task(
-      robot=robot,
-      distance_meters=0.03,
-      task_name="Step 12d: Linear Retract (3 cm, -Z Tool)",
-    ),
-    gripper.build_close_task(name="Step 12e: Grasp Machined Part"),
-    create_move_to_frame_task(
-      robot=robot,
-      frame_name=preplace_vise_frame_name,
+      frame_name=vise_approach_frame_name,
       parent_object=parent_object,
       motion_type="LINEAR",
-      task_name=f"Step 12f: Retract Machined Part from Vise ({parent_object}/{preplace_vise_frame_name})",
-    ),
-    create_move_to_frame_task(
-      robot=robot,
-      frame_name=machine_approach_frame_name,
-      parent_object=parent_object,
-      motion_type="LINEAR",
-      task_name=f"Step 12g: Retract Machined Part from Machine ({parent_object}/{machine_approach_frame_name})",
+      solution=solution,
+      task_name=(
+        f"Step 5b: Move to Vise Approach ({parent_object}/{vise_approach_frame_name})"
+      ),
     ),
   ]
 
-  return bt.Sequence(name="4. Unload Machine Subtree", children=tasks)
+  if touchdown is None:
+    grasp_offset_z = kwargs.get("grasp_offset_z", grasp_offset_z)
+    touchdown = Touchdown(
+      force_n=float(kwargs.get("contact_force_newtons", Touchdown.force_n)),
+      standoff_m=float(kwargs.get("standoff_distance_m", Touchdown.standoff_m)),
+      timeout_s=float(
+        kwargs.get("contact_timeout_seconds", Touchdown.timeout_s)
+      ),
+      retract_after_m=grasp_offset_z,
+    )
+
+  tasks.extend(
+    create_seated_approach_tasks(
+      robot=robot,
+      frame_name=vise_place_frame_name,
+      parent_object=parent_object,
+      touchdown=touchdown,
+      label="Step 5c",
+      solution=solution,
+    )
+  )
+
+  tasks.append(gripper.build_close_task(name="Step 5e: Grasp Machined Part"))
+
+  if enable_object_reparenting:
+    world = kwargs.get("world") or getattr(solution, "world", None)
+    if not hasattr(world, "build_reparent_task"):
+      world = World(world, solution=solution)
+    tasks.append(
+      world.build_reparent_task(
+        target=workpiece.scene_object_name,
+        new_parent="gripper",
+        name="Step 5f: Attach Part to Gripper in Digital Twin",
+      )
+    )
+
+  tasks.append(
+    machine.build_open_vise_task(name="Step 5g: Open CNC Vise (Unclamp Part)")
+  )
+
+  if clear_motion_planner_cache:
+    tasks.append(
+      create_clear_motion_planner_cache_task(
+        solution=solution,
+        task_name="Step 5h: Clear Motion Planner Cache",
+      )
+    )
+
+  tasks.extend(
+    [
+      create_move_to_frame_task(
+        robot=robot,
+        frame_name=vise_approach_frame_name,
+        parent_object=parent_object,
+        motion_type="LINEAR",
+        solution=solution,
+        task_name=(
+          f"Step 5i: Linear Retract to Vise Approach ({parent_object}/{vise_approach_frame_name})"
+        ),
+      ),
+      create_move_to_frame_task(
+        robot=robot,
+        frame_name=machine_approach_frame_name,
+        parent_object=parent_object,
+        motion_type="LINEAR",
+        solution=solution,
+        task_name=(
+          f"Step 5j: Linear Retract to Machine Approach ({parent_object}/{machine_approach_frame_name})"
+        ),
+      ),
+    ]
+  )
+
+  return bt.Sequence(name=name, children=tasks)

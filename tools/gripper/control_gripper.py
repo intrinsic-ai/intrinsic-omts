@@ -21,12 +21,12 @@ from typing import Any
 
 from intrinsic.solutions import deployments, execution
 
-from src.hardware.gripper import (
-  DioGripper,
-  GripperInterface,
-  MockGripper,
-  RobotiqGripper,
-  SideloadedGripperCmd,
+from src.hardware.gripper import GripperConfig, GripperInterface, MockGripper
+from tools.common.cli import (
+  add_dio_gripper_arguments,
+)
+from tools.common.cli import (
+  prompt_menu as common_prompt_menu,
 )
 
 VALID_ACTIONS: tuple[str, ...] = ("open", "close")
@@ -48,45 +48,22 @@ def create_gripper(
 
   Returns:
     An instance of GripperInterface.
-
-  Raises:
-    ValueError: If gripper_type is unsupported.
   """
-  if (
-    getattr(args, "mock", False)
-    or getattr(args, "gripper_type", None) == "mock"
-  ):
-    return MockGripper()
-
-  gripper_type = getattr(args, "gripper_type", None)
-  if gripper_type == "dio":
-    return DioGripper(
-      solution=solution,
-      open_pin=args.open_pin,
-      close_pin=args.close_pin,
-      output_block_name=args.output_block_name,
-      device_name=args.device_name,
-    )
-  elif gripper_type == "robotiq":
-    return RobotiqGripper(
-      solution=solution,
-      joint_name=args.joint_name,
-      open_position=args.open_position,
-      close_position=args.close_position,
-      action_name=args.action_name,
-    )
-  elif gripper_type == "sideloaded":
-    kwargs: dict[str, Any] = {
-      "solution": solution,
-      "joint_name": args.joint_name,
-      "open_position": args.open_position,
-      "close_position": args.close_position,
-    }
-    if getattr(args, "action_name", None) is not None:
-      kwargs["action_name"] = args.action_name
-    return SideloadedGripperCmd(**kwargs)
-  else:
-    raise ValueError(f"Unsupported gripper type: {gripper_type}")
+  cfg = GripperConfig(
+    hardware_type=getattr(args, "gripper_type", "robotiq"),
+    action_name=getattr(args, "action_name", None),
+    joint_name=getattr(args, "joint_name", "robotiq_hande_left_finger_joint"),
+    open_position=getattr(args, "open_position", 0.024),
+    close_position=getattr(args, "close_position", 0.01),
+    dio_open_pin=getattr(args, "open_pin", 0),
+    dio_close_pin=getattr(args, "close_pin", 1),
+    output_block_name=getattr(args, "output_block_name", "standard_out"),
+  )
+  return GripperInterface.from_config(
+    solution=solution,
+    config=cfg,
+    mock_hardware=getattr(args, "mock", False),
+  )
 
 
 def execute_action(
@@ -143,26 +120,7 @@ def prompt_menu() -> str | None:
   Returns:
     Action key string if a valid choice is made, or None to quit.
   """
-  print("\nGripper Control Menu:")
-  for key, label, _ in MENU_OPTIONS:
-    print(f"  [{key}] {label}")
-  print("  [q] Quit")
-
-  while True:
-    try:
-      choice = input("\nEnter choice: ").strip().lower()
-    except (EOFError, KeyboardInterrupt):
-      print("\nExiting.")
-      return None
-
-    if choice in ("q", "quit", "exit"):
-      return None
-
-    for key, _, action in MENU_OPTIONS:
-      if choice == key:
-        return action
-
-    print(f"Invalid choice: {choice}. Enter 1-{len(MENU_OPTIONS)} or 'q'.")
+  return common_prompt_menu("Gripper Control Menu", MENU_OPTIONS)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -193,7 +151,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     "--gripper_type",
     type=str,
     default="robotiq",
-    help="Gripper type: 'robotiq', 'dio', 'sideloaded', or 'mock'.",
+    help="Gripper type: 'robotiq', 'dio', or 'mock'.",
   )
   parser.add_argument(
     "--joint_name",
@@ -206,14 +164,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   parser.add_argument(
     "--open_position",
     type=float,
-    default=0.025,
-    help="Joint position for open state in meters (default: 0.025).",
+    default=0.024,
+    help="Joint position for open state in meters (default: 0.024).",
   )
   parser.add_argument(
     "--close_position",
     type=float,
-    default=0.0,
-    help="Joint position for close state in meters (default: 0.0).",
+    default=0.01,
+    help="Joint position for close state in meters (default: 0.01).",
   )
   parser.add_argument(
     "--action_name",
@@ -221,30 +179,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     default=None,
     help="ROS action controller name for gripper_cmd_skill.",
   )
-  parser.add_argument(
-    "--open_pin",
-    type=int,
-    default=0,
-    help="DIO pin index to command gripper open (default: 0).",
-  )
-  parser.add_argument(
-    "--close_pin",
-    type=int,
-    default=1,
-    help="DIO pin index to command gripper close (default: 1).",
-  )
-  parser.add_argument(
-    "--output_block_name",
-    type=str,
-    default="standard_out",
-    help="DIO output block name (default: standard_out).",
-  )
-  parser.add_argument(
-    "--device_name",
-    type=str,
-    default=None,
-    help="Optional device name for DIO skills.",
-  )
+  add_dio_gripper_arguments(parser)
   return parser.parse_args(argv)
 
 

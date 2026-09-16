@@ -39,9 +39,16 @@ from intrinsic.skills.proto import skills_pb2
 from intrinsic.solutions import deployments
 from intrinsic.util.grpc import connection
 
+try:
+  from intrinsic.solutions import perception
+except ImportError:
+  perception = None
+
 # Command line input flags
 _ADDRESS = flags.DEFINE_string(
-  "address", "localhost:17080", "Solution address to connect to."
+  "address",
+  "localhost:17080",
+  "gRPC address of the running SBL solution deployment.",
 )
 _ROBOT = flags.DEFINE_string(
   "robot", "icon", "Robot / controller resource name in the workcell."
@@ -49,10 +56,18 @@ _ROBOT = flags.DEFINE_string(
 _CAMERA = flags.DEFINE_string(
   "camera", "orbbec_camera", "Camera name in the workcell."
 )
+_ROBOT_MODULE = flags.DEFINE_string(
+  "robot_module",
+  "ur_module",
+  "Robot module object name in ObjectWorld.",
+)
 _CALIBRATION_OBJECT = flags.DEFINE_string(
   "calibration_object",
   "charuco_9x14_20mm_15mm_dict_5x5",
-  "Calibration pattern / object name.",
+  "Calibration pattern / object name (e.g."
+  " charuco_9x14_20mm_15mm_dict_5x5,"
+  " charuco_22x30_25mm_18mm_dict_5x5, or"
+  " charuco_11x15_35mm_26mm_dict_4x4).",
 )
 _MOVING_CAMERA = flags.DEFINE_bool(
   "moving_camera",
@@ -265,7 +280,7 @@ def run_manual_waypoint_loop(
   ndof: int | None,
   part_name: str | None,
   icon_client,
-  camera: object | None = None,
+  camera: Any | None = None,
   streamer: CameraStreamer | None = None,
 ) -> None:
   """Runs the interactive loop to record waypoints or jog the robot."""
@@ -507,9 +522,17 @@ def main(argv) -> None:
       session_context = None
 
       try:
-        print(f"\nConnecting to ICON on localhost:{_ICON_PORT.value}...")
+        icon_address = _ADDRESS.value
+        if flags.FLAGS["icon_port"].present:
+          host = (
+            _ADDRESS.value.split(":")[0]
+            if ":" in _ADDRESS.value
+            else "localhost"
+          )
+          icon_address = f"{host}:{_ICON_PORT.value}"
+        print(f"\nConnecting to ICON on {icon_address}...")
         icon_client = icon_api.Client.connect_with_params(
-          connection.ConnectionParams(f"localhost:{_ICON_PORT.value}", "icon")
+          connection.ConnectionParams(icon_address, "icon")
         )
 
         parts = icon_client.list_parts()
@@ -605,11 +628,28 @@ def main(argv) -> None:
         rotation_randomization_roll_angle_degrees=float(_RAND_ROLL_ANGLE.value),
       )
 
+      arm_part_ref = world.get_object(_ROBOT_MODULE.value)
+      if not arm_part_ref:
+        try:
+          arm_part_ref = getattr(world, _ROBOT_MODULE.value)
+        except AttributeError:
+          raise ValueError(
+            f"Robot module '{_ROBOT_MODULE.value}' not found in the world"
+            " model."
+          )
+
+      try:
+        motion_planner_service = solution.resources["motion_planner_service"]
+      except KeyError:
+        raise ValueError(
+          "motion_planner_service not found in solution resources."
+        )
+
       sample_calibration_poses = sample_calibration_poses_skill(
         calibration_type=calibration_type,
         calibration_object=calibration_object_ref,
-        camera=camera_ref,
-        robot=robot_ref,
+        arm_part=arm_part_ref,
+        motion_planner_service=motion_planner_service,
         randomized_box_params=rbp,
       )
 

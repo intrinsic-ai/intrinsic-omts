@@ -19,12 +19,12 @@ from unittest import mock
 from absl.testing import absltest
 from intrinsic.solutions import execution
 
+from src.core.types import GripperState
 from src.hardware.gripper import (
   DioGripper,
   GripperInterface,
   MockGripper,
   RobotiqGripper,
-  SideloadedGripperCmd,
 )
 from tools.gripper.control_gripper import (
   create_gripper,
@@ -46,13 +46,12 @@ class ControlGripperTest(absltest.TestCase):
     self.assertFalse(args.mock)
     self.assertEqual(args.gripper_type, "robotiq")
     self.assertEqual(args.joint_name, "robotiq_hande_left_finger_joint")
-    self.assertEqual(args.open_position, 0.025)
-    self.assertEqual(args.close_position, 0.0)
+    self.assertEqual(args.open_position, 0.024)
+    self.assertEqual(args.close_position, 0.01)
     self.assertIsNone(args.action_name)
     self.assertEqual(args.open_pin, 0)
     self.assertEqual(args.close_pin, 1)
     self.assertEqual(args.output_block_name, "standard_out")
-    self.assertIsNone(args.device_name)
 
   def test_parse_args_custom_values(self):
     """Tests parsing custom command-line argument values."""
@@ -79,8 +78,6 @@ class ControlGripperTest(absltest.TestCase):
         "6",
         "--output_block_name",
         "custom_out",
-        "--device_name",
-        "custom_ur",
       ]
     )
     self.assertEqual(args.address, "10.0.0.1:17080")
@@ -94,7 +91,6 @@ class ControlGripperTest(absltest.TestCase):
     self.assertEqual(args.open_pin, 5)
     self.assertEqual(args.close_pin, 6)
     self.assertEqual(args.output_block_name, "custom_out")
-    self.assertEqual(args.device_name, "custom_ur")
 
   def test_create_gripper_mock_flag(self):
     """Tests creating mock gripper when mock flag is True."""
@@ -102,9 +98,9 @@ class ControlGripperTest(absltest.TestCase):
     gripper = create_gripper(args, solution=None)
     self.assertIsInstance(gripper, MockGripper)
 
-  def test_create_gripper_mock_type(self):
-    """Tests creating mock gripper when gripper_type is mock."""
-    args = parse_args(["--gripper_type", "mock"])
+  def test_create_gripper_mock_flag_ignores_type(self):
+    """Tests creating mock gripper when mock flag is True regardless of type."""
+    args = parse_args(["--mock", "--gripper_type", "dio"])
     gripper = create_gripper(args, solution=None)
     self.assertIsInstance(gripper, MockGripper)
 
@@ -120,8 +116,6 @@ class ControlGripperTest(absltest.TestCase):
         "3",
         "--output_block_name",
         "test_out",
-        "--device_name",
-        "test_dev",
       ]
     )
     mock_solution = mock.MagicMock()
@@ -130,7 +124,6 @@ class ControlGripperTest(absltest.TestCase):
     self.assertEqual(gripper._open_pin, 2)
     self.assertEqual(gripper._close_pin, 3)
     self.assertEqual(gripper._output_block_name, "test_out")
-    self.assertEqual(gripper._device_name, "test_dev")
 
   def test_create_gripper_robotiq(self):
     """Tests creating RobotiqGripper with specified options."""
@@ -156,30 +149,6 @@ class ControlGripperTest(absltest.TestCase):
     self.assertEqual(gripper._close_position, 0.04)
     self.assertEqual(gripper._action_name, "/robotiq/cmd")
 
-  def test_create_gripper_sideloaded(self):
-    """Tests creating SideloadedGripperCmd with specified options."""
-    args = parse_args(
-      [
-        "--gripper_type",
-        "sideloaded",
-        "--joint_name",
-        "sideloaded_joint",
-        "--open_position",
-        "0.02",
-        "--close_position",
-        "0.00",
-        "--action_name",
-        "/sideloaded/gripper_cmd",
-      ]
-    )
-    mock_solution = mock.MagicMock()
-    gripper = create_gripper(args, solution=mock_solution)
-    self.assertIsInstance(gripper, SideloadedGripperCmd)
-    self.assertEqual(gripper._joint_name, "sideloaded_joint")
-    self.assertEqual(gripper.open_position, 0.02)
-    self.assertEqual(gripper.close_position, 0.00)
-    self.assertEqual(gripper._action_name, "/sideloaded/gripper_cmd")
-
   def test_create_gripper_unsupported_type(self):
     """Tests create_gripper raises ValueError for unsupported gripper type."""
     args = mock.MagicMock()
@@ -191,19 +160,17 @@ class ControlGripperTest(absltest.TestCase):
   def test_execute_action_open_mock(self):
     """Tests executing open on a mock gripper."""
     gripper = MockGripper()
-    gripper.state = "closed"
     success = execute_action(gripper, "open")
     self.assertTrue(success)
-    self.assertEqual(gripper.state, "open")
+    self.assertEqual(gripper.commanded_state, GripperState.OPEN)
     self.assertEqual(gripper.command_log, ["open"])
 
   def test_execute_action_close_mock(self):
     """Tests executing close on a mock gripper."""
     gripper = MockGripper()
-    gripper.state = "open"
     success = execute_action(gripper, "close")
     self.assertTrue(success)
-    self.assertEqual(gripper.state, "closed")
+    self.assertEqual(gripper.commanded_state, GripperState.CLOSED)
     self.assertEqual(gripper.command_log, ["close"])
 
   def test_execute_action_unknown_action(self):
@@ -329,7 +296,7 @@ class ControlGripperTest(absltest.TestCase):
     self.assertEqual(cm.exception.code, 1)
 
   @mock.patch("tools.gripper.control_gripper.execute_action", return_value=True)
-  @mock.patch("tools.gripper.control_gripper.RobotiqGripper")
+  @mock.patch("src.hardware.gripper.RobotiqGripper")
   @mock.patch("tools.gripper.control_gripper.deployments.connect")
   def test_main_live_connection_and_action(
     self, mock_connect, mock_robotiq_cls, mock_execute

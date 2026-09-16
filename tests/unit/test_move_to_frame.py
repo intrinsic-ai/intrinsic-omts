@@ -56,7 +56,9 @@ class MoveToFrameTest(absltest.TestCase):
 
     frames = list_available_frames(mock_world)
     self.assertIn(("root", "view"), frames)
-    self.assertIn(("root", "grasp"), frames)
+    self.assertIn(("root", "infeed_grasp"), frames)
+    self.assertIn(("root", "infeed_pre_grasp"), frames)
+    self.assertIn(("root", "transit"), frames)
     self.assertIn(("root", "machine_approach"), frames)
 
   def test_prompt_for_frame_valid_selection(self):
@@ -92,6 +94,8 @@ class MoveToFrameTest(absltest.TestCase):
     )
 
     mock_solution.executive.run.assert_called_once()
+    (task,), _ = mock_solution.executive.run.call_args
+    self.assertEqual(task.name, "Move gripper.tool_frame to root.view (ANY)")
 
   def test_move_robot_to_frame_execution_error_handled(self):
     mock_solution = mock.MagicMock()
@@ -102,13 +106,16 @@ class MoveToFrameTest(absltest.TestCase):
       "Trajectory planning failed"
     )
 
-    # Should handle ExecutionFailedError without crashing
+    # A failed motion must not propagate out of the jogging tool.
     move_robot_to_frame(
       solution=mock_solution,
       target_frame_name="invalid_frame",
       target_object_name="root",
       motion_type="LINEAR",
     )
+
+    mock_solution.executive.run.assert_called_once()
+    mock_solution.executive.get_errors.assert_called_once()
 
   def test_parse_args_defaults(self):
     args = parse_args([])

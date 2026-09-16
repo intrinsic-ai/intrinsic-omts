@@ -7,6 +7,7 @@ py_library(
     srcs = ["robot.py"],
     deps = [
         "//src/core:types",
+        "//src/utils:math_utils",
         "@intrinsic_apis//intrinsic/math/proto:point_py_pb2",
         "@intrinsic_apis//intrinsic/math/proto:pose_py_pb2",
         "@intrinsic_apis//intrinsic/math/proto:quaternion_py_pb2",
@@ -22,6 +23,7 @@ py_library(
     name = "gripper",
     srcs = ["gripper.py"],
     deps = [
+        "//src/core:types",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
@@ -30,6 +32,9 @@ py_library(
     name = "machine",
     srcs = ["machine.py"],
     deps = [
+        ":robot",
+        "//src/core:types",
+        "//src/core:world",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
@@ -41,13 +46,8 @@ py_library(
         "//src/core:types",
         "//src/utils:dynamic_frame_calculator",
         "//src/utils:script_utils",
-        "@com_google_absl_py//absl/logging",
-        "@intrinsic_apis//intrinsic/assets/proto:id_py_pb2",
         "@intrinsic_apis//intrinsic/perception/proto/v1:pose_estimator_id_py_pb2",
-        "@intrinsic_apis//intrinsic/world/proto:object_world_refs_py_pb2",
-        "@ioc//incode/intrinsic_sdk/intrinsic/math/python:proto_conversion",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:cel",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:proto_building",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:provided",

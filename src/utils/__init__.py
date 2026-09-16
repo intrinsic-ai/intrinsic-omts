@@ -15,15 +15,27 @@
 """Utility functions for OMTS."""
 
 from src.utils.math_utils import (
-  compute_euclidean_distance,
-  interpolate_poses,
+  compute_top_down_grasp_quaternion,
+  create_transform_node_ref,
+  describe_motion_types,
   normalize_angle,
   normalize_joint_angles,
+  normalize_motion_types,
+)
+from src.utils.tree_diagnostics import (
+  FailedNodeDiagnostic,
+  extract_failed_nodes,
+  log_tree_failure_diagnostics,
 )
 
 __all__ = [
-  "compute_euclidean_distance",
-  "interpolate_poses",
+  "FailedNodeDiagnostic",
+  "compute_top_down_grasp_quaternion",
+  "create_transform_node_ref",
+  "describe_motion_types",
+  "extract_failed_nodes",
+  "log_tree_failure_diagnostics",
   "normalize_angle",
   "normalize_joint_angles",
+  "normalize_motion_types",
 ]

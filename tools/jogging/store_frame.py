@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Script to store the current robot tool frame pose as a frame in scene.updates.pbtxt."""
+"""Stores the robot tool frame pose as a frame in scene.updates.pbtxt."""
 
 import argparse
 import os
@@ -24,18 +24,26 @@ from intrinsic.math.python import data_types
 from intrinsic.solutions import deployments
 from intrinsic.world.proto import object_world_updates_pb2
 
+from src.core.types import Pose3D
+
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   """Parses command line arguments."""
   parser = argparse.ArgumentParser(
-    description="Store current robot tool frame pose as a named frame in scene.updates.pbtxt."
+    description=(
+      "Store current robot tool frame pose as a named frame in"
+      " scene.updates.pbtxt."
+    )
   )
   parser.add_argument(
     "name",
     nargs="?",
     default=None,
     type=str,
-    help="Name of the frame to store/overwrite (e.g. 'view', 'grasp', 'pre_grasp').",
+    help=(
+      "Name of the frame to store/overwrite (e.g. 'view', 'infeed_grasp',"
+      " 'infeed_pre_grasp')."
+    ),
   )
   parser.add_argument(
     "--address",
@@ -47,7 +55,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     "--parent_object",
     type=str,
     default="root",
-    help="Parent object name in SBL world for the stored frame (default: 'root').",
+    help=(
+      "Parent object name in SBL world for the stored frame (default: 'root')."
+    ),
   )
   parser.add_argument(
     "--tool_object",
@@ -59,12 +69,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     "--tool_frame",
     type=str,
     default="tool_frame",
-    help="Tool frame name on tool_object in SBL world (default: 'tool_frame').",
+    help=(
+      "Tool frame name on tool_object in SBL world (default: 'tool_frame')."
+    ),
   )
   parser.add_argument(
     "--scene_updates_file",
     type=str,
-    default="configs/scene.updates.pbtxt",
+    default="configs/omts/scene.updates.pbtxt",
     help="Path to scene.updates.pbtxt file to store frames in.",
   )
   return parser.parse_args(argv)
@@ -75,20 +87,13 @@ def find_scene_updates_file(filepath: str) -> str:
   if os.path.isabs(filepath) and os.path.exists(filepath):
     return filepath
 
-  # Check BUILD_WORKSPACE_DIRECTORY first if invoked via 'bazel run'
-  workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")
-  if workspace_dir:
-    ws_file = os.path.join(workspace_dir, filepath)
-    if os.path.exists(ws_file) or os.path.exists(os.path.dirname(ws_file)):
-      return ws_file
+  for env_key in ("BUILD_WORKING_DIRECTORY", "BUILD_WORKSPACE_DIRECTORY"):
+    dir_path = os.environ.get(env_key)
+    if dir_path:
+      ws_file = os.path.join(dir_path, filepath)
+      if os.path.exists(ws_file) or os.path.exists(os.path.dirname(ws_file)):
+        return ws_file
 
-  # Check direct workspace path
-  direct_ws = "/usr/local/google/home/mschweiger/workspaces/omts"
-  ws_file = os.path.join(direct_ws, filepath)
-  if os.path.exists(ws_file) or os.path.exists(os.path.dirname(ws_file)):
-    return ws_file
-
-  # Check runfiles
   runfiles_dir = os.environ.get("PYTHON_RUNFILES") or os.environ.get(
     "TEST_SRCDIR"
   )
@@ -106,80 +111,13 @@ def get_current_tool_pose(
   tool_object_name: str = "gripper",
   tool_frame_name: str = "tool_frame",
 ) -> tuple[tuple[float, float, float], tuple[float, float, float, float]]:
-  """Retrieves the current (position, orientation) of the tool frame relative to parent object.
-
-  Args:
-    world: SBL ObjectWorld instance.
-    parent_object_name: Parent object name in world (default: 'root').
-    tool_object_name: Tool object name in world (default: 'gripper').
-    tool_frame_name: Tool frame name in world (default: 'tool_frame').
-
-  Returns:
-    Tuple of ((x, y, z), (qx, qy, qz, qw)).
-  """
+  """Retrieves the current tool frame pose relative to parent object."""
   parent_obj = getattr(world, parent_object_name)
   tool_obj = getattr(world, tool_object_name)
   tool_frame = getattr(tool_obj, tool_frame_name)
   transform = world.get_transform(parent_obj, tool_frame)
-
-  # Extract translation
-  if hasattr(transform, "position"):
-    pos = transform.position
-    if hasattr(pos, "x"):
-      pos_x, pos_y, pos_z = float(pos.x), float(pos.y), float(pos.z)
-    elif hasattr(pos, "xyz"):
-      pos_x, pos_y, pos_z = (
-        float(pos.xyz[0]),
-        float(pos.xyz[1]),
-        float(pos.xyz[2]),
-      )
-    else:
-      pos_x, pos_y, pos_z = float(pos[0]), float(pos[1]), float(pos[2])
-  elif hasattr(transform, "translation"):
-    trans = transform.translation
-    pos_x, pos_y, pos_z = float(trans[0]), float(trans[1]), float(trans[2])
-  else:
-    pos_x, pos_y, pos_z = 0.0, 0.0, 0.0
-
-  # Extract quaternion
-  if hasattr(transform, "rotation"):
-    rot = transform.rotation
-    if hasattr(rot, "quaternion"):
-      quat = rot.quaternion
-      if hasattr(quat, "xyzw"):
-        ori_x, ori_y, ori_z, ori_w = (
-          float(quat.xyzw[0]),
-          float(quat.xyzw[1]),
-          float(quat.xyzw[2]),
-          float(quat.xyzw[3]),
-        )
-      elif hasattr(quat, "x"):
-        ori_x, ori_y, ori_z, ori_w = (
-          float(quat.x),
-          float(quat.y),
-          float(quat.z),
-          float(quat.w),
-        )
-      else:
-        ori_x, ori_y, ori_z, ori_w = (
-          float(quat[0]),
-          float(quat[1]),
-          float(quat[2]),
-          float(quat[3]),
-        )
-    elif hasattr(rot, "xyzw"):
-      ori_x, ori_y, ori_z, ori_w = (
-        float(rot.xyzw[0]),
-        float(rot.xyzw[1]),
-        float(rot.xyzw[2]),
-        float(rot.xyzw[3]),
-      )
-    else:
-      ori_x, ori_y, ori_z, ori_w = 0.0, 0.0, 0.0, 1.0
-  else:
-    ori_x, ori_y, ori_z, ori_w = 0.0, 0.0, 0.0, 1.0
-
-  return (pos_x, pos_y, pos_z), (ori_x, ori_y, ori_z, ori_w)
+  pose = Pose3D.from_proto(transform)
+  return pose.position, pose.orientation
 
 
 def save_frame_to_scene_updates(
@@ -187,20 +125,9 @@ def save_frame_to_scene_updates(
   position: tuple[float, float, float],
   orientation: tuple[float, float, float, float],
   parent_object_name: str = "root",
-  filepath: str = "configs/scene.updates.pbtxt",
+  filepath: str = "configs/omts/scene.updates.pbtxt",
 ) -> str:
-  """Saves or updates a frame's pose in the specified scene.updates.pbtxt file.
-
-  Args:
-    frame_name: Name of the frame (e.g. 'view', 'grasp').
-    position: (x, y, z) position in meters.
-    orientation: (x, y, z, w) quaternion orientation.
-    parent_object_name: Parent object name (default: 'root').
-    filepath: Relative or absolute path to the .pbtxt file.
-
-  Returns:
-    The resolved path where the updates were written.
-  """
+  """Saves or updates a frame's pose in the specified scene.updates.pbtxt file."""
   resolved_path = find_scene_updates_file(filepath)
 
   updates = object_world_updates_pb2.ObjectWorldUpdates()
@@ -210,22 +137,25 @@ def save_frame_to_scene_updates(
       if content.strip():
         text_format.Parse(content, updates)
 
-  # Check if frame already exists in updates
+  rounded_pose = Pose3D(
+    x=round(position[0], 4),
+    y=round(position[1], 4),
+    z=round(position[2], 4),
+    qx=round(orientation[0], 4),
+    qy=round(orientation[1], 4),
+    qz=round(orientation[2], 4),
+    qw=round(orientation[3], 4),
+  ).to_proto()
+
   found = False
   for update in updates.updates:
     if update.HasField("create_frame"):
       cf = update.create_frame
-      parent_name = "root"
-      if cf.parent_object_with_filter.reference.by_name.object_name:
-        parent_name = cf.parent_object_with_filter.reference.by_name.object_name
+      parent_name = (
+        cf.parent_object_with_filter.reference.by_name.object_name or "root"
+      )
       if cf.new_frame_name == frame_name and parent_name == parent_object_name:
-        cf.parent_t_new_frame.position.x = round(position[0], 4)
-        cf.parent_t_new_frame.position.y = round(position[1], 4)
-        cf.parent_t_new_frame.position.z = round(position[2], 4)
-        cf.parent_t_new_frame.orientation.x = round(orientation[0], 4)
-        cf.parent_t_new_frame.orientation.y = round(orientation[1], 4)
-        cf.parent_t_new_frame.orientation.z = round(orientation[2], 4)
-        cf.parent_t_new_frame.orientation.w = round(orientation[3], 4)
+        cf.parent_t_new_frame.CopyFrom(rounded_pose)
         found = True
         break
 
@@ -236,13 +166,7 @@ def save_frame_to_scene_updates(
       parent_object_name
     )
     cf.new_frame_name = frame_name
-    cf.parent_t_new_frame.position.x = round(position[0], 4)
-    cf.parent_t_new_frame.position.y = round(position[1], 4)
-    cf.parent_t_new_frame.position.z = round(position[2], 4)
-    cf.parent_t_new_frame.orientation.x = round(orientation[0], 4)
-    cf.parent_t_new_frame.orientation.y = round(orientation[1], 4)
-    cf.parent_t_new_frame.orientation.z = round(orientation[2], 4)
-    cf.parent_t_new_frame.orientation.w = round(orientation[3], 4)
+    cf.parent_t_new_frame.CopyFrom(rounded_pose)
 
   header = (
     "# proto-file: intrinsic/world/public/proto/object_world_updates.proto\n"
@@ -304,19 +228,23 @@ def update_live_world_frame(
         parent_object_name
       )
       cf.new_frame_name = frame_name
-      cf.parent_t_new_frame.position.x = position[0]
-      cf.parent_t_new_frame.position.y = position[1]
-      cf.parent_t_new_frame.position.z = position[2]
-      cf.parent_t_new_frame.orientation.x = orientation[0]
-      cf.parent_t_new_frame.orientation.y = orientation[1]
-      cf.parent_t_new_frame.orientation.z = orientation[2]
-      cf.parent_t_new_frame.orientation.w = orientation[3]
+      cf.parent_t_new_frame.CopyFrom(
+        Pose3D(
+          x=position[0],
+          y=position[1],
+          z=position[2],
+          qx=orientation[0],
+          qy=orientation[1],
+          qz=orientation[2],
+          qw=orientation[3],
+        ).to_proto()
+      )
       world.batch_update(new_updates)
       print(
         f"Created live frame '{parent_object_name}.{frame_name}' in solution"
         " world."
       )
-  except Exception as e:
+  except Exception as e:  # pylint: disable=broad-exception-caught
     print(f"Note: Could not update live world directly: {e}")
 
 
@@ -326,7 +254,8 @@ def main(argv: Sequence[str] | None = None) -> None:
   frame_name = args.name
   if not frame_name:
     frame_name = input(
-      "Enter frame name to store/overwrite (e.g. 'view', 'grasp', 'pre_grasp'): "
+      "Enter frame name to store/overwrite"
+      " (e.g. 'view', 'infeed_grasp', 'infeed_pre_grasp'): "
     ).strip()
     if not frame_name:
       print("Error: A frame name must be specified.")

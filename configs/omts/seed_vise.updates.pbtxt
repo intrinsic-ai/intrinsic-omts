@@ -1,0 +1,95 @@
+# proto-file: intrinsic/world/public/proto/object_world_updates.proto
+# proto-message: intrinsic_proto.world.ObjectWorldUpdates
+#
+# Seeds the world for --start_phase=unload: places the workpiece at the vise
+# and creates the infeed frames that perception would otherwise have written,
+# so the unload and return legs can run without a prior pick.
+
+updates {
+  update_transform {
+    node_a {
+      by_name {
+        object {
+          object_name: "root"
+        }
+      }
+    }
+    node_b {
+      by_name {
+        object {
+          object_name: "raw_stock_2x3x5"
+        }
+      }
+    }
+    node_to_update {
+      by_name {
+        object {
+          object_name: "raw_stock_2x3x5"
+        }
+      }
+    }
+    a_t_b {
+      position {
+        x: -0.5305
+        y: -0.3020
+        z: 1.2610
+      }
+      orientation {
+        x: 0.6842
+        y: -0.7286
+        z: 0.0220
+        w: -0.0226
+      }
+    }
+  }
+}
+updates {
+  create_frame {
+    new_frame_name: "infeed_grasp"
+    parent_t_new_frame {
+      position {
+        x: 0.3807
+        y: 0.0167
+        z: 1.0634
+      }
+      orientation {
+        x: 0.7066
+        y: -0.7076
+        z: 0.0
+        w: 0.0
+      }
+    }
+    parent_object_with_filter {
+      reference {
+        by_name {
+          object_name: "root"
+        }
+      }
+    }
+  }
+}
+updates {
+  create_frame {
+    new_frame_name: "infeed_pre_grasp"
+    parent_t_new_frame {
+      position {
+        x: 0.3807
+        y: 0.0167
+        z: 1.1634
+      }
+      orientation {
+        x: 0.7066
+        y: -0.7076
+        z: 0.0
+        w: 0.0
+      }
+    }
+    parent_object_with_filter {
+      reference {
+        by_name {
+          object_name: "root"
+        }
+      }
+    }
+  }
+}

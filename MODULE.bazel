@@ -72,6 +72,13 @@ single_version_override(
     version = "32.1",
 )
 
+# Re-exports the pip hub that intrinsic-core already parses, so our Python
+# targets can name third-party wheels without a second requirements lock.
+bazel_dep(name = "rules_python", version = "1.9.2")
+
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+use_repo(pip, "ai_intrinsic_sdks_pip_deps")
+
 cuda = use_extension("@rules_cuda//cuda:extensions.bzl", "toolchain")
 cuda.redist_json(
     name = "cuda_12_8_1",

@@ -74,6 +74,10 @@ omts/
 ├── BUILD                                # Defines intrinsic_solution(:omts_solution) & aliases
 │
 ├── configs/                             # Workcell Textproto / Pbtxt configurations
+│   ├── common/                          # Cell-independent configs and asset manifests
+│   ├── omts/                            # OMTS cell (UR5e, CNC enclosure, vise)
+│   ├── lab_bb_01/                       # lab_bb_01 cell (UR3e, caw enclosure, no vise)
+│   └── kr_10/                           # KUKA KR10 stub, not wired into any target
 │
 ├── assets/                              # 3D models, meshes, and catalog assets
 │   ├── meshes/                          # STL / GLB meshes (trays, CNC enclosure, raw stock)
@@ -218,7 +222,7 @@ bazel test //tests/unit:all
   bazel run //tools/world:apply_scene_updates -- --address=localhost:17080
 
   # Or apply specific .pbtxt files:
-  bazel run //tools/world:apply_scene_updates -- --files configs/scene.updates.pbtxt --address=localhost:17080
+  bazel run //tools/world:apply_scene_updates -- --files configs/omts/scene.updates.pbtxt --address=localhost:17080
   ```
 
 - **Inspect Solution World & Resources:**

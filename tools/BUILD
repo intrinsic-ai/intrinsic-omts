@@ -7,4 +7,5 @@ package(default_visibility = ["//visibility:public"])
 # - //tools/jogging:move_to_frame
 # - //tools/jogging:store_frame
 # - //tools/jogging:store_joint_config
+# - //tools/machine:control_machine
 # - //tools/world:inspect_world
