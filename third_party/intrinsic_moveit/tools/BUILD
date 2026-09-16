@@ -9,7 +9,7 @@ py_library(
         "//src/hardware:robot",
         "//third_party/intrinsic_moveit:moveit_grasp_planner",
         "//third_party/intrinsic_moveit:moveit_grasp_planning",
-        "@ioc//google3/intrinsic/world/public/proto:object_world_refs_py_pb2",
+        "@intrinsic_apis//intrinsic/world/proto:object_world_refs_py_pb2",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],

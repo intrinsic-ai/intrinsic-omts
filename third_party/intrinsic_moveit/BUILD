@@ -9,7 +9,7 @@ py_library(
     name = "moveit_grasp_planner",
     srcs = ["moveit_grasp_planner.py"],
     deps = [
-        "@ioc//google3/intrinsic/world/public/proto:object_world_refs_py_pb2",
+        "@intrinsic_apis//intrinsic/world/proto:object_world_refs_py_pb2",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )

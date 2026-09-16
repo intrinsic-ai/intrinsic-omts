@@ -26,7 +26,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from intrinsic.solutions import deployments, execution
-from intrinsic.world.public.proto import object_world_refs_pb2
+from intrinsic.world.proto import object_world_refs_pb2
 
 from src.hardware.robot import UrRobot
 from third_party.intrinsic_moveit.moveit_grasp_planner import (

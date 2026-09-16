@@ -30,7 +30,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from intrinsic.solutions import behavior_tree as bt
-from intrinsic.world.public.proto import object_world_refs_pb2
+from intrinsic.world.proto import object_world_refs_pb2
 
 # Object surface indices understood by the grasp planning service. Indices refer
 # to the object's local axes: 0:+X, 1:-X, 2:+Y, 3:-Y, 4:+Z (top), 5:-Z (bottom).
