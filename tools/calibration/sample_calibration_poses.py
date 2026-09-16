@@ -63,11 +63,9 @@ _ROBOT_MODULE = flags.DEFINE_string(
 )
 _CALIBRATION_OBJECT = flags.DEFINE_string(
   "calibration_object",
+  # "charuco_11x15_35mm_26mm_dict_4x4",
   "charuco_9x14_20mm_15mm_dict_5x5",
-  "Calibration pattern / object name (e.g."
-  " charuco_9x14_20mm_15mm_dict_5x5,"
-  " charuco_22x30_25mm_18mm_dict_5x5, or"
-  " charuco_11x15_35mm_26mm_dict_4x4).",
+  "Calibration board object name in ObjectWorld.",
 )
 _MOVING_CAMERA = flags.DEFINE_bool(
   "moving_camera",

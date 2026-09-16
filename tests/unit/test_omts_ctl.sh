@@ -7,7 +7,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OMTS_CTL="$(cd "$SCRIPT_DIR/../.." && pwd)/omts_ctl.sh"
+OMTS_CTL="$(cd "$SCRIPT_DIR/../.." && pwd)/tools/omts_ctl.sh"
 TEST_TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TEST_TMPDIR"' EXIT
 

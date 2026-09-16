@@ -7,7 +7,7 @@ py_library(
     srcs = ["move_to_frame.py"],
     deps = [
         "//src/hardware:robot",
-        "//src/utils:math_utils",
+        "//src/utils:execution_utils",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],

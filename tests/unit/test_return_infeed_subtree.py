@@ -19,9 +19,10 @@ from unittest import mock
 from absl.testing import absltest
 from intrinsic.solutions import behavior_tree as bt
 
+from src.behaviors.motions import Touchdown
 from src.behaviors.return_infeed import build_return_to_infeed_subtree
-from src.core.types import GripperState
 from src.core.workpiece import Workpiece
+from src.core.world import World
 from src.hardware.gripper import MockGripper
 from src.hardware.robot import MockRobot
 
@@ -38,7 +39,7 @@ class ReturnInfeedSubtreeTest(absltest.TestCase):
     )
 
   def test_build_return_to_infeed_subtree_default_sequence(self):
-    """Verifies default 4-step subtree sequence structure and task names."""
+    """Verifies default 5-step subtree sequence structure and task names."""
     subtree = build_return_to_infeed_subtree(
       robot=self.robot,
       gripper=self.gripper,
@@ -51,7 +52,7 @@ class ReturnInfeedSubtreeTest(absltest.TestCase):
     # 5 steps by default when object reparenting is disabled
     self.assertLen(subtree.children, 5)
 
-    # Step 6a: Blended move to pre-place via presentation view (ANY)
+    # Step 6a: Blended move to pre-place via transit (ANY)
     self.assertEqual(
       subtree.children[0].name,
       "Step 6a: Blended Move to Pre-Place via transit"
@@ -74,10 +75,32 @@ class ReturnInfeedSubtreeTest(absltest.TestCase):
       "Step 6d: Release Part at Scatter Placement",
     )
 
-    # Step 6f: Linear retract arm to pre-place
+    # Step 6f: Linear retract off the part, blended onward to the view frame.
     self.assertEqual(
       subtree.children[4].name,
-      "Step 6f: Linear Retract to Pre-Place (root/infeed_pre_grasp)",
+      "Step 6f: Linear Retract to infeed_pre_grasp Blended to View Frame"
+      " (root/infeed_pre_grasp -> root/view)",
+    )
+
+  def test_build_return_to_infeed_subtree_release_touchdown_has_no_retract(
+    self,
+  ):
+    """Verifies a release touchdown seats the part without lifting off it."""
+    subtree = build_return_to_infeed_subtree(
+      robot=self.robot,
+      gripper=self.gripper,
+      workpiece=self.workpiece,
+      touchdown=Touchdown(retract_after_m=0.0),
+    )
+
+    self.assertLen(subtree.children, 5)
+    self.assertNotIn(
+      "Step 6c: Linear Retract (0.0 cm, -Z Tool)",
+      [child.name for child in subtree.children],
+    )
+    self.assertNotIn(
+      "move_relative_cartesian:(0.0, 0.0, -0.0):LINEAR",
+      self.robot.executed_commands,
     )
 
   def test_build_return_to_infeed_subtree_with_reparenting_enabled(self):
@@ -103,18 +126,15 @@ class ReturnInfeedSubtreeTest(absltest.TestCase):
       workpiece=self.workpiece,
     )
 
-    # Gripper should be opened
-    self.assertEqual(self.gripper.commanded_state, GripperState.OPEN)
     self.assertEqual(self.gripper.command_log, ["open"])
 
-    # Robot motions: blended [transit, preplace] (ANY) -> standoff -> touchdown -> retract (LINEAR)
     self.assertEqual(
       self.robot.executed_commands,
       [
         "move_blended_cartesian:root/transit->root/infeed_pre_grasp:ANY",
         "move_cartesian:root/infeed_grasp:LINEAR",
         "move_to_contact:dir=(0.0, 0.0, 1.0),force=8.0",
-        "move_cartesian:root/infeed_pre_grasp:LINEAR",
+        "move_blended_cartesian:root/infeed_pre_grasp->root/view:LINEAR/ANY",
       ],
     )
 
@@ -128,6 +148,7 @@ class ReturnInfeedSubtreeTest(absltest.TestCase):
       transit_frame_name="custom_present",
       preplace_frame_name="custom_preplace",
       place_frame_name="custom_place",
+      view_frame_name="custom_view",
       name="Custom Scatter Return",
     )
 
@@ -148,7 +169,8 @@ class ReturnInfeedSubtreeTest(absltest.TestCase):
     )
     self.assertEqual(
       subtree.children[4].name,
-      "Step 6f: Linear Retract to Pre-Place (tray/custom_preplace)",
+      "Step 6f: Linear Retract to custom_preplace Blended to View Frame"
+      " (tray/custom_preplace -> tray/custom_view)",
     )
 
     self.assertEqual(
@@ -157,16 +179,17 @@ class ReturnInfeedSubtreeTest(absltest.TestCase):
         "move_blended_cartesian:tray/custom_present->tray/custom_preplace:ANY",
         "move_cartesian:tray/custom_place:LINEAR",
         "move_to_contact:dir=(0.0, 0.0, 1.0),force=8.0",
-        "move_cartesian:tray/custom_preplace:LINEAR",
+        "move_blended_cartesian:tray/custom_preplace->tray/custom_view"
+        ":LINEAR/ANY",
       ],
     )
 
   def test_build_return_to_infeed_subtree_workpiece_identifier_resolution(
     self,
   ):
-    """Verifies identifier resolution with world.build_reparent_task."""
-    mock_world = mock.MagicMock()
-    mock_world.build_reparent_task.return_value = bt.Task(
+    """Verifies identifier resolution with world.build_detach_from_gripper_task."""
+    mock_world = mock.MagicMock(spec=World)
+    mock_world.build_detach_from_gripper_task.return_value = bt.Task(
       action=bt.PythonScript(function_body="pass"),
       name="Step 6e: Detach Part to root in Digital Twin",
     )
@@ -178,10 +201,12 @@ class ReturnInfeedSubtreeTest(absltest.TestCase):
       enable_object_reparenting=True,
       world=mock_world,
     )
-    self.assertIsNotNone(tree_asset.children[4])
-    mock_world.build_reparent_task.assert_called_with(
-      target="custom_asset_123",
-      new_parent="root",
+    self.assertEqual(
+      tree_asset.children[4].name,
+      "Step 6e: Detach Part to root in Digital Twin",
+    )
+    mock_world.build_detach_from_gripper_task.assert_called_with(
+      object_name="custom_part",
       name="Step 6e: Detach Part to root in Digital Twin",
     )
 
@@ -203,8 +228,7 @@ class ReturnInfeedSubtreeTest(absltest.TestCase):
       robot=self.robot,
       gripper=self.gripper,
       workpiece=self.workpiece,
-      contact_force_newtons=10.0,
-      standoff_distance_m=0.010,
+      touchdown=Touchdown(force_n=10.0, standoff_m=0.010),
     )
     self.assertIsNotNone(subtree)
     self.assertLen(subtree.children, 5)
@@ -222,7 +246,7 @@ class ReturnInfeedSubtreeTest(absltest.TestCase):
         "move_blended_cartesian:root/transit->root/infeed_pre_grasp:ANY",
         "move_cartesian:root/infeed_grasp:LINEAR",
         "move_to_contact:dir=(0.0, 0.0, 1.0),force=10.0",
-        "move_cartesian:root/infeed_pre_grasp:LINEAR",
+        "move_blended_cartesian:root/infeed_pre_grasp->root/view:LINEAR/ANY",
       ],
     )
 
@@ -243,25 +267,6 @@ class ReturnInfeedSubtreeTest(absltest.TestCase):
       self.robot.executed_commands,
     )
 
-  def test_build_return_to_infeed_subtree_clear_motion_planner_cache(self):
-    """Verifies clear_motion_planner_cache steps when enabled."""
-    mock_machine = mock.MagicMock()
-    mock_machine.build_close_door_task.return_value = bt.Task(
-      name="Step 6a-2: Close CNC Door",
-      action=bt.PythonScript(function_body="pass\n"),
-    )
-    subtree = build_return_to_infeed_subtree(
-      robot=self.robot,
-      gripper=self.gripper,
-      workpiece=self.workpiece,
-      machine=mock_machine,
-      enable_object_reparenting=True,
-      clear_motion_planner_cache=True,
-    )
-    task_names = [child.name for child in subtree.children]
-    self.assertIn("Step 6a-4: Clear Motion Planner Cache", task_names)
-    self.assertIn("Step 6e-2: Clear Motion Planner Cache", task_names)
-
   def test_build_return_to_infeed_subtree_cartesian_motions_wrapped_in_retry(
     self,
   ):
@@ -275,47 +280,6 @@ class ReturnInfeedSubtreeTest(absltest.TestCase):
     self.assertIsInstance(subtree.children[0], bt.Retry)
     self.assertIsInstance(subtree.children[1], bt.Retry)
     self.assertIsInstance(subtree.children[5], bt.Retry)
-
-  def test_build_return_to_infeed_subtree_return_to_view_frame(self):
-    """Verifies step 6f blends to the view frame with a LINEAR departure."""
-    subtree = build_return_to_infeed_subtree(
-      robot=self.robot,
-      gripper=self.gripper,
-      workpiece=self.workpiece,
-      return_to_view_frame=True,
-      view_frame_name="view",
-    )
-
-    # Step 6f replaces the linear retract, so the step count is unchanged.
-    self.assertLen(subtree.children, 5)
-    self.assertEqual(
-      subtree.children[4].name,
-      "Step 6f: Linear Retract to infeed_pre_grasp Blended to View Frame"
-      " (root/infeed_pre_grasp -> root/view)",
-    )
-    # The lift off the just-released part must not be planned freely.
-    self.assertEqual(
-      self.robot.executed_commands[-1],
-      "move_blended_cartesian:root/infeed_pre_grasp->root/view:LINEAR/ANY",
-    )
-
-  def test_build_return_to_infeed_subtree_view_frame_defaults_to_view(
-    self,
-  ):
-    """Verifies the view retreat falls back to view."""
-    subtree = build_return_to_infeed_subtree(
-      robot=self.robot,
-      gripper=self.gripper,
-      workpiece=self.workpiece,
-      return_to_view_frame=True,
-      view_frame_name=None,
-    )
-
-    self.assertEqual(
-      subtree.children[4].name,
-      "Step 6f: Linear Retract to infeed_pre_grasp Blended to View Frame"
-      " (root/infeed_pre_grasp -> root/view)",
-    )
 
 
 if __name__ == "__main__":

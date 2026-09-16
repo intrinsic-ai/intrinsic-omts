@@ -5,12 +5,13 @@ package(default_visibility = ["//visibility:public"])
 py_library(
     name = "omts_app_lib",
     srcs = ["main.py"],
+    data = ["//configs:app_configs"],
     deps = [
         "//src/behaviors",
         "//src/core",
-        "//src/core:solution",
         "//src/hardware",
         "//src/utils",
+        "@ai_intrinsic_sdks_pip_deps//pyyaml",
         "@com_google_absl_py//absl:app",
         "@com_google_absl_py//absl/flags",
         "@com_google_absl_py//absl/logging",

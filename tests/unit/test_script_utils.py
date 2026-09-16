@@ -16,18 +16,15 @@
 
 from absl.testing import absltest
 
-from src.core import world
-from src.utils import (
-  dynamic_frame_calculator,
-  math_utils,
-)
+from src.utils import dynamic_frame_calculator, math_utils
 from src.utils.script_utils import load_python_script
 
 
 class ScriptUtilsTest(absltest.TestCase):
   def test_load_python_script_from_function(self):
     code = load_python_script(
-      dynamic_frame_calculator.calculate_and_update_dynamic_frames
+      dynamic_frame_calculator.calculate_and_update_dynamic_frames,
+      preludes=(math_utils,),
     )
     self.assertIsInstance(code, str)
     self.assertIn("def calculate_and_update_dynamic_frames", code)
@@ -38,6 +35,7 @@ class ScriptUtilsTest(absltest.TestCase):
     code = load_python_script(
       dynamic_frame_calculator,
       function_name="calculate_and_update_dynamic_frames",
+      preludes=(math_utils,),
     )
     self.assertIsInstance(code, str)
     self.assertIn("def calculate_and_update_dynamic_frames", code)
@@ -47,6 +45,7 @@ class ScriptUtilsTest(absltest.TestCase):
     code = load_python_script(
       "src.utils.dynamic_frame_calculator",
       function_name="calculate_and_update_dynamic_frames",
+      preludes=(math_utils,),
     )
     self.assertIsInstance(code, str)
     self.assertIn("def calculate_and_update_dynamic_frames", code)
@@ -56,6 +55,7 @@ class ScriptUtilsTest(absltest.TestCase):
     code = load_python_script(
       dynamic_frame_calculator,
       call_args=None,
+      preludes=(math_utils,),
     )
     self.assertIsInstance(code, str)
     self.assertIn("def calculate_and_update_dynamic_frames", code)
@@ -64,30 +64,14 @@ class ScriptUtilsTest(absltest.TestCase):
     )
 
   def test_sbl_scripts_are_hermetic(self):
-    """Ensures all SBL script payloads avoid non-hermetic src.* imports."""
-    scripts = [
-      dynamic_frame_calculator.calculate_and_update_dynamic_frames,
-      world.reparent_object_script,
-      world.update_object_joints_script,
-    ]
-    for script_fn in scripts:
-      code = load_python_script(script_fn)
-      self.assertNotIn(
-        "from src", code, f"{script_fn.__name__} must not import from src"
-      )
-      self.assertNotIn(
-        "import src", code, f"{script_fn.__name__} must not import src"
-      )
-
-  def test_auto_bundled_script_carries_its_src_dependencies(self):
-    """Auto-bundling recursively embeds local src.* dependencies."""
+    """Ensures SBL script payloads avoid non-hermetic src.* imports."""
     code = load_python_script(
       dynamic_frame_calculator.calculate_and_update_dynamic_frames,
-      call_args=None,
+      preludes=(math_utils,),
     )
+    self.assertNotIn("from src", code)
+    self.assertNotIn("import src", code)
     self.assertIn("def compute_top_down_grasp_quaternion", code)
-    self.assertIn("class Pose3D", code)
-
     compiled = compile(code, "<string>", "exec")
     self.assertIsNotNone(compiled)
 

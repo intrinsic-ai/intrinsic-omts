@@ -7,7 +7,7 @@ py_library(
     srcs = ["motions.py"],
     deps = [
         "//src/hardware:robot",
-        "//src/utils:math_utils",
+        "//src/utils:execution_utils",
         "//src/utils:script_utils",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],

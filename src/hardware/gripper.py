@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Gripper hardware interfaces and implementations."""
+"""Stateless gripper hardware interfaces and implementations."""
 
 import abc
 import dataclasses
 from typing import Any
 
 from intrinsic.solutions import behavior_tree as bt
-
-from src.core.types import GripperState
 
 DEFAULT_GRIPPER_ACTION_NAME = "/gripper/gripper_action_controller/gripper_cmd"
 
@@ -40,14 +38,7 @@ class GripperConfig:
 
 
 class GripperInterface(abc.ABC):
-  """Abstract interface for robotic end-effector gripping actions.
-
-  Implementations provide `_build_open_task` and `_build_close_task`; the
-  interface records the commanded aperture so tree builders can tell what the
-  previous subtree already asked for.
-  """
-
-  _state: GripperState = GripperState.UNKNOWN
+  """Stateless abstract interface for robotic end-effector gripping actions."""
 
   @classmethod
   def from_config(
@@ -77,27 +68,14 @@ class GripperInterface(abc.ABC):
       )
     raise ValueError(f"Unsupported gripper hardware_type: {cfg.hardware_type}")
 
-  @property
-  def commanded_state(self) -> GripperState:
-    """Returns the aperture this adapter has most recently commanded."""
-    return self._state
-
+  @abc.abstractmethod
   def build_open_task(self, name: str | None = None) -> bt.Node:
     """Builds a behavior tree task to open the gripper fingers."""
-    self._state = GripperState.OPEN
-    return self._build_open_task(name)
-
-  def build_close_task(self, name: str | None = None) -> bt.Node:
-    """Builds a behavior tree task to close/grasp with the gripper."""
-    self._state = GripperState.CLOSED
-    return self._build_close_task(name)
-
-  @abc.abstractmethod
-  def _build_open_task(self, name: str | None) -> bt.Node:
     raise NotImplementedError
 
   @abc.abstractmethod
-  def _build_close_task(self, name: str | None) -> bt.Node:
+  def build_close_task(self, name: str | None = None) -> bt.Node:
+    """Builds a behavior tree task to close/grasp with the gripper."""
     raise NotImplementedError
 
 
@@ -130,12 +108,12 @@ class RobotiqGripper(GripperInterface):
       kwargs["action_name"] = self._action_name
     return bt.Task(action=self._gripper_cmd_skill(**kwargs), name=task_name)
 
-  def _build_open_task(self, name: str | None) -> bt.Node:
+  def build_open_task(self, name: str | None = None) -> bt.Node:
     return self._build_command_task(
       self._open_position, name or "Open Robotiq Gripper"
     )
 
-  def _build_close_task(self, name: str | None) -> bt.Node:
+  def build_close_task(self, name: str | None = None) -> bt.Node:
     return self._build_command_task(
       self._close_position, name or "Close Robotiq Gripper"
     )
@@ -160,65 +138,52 @@ class DioGripper(GripperInterface):
   def _build_dio_set_task(
     self, pin: int, state: bool, task_name: str
   ) -> bt.Node:
-    block_cls = getattr(
-      getattr(
-        getattr(self._dio_set_skill, "intrinsic_proto", None), "skills", None
-      ),
-      "DioOutputBlock",
-      None,
-    ) or getattr(self._dio_set_skill, "DioOutputBlock", None)
-
-    if block_cls is not None:
-      block = block_cls(
-        block_name=self._output_block_name,
-        indices=[pin],
-        values=[state],
-      )
-      action = self._dio_set_skill(dio_output_blocks=[block])
-    else:
-      action = self._dio_set_skill(
-        dio_output_blocks=[
-          {
-            "block_name": self._output_block_name,
-            "indices": [pin],
-            "values": [state],
-          }
-        ]
-      )
+    block = self._dio_set_skill.intrinsic_proto.skills.DioOutputBlock(
+      block_name=self._output_block_name,
+      indices=[pin],
+      values=[state],
+    )
+    action = self._dio_set_skill(dio_output_blocks=[block])
     return bt.Task(action=action, name=task_name)
 
-  def _build_open_task(self, name: str | None) -> bt.Node:
+  def build_open_task(self, name: str | None = None) -> bt.Node:
     return self._build_dio_set_task(
       pin=self._open_pin, state=True, task_name=name or "Open Gripper (DIO)"
     )
 
-  def _build_close_task(self, name: str | None) -> bt.Node:
+  def build_close_task(self, name: str | None = None) -> bt.Node:
     return self._build_dio_set_task(
       pin=self._close_pin, state=True, task_name=name or "Close Gripper (DIO)"
     )
 
 
 class MockGripper(GripperInterface):
-  """Mock gripper for testing when gripper hardware service is not deployed."""
+  """Mock gripper adapter for unit tests and offline tree generation."""
 
-  def __init__(self) -> None:
-    self._state = GripperState.UNKNOWN
+  def __init__(self, solution: Any = None, **kwargs: Any) -> None:
+    del solution, kwargs
     self.command_log: list[str] = []
 
-  def _build_open_task(self, name: str | None) -> bt.Node:
+  def build_open_task(self, name: str | None = None) -> bt.Node:
     self.command_log.append("open")
     return bt.Task(
-      action=bt.PythonScript(
-        function_body='print("[MockGripper] Gripper Opened")'
-      ),
+      action=bt.PythonScript(function_body="pass"),
       name=name or "Mock Open Gripper",
     )
 
-  def _build_close_task(self, name: str | None) -> bt.Node:
+  def build_close_task(self, name: str | None = None) -> bt.Node:
     self.command_log.append("close")
     return bt.Task(
-      action=bt.PythonScript(
-        function_body='print("[MockGripper] Gripper Closed (Part Grasped)")'
-      ),
+      action=bt.PythonScript(function_body="pass"),
       name=name or "Mock Close Gripper",
     )
+
+
+__all__ = [
+  "DEFAULT_GRIPPER_ACTION_NAME",
+  "DioGripper",
+  "GripperConfig",
+  "GripperInterface",
+  "MockGripper",
+  "RobotiqGripper",
+]

@@ -1,5 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
+exports_files(["omts_ctl.sh"])
+
 # Developer and operational tool targets
 # - //tools/calibration:calibrate_camera
 # - //tools/gripper:control_gripper

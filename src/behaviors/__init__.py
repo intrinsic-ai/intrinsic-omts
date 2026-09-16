@@ -19,6 +19,7 @@ from src.behaviors.machine_tending_bt import build_machine_tending_behavior_tree
 from src.behaviors.machining import build_machining_handshake_subtree
 from src.behaviors.motions import (
   Touchdown,
+  build_interaction_tasks,
   create_compliant_touchdown_task,
   create_seated_approach_tasks,
 )
@@ -28,6 +29,7 @@ from src.behaviors.unload_machine import build_unload_machine_subtree
 
 __all__ = [
   "Touchdown",
+  "build_interaction_tasks",
   "build_load_machine_subtree",
   "build_machine_tending_behavior_tree",
   "build_machining_handshake_subtree",

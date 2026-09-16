@@ -75,6 +75,7 @@ single_version_override(
 # Re-exports the pip hub that intrinsic-core already parses, so our Python
 # targets can name third-party wheels without a second requirements lock.
 bazel_dep(name = "rules_python", version = "1.9.2")
+bazel_dep(name = "rules_shell", version = "0.8.0")
 
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 use_repo(pip, "ai_intrinsic_sdks_pip_deps")

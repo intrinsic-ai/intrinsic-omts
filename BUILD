@@ -7,8 +7,6 @@ load("//bazel:imported_asset.bzl", "imported_asset_bundle")
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["omts_ctl.sh"])
-
 # Flag to parameterize hardware setup (omts vs lab_bb_01).
 #
 # configs/kr_10/ exists but is not a value here: the solution below is wired to
@@ -37,6 +35,8 @@ intrinsic_solution(
     assets = [
         "@ioc//intrinsic/resources/catalog/resourcedata/gripper:robotiq_pinch_gripper_resource_type",
         "@ioc//intrinsic/simulation/gazebo/asset:gazebo_simulator_type",
+        # "@ioc//incode/intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_11x15_35mm_26mm_dict_4x4",
+        # "@ioc//incode/intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_11x15_35mm_26mm_dict_4x4_estimator",
         "@ioc//incode/intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5",
         "@ioc//incode/intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5_estimator",
         "@ioc//incode/intrinsic_perception/intrinsic/perception/calibration/services/v1:calibration_service",
@@ -89,6 +89,7 @@ intrinsic_solution(
         ":robotiq_pinch_gripper",
         ":raw_stock_2x3x5",
         ":gazebo_simulator",
+        # ":charuco_11x15_35mm_26mm_dict_4x4",
         ":charuco_9x14_20mm_15mm_dict_5x5",
         ":calibration_service_instance",
         ":icon",
@@ -169,6 +170,11 @@ intrinsic_asset_instance(
     name = "raw_stock_2x3x5",
     asset = "ai.intrinsic.raw_stock_2x3x5",
 )
+
+# intrinsic_asset_instance(
+#     name = "charuco_11x15_35mm_26mm_dict_4x4",
+#     asset = "ai.intrinsic.charuco_11x15_35mm_26mm_dict_4x4",
+# )
 
 intrinsic_asset_instance(
     name = "charuco_9x14_20mm_15mm_dict_5x5",

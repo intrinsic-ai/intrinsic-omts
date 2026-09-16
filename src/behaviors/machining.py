@@ -34,32 +34,7 @@ def build_machining_handshake_subtree(
   solution: Any | None = None,
   name: str = "4. Machining Handshake Subtree",
 ) -> bt.Node:
-  """Builds Behavior Tree subtree executing CNC machining cycle handshake.
-
-  Sequence (Step 4 in OMTS sequence):
-  4a. Retract robot arm to standby position outside machine (LINEAR Cartesian
-    motion).
-  4b. Close CNC enclosure door.
-  4c. Trigger CNC cycle start.
-  4d. Wait for CNC cycle completion signal.
-  4e. Open CNC enclosure door.
-
-  Args:
-    robot: Robot controller adapter.
-    machine: CNC machine adapter.
-    parent_object: Name of parent object for target frames (default: 'root').
-    standby_frame_name: Target frame name for safe standby (default:
-      'machine_approach').
-    machining_timeout_seconds: Timeout waiting for cycle complete signal
-      (default: 30.0).
-    settling_timeout_seconds: Optional settling timeout for arm motions.
-    solution: Optional live solution deployment handle.
-    name: Name of the subtree sequence node (default: '4. Machining Handshake
-      Subtree').
-
-  Returns:
-    Behavior tree sequence node executing machining cycle handshake.
-  """
+  """Builds the retract, close door, run cycle, open door handshake."""
   tasks: list[bt.Node] = [
     create_move_to_frame_task(
       robot,
@@ -69,19 +44,16 @@ def build_machining_handshake_subtree(
       max_tries=2,
       retry_delay_sec=1.0,
       solution=solution,
+      task_name=(
+        f"Step 4a: Retract to Standby ({parent_object}/{standby_frame_name})"
+      ),
     ),
     machine.build_close_door_task(name="Step 4b: Close CNC Door"),
+    machine.build_trigger_cycle_task(name="Step 4c: Trigger CNC Cycle Start"),
+    machine.build_wait_cycle_complete_task(
+      timeout_seconds=machining_timeout_seconds,
+      name="Step 4d: Wait for CNC Cycle Complete",
+    ),
+    machine.build_open_door_task(name="Step 4e: Open CNC Door"),
   ]
-
-  tasks.extend(
-    [
-      machine.build_trigger_cycle_task(name="Step 4c: Trigger CNC Cycle Start"),
-      machine.build_wait_cycle_complete_task(
-        timeout_seconds=machining_timeout_seconds,
-        name="Step 4d: Wait for CNC Cycle Complete",
-      ),
-      machine.build_open_door_task(name="Step 4e: Open CNC Door"),
-    ]
-  )
-
   return bt.Sequence(name=name, children=tasks)

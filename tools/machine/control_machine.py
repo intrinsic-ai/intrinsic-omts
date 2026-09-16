@@ -74,7 +74,8 @@ def _sync_twin_joints(
     return
   try:
     w = World(solution.world, solution=solution)
-    w.update_joint_positions(object_name, joints)
+    task = w.build_joint_update_task(object_name, joints)
+    solution.executive.run(task)
   except Exception as sync_err:  # pylint: disable=broad-exception-caught
     print(
       f"Warning: Failed to synchronize digital twin joints for '{object_name}':"

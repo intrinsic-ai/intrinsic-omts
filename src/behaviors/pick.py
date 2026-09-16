@@ -19,15 +19,14 @@ from typing import Any
 from intrinsic.solutions import behavior_tree as bt
 
 from src.behaviors.motions import (
+  DEFAULT_TOUCHDOWN,
   Touchdown,
-  create_clear_motion_planner_cache_task,
+  build_interaction_tasks,
   create_move_to_frame_task,
-  create_seated_approach_tasks,
 )
 from src.core.infeed import InfeedMode, InfeedStrategy, PerceptionInfeedStrategy
-from src.core.types import GripperState
 from src.core.workpiece import Workpiece
-from src.core.world import World
+from src.core.world import WorldInterface, resolve_world
 from src.hardware.gripper import GripperInterface
 from src.hardware.machine import CncMachineInterface
 from src.hardware.robot import RobotInterface
@@ -37,16 +36,13 @@ from src.hardware.vision import VisionInterface
 def _build_hardware_prep_task(
   gripper: GripperInterface,
   machine: CncMachineInterface | None = None,
-) -> bt.Node | None:
-  """Builds opening actions for CNC door/vise and gripper if needed."""
+) -> bt.Node:
+  """Builds opening actions for CNC door/vise and gripper."""
   children: list[bt.Node] = []
   if machine is not None:
     children.append(machine.build_open_door_task(name="Open CNC Door"))
     children.append(machine.build_open_vise_task(name="Open CNC Vise"))
-  if gripper.commanded_state != GripperState.OPEN:
-    children.append(gripper.build_open_task(name="Open Gripper"))
-  if not children:
-    return None
+  children.append(gripper.build_open_task(name="Open Gripper"))
   if len(children) == 1:
     return children[0]
   return bt.Sequence(name="CNC Machine & Gripper Prep", children=children)
@@ -64,20 +60,17 @@ def build_pick_from_infeed_subtree(
   pregrasp_frame_name: str = "infeed_pre_grasp",
   grasp_frame_name: str = "infeed_grasp",
   approach_offset_z: float = 0.08,
-  move_to_view_first: bool = True,
-  grasp_offset_z: float = 0.0,
-  touchdown: Touchdown | None = None,
-  close_gripper_before_perception: bool = False,
-  min_safe_z: float | None = 0.95,
+  touchdown: Touchdown = DEFAULT_TOUCHDOWN,
+  min_safe_z: float = 0.95,
   solution: Any | None = None,
+  world: WorldInterface | None = None,
   enable_object_reparenting: bool = False,
-  clear_motion_planner_cache: bool = False,
   perception_max_retries: int = 3,
   perception_retry_delay_sec: float = 1.0,
-  **kwargs: Any,
 ) -> bt.Node:
   """Builds the Behavior Tree subtree for locating and grasping a raw workpiece."""
   tasks: list[bt.Node] = []
+  w = resolve_world(solution, world)
 
   if infeed_strategy.mode == InfeedMode.PERCEPTION:
     target_object_id = (
@@ -96,127 +89,104 @@ def build_pick_from_infeed_subtree(
       else 1
     )
 
-    if move_to_view_first:
-      tasks.append(
-        create_move_to_frame_task(
-          robot=robot,
-          frame_name=view_frame_name,
-          parent_object=parent_object,
-          motion_type="ANY",
-          max_tries=2,
-          retry_delay_sec=1.0,
-          solution=solution,
-          task_name=(
-            f"Step 01: Move to View Frame ({parent_object}/{view_frame_name})"
-          ),
-        )
+    # TODO: on subsequent cylcles, return_infeed.py will have already moved us back to the view frame, so we could skip it from then on to save on cylce time
+    step_01_children: list[bt.Node] = [
+      create_move_to_frame_task(
+        robot=robot,
+        frame_name=view_frame_name,
+        parent_object=parent_object,
+        motion_type="ANY",
+        max_tries=2,
+        retry_delay_sec=1.0,
+        solution=solution,
+        task_name=(
+          f"Step 01a: Move to View Frame ({parent_object}/{view_frame_name})"
+        ),
+      ),
+      gripper.build_close_task(
+        name="Step 01b: Close Gripper (Clear Camera FOV)"
+      ),
+    ]
+    if machine is not None:
+      step_01_children.append(
+        machine.build_open_door_task(name="Open CNC Door")
       )
-
-    if (
-      close_gripper_before_perception
-      and gripper.commanded_state != GripperState.CLOSED
-    ):
-      tasks.append(
-        gripper.build_close_task(
-          name="Step 01b: Close Gripper (Clear Camera FOV)"
-        )
+      step_01_children.append(
+        machine.build_open_vise_task(name="Open CNC Vise")
       )
 
     tasks.append(
-      vision.build_capture_task(name="Step 02a: Capture RGB-D Images")
+      bt.Parallel(
+        name="Step 01: Move to View & Prep Machine",
+        children=step_01_children,
+      )
     )
 
-    estimate_task = vision.build_estimate_task(
-      target_scene_object_id=target_object_id,
+    capture_node, capture_data = vision.build_capture_image_task(
+      max_tries=perception_max_retries,
+      retry_delay_sec=perception_retry_delay_sec,
+      name="Step 02a: Capture RGB-D Images",
+    )
+    tasks.append(capture_node)
+
+    estimate_node, estimates = vision.build_estimate_pose_task(
+      capture_data=capture_data,
       pose_estimator_id=pose_estimator_id,
       min_num_instances=min_instances,
-      approach_offset_z=approach_offset_z,
+      name="Estimate 6D Workpiece Poses",
+    )
+    update_frames_node = w.build_update_grasp_frames_task(
+      estimates=estimates,
+      camera_name=getattr(vision, "_camera_name", "orbbec_camera"),
+      target_scene_object_id=target_object_id,
       parent_object=parent_object,
       pregrasp_frame_name=pregrasp_frame_name,
       grasp_frame_name=grasp_frame_name,
-      min_safe_z=min_safe_z if min_safe_z is not None else 0.95,
-      max_tries=perception_max_retries,
-      retry_delay_sec=perception_retry_delay_sec,
+      approach_offset_z=approach_offset_z,
+      min_safe_z=min_safe_z,
+    )
+    estimate_and_update_seq = bt.Sequence(
       name="Perception & Dynamic Grasp Frame Update Pipeline",
+      children=[estimate_node, update_frames_node],
     )
 
-    prep_task = _build_hardware_prep_task(gripper, machine)
-    if prep_task is not None:
-      tasks.append(
-        bt.Parallel(
-          name="Step 02b: Parallel Estimation & Machine Prep",
-          children=[
-            estimate_task,
-            prep_task,
-          ],
-        )
+    tasks.append(
+      bt.Parallel(
+        name="Step 02b: Parallel Estimation & Open Gripper",
+        children=[
+          estimate_and_update_seq,
+          gripper.build_open_task(name="Open Gripper"),
+        ],
       )
-    else:
-      tasks.append(estimate_task)
-  else:
-    prep_task = _build_hardware_prep_task(gripper, machine)
-    if prep_task is not None:
-      tasks.append(prep_task)
-
-  tasks.append(
-    create_move_to_frame_task(
-      robot=robot,
-      frame_name=pregrasp_frame_name,
-      parent_object=parent_object,
-      motion_type="ANY",
-      max_tries=2,
-      retry_delay_sec=1.0,
-      solution=solution,
-      task_name=(
-        f"Step 03: Move to Dynamic Pre-Grasp"
-        f" ({parent_object}/{pregrasp_frame_name})"
-      ),
     )
+  else:
+    tasks.append(_build_hardware_prep_task(gripper, machine))
+
+  reparent_task = (
+    w.build_attach_to_gripper_task(
+      object_name=workpiece.object_name,
+      name="Step 05: Attach Part to Gripper in Digital Twin",
+    )
+    if enable_object_reparenting
+    else None
   )
 
-  if touchdown is None:
-    touchdown = Touchdown(
-      force_n=float(kwargs.get("contact_force_newtons", Touchdown.force_n)),
-      standoff_m=float(kwargs.get("standoff_distance_m", Touchdown.standoff_m)),
-      timeout_s=float(
-        kwargs.get("contact_timeout_seconds", Touchdown.timeout_s)
-      ),
-      retract_after_m=grasp_offset_z,
-    )
-
   tasks.extend(
-    create_seated_approach_tasks(
+    build_interaction_tasks(
       robot=robot,
       frame_name=grasp_frame_name,
       parent_object=parent_object,
       touchdown=touchdown,
-      label="Step 04",
+      label="Step 03",
+      approach_frames=[pregrasp_frame_name],
+      approach_motion_types="ANY",
+      pre_reparent_tasks=[
+        gripper.build_close_task(name="Step 04: Close Gripper (Grasp Part)")
+      ],
+      reparent_task=reparent_task,
       solution=solution,
     )
   )
-
-  tasks.append(
-    gripper.build_close_task(name="Step 05: Close Gripper (Grasp Part)")
-  )
-
-  if enable_object_reparenting:
-    world = kwargs.get("world") or getattr(solution, "world", None)
-    if not hasattr(world, "build_reparent_task"):
-      world = World(world, solution=solution)
-    tasks.append(
-      world.build_reparent_task(
-        target=workpiece.scene_object_name,
-        new_parent="gripper",
-        name="Step 06: Attach Part to Gripper in Digital Twin",
-      )
-    )
-    if clear_motion_planner_cache:
-      tasks.append(
-        create_clear_motion_planner_cache_task(
-          solution=solution,
-          task_name="Step 06b: Clear Motion Planner Cache",
-        )
-      )
 
   tasks.append(
     create_move_to_frame_task(
@@ -228,7 +198,7 @@ def build_pick_from_infeed_subtree(
       retry_delay_sec=1.0,
       solution=solution,
       task_name=(
-        f"Step 07: Linear Retract to Pre-Grasp"
+        f"Step 06: Linear Retract to Pre-Grasp"
         f" ({parent_object}/{pregrasp_frame_name})"
       ),
     )

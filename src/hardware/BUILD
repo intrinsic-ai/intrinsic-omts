@@ -4,56 +4,46 @@ package(default_visibility = ["//visibility:public"])
 
 py_library(
     name = "robot",
-    srcs = ["robot.py"],
+    srcs = [
+        "gripper.py",
+        "machine.py",
+        "robot.py",
+        "vision.py",
+    ],
     deps = [
         "//src/core:types",
-        "//src/utils:math_utils",
+        "//src/core:world",
+        "//src/utils:execution_utils",
+        "//src/utils:script_utils",
         "@intrinsic_apis//intrinsic/math/proto:point_py_pb2",
         "@intrinsic_apis//intrinsic/math/proto:pose_py_pb2",
         "@intrinsic_apis//intrinsic/math/proto:quaternion_py_pb2",
         "@intrinsic_apis//intrinsic/math/proto:vector3_py_pb2",
         "@intrinsic_apis//intrinsic/motion_planning/proto/v1:geometric_constraints_py_pb2",
+        "@intrinsic_apis//intrinsic/perception/proto/v1:pose_estimator_id_py_pb2",
         "@intrinsic_apis//intrinsic/world/proto:object_world_refs_py_pb2",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:provided",
+        "@ioc//intrinsic/assets:id_utils_py",
         "@ioc//intrinsic/manipulation/skills/force:move_to_contact_proto_py_pb2",
+        "@ioc//intrinsic/perception/skills/multi_view:estimate_pose_multi_view_py_pb2",
     ],
 )
 
 py_library(
     name = "gripper",
-    srcs = ["gripper.py"],
-    deps = [
-        "//src/core:types",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
-    ],
+    deps = [":robot"],
 )
 
 py_library(
     name = "machine",
-    srcs = ["machine.py"],
-    deps = [
-        ":robot",
-        "//src/core:types",
-        "//src/core:world",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
-    ],
+    deps = [":robot"],
 )
 
 py_library(
     name = "vision",
-    srcs = ["vision.py"],
-    deps = [
-        "//src/core:types",
-        "//src/utils:dynamic_frame_calculator",
-        "//src/utils:script_utils",
-        "@intrinsic_apis//intrinsic/perception/proto/v1:pose_estimator_id_py_pb2",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:proto_building",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:provided",
-        "@ioc//intrinsic/assets:id_utils_py",
-        "@ioc//intrinsic/perception/skills/multi_view:estimate_pose_multi_view_py_pb2",
-    ],
+    deps = [":robot"],
 )
 
 py_library(

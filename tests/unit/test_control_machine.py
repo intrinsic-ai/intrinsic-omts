@@ -19,7 +19,6 @@ from unittest import mock
 from absl.testing import absltest
 from intrinsic.solutions import execution
 
-from src.core.types import FixtureState, MachineDoorState
 from src.hardware.machine import CncMachineInterface, MockCncMachine
 from tools.machine.control_machine import (
   execute_action,
@@ -36,7 +35,6 @@ class ControlMachineTest(absltest.TestCase):
     machine = MockCncMachine()
     success = execute_action(machine, "open_door")
     self.assertTrue(success)
-    self.assertEqual(machine.door_state, MachineDoorState.OPEN)
     self.assertEqual(machine.command_log, ["open_door"])
 
   def test_execute_action_close_door_mock(self):
@@ -44,7 +42,6 @@ class ControlMachineTest(absltest.TestCase):
     machine = MockCncMachine()
     success = execute_action(machine, "close_door")
     self.assertTrue(success)
-    self.assertEqual(machine.door_state, MachineDoorState.CLOSED)
     self.assertEqual(machine.command_log, ["close_door"])
 
   def test_execute_action_open_vise_mock(self):
@@ -52,7 +49,6 @@ class ControlMachineTest(absltest.TestCase):
     machine = MockCncMachine()
     success = execute_action(machine, "open_vise")
     self.assertTrue(success)
-    self.assertEqual(machine.vise_state, FixtureState.OPEN)
     self.assertEqual(machine.command_log, ["open_vise"])
 
   def test_execute_action_close_vise_mock(self):
@@ -60,7 +56,6 @@ class ControlMachineTest(absltest.TestCase):
     machine = MockCncMachine()
     success = execute_action(machine, "close_vise")
     self.assertTrue(success)
-    self.assertEqual(machine.vise_state, FixtureState.CLAMPED)
     self.assertEqual(machine.command_log, ["close_vise"])
 
   def test_execute_action_trigger_cycle_mock(self):
@@ -75,7 +70,7 @@ class ControlMachineTest(absltest.TestCase):
     machine = MockCncMachine()
     success = execute_action(machine, "wait_cycle", timeout_seconds=15.0)
     self.assertTrue(success)
-    self.assertEqual(machine.command_log, ["wait_cycle_complete"])
+    self.assertEqual(machine.command_log, ["wait_cycle_complete:15"])
 
   def test_execute_action_unknown_action(self):
     """Tests executing an unknown action returns failure."""

@@ -38,8 +38,8 @@ class RobotiqGripper(GripperInterface):
     self,
     solution: Any,
     joint_name: str = "robotiq_hande_left_finger_joint",
-    open_position: float = 0.025,
-    close_position: float = 0.0,
+    open_position: float = 0.024,
+    close_position: float = 0.010,
     action_name: Optional[str] = None,
   ) -> None:
     self._solution = solution
@@ -74,8 +74,8 @@ class RobotiqGripper(GripperInterface):
 
 #### 2. Calibration & Position Parameters
 * **Finger Joint:** Default joint name is `robotiq_hande_left_finger_joint`.
-* **Fully Open:** `0.025` meters ($25\,\text{mm}$ per finger, yielding a total stroke of $50\,\text{mm}$).
-* **Fully Closed:** `0.000` meters (fingers touching at centerline).
+* **Open:** `0.024` meters per finger.
+* **Closed:** `0.010` meters per finger. This is the grasp width we run, not a full close; the fingers stop on the raw stock rather than at the centerline.
 * **Action Namespace:** Default action endpoint is `/hande_gripper_controller/gripper_cmd` (or specified via `--gripper_action_name`).
 * **Pre-Grasp Open Sequence:** Fingers must always be commanded open (`gripper.build_open_task`) **before** descending into `pre_grasp` to prevent colliding with stock or fixtures.
 
@@ -94,7 +94,7 @@ For pneumatic double-acting cylinders or open/close solenoid valves:
      solution=solution,
      open_pin=0,  # Digital output pin on controller/tool
      close_pin=1,  # Digital output pin
-     device_name="ur_module",  # Device owning the I/O pins in solution
+     output_block_name="standard_out",  # DIO block owning the pins
    )
    ```
 2. `DioGripper.build_open_task` and `DioGripper.build_close_task` dispatch `skills.ai.intrinsic.dio_set_output`.
@@ -130,33 +130,35 @@ Real machine and vise signals are mapped in [`DioCncMachine`](../src/hardware/ma
 ```python
 machine = DioCncMachine(
   solution=solution,
-  door_open_pin=2,  # Digital output -> Door open solenoid
-  door_close_pin=3,  # Digital output -> Door close solenoid
-  vise_open_pin=4,  # Digital output -> Pneumatic vise unclamp
-  vise_close_pin=5,  # Digital output -> Pneumatic vise clamp
-  cycle_start_pin=6,  # Digital output -> CNC cycle start pulse
-  device_name="ur_module",
+  config=MachineConfig(
+    door_open_pin=2,  # Digital output -> Door open solenoid
+    door_close_pin=3,  # Digital output -> Door close solenoid
+    vise_open_pin=4,  # Digital output -> Pneumatic vise unclamp
+    vise_close_pin=5,  # Digital output -> Pneumatic vise clamp
+    cycle_start_pin=6,  # Digital output -> CNC cycle start
+    device_name="ur_module",
+  ),
 )
 ```
 
-1. **Cycle Start Pulse:** Triggering CNC cycle start requires a pulse (high, then low), implemented as a sequence of `dio_set_output(pin=cycle_start_pin, state=True)` followed by `dio_set_output(pin=cycle_start_pin, state=False)`.
+1. **Cycle Start:** `build_trigger_cycle_task` drives `cycle_start_pin` high and leaves it there. `build_wait_cycle_complete_task` then reads `input_block_name` and discards the result, so it is a fixed dwell of `timeout_seconds` and gates on nothing. Whether this cell asserts a cycle-done line, and on which index, has not been established. If you determine one, swap the read for `dio_wait_for_input`, which takes a `DigitalInputBlock` and genuinely blocks.
 2. **Compliant Seating Before Clamping:**
-   When loading raw stock into the vise jaws, never use rigid positioning. Always pair vise approach with [`create_compliant_touchdown_task`](../src/behaviors/motions.py) (`move_to_contact`) in $+Z$ tool direction (`contact_force_newtons=15.0`) to seat the stock flat against the parallels before commanding `close_vise`.
+   When loading raw stock into the vise jaws, never use rigid positioning. Always pair vise approach with [`create_compliant_touchdown_task`](../src/behaviors/motions.py) (`move_to_contact`) in $+Z$ tool direction to seat the stock flat against the parallels before commanding `close_vise`. Every contact in the cycle uses the same force, `Touchdown.force_n` (8 N).
 
-### 3 cm Linear Retract Before Gripper Closure
+### Linear Retract Before Gripper Closure
 
 During both infeed pick and machine unload:
 1. **Flange Contact:** The robot executes compliant touchdown towards the workpiece along $+Z_{\text{tool}}$. Mechanical contact is registered when the gripper body/flange touches the top face of the stock.
-2. **Linear Retract:** Closing gripper fingers immediately at the touchdown depth causes the finger edges to pinch or collide with the top surface. Therefore, immediately following touchdown, the robot executes a $3\,\text{cm}$ ($0.03\,\text{m}$) relative `LINEAR` Cartesian motion along tool $-Z$:
+2. **Linear Retract:** Closing gripper fingers immediately at the touchdown depth causes the finger edges to pinch or collide with the top surface. Therefore, immediately following touchdown, the robot backs off along tool $-Z$ by `MotionConfig.grasp_offset_z` (default $5\,\text{mm}$), carried as `Touchdown.retract_after_m`:
    ```python
    create_relative_retract_task(
      robot=robot,
-     relative_offset_z=-0.03,  # 3 cm linear retract along tool -Z
-     name="Linear Retract 3cm",
+     distance_meters=0.005,
+     task_name="Step 04: Linear Retract (0.5 cm, -Z Tool)",
    )
    ```
-   This is implemented via `RelativePoseEquality(relative_pose=Pose(position=(0.0, 0.0, -0.03)))` relative to the moving `tool_frame`.
-3. **Finger Closure:** Once elevated by $3\,\text{cm}$, the finger pads align squarely across the workpiece short sides. The gripper then commands `build_close_task`.
+   This is implemented via `RelativePoseEquality(relative_pose=Pose(position=(0.0, 0.0, -distance_meters)))` relative to the moving `tool_frame`.
+3. **Finger Closure:** Once clear of the top face, the finger pads align squarely across the workpiece short sides. The gripper then commands `build_close_task`.
 
 ---
 

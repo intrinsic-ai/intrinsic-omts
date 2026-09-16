@@ -5,7 +5,6 @@
 # Config files this library references, resolved through config_path() so that
 # a configs/ directory reshuffle is a one-line change in _common.sh.
 readonly SCENE_UPDATES_FILE="scene.updates.pbtxt"
-readonly SEED_VISE_UPDATES_FILE="seed_vise.updates.pbtxt"
 
 # Applies the scene seed updates. $1 is --reset_sim or --no-reset_sim, $2 is
 # the word used in the unknown-target error ("seed" or "sim seed"), and the
@@ -22,14 +21,8 @@ seed_scene() {
         --files="$(config_path "$SCENE_UPDATES_FILE")" \
         "$reset_flag" "$@"
       ;;
-    vise)
-      run_target //tools/world:apply_scene_updates -- \
-        --files="$(config_path "$SCENE_UPDATES_FILE")" \
-        --files="$(config_path "$SEED_VISE_UPDATES_FILE")" \
-        "$reset_flag" "$@"
-      ;;
     *)
-      die "Unknown $context target: $target (expected: infeed, vise)"
+      die "Unknown $context target: $target (expected: infeed)"
       ;;
   esac
 }
@@ -145,7 +138,7 @@ cmd_move() {
     joint)
       local target_args=()
       if [ $# -gt 0 ] && [[ "$1" != --* ]]; then
-        target_args=("$1" --disable_collision_checking)
+        target_args=("$1")
         shift
       fi
       run_target //tools/jogging:move_to_joint -- \

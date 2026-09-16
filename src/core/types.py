@@ -47,15 +47,6 @@ class PartState(enum.Enum):
   REJECTED = "rejected"
 
 
-class WorkpieceLocation(enum.Enum):
-  """Physical or scene-graph location/holder of the active workpiece."""
-
-  INFEED = "infeed"
-  GRIPPER = "gripper"
-  VISE = "vise"
-  RETURNED = "returned"
-
-
 class SlotState(enum.Enum):
   """Occupancy status of a tray or pallet slot."""
 
@@ -220,3 +211,6 @@ class Frames:
   infeed_grasp: str = "infeed_grasp"
   vise_pre_place: str = "vise_pre_place"
   vise_place: str = "vise_place"
+
+
+DEFAULT_FRAMES = Frames()

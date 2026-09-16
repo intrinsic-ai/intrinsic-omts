@@ -74,19 +74,69 @@ class WorldFacadeTest(absltest.TestCase):
     with self.assertRaises(ValueError):
       self.world.find_object("nonexistent")
 
-  def test_build_reparent_task(self):
-    task = self.world.build_reparent_task(
-      target="raw_stock", new_parent="gripper"
+  def test_build_attach_and_detach_tasks_use_native_skills(self):
+    mock_sol = mock.MagicMock()
+    mock_sol.skills.ai.intrinsic.attach_object_to_robot.return_value = (
+      bt.PythonScript(function_body="pass")
     )
-    self.assertIsInstance(task, bt.Task)
+    mock_sol.skills.ai.intrinsic.detach_object.return_value = bt.PythonScript(
+      function_body="pass"
+    )
+    world = World(self.fake_world, solution=mock_sol)
+    self.fake_world.add_object("gripper", mock.MagicMock(name="gripper_obj"))
+    self.fake_world.add_object("raw_stock", mock.MagicMock(name="stock_obj"))
 
-  def test_build_joint_update_task(self):
-    door_task = self.world.build_joint_update_task(
+    attach_task = world.build_attach_to_gripper_task(
+      object_name="raw_stock", gripper_name="gripper"
+    )
+    self.assertIsInstance(attach_task, bt.Task)
+    mock_sol.skills.ai.intrinsic.attach_object_to_robot.assert_called_once()
+
+    detach_task = world.build_detach_from_gripper_task(
+      object_name="raw_stock", gripper_name="gripper"
+    )
+    self.assertIsInstance(detach_task, bt.Task)
+    mock_sol.skills.ai.intrinsic.detach_object.assert_called_once()
+
+  def test_build_update_grasp_frames_task_signature(self):
+    mock_sol = mock.MagicMock()
+    world = World(self.fake_world, solution=mock_sol)
+    task = world.build_update_grasp_frames_task(estimates="mock_estimates")
+    self.assertIsInstance(task, bt.Task)
+    mock_builder = mock_sol.proto_builder.create_signature_with_args
+    mock_builder.assert_called_once()
+    fields = mock_builder.call_args.kwargs["parameters"].fields
+    field_dict = {f.name: f for f in fields}
+    self.assertEqual(
+      {name: f.number for name, f in field_dict.items()},
+      {
+        "approach_offset_z": 1,
+        "parent_object": 2,
+        "pregrasp_frame_name": 3,
+        "grasp_frame_name": 4,
+        "camera_name": 5,
+        "target_scene_object_id": 6,
+        "estimates": 7,
+        "min_safe_z": 8,
+      },
+    )
+
+  def test_build_joint_update_task_uses_update_world_skill(self):
+    mock_sol = mock.MagicMock()
+    mock_sol.skills.ai.intrinsic.update_world.return_value = bt.PythonScript(
+      function_body="pass"
+    )
+    world = World(self.fake_world, solution=mock_sol)
+    self.fake_world.add_object("cnc_enclosure", mock.MagicMock())
+    self.fake_world.add_object("schunk_egp_64nnb", mock.MagicMock())
+
+    door_task = world.build_joint_update_task(
       object_name="cnc_enclosure", joints=JointPosition(positions=[0.4])
     )
     self.assertIsInstance(door_task, bt.Task)
+    mock_sol.skills.ai.intrinsic.update_world.assert_called()
 
-    vise_task = self.world.build_joint_update_task(
+    vise_task = world.build_joint_update_task(
       object_name="schunk_egp_64nnb", joints=[0.01, 0.01]
     )
     self.assertIsInstance(vise_task, bt.Task)
@@ -103,10 +153,17 @@ class WorldFacadeTest(absltest.TestCase):
     self.world.reset(
       robot=mock_robot,
       solution=mock_solution,
-      workpiece_object_name="raw_stock_2x3x5",
+      workpiece_name="raw_stock_2x3x5",
+    )
+    mock_robot.clear_faults.assert_not_called()
+
+    self.world.reset(
+      robot=mock_robot,
+      solution=mock_solution,
+      workpiece_name="raw_stock_2x3x5",
+      clear_faults=True,
     )
     mock_robot.clear_faults.assert_called_once()
-    mock_solution.clear_motion_planner_cache.assert_called_once()
 
 
 if __name__ == "__main__":

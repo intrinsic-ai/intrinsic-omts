@@ -1,0 +1,59 @@
+solution_address: "localhost:17080"
+infeed_mode: "perception"
+enable_object_reparenting: true
+reset_world_between_cycles: false
+inter_cycle_max_retries: 3
+
+frames:
+  root: "root"
+  view: "view"
+  transit: "transit"
+  machine_approach: "machine_approach"
+  infeed_pre_grasp: "infeed_pre_grasp"
+  infeed_grasp: "infeed_grasp"
+  vise_pre_place: "vise_pre_place"
+  vise_place: "vise_place"
+
+touchdown:
+  force_n: 8.0
+  standoff_m: 0.005
+  timeout_s: 40.0
+
+motion:
+  approach_height_m: 0.05
+  min_safe_z: 0.81
+  grasp_offset_z: 0.005
+  contact_timeout_seconds: 40.0
+  disable_collision_checking: false
+  arm_part_name: "arm"
+  tool_object_name: "robotiq_pinch_gripper"
+  tool_frame_name: "tool"
+
+gripper:
+  hardware_type: "robotiq"
+  joint_name: "robotiq_85_left_knuckle_joint"
+  open_position: 0.024
+  close_position: 0.01
+  action_name: ""
+  dio_open_pin: 0
+  dio_close_pin: 1
+
+machine:
+  machine_type: "none"
+  door_open_pin: 2
+  door_close_pin: 3
+  vise_open_pin: 4
+  vise_close_pin: 5
+  cycle_start_pin: 6
+  machining_timeout_seconds: 30.0
+  initial_close_door_and_vise: false
+
+perception:
+  estimator_id: "ai.intrinsic.raw_stock_2x3x5_estimator"
+  camera_name: "orbbec_camera"
+  service_name: "pose_estimator_service"
+  scene_object_id: "raw_stock_2x3x5"
+  sensor_ids: [1, 4]
+  min_instances: 1
+  max_retries: 3
+  retry_delay_sec: 1.0

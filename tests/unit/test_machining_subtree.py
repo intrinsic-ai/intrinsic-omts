@@ -20,7 +20,6 @@ from absl.testing import absltest
 from intrinsic.solutions import behavior_tree as bt
 
 from src.behaviors.machining import build_machining_handshake_subtree
-from src.core.types import MachineDoorState
 from src.hardware.machine import MockCncMachine
 from src.hardware.robot import MockRobot
 
@@ -50,7 +49,7 @@ class MachiningSubtreeTest(absltest.TestCase):
     self.assertIsInstance(step_4a, bt.Node)
     self.assertEqual(
       step_4a.name,
-      "Move to root/machine_approach (LINEAR)",
+      "Step 4a: Retract to Standby (root/machine_approach)",
     )
 
     # Step 4b: Close CNC door
@@ -80,11 +79,9 @@ class MachiningSubtreeTest(absltest.TestCase):
       machine=self.machine,
     )
 
-    # CNC door should end up open after step 4e
-    self.assertEqual(self.machine.door_state, MachineDoorState.OPEN)
     self.assertEqual(
       self.machine.command_log,
-      ["close_door", "trigger_cycle", "wait_cycle_complete", "open_door"],
+      ["close_door", "trigger_cycle", "wait_cycle_complete:30", "open_door"],
     )
 
     # Robot linear motion to safe standby position
@@ -108,7 +105,7 @@ class MachiningSubtreeTest(absltest.TestCase):
     self.assertLen(subtree.children, 5)
     self.assertEqual(
       subtree.children[0].name,
-      "Move to cnc_fixture/safe_retract (LINEAR)",
+      "Step 4a: Retract to Standby (cnc_fixture/safe_retract)",
     )
     self.assertEqual(
       self.robot.executed_commands,
@@ -116,7 +113,7 @@ class MachiningSubtreeTest(absltest.TestCase):
     )
     self.assertEqual(
       self.machine.command_log,
-      ["close_door", "trigger_cycle", "wait_cycle_complete", "open_door"],
+      ["close_door", "trigger_cycle", "wait_cycle_complete:45", "open_door"],
     )
 
   def test_build_machining_handshake_subtree_timeout_propagation(self):
@@ -148,7 +145,7 @@ class MachiningSubtreeTest(absltest.TestCase):
         target_object_name="root",
         motion_type="LINEAR",
         target_frame_offset=None,
-        name="Move to root/machine_approach (LINEAR)",
+        name="Step 4a: Retract to Standby (root/machine_approach)",
       )
 
 

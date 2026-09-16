@@ -20,52 +20,19 @@ from typing import Any
 
 from intrinsic.math.python import data_types
 
-from src.core.types import Pose3D
 from src.utils.math_utils import compute_top_down_grasp_quaternion
 
 
 def _resolve_camera_transform(
   world: Any, parent_obj: Any, camera_name: str
-) -> Any:
+) -> data_types.Pose3 | None:
   """Resolves the camera sensor transform relative to parent_obj."""
-  if world is None or not hasattr(world, "get_transform"):
-    return None
-
-  base_name = camera_name.split(".")[0] if camera_name else "orbbec_camera"
-  string_candidates = [
-    f"{camera_name}.sensor" if camera_name else "",
-    camera_name,
-    f"{base_name}.sensor",
-    base_name,
-    "orbbec_camera.sensor",
-    "orbbec_camera",
-    "camera.sensor",
-    "camera",
-  ]
-  for cand in string_candidates:
-    if not cand:
-      continue
-    try:
-      tf = world.get_transform(parent_obj, cand)
-      if tf is not None:
-        return estimate_to_pose(tf)
-    except Exception:  # pylint: disable=broad-exception-caught
-      pass
-
-  for name in (camera_name, base_name, "orbbec_camera", "camera"):
-    if not name:
-      continue
-    cam_obj = getattr(world, name, None)
-    if cam_obj is not None:
-      node = getattr(cam_obj, "sensor", cam_obj)
-      try:
-        tf = world.get_transform(parent_obj, node)
-        if tf is not None:
-          return estimate_to_pose(tf)
-      except Exception:  # pylint: disable=broad-exception-caught
-        pass
-
-  return None
+  cam_obj = getattr(world, camera_name, None)
+  target = (
+    getattr(cam_obj, "sensor", cam_obj) if cam_obj is not None else camera_name
+  )
+  tf = world.get_transform(parent_obj, target)
+  return estimate_to_pose(tf) if tf is not None else None
 
 
 def estimate_to_pose(est: Any) -> data_types.Pose3:
@@ -75,10 +42,15 @@ def estimate_to_pose(est: Any) -> data_types.Pose3:
   target = getattr(est, "root_t_target", None) or getattr(
     est, "pose_t_target", est
   )
-  p = Pose3D.from_proto(target)
+  pos = target.position
+  ori = getattr(target, "orientation", None) or target.rotation.quaternion
   return data_types.Pose3(
-    data_types.Rotation3(data_types.Quaternion([p.qx, p.qy, p.qz, p.qw])),
-    [p.x, p.y, p.z],
+    data_types.Rotation3(
+      data_types.Quaternion(
+        [float(ori.x), float(ori.y), float(ori.z), float(ori.w)]
+      )
+    ),
+    [float(pos.x), float(pos.y), float(pos.z)],
   )
 
 
@@ -107,27 +79,15 @@ def _sync_frame(
   world: Any, parent_obj: Any, frame_name: str, pose: data_types.Pose3
 ) -> None:
   """Creates or updates a dynamic frame on parent_obj in ObjectWorld."""
-  existing: set[str] = set()
-  if hasattr(parent_obj, "list_frames"):
-    try:
-      existing.update(str(f) for f in parent_obj.list_frames())
-    except Exception:  # pylint: disable=broad-exception-caught
-      pass
-
-  frame_node = None
-  if hasattr(parent_obj, "get_frame"):
-    try:
-      frame_node = parent_obj.get_frame(frame_name)
-    except Exception:  # pylint: disable=broad-exception-caught
-      pass
-  if frame_node is None and (
-    frame_name in existing or hasattr(parent_obj, frame_name)
-  ):
-    frame_node = getattr(parent_obj, frame_name, None)
-
-  if frame_node is not None and hasattr(world, "update_transform"):
+  existing = (
+    set(str(f) for f in parent_obj.list_frames())
+    if hasattr(parent_obj, "list_frames")
+    else set()
+  )
+  if frame_name in existing or hasattr(parent_obj, frame_name):
+    frame_node = getattr(parent_obj, frame_name)
     world.update_transform(node_a=parent_obj, node_b=frame_node, a_t_b=pose)
-  elif hasattr(world, "create_frame"):
+  else:
     world.create_frame(
       frame_name=frame_name, parent=parent_obj, parent_t_frame=pose
     )
@@ -139,14 +99,11 @@ def _resolve_current_tool_quaternion(
   """Resolves the active tool frame quaternion relative to parent_obj."""
   tool_obj = getattr(world, "gripper", None)
   tool_node = getattr(tool_obj, "tool_frame", None) if tool_obj else None
-  if tool_node is not None and hasattr(world, "get_transform"):
-    try:
-      tf = world.get_transform(parent_obj, tool_node)
-      if tf is not None:
-        q = tf.rotation.quaternion
-        return (float(q.x), float(q.y), float(q.z), float(q.w))
-    except Exception:  # pylint: disable=broad-exception-caught
-      pass
+  if tool_node is not None:
+    tf = world.get_transform(parent_obj, tool_node)
+    if tf is not None:
+      q = tf.rotation.quaternion
+      return (float(q.x), float(q.y), float(q.z), float(q.w))
   return None
 
 
@@ -177,7 +134,7 @@ def calculate_and_update_dynamic_frames(context: Any, params: Any) -> None:
     )
 
   target_id = getattr(params, "target_scene_object_id", "")
-  if target_id and hasattr(world, "update_transform"):
+  if target_id:
     target_obj = getattr(world, target_id, None) or getattr(
       world, target_id.split(".")[-1], None
     )

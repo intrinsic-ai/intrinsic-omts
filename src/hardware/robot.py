@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Robot hardware interface and implementations for Universal Robots and Mocks."""
+"""Robot hardware interface, Universal Robots implementation, and MockRobot."""
 
 import abc
 import dataclasses
@@ -31,7 +31,7 @@ from intrinsic.solutions import behavior_tree as bt
 from intrinsic.world.proto import object_world_refs_pb2
 
 from src.core.types import JointPosition
-from src.utils.math_utils import (
+from src.utils.execution_utils import (
   create_transform_node_ref,
   describe_motion_types,
   normalize_motion_types,
@@ -50,6 +50,9 @@ class MotionConfig:
   tool_frame_name: str = "tool_frame"
   disable_collision_checking: bool = False
   contact_timeout_seconds: float = 40.0
+
+
+DEFAULT_MOTION = MotionConfig()
 
 
 class RobotInterface(abc.ABC):
@@ -119,6 +122,10 @@ class RobotInterface(abc.ABC):
     self,
     target_frames: Sequence[tuple[str, str]],
     motion_type: str | Sequence[str] = "ANY",
+    target_frame_offset: (
+      tuple[tuple[float, float, float], tuple[float, float, float, float]]
+      | None
+    ) = None,
     name: str | None = None,
   ) -> bt.Node:
     """Builds a task to move through multiple target frames in a blended trajectory."""
@@ -138,7 +145,7 @@ class RobotInterface(abc.ABC):
   def build_move_to_contact_task(
     self,
     direction: tuple[float, float, float] = (0.0, 0.0, 1.0),
-    contact_force_newtons: float = 5.0,
+    contact_force_newtons: float = 8.0,
     timeout_seconds: float = 15.0,
     name: str | None = None,
   ) -> bt.Node:
@@ -183,11 +190,12 @@ class UrRobot(RobotInterface):
   def clear_faults(self) -> bool:
     """Clears faults with ai.intrinsic.enable_realtime_control."""
     skills = getattr(self._solution, "skills", None)
-    ai_skills = getattr(skills, "ai", None) if skills else None
     intrinsic_skills = (
-      getattr(ai_skills, "intrinsic", None) if ai_skills else None
+      getattr(getattr(skills, "ai", None), "intrinsic", None)
+      if skills is not None
+      else None
     )
-    if not intrinsic_skills or not hasattr(
+    if intrinsic_skills is None or not hasattr(
       intrinsic_skills, "enable_realtime_control"
     ):
       return False
@@ -203,8 +211,6 @@ class UrRobot(RobotInterface):
       self._solution.executive, "run"
     ):
       self._solution.executive.run(tree)
-    elif hasattr(self._solution, "execute"):
-      self._solution.execute(tree)
     elif hasattr(self._solution, "run"):
       self._solution.run(tree)
     return True
@@ -220,18 +226,14 @@ class UrRobot(RobotInterface):
     }.get(motion_type.upper(), motion_proto.ANY)
 
   def _get_collision_settings(self) -> Any | None:
-    """Returns CollisionSettings with disabled collision checking."""
+    """Returns CollisionSettings with disabled collision checking when configured."""
     if not self._disable_collision_checking:
       return None
-    try:
-      if hasattr(self._move_robot_skill, "intrinsic_proto") and hasattr(
-        self._move_robot_skill.intrinsic_proto, "world"
-      ):
-        return self._move_robot_skill.intrinsic_proto.world.CollisionSettings(
-          disable_collision_checking=True
-        )
-    except (AttributeError, TypeError, ValueError):
-      pass
+    world_proto = getattr(
+      getattr(self._move_robot_skill, "intrinsic_proto", None), "world", None
+    )
+    if world_proto is not None:
+      return world_proto.CollisionSettings(disable_collision_checking=True)
     return None
 
   def _build_trajectory_segment(
@@ -267,14 +269,9 @@ class UrRobot(RobotInterface):
     elif isinstance(joint_target, JointPosition):
       target_list = joint_target.to_list()
       task_name = name or f"Move to joint positions {target_list}"
-      if hasattr(self._move_robot_skill, "intrinsic_proto") and hasattr(
-        self._move_robot_skill.intrinsic_proto, "icon"
-      ):
-        target_pos = self._move_robot_skill.intrinsic_proto.icon.JointVec(
-          joints=target_list
-        )
-      else:
-        target_pos = target_list
+      target_pos = self._move_robot_skill.intrinsic_proto.icon.JointVec(
+        joints=target_list
+      )
     elif hasattr(joint_target, "joint_position") or hasattr(
       joint_target, "joints"
     ):
@@ -283,14 +280,9 @@ class UrRobot(RobotInterface):
     elif isinstance(joint_target, (list, tuple, Sequence)):
       target_list = list(joint_target)
       task_name = name or f"Move to joint positions {target_list}"
-      if hasattr(self._move_robot_skill, "intrinsic_proto") and hasattr(
-        self._move_robot_skill.intrinsic_proto, "icon"
-      ):
-        target_pos = self._move_robot_skill.intrinsic_proto.icon.JointVec(
-          joints=target_list
-        )
-      else:
-        target_pos = target_list
+      target_pos = self._move_robot_skill.intrinsic_proto.icon.JointVec(
+        joints=target_list
+      )
     else:
       raise ValueError(f"Unsupported joint target type: {type(joint_target)}")
 
@@ -356,6 +348,10 @@ class UrRobot(RobotInterface):
     self,
     target_frames: Sequence[tuple[str, str]],
     motion_type: str | Sequence[str] = "ANY",
+    target_frame_offset: (
+      tuple[tuple[float, float, float], tuple[float, float, float, float]]
+      | None
+    ) = None,
     name: str | None = None,
   ) -> bt.Node:
     """Builds an SBL move_robot task executing a blended trajectory."""
@@ -369,14 +365,25 @@ class UrRobot(RobotInterface):
     )
 
     motion_segments = []
-    for (obj_name, frame_name), segment_type in zip(
-      target_frames, motion_types, strict=True
+    last_idx = len(target_frames) - 1
+    for idx, ((obj_name, frame_name), segment_type) in enumerate(
+      zip(target_frames, motion_types, strict=True)
     ):
       target_node_ref = create_transform_node_ref(obj_name, frame_name)
       cartesian_pose = geometric_constraints_pb2.PoseEquality(
         moving_frame=self.tool_frame_reference,
         target_frame=target_node_ref,
       )
+      if idx == last_idx and target_frame_offset is not None:
+        pos, quat = target_frame_offset
+        cartesian_pose.target_frame_offset.CopyFrom(
+          pose_pb2.Pose(
+            position=point_pb2.Point(x=pos[0], y=pos[1], z=pos[2]),
+            orientation=quaternion_pb2.Quaternion(
+              x=quat[0], y=quat[1], z=quat[2], w=quat[3]
+            ),
+          )
+        )
       motion_segments.append(
         self._build_trajectory_segment(
           motion_type_enum=self._motion_type_enum(segment_type),
@@ -425,7 +432,7 @@ class UrRobot(RobotInterface):
   def build_move_to_contact_task(
     self,
     direction: tuple[float, float, float] = (0.0, 0.0, 1.0),
-    contact_force_newtons: float = 5.0,
+    contact_force_newtons: float = 8.0,
     timeout_seconds: float = 15.0,
     name: str | None = None,
   ) -> bt.Node:
@@ -483,6 +490,7 @@ class MockRobot(RobotInterface):
     ) = None,
     name: str | None = None,
   ) -> bt.Node:
+    del target_frame_offset
     target_desc = (
       f"{target_object_name}/{target_frame_name}"
       if target_frame_name
@@ -496,8 +504,13 @@ class MockRobot(RobotInterface):
     self,
     target_frames: Sequence[tuple[str, str]],
     motion_type: str | Sequence[str] = "ANY",
+    target_frame_offset: (
+      tuple[tuple[float, float, float], tuple[float, float, float, float]]
+      | None
+    ) = None,
     name: str | None = None,
   ) -> bt.Node:
+    del target_frame_offset
     motion_types = normalize_motion_types(motion_type, len(target_frames))
     type_desc = describe_motion_types(motion_types)
     path_desc = "->".join(f"{obj}/{frame}" for obj, frame in target_frames)
@@ -522,12 +535,24 @@ class MockRobot(RobotInterface):
   def build_move_to_contact_task(
     self,
     direction: tuple[float, float, float] = (0.0, 0.0, 1.0),
-    contact_force_newtons: float = 5.0,
+    contact_force_newtons: float = 8.0,
     timeout_seconds: float = 15.0,
     name: str | None = None,
   ) -> bt.Node:
+    del timeout_seconds
     task_name = name or "Mock Move to Contact"
     self.executed_commands.append(
       f"move_to_contact:dir={direction},force={contact_force_newtons}"
     )
     return bt.Sequence(name=task_name, children=[])
+
+
+__all__ = [
+  "DEFAULT_MOTION",
+  "MockRobot",
+  "MotionConfig",
+  "RobotInterface",
+  "UrRobot",
+  "describe_motion_types",
+  "normalize_motion_types",
+]

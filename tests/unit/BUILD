@@ -1,4 +1,5 @@
 load("@ioc//bazel:python.bzl", "py_test")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -295,17 +296,6 @@ py_test(
 )
 
 py_test(
-    name = "test_solution",
-    srcs = ["test_solution.py"],
-    deps = [
-        "//src/core:solution",
-        "//src/core:world",
-        "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
-    ],
-)
-
-py_test(
     name = "test_world",
     srcs = ["test_world.py"],
     deps = [
@@ -330,7 +320,7 @@ sh_test(
     size = "small",
     srcs = ["test_omts_ctl.sh"],
     data = [
-        "//:omts_ctl.sh",
+        "//tools:omts_ctl.sh",
         "//tools/ctl:ctl_libs",
     ],
 )

@@ -5,6 +5,7 @@ package(default_visibility = ["//visibility:public"])
 _CONFIG_GLOB = [
     "*/*.pbtxt",
     "*/*.textproto",
+    "*/*.yaml",
 ]
 
 exports_files(glob(_CONFIG_GLOB))
@@ -12,6 +13,11 @@ exports_files(glob(_CONFIG_GLOB))
 filegroup(
     name = "all_configs",
     srcs = glob(_CONFIG_GLOB),
+)
+
+filegroup(
+    name = "app_configs",
+    srcs = glob(["*/*.yaml"]),
 )
 
 filegroup(

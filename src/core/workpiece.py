@@ -31,6 +31,8 @@ class Workpiece:
       initial_infeed_pose: Recorded pose on infeed table if detected by vision.
   """
 
+  id: str = "raw_stock_01"
+  cad_model_name: str = "raw_stock_2x3x5"
   asset_id: str = "ai.intrinsic.raw_stock_2x3x5"
   object_name: str = "raw_stock_2x3x5"
   object_id: int | None = None
@@ -61,8 +63,3 @@ class Workpiece:
   def mark_rejected(self) -> None:
     """Updates part state to REJECTED."""
     self.state = PartState.REJECTED
-
-  @property
-  def scene_object_name(self) -> str:
-    """Returns the primary ObjectWorld object identifier for digital twin lookup."""
-    return self.asset_id or self.object_name

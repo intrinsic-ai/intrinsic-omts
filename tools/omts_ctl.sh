@@ -4,7 +4,7 @@ set -euo pipefail
 # Entry point for OMTS cell control. Subcommand implementations live in
 # tools/ctl/; this file owns the cell lifecycle, argument parsing, and dispatch.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 source "$SCRIPT_DIR/tools/ctl/_common.sh"
 source "$SCRIPT_DIR/tools/ctl/_bazel.sh"

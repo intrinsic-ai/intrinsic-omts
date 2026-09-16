@@ -123,8 +123,8 @@ sequenceDiagram
 
     Note over Robot,World: 3. Machining Handshake Subtree
     Robot->>Robot: Standby at machine_approach
-    CNC->>CNC: Close Door & Pulse Cycle Start (DIO)
-    CNC->>CNC: Wait for Machining Cycle Complete (DIO input / timeout)
+    CNC->>CNC: Close Door & Set Cycle Start High (DIO)
+    CNC->>CNC: Wait for Machining Cycle (DIO read, fixed dwell)
 
     Note over Robot,World: 4. Machine Unload Subtree
     CNC->>CNC: Open Door & Open Vise (DIO)

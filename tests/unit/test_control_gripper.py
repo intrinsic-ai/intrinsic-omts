@@ -19,7 +19,6 @@ from unittest import mock
 from absl.testing import absltest
 from intrinsic.solutions import execution
 
-from src.core.types import GripperState
 from src.hardware.gripper import (
   DioGripper,
   GripperInterface,
@@ -162,7 +161,6 @@ class ControlGripperTest(absltest.TestCase):
     gripper = MockGripper()
     success = execute_action(gripper, "open")
     self.assertTrue(success)
-    self.assertEqual(gripper.commanded_state, GripperState.OPEN)
     self.assertEqual(gripper.command_log, ["open"])
 
   def test_execute_action_close_mock(self):
@@ -170,7 +168,6 @@ class ControlGripperTest(absltest.TestCase):
     gripper = MockGripper()
     success = execute_action(gripper, "close")
     self.assertTrue(success)
-    self.assertEqual(gripper.commanded_state, GripperState.CLOSED)
     self.assertEqual(gripper.command_log, ["close"])
 
   def test_execute_action_unknown_action(self):

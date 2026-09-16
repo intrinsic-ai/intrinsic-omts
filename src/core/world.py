@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""World interface, Flowstate ObjectWorld facade, and in-memory mock implementation."""
+"""World interface, ObjectWorld facade, and offline test doubles."""
 
 import abc
 import logging
@@ -23,94 +23,65 @@ from intrinsic.solutions import behavior_tree as bt
 from intrinsic.solutions import proto_building as pb
 
 from src.core.types import JointPosition
-from src.utils.math_utils import create_transform_node_ref
-from src.utils.script_utils import ScriptArg, load_python_script
-
-__all__ = [
-  "MockWorld",
-  "World",
-  "WorldInterface",
-  "reparent_object_script",
-  "update_object_joints_script",
-]
+from src.utils import dynamic_frame_calculator, math_utils
+from src.utils.execution_utils import create_transform_node_ref
+from src.utils.script_utils import load_python_script
 
 
-def reparent_object_script(context: Any, params: Any) -> None:
-  """BT PythonScript entrypoint reparenting an object in ObjectWorld."""
-  world = context.object_world
-  target_name = getattr(params, "object_name", "raw_stock_2x3x5")
-  parent_name = getattr(params, "parent_name", "root")
-
-  # Prevent attaching directly to static environment fixtures (avoids entity desync).
-  if any(k in parent_name.lower() for k in ("schunk", "vise", "cnc_enclosure")):
-    parent_name = "root"
-
-  short_target = target_name.split(".")[-1]
-  child_obj = getattr(world, target_name, None) or getattr(
-    world, short_target, None
+def _build_dynamic_frame_signature(
+  proto_builder: Any,
+  approach_offset_z: float,
+  parent_object: str,
+  pregrasp_frame_name: str,
+  grasp_frame_name: str,
+  camera_name: str,
+  target_scene_object_id: str,
+  estimates: Any,
+  min_safe_z: float,
+) -> Any:
+  """Builds the proto_builder signature for dynamic frame calculation."""
+  if proto_builder is None:
+    return None
+  fields = [
+    pb.FieldSpec(
+      type="float",
+      name="approach_offset_z",
+      number=1,
+      arg=float(approach_offset_z),
+    ),
+    pb.FieldSpec(
+      type="string", name="parent_object", number=2, arg=parent_object
+    ),
+    pb.FieldSpec(
+      type="string",
+      name="pregrasp_frame_name",
+      number=3,
+      arg=pregrasp_frame_name,
+    ),
+    pb.FieldSpec(
+      type="string", name="grasp_frame_name", number=4, arg=grasp_frame_name
+    ),
+    pb.FieldSpec(type="string", name="camera_name", number=5, arg=camera_name),
+    pb.FieldSpec(
+      type="string",
+      name="target_scene_object_id",
+      number=6,
+      arg=target_scene_object_id,
+    ),
+    pb.FieldSpec(
+      type="intrinsic_proto.perception.v1.PoseEstimateInRoot",
+      name="estimates",
+      number=7,
+      arg=estimates,
+      repeated=True,
+    ),
+    pb.FieldSpec(
+      type="float", name="min_safe_z", number=8, arg=float(min_safe_z)
+    ),
+  ]
+  return proto_builder.create_signature_with_args(
+    parameters=pb.MessageSpec(fields=fields)
   )
-  if child_obj is None and hasattr(world, "get_object"):
-    for cand in (target_name, short_target):
-      try:
-        child_obj = world.get_object(cand)
-        if child_obj is not None:
-          break
-      except Exception:
-        pass
-
-  parent_obj = getattr(world, parent_name, None)
-  if parent_obj is None and hasattr(world, "get_object"):
-    try:
-      parent_obj = world.get_object(parent_name)
-    except Exception:
-      pass
-
-  if child_obj is None or parent_obj is None:
-    logging.warning(
-      "Cannot reparent '%s' to '%s': object not found.",
-      target_name,
-      parent_name,
-    )
-    return
-
-  curr_parent = getattr(child_obj, "parent", None)
-  curr_parent_name = (
-    getattr(curr_parent, "name", None) if curr_parent is not None else None
-  )
-  target_parent_name = getattr(parent_obj, "name", parent_name)
-  if curr_parent_name in (target_parent_name, parent_name):
-    return
-
-  if hasattr(world, "reparent_object"):
-    world.reparent_object(child_object=child_obj, new_parent=parent_obj)
-    if hasattr(child_obj, "parent"):
-      child_obj.parent = parent_obj
-
-
-def update_object_joints_script(context: Any, params: Any) -> None:
-  """BT PythonScript entrypoint updating joint positions on a world object."""
-  world = context.object_world
-  object_name = getattr(params, "object_name", "")
-  positions = [float(p) for p in getattr(params, "positions", ())]
-  if not object_name:
-    return
-
-  obj = getattr(world, object_name, None)
-  if obj is None and hasattr(world, "get_kinematic_object"):
-    try:
-      obj = world.get_kinematic_object(object_name)
-    except Exception:
-      pass
-  if obj is None and hasattr(world, "get_object"):
-    try:
-      obj = world.get_object(object_name)
-    except Exception:
-      pass
-
-  if obj is not None and hasattr(world, "update_joint_positions"):
-    world.update_joint_positions(obj, positions)
-  elif obj is not None and hasattr(obj, "set_joint_positions"):
-    obj.set_joint_positions(positions)
 
 
 class WorldInterface(abc.ABC):
@@ -127,14 +98,23 @@ class WorldInterface(abc.ABC):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def build_reparent_task(
+  def build_attach_to_gripper_task(
     self,
-    target: str,
-    new_parent: str,
+    object_name: str,
+    gripper_name: str = "gripper",
     name: str | None = None,
-    task_name: str | None = None,
   ) -> bt.Node:
-    """Builds a behavior tree task that reparents target under new_parent."""
+    """Builds a behavior tree task attaching object_name to gripper_name."""
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def build_detach_from_gripper_task(
+    self,
+    object_name: str,
+    gripper_name: str = "gripper",
+    name: str | None = None,
+  ) -> bt.Node:
+    """Builds a behavior tree task detaching object_name from gripper_name."""
     raise NotImplementedError
 
   @abc.abstractmethod
@@ -146,6 +126,22 @@ class WorldInterface(abc.ABC):
     task_name: str | None = None,
   ) -> bt.Node:
     """Builds a behavior tree task updating joint positions on object_name."""
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def build_update_grasp_frames_task(
+    self,
+    estimates: Any,
+    camera_name: str = "orbbec_camera",
+    target_scene_object_id: str = "raw_stock_2x3x5",
+    parent_object: str = "root",
+    pregrasp_frame_name: str = "infeed_pre_grasp",
+    grasp_frame_name: str = "infeed_grasp",
+    approach_offset_z: float = 0.05,
+    min_safe_z: float = 0.95,
+    name: str | None = None,
+  ) -> bt.Node:
+    """Builds a task updating dynamic grasp frames and workpiece pose in ObjectWorld."""
     raise NotImplementedError
 
   @abc.abstractmethod
@@ -161,10 +157,212 @@ class WorldInterface(abc.ABC):
     scene_update_files: Sequence[str] = ("configs/omts/scene.updates.pbtxt",),
     robot: Any | None = None,
     solution: Any | None = None,
+    clear_faults: bool = False,
     **kwargs: Any,
   ) -> list[str]:
-    """Resets workpiece parentage, clears dynamic frames, and reapplies scene updates."""
+    """Clears dynamic frames and reapplies scene updates."""
     raise NotImplementedError
+
+
+class World(WorldInterface):
+  """Facade over live Flowstate ObjectWorld lookups and native world skills."""
+
+  def __init__(self, client: Any, solution: Any | None = None) -> None:
+    self._client = client
+    self._solution = solution
+
+  @property
+  def client(self) -> Any:
+    """Returns the underlying Flowstate ObjectWorldClient handle."""
+    return self._client
+
+  @property
+  def raw(self) -> Any:
+    """Alias for client."""
+    return self._client
+
+  def find_object(self, name: str) -> Any:
+    """Resolves an object in ObjectWorld by name or short asset identifier."""
+    if self._client is None:
+      raise ValueError(f"Cannot find object '{name}': world client is None.")
+
+    short = name.split(".")[-1]
+    for candidate in (name, short):
+      if hasattr(self._client, candidate):
+        obj = getattr(self._client, candidate)
+        if obj is not None:
+          return obj
+      if hasattr(self._client, "get_object"):
+        try:
+          obj = self._client.get_object(candidate)
+          if obj is not None:
+            return obj
+        except Exception:  # pylint: disable=broad-exception-caught
+          pass
+
+    raise ValueError(f"Object '{name}' not found in ObjectWorld.")
+
+  def resolve_frame(self, object_name: str, frame_name: str) -> Any:
+    """Resolves a transform node for the given object and frame name."""
+    ref = create_transform_node_ref(object_name, frame_name)
+    return self._client.get_transform_node(ref)
+
+  def build_attach_to_gripper_task(
+    self,
+    object_name: str,
+    gripper_name: str = "gripper",
+    name: str | None = None,
+  ) -> bt.Node:
+    """Builds a behavior tree task attaching object_name to gripper_name."""
+    label = name or f"Attach {object_name} to {gripper_name}"
+    skills = getattr(self._solution, "skills", None)
+    if skills is not None:
+      action = skills.ai.intrinsic.attach_object_to_robot(
+        gripper_entity=self.find_object(gripper_name),
+        object_entity=self.find_object(object_name),
+      )
+      return bt.Task(action=action, name=label)
+    return bt.Task(action=bt.PythonScript(function_body="pass"), name=label)
+
+  def build_detach_from_gripper_task(
+    self,
+    object_name: str,
+    gripper_name: str = "gripper",
+    name: str | None = None,
+  ) -> bt.Node:
+    """Builds a behavior tree task detaching object_name from gripper_name."""
+    label = name or f"Detach {object_name} from {gripper_name}"
+    skills = getattr(self._solution, "skills", None)
+    if skills is not None:
+      action = skills.ai.intrinsic.detach_object(
+        gripper_entity=self.find_object(gripper_name),
+        object_entity=self.find_object(object_name),
+      )
+      return bt.Task(action=action, name=label)
+    return bt.Task(action=bt.PythonScript(function_body="pass"), name=label)
+
+  def build_joint_update_task(
+    self,
+    object_name: str,
+    joints: JointPosition | Sequence[float],
+    name: str | None = None,
+    task_name: str | None = None,
+  ) -> bt.Node:
+    """Builds a behavior tree task updating joint positions via update_world skill."""
+    label = name or task_name or f"Update joints for {object_name}"
+    vals = [
+      float(p)
+      for p in (
+        joints.positions if isinstance(joints, JointPosition) else joints
+      )
+    ]
+    skills = getattr(self._solution, "skills", None)
+    if skills is not None:
+      update_skill = skills.ai.intrinsic.update_world
+      req = update_skill.ObjectWorldUpdate(
+        update_object_joints=update_skill.UpdateObjectJointsRequest(
+          object=self.find_object(object_name),
+          joint_positions=vals,
+        )
+      )
+      return bt.Task(action=update_skill(update=req), name=label)
+    return bt.Task(action=bt.PythonScript(function_body="pass"), name=label)
+
+  def build_update_grasp_frames_task(
+    self,
+    estimates: Any,
+    camera_name: str = "orbbec_camera",
+    target_scene_object_id: str = "raw_stock_2x3x5",
+    parent_object: str = "root",
+    pregrasp_frame_name: str = "infeed_pre_grasp",
+    grasp_frame_name: str = "infeed_grasp",
+    approach_offset_z: float = 0.05,
+    min_safe_z: float = 0.95,
+    name: str | None = None,
+  ) -> bt.Node:
+    """Builds a task updating dynamic grasp frames and workpiece pose in ObjectWorld."""
+    signature = _build_dynamic_frame_signature(
+      proto_builder=getattr(self._solution, "proto_builder", None),
+      approach_offset_z=approach_offset_z,
+      parent_object=parent_object,
+      pregrasp_frame_name=pregrasp_frame_name,
+      grasp_frame_name=grasp_frame_name,
+      camera_name=camera_name,
+      target_scene_object_id=target_scene_object_id,
+      estimates=estimates,
+      min_safe_z=min_safe_z,
+    )
+    calc_script = bt.PythonScript(
+      signature_with_args=signature,
+      function_body=load_python_script(
+        dynamic_frame_calculator.calculate_and_update_dynamic_frames,
+        preludes=(math_utils,),
+      ),
+    )
+    return bt.Task(
+      action=calc_script,
+      name=name or "Calculate & Update Dynamic Grasp & Pre-Grasp Frames",
+    )
+
+  def clear_stale_frames(self, names: Sequence[str]) -> list[str]:
+    """Removes dynamic frames from root object in the world."""
+    if self._client is None:
+      return []
+    cleared = []
+    for df_name in names:
+      try:
+        ref = create_transform_node_ref("root", df_name)
+        frame = self._client.get_transform_node(ref)
+        self._client.delete_frame(frame, force=True)
+        cleared.append(df_name)
+        logging.info("Deleted stale dynamic frame: %s", df_name)
+      except Exception as err:  # pylint: disable=broad-exception-caught
+        logging.warning("Failed to delete frame %s: %s", df_name, err)
+    return cleared
+
+  def reset(
+    self,
+    workpiece_name: str = "raw_stock_2x3x5",
+    dynamic_frames: Sequence[str] = ("infeed_grasp", "infeed_pre_grasp"),
+    scene_update_files: Sequence[str] = ("configs/omts/scene.updates.pbtxt",),
+    robot: Any | None = None,
+    solution: Any | None = None,
+    clear_faults: bool = False,
+    **kwargs: Any,
+  ) -> list[str]:
+    """Clears dynamic frames, reapplies scene updates, and optionally clears robot faults."""
+    from tools.world.apply_scene_updates import apply_pbtxt_file
+
+    del workpiece_name, solution, kwargs
+    reset_actions: list[str] = []
+    cleared = self.clear_stale_frames(dynamic_frames)
+    reset_actions.extend(f"frame:{f}" for f in cleared)
+
+    if self._client is not None:
+      for fpath in scene_update_files:
+        try:
+          apply_pbtxt_file(world=self._client, filepath=fpath)
+        except Exception as err:  # pylint: disable=broad-exception-caught
+          logging.warning("Failed to reapply scene update %s: %s", fpath, err)
+
+    if clear_faults and robot is not None and hasattr(robot, "clear_faults"):
+      robot.clear_faults()
+
+    return reset_actions
+
+
+class OfflineExecutive:
+  """Executive that records behavior trees without executing hardware actions."""
+
+  def __init__(self) -> None:
+    self.executed: list[Any] = []
+    self.last_simulation_mode: Any = None
+
+  def run(self, tree: Any, simulation_mode: Any = None) -> None:
+    """Records the tree and simulation mode without executing."""
+    self.last_simulation_mode = simulation_mode
+    self.executed.append(tree)
+    logging.info("Offline executive accepted a behavior tree; not executing.")
 
 
 class MockWorld(WorldInterface):
@@ -195,12 +393,18 @@ class MockWorld(WorldInterface):
     return list(self._objects.values())
 
   def get_object(self, name: Any) -> Any:
-    """Returns the object registered under name, or None."""
-    return self._objects.get(self.name_of(name))
+    """Returns the object registered under name or matching short name, or None."""
+    key = self.name_of(name)
+    if key in self._objects:
+      return self._objects[key]
+    short = key.split(".")[-1]
+    for k, obj in self._objects.items():
+      if k.split(".")[-1] == short or getattr(obj, "name", None) == short:
+        return obj
+    return None
 
   def find_object(self, name: str) -> Any:
-    short = name.split(".")[-1]
-    obj = self._objects.get(name) or self._objects.get(short)
+    obj = self.get_object(name)
     if obj is None:
       raise ValueError(f"Object '{name}' not found in MockWorld.")
     return obj
@@ -240,18 +444,23 @@ class MockWorld(WorldInterface):
     p = new_parent if new_parent is not None else parent
     self.reparented.append((self.name_of(c), self.name_of(p)))
 
-  def build_reparent_task(
+  def build_attach_to_gripper_task(
     self,
-    target: str,
-    new_parent: str,
+    object_name: str,
+    gripper_name: str = "gripper",
     name: str | None = None,
-    task_name: str | None = None,
   ) -> bt.Node:
-    label = name or task_name or f"Reparent {target} to {new_parent}"
-    return bt.Task(
-      action=bt.PythonScript(function_body="pass"),
-      name=label,
-    )
+    label = name or f"Attach {object_name} to {gripper_name}"
+    return bt.Task(action=bt.PythonScript(function_body="pass"), name=label)
+
+  def build_detach_from_gripper_task(
+    self,
+    object_name: str,
+    gripper_name: str = "gripper",
+    name: str | None = None,
+  ) -> bt.Node:
+    label = name or f"Detach {object_name} from {gripper_name}"
+    return bt.Task(action=bt.PythonScript(function_body="pass"), name=label)
 
   def build_joint_update_task(
     self,
@@ -262,10 +471,32 @@ class MockWorld(WorldInterface):
   ) -> bt.Node:
     del joints
     label = name or task_name or f"Update joints for {object_name}"
-    return bt.Task(
-      action=bt.PythonScript(function_body="pass"),
-      name=label,
+    return bt.Task(action=bt.PythonScript(function_body="pass"), name=label)
+
+  def build_update_grasp_frames_task(
+    self,
+    estimates: Any,
+    camera_name: str = "orbbec_camera",
+    target_scene_object_id: str = "raw_stock_2x3x5",
+    parent_object: str = "root",
+    pregrasp_frame_name: str = "infeed_pre_grasp",
+    grasp_frame_name: str = "infeed_grasp",
+    approach_offset_z: float = 0.05,
+    min_safe_z: float = 0.95,
+    name: str | None = None,
+  ) -> bt.Node:
+    del (
+      estimates,
+      camera_name,
+      target_scene_object_id,
+      parent_object,
+      pregrasp_frame_name,
+      grasp_frame_name,
+      approach_offset_z,
+      min_safe_z,
     )
+    label = name or "Calculate & Update Dynamic Grasp & Pre-Grasp Frames"
+    return bt.Task(action=bt.PythonScript(function_body="pass"), name=label)
 
   def clear_stale_frames(self, names: Sequence[str]) -> list[str]:
     return list(names)
@@ -277,229 +508,47 @@ class MockWorld(WorldInterface):
     scene_update_files: Sequence[str] = ("configs/omts/scene.updates.pbtxt",),
     robot: Any | None = None,
     solution: Any | None = None,
+    clear_faults: bool = False,
     **kwargs: Any,
   ) -> list[str]:
-    del scene_update_files
-    target = kwargs.get("workpiece_object_name") or workpiece_name
-    self.ensure_workpiece_at_root(target)
-    if robot is not None and hasattr(robot, "clear_faults"):
+    del workpiece_name, scene_update_files, solution, kwargs
+    if clear_faults and robot is not None and hasattr(robot, "clear_faults"):
       robot.clear_faults()
-    if solution is not None and hasattr(solution, "clear_motion_planner_cache"):
-      solution.clear_motion_planner_cache()
-    return [f"reparent:{target}"] + list(dynamic_frames)
+    return list(dynamic_frames)
 
 
-class World(WorldInterface):
-  """Facade over live Flowstate solution world-graph lookups and mutation tasks."""
+class MockSolution:
+  """Stand-in solution handle for `--mock_hardware` and unit tests."""
 
-  def __init__(self, raw_world: Any, solution: Any | None = None) -> None:
-    self._raw_world = raw_world
-    self._solution = solution
+  def __init__(self, world: MockWorld | None = None) -> None:
+    """Initializes the mock solution."""
+    self.world = world if world is not None else MockWorld()
+    self.executive = OfflineExecutive()
+    self.skills = None
+    self.proto_builder = None
+    self.resources: dict[str, Any] = {}
 
-  @property
-  def raw(self) -> Any:
-    """Returns the underlying Flowstate ObjectWorld handle."""
-    return self._raw_world
+  def run(self, tree: bt.Node, simulation_mode: Any = None) -> None:
+    self.executive.run(tree, simulation_mode=simulation_mode)
 
-  def find_object(self, name: str) -> Any:
-    """Resolves an object in ObjectWorld by full name or short asset identifier."""
-    if self.raw is None:
-      raise ValueError(f"Cannot find object '{name}': world is None.")
 
-    short_name = name.split(".")[-1]
-    candidates = [name]
-    if short_name not in candidates:
-      candidates.append(short_name)
+def resolve_world(
+  solution: Any, world: WorldInterface | None = None
+) -> WorldInterface:
+  """Returns the world facade, wrapping a raw ObjectWorld handle if needed."""
+  if isinstance(world, WorldInterface):
+    return world
+  candidate = getattr(solution, "world", None)
+  if isinstance(candidate, WorldInterface):
+    return candidate
+  return World(candidate, solution=solution)
 
-    if hasattr(self.raw, "get_object"):
-      for cand in candidates:
-        try:
-          obj = self.raw.get_object(cand)
-          if obj is not None:
-            return obj
-        except Exception:
-          pass
 
-    if hasattr(self.raw, "list_objects"):
-      try:
-        cand_set = set(candidates)
-        for obj in self.raw.list_objects():
-          obj_id = getattr(obj, "name", None) or getattr(obj, "id", None)
-          if obj_id in cand_set:
-            return obj
-      except Exception:
-        pass
-
-    for cand in candidates:
-      if hasattr(self.raw, cand):
-        obj = getattr(self.raw, cand)
-        if obj is not None:
-          return obj
-
-    raise ValueError(f"Object '{name}' not found in ObjectWorld.")
-
-  def resolve_frame(self, object_name: str, frame_name: str) -> Any:
-    """Resolves a transform node for the given object and frame name."""
-    if hasattr(self.raw, "get_transform_node"):
-      try:
-        ref = create_transform_node_ref(object_name, frame_name)
-        return self.raw.get_transform_node(ref)
-      except Exception:
-        pass
-
-    obj = self.find_object(object_name)
-    if hasattr(obj, "get_frame"):
-      return obj.get_frame(frame_name)
-    if hasattr(obj, frame_name):
-      return getattr(obj, frame_name)
-    return frame_name
-
-  def ensure_workpiece_at_root(
-    self, workpiece_name: str = "raw_stock_2x3x5"
-  ) -> None:
-    """Ensures the workpiece is parented to 'root' prior to starting a cycle."""
-    if self.raw is None:
-      return
-    try:
-      obj = self.find_object(workpiece_name)
-      parent = getattr(obj, "parent", None)
-      parent_name = getattr(parent, "name", None) or getattr(parent, "id", None)
-      if parent_name and parent_name != "root":
-        logging.info(
-          "Startup reparenting: '%s' is attached to '%s'. Reparenting to 'root'.",
-          getattr(obj, "name", workpiece_name),
-          parent_name,
-        )
-        root_obj = getattr(self.raw, "root", "root")
-        if hasattr(self.raw, "reparent_object"):
-          try:
-            self.raw.reparent_object(child_object=obj, new_parent=root_obj)
-          except TypeError:
-            self.raw.reparent_object(obj, root_obj)
-    except Exception as err:
-      logging.warning("Startup workpiece reparenting check failed: %s", err)
-
-  def build_reparent_task(
-    self,
-    target: str,
-    new_parent: str,
-    name: str | None = None,
-    task_name: str | None = None,
-  ) -> bt.Node:
-    """Builds a behavior tree task that reparents target under new_parent."""
-    label = name or task_name or f"Reparent {target} to {new_parent}"
-    signature = None
-    if self._solution is not None and getattr(
-      self._solution, "proto_builder", None
-    ):
-      args = [
-        ScriptArg(1, "object_name", "string", target),
-        ScriptArg(2, "parent_name", "string", new_parent),
-      ]
-      signature = self._solution.proto_builder.create_signature_with_args(
-        parameters=pb.MessageSpec(fields=[a.to_field_spec() for a in args])
-      )
-
-    action = bt.PythonScript(
-      signature_with_args=signature,
-      function_body=load_python_script(reparent_object_script),
-    )
-    return bt.Task(action=action, name=label)
-
-  def build_joint_update_task(
-    self,
-    object_name: str,
-    joints: JointPosition | Sequence[float],
-    name: str | None = None,
-    task_name: str | None = None,
-  ) -> bt.Node:
-    """Builds a behavior tree task updating prismatic joints for object_name."""
-    label = name or task_name or f"Update joints for {object_name}"
-    vals = [
-      float(p)
-      for p in (
-        joints.positions if isinstance(joints, JointPosition) else joints
-      )
-    ]
-    signature = None
-    if self._solution is not None and getattr(
-      self._solution, "proto_builder", None
-    ):
-      args = [
-        ScriptArg(1, "object_name", "string", object_name),
-        ScriptArg(2, "positions", "float", vals, repeated=True),
-      ]
-      signature = self._solution.proto_builder.create_signature_with_args(
-        parameters=pb.MessageSpec(fields=[a.to_field_spec() for a in args])
-      )
-
-    action = bt.PythonScript(
-      signature_with_args=signature,
-      function_body=load_python_script(update_object_joints_script),
-    )
-    return bt.Task(action=action, name=label)
-
-  def clear_stale_frames(self, names: Sequence[str]) -> list[str]:
-    """Removes dynamic frames from root object in the world."""
-    if self.raw is None:
-      return []
-    root_obj = getattr(self.raw, "root", None)
-    cleared = []
-    for df_name in names:
-      if hasattr(self.raw, "delete_frame"):
-        target_frame = None
-        if root_obj is not None:
-          target_frame = getattr(root_obj, df_name, None)
-          if target_frame is None and hasattr(root_obj, "get_frame"):
-            try:
-              target_frame = root_obj.get_frame(df_name)
-            except Exception:
-              pass
-        if target_frame is None:
-          target_frame = df_name
-        try:
-          try:
-            self.raw.delete_frame(target_frame, force=True)
-          except TypeError:
-            self.raw.delete_frame(target_frame)
-          cleared.append(df_name)
-          logging.info("Deleted stale dynamic frame: %s", df_name)
-        except Exception as err:
-          logging.warning("Failed to delete frame %s: %s", df_name, err)
-    return cleared
-
-  def reset(
-    self,
-    workpiece_name: str = "raw_stock_2x3x5",
-    dynamic_frames: Sequence[str] = ("infeed_grasp", "infeed_pre_grasp"),
-    scene_update_files: Sequence[str] = ("configs/omts/scene.updates.pbtxt",),
-    robot: Any | None = None,
-    solution: Any | None = None,
-    **kwargs: Any,
-  ) -> list[str]:
-    """Resets workpiece parentage, clears dynamic frames, and reapplies scene updates."""
-    from tools.world.apply_scene_updates import apply_pbtxt_file
-
-    target = kwargs.get("workpiece_object_name") or workpiece_name
-    reset_actions: list[str] = []
-    self.ensure_workpiece_at_root(target)
-    reset_actions.append(f"reparent:{target}")
-
-    cleared = self.clear_stale_frames(dynamic_frames)
-    reset_actions.extend(f"frame:{f}" for f in cleared)
-
-    if self.raw is not None:
-      for fpath in scene_update_files:
-        try:
-          apply_pbtxt_file(world=self.raw, filepath=fpath)
-        except Exception as err:
-          logging.warning("Failed to reapply scene update %s: %s", fpath, err)
-
-    if robot is not None and hasattr(robot, "clear_faults"):
-      robot.clear_faults()
-
-    sol = solution or self._solution
-    if sol is not None and hasattr(sol, "clear_motion_planner_cache"):
-      sol.clear_motion_planner_cache()
-
-    return reset_actions
+__all__ = [
+  "MockSolution",
+  "MockWorld",
+  "OfflineExecutive",
+  "World",
+  "WorldInterface",
+  "resolve_world",
+]

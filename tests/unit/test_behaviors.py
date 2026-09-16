@@ -31,8 +31,8 @@ from src.core.workpiece import Workpiece
 from src.core.world import MockWorld
 from src.hardware.gripper import MockGripper
 from src.hardware.machine import MockCncMachine
-from src.hardware.robot import MockRobot
-from src.hardware.vision import MockVision, OrbbecVision
+from src.hardware.robot import MockRobot, MotionConfig
+from src.hardware.vision import MockVision
 
 
 class BehaviorsTest(absltest.TestCase):
@@ -75,14 +75,17 @@ class BehaviorsTest(absltest.TestCase):
     for idx, expected_name in enumerate(expected_subtree_names):
       self.assertEqual(tree.root.children[idx].name, expected_name)
 
-    # Pick subtree: 9 steps (includes view, capture, parallel estimate/prep, pregrasp, approach, touchdown, retract, close, retract; no attach)
-    self.assertLen(tree.root.children[0].children, 9)
-    # Load machine subtree: 8 steps (blended approach + standoff + compliant touchdown into vise; cache clear; no detach/attach)
-    self.assertLen(tree.root.children[1].children, 8)
+    # Pick subtree: 8 steps (view+prep, capture, parallel estimate/open,
+    # blended pregrasp->standoff, touchdown, retract, close, retract; no attach)
+    self.assertLen(tree.root.children[0].children, 8)
+    # Load machine subtree: 6 steps (one blended approach + standoff +
+    # compliant touchdown into vise; no detach/attach)
+    self.assertLen(tree.root.children[1].children, 6)
     # Machining subtree: 5 steps
     self.assertLen(tree.root.children[2].children, 5)
-    # Unload machine subtree: 10 steps (standoff approach + compliant touchdown from vise and retract; no detach/attach)
-    self.assertLen(tree.root.children[3].children, 10)
+    # Unload machine subtree: 7 steps (one blended approach, standoff +
+    # compliant touchdown + retract from vise, one blended retract)
+    self.assertLen(tree.root.children[3].children, 7)
     # Return infeed subtree: 5 steps (compliant placement to table; no detach)
     self.assertLen(tree.root.children[4].children, 5)
     self.assertIsNotNone(tree.proto)
@@ -97,43 +100,42 @@ class BehaviorsTest(absltest.TestCase):
         "close_vise",
         "close_door",
         "trigger_cycle",
-        "wait_cycle_complete",
+        "wait_cycle_complete:30",
         "open_door",
         "open_vise",
       ],
     )
     self.assertEqual(
       self.gripper.command_log,
-      ["open", "close", "open", "close", "open"],
+      ["close", "open", "close", "open", "close", "open"],
     )
     expected_robot_commands = [
       "move_cartesian:root/view:ANY",
-      "move_cartesian:root/infeed_pre_grasp:ANY",
-      "move_cartesian:root/infeed_grasp:LINEAR",
+      "move_blended_cartesian:root/infeed_pre_grasp->root/infeed_grasp:ANY/LINEAR",
       "move_to_contact:dir=(0.0, 0.0, 1.0),force=8.0",
       "move_relative_cartesian:(0.0, 0.0, -0.005):LINEAR",
       "move_cartesian:root/infeed_pre_grasp:LINEAR",
-      "move_blended_cartesian:root/transit->root/machine_approach:ANY",
-      "move_cartesian:root/vise_pre_place:ANY",
+      "move_blended_cartesian:root/transit->root/machine_approach->"
+      "root/vise_pre_place:ANY/ANY/LINEAR",
       "move_cartesian:root/vise_place:LINEAR",
       "move_to_contact:dir=(0.0, 0.0, 1.0),force=8.0",
       "move_cartesian:root/vise_pre_place:LINEAR",
       "move_cartesian:root/machine_approach:LINEAR",
-      "move_cartesian:root/machine_approach:ANY",
-      "move_cartesian:root/vise_pre_place:LINEAR",
+      "move_blended_cartesian:root/machine_approach->"
+      "root/vise_pre_place:ANY/LINEAR",
       "move_cartesian:root/vise_place:LINEAR",
       "move_to_contact:dir=(0.0, 0.0, 1.0),force=8.0",
       "move_relative_cartesian:(0.0, 0.0, -0.005):LINEAR",
-      "move_cartesian:root/vise_pre_place:LINEAR",
-      "move_cartesian:root/machine_approach:LINEAR",
+      "move_blended_cartesian:root/vise_pre_place->"
+      "root/machine_approach:LINEAR",
       "move_blended_cartesian:root/transit->root/infeed_pre_grasp:ANY",
       "move_cartesian:root/infeed_grasp:LINEAR",
       "move_to_contact:dir=(0.0, 0.0, 1.0),force=8.0",
-      "move_cartesian:root/infeed_pre_grasp:LINEAR",
+      "move_blended_cartesian:root/infeed_pre_grasp->root/view:LINEAR/ANY",
     ]
     self.assertEqual(self.robot.executed_commands, expected_robot_commands)
 
-  def test_build_master_behavior_tree_with_compliant_touchdown_enabled(self):
+  def test_build_master_behavior_tree_return_compliant_touchdown(self):
     tree = build_machine_tending_behavior_tree(
       robot=self.robot,
       gripper=self.gripper,
@@ -141,9 +143,8 @@ class BehaviorsTest(absltest.TestCase):
       vision=self.vision,
       infeed_strategy=self.infeed_strategy,
       workpiece=self.workpiece,
-      return_compliant_touchdown=True,
     )
-    # Return infeed subtree has 5 steps when compliant touchdown is enabled without reparenting
+    # The return is a release, so it seats the part and does not lift off it.
     self.assertLen(tree.root.children[4].children, 5)
     self.assertEqual(
       tree.root.children[4].children[1].name,
@@ -153,12 +154,13 @@ class BehaviorsTest(absltest.TestCase):
       tree.root.children[4].children[2].name,
       "Step 6c: Compliant Touchdown (+Z Tool)",
     )
-    self.assertIn(
-      "move_to_contact:dir=(0.0, 0.0, 1.0),force=8.0",
-      self.robot.executed_commands,
+    self.assertEqual(
+      tree.root.children[4].children[3].name,
+      "Step 6d: Release Part at Scatter Placement",
     )
 
-  def test_build_master_behavior_tree_with_return_to_view_frame(self):
+  def test_build_master_bt_touchdown_force_is_uniform_across_phases(self):
+    """Verifies one Touchdown drives every phase's contact identically."""
     tree = build_machine_tending_behavior_tree(
       robot=self.robot,
       gripper=self.gripper,
@@ -166,18 +168,18 @@ class BehaviorsTest(absltest.TestCase):
       vision=self.vision,
       infeed_strategy=self.infeed_strategy,
       workpiece=self.workpiece,
-      return_to_view_frame=True,
-      view_frame_name="view",
+      touchdown=Touchdown(force_n=12.0),
     )
-    return_subtree = tree.root.children[4]
+    self.assertLen(tree.root.children, 5)
+    contact_commands = [
+      cmd
+      for cmd in self.robot.executed_commands
+      if cmd.startswith("move_to_contact:")
+    ]
+    # Pick, load, unload and return each seat compliantly at the same force.
     self.assertEqual(
-      return_subtree.children[-1].name,
-      "Step 6f: Linear Retract to infeed_pre_grasp Blended to View Frame"
-      " (root/infeed_pre_grasp -> root/view)",
-    )
-    self.assertIn(
-      "move_blended_cartesian:root/infeed_pre_grasp->root/view:LINEAR/ANY",
-      self.robot.executed_commands,
+      contact_commands,
+      ["move_to_contact:dir=(0.0, 0.0, 1.0),force=12.0"] * 4,
     )
 
   def test_build_master_bt_with_load_compliant_touchdown(self):
@@ -188,16 +190,20 @@ class BehaviorsTest(absltest.TestCase):
       vision=self.vision,
       infeed_strategy=self.infeed_strategy,
       workpiece=self.workpiece,
-      load_compliant_touchdown=True,
-      load_contact_force_n=12.0,
+      touchdown=Touchdown(force_n=12.0),
     )
+    self.assertLen(tree.root.children[1].children, 6)
     self.assertEqual(
-      tree.root.children[1].children[2].name,
+      tree.root.children[1].children[1].name,
       "Step 3c: Linear Approach to Standoff (root/vise_place)",
     )
     self.assertEqual(
-      tree.root.children[1].children[3].name,
+      tree.root.children[1].children[2].name,
       "Step 3c: Compliant Touchdown (+Z Tool)",
+    )
+    # A release must not lift off the part, so no retract follows.
+    self.assertEqual(
+      tree.root.children[1].children[3].name, "Step 3d: Clamp CNC Vise"
     )
     self.assertIn(
       "move_to_contact:dir=(0.0, 0.0, 1.0),force=12.0",
@@ -212,21 +218,46 @@ class BehaviorsTest(absltest.TestCase):
       vision=self.vision,
       infeed_strategy=self.infeed_strategy,
       workpiece=self.workpiece,
-      unload_compliant_touchdown=True,
-      unload_contact_force_n=14.0,
+      touchdown=Touchdown(force_n=14.0),
     )
-    self.assertLen(tree.root.children[3].children, 10)
+    self.assertLen(tree.root.children[3].children, 7)
     self.assertEqual(
-      tree.root.children[3].children[2].name,
+      tree.root.children[3].children[1].name,
       "Step 5c: Linear Approach to Standoff (root/vise_place)",
     )
     self.assertEqual(
-      tree.root.children[3].children[3].name,
+      tree.root.children[3].children[2].name,
       "Step 5c: Compliant Touchdown (+Z Tool)",
+    )
+    # A grasp lifts clear by motion.grasp_offset_z.
+    self.assertEqual(
+      tree.root.children[3].children[3].name,
+      "Step 5c: Linear Retract (0.5 cm, -Z Tool)",
     )
     self.assertIn(
       "move_to_contact:dir=(0.0, 0.0, 1.0),force=14.0",
       self.robot.executed_commands,
+    )
+
+  def test_build_master_bt_motion_config_drives_grasp_retract(self):
+    """Verifies MotionConfig.grasp_offset_z sets the post-grasp lift."""
+    build_machine_tending_behavior_tree(
+      robot=self.robot,
+      gripper=self.gripper,
+      machine=self.machine,
+      vision=self.vision,
+      infeed_strategy=self.infeed_strategy,
+      workpiece=self.workpiece,
+      motion=MotionConfig(grasp_offset_z=0.02),
+    )
+    retracts = [
+      cmd
+      for cmd in self.robot.executed_commands
+      if cmd.startswith("move_relative_cartesian:")
+    ]
+    # Only the two grasps (pick and unload) lift off; the releases do not.
+    self.assertEqual(
+      retracts, ["move_relative_cartesian:(0.0, 0.0, -0.02):LINEAR"] * 2
     )
 
   def test_build_master_behavior_tree_custom_vise_approach_and_timeout(self):
@@ -237,14 +268,24 @@ class BehaviorsTest(absltest.TestCase):
       vision=self.vision,
       infeed_strategy=self.infeed_strategy,
       workpiece=self.workpiece,
-      vise_approach_frame_name="custom_vise_approach",
+      frames=Frames(vise_pre_place="custom_vise_approach"),
       machining_timeout_seconds=45.0,
     )
     self.assertLen(tree.root.children, 5)
-    load_step_3b = tree.root.children[1].children[1]
+    # The vise approach is now the last waypoint of the Step 3a blended move.
     self.assertEqual(
-      load_step_3b.name,
-      "Step 3b: Move to Vise Approach (root/custom_vise_approach)",
+      tree.root.children[1].children[0].name,
+      "Step 3a: Blended Move to Vise Approach (root/transit ->"
+      " root/machine_approach -> root/custom_vise_approach)",
+    )
+    self.assertEqual(
+      tree.root.children[3].children[0].name,
+      "Step 5a: Blended Move to Vise Approach (root/machine_approach ->"
+      " root/custom_vise_approach)",
+    )
+    self.assertEqual(
+      tree.root.children[2].children[3].name,
+      "Step 4d: Wait for CNC Cycle Complete",
     )
 
   def test_build_machine_tending_bt_start_phase_unload(self):
@@ -276,59 +317,23 @@ class BehaviorsTest(absltest.TestCase):
         start_phase="nonexistent_phase",
       )
 
-  def test_world_build_reparent_tasks(self):
+  def test_world_build_attach_and_detach_tasks(self):
     world = MockWorld()
-    attach_task = world.build_reparent_task(
-      target="ai.intrinsic.raw_stock_2x3x5",
-      new_parent="gripper",
-      name="Step 07: Attach Block to Gripper",
+    attach_task = world.build_attach_to_gripper_task(
+      object_name="ai.intrinsic.raw_stock_2x3x5",
+      gripper_name="gripper",
+      name="Step 05: Attach Block to Gripper",
     )
     self.assertIsNotNone(attach_task)
-    self.assertEqual(attach_task.name, "Step 07: Attach Block to Gripper")
+    self.assertEqual(attach_task.name, "Step 05: Attach Block to Gripper")
 
-    detach_task = world.build_reparent_task(
-      target="ai.intrinsic.raw_stock_2x3x5",
-      new_parent="root",
-      name="Step 12: Detach Block from Gripper",
+    detach_task = world.build_detach_from_gripper_task(
+      object_name="ai.intrinsic.raw_stock_2x3x5",
+      gripper_name="gripper",
+      name="Step 3e: Detach Block from Gripper",
     )
     self.assertIsNotNone(detach_task)
-    self.assertEqual(detach_task.name, "Step 12: Detach Block from Gripper")
-
-  def test_orbbec_vision_proto_signature_matches_calculator_parameters(self):
-    mock_solution = mock.MagicMock()
-    mock_action = mock.MagicMock(spec=bt.ActionBase)
-    mock_solution.skills.ai.intrinsic.capture_images.return_value = mock_action
-    mock_solution.skills.ai.intrinsic.estimate_pose_multi_view.return_value = (
-      mock_action
-    )
-    vision = OrbbecVision(
-      solution=mock_solution,
-      camera_name="camera",
-      perception_service_name="service",
-    )
-    vision.build_perception_and_spawn_task()
-    mock_builder = mock_solution.proto_builder.create_signature_with_args
-    mock_builder.assert_called_once()
-    fields = mock_builder.call_args.kwargs["parameters"].fields
-    field_dict = {f.name: f for f in fields}
-
-    # The field names become the parameter names the injected calculator
-    # script reads, so the set and the numbering are both load-bearing.
-    self.assertEqual(
-      {name: f.number for name, f in field_dict.items()},
-      {
-        "approach_offset_z": 1,
-        "parent_object": 2,
-        "pregrasp_frame_name": 3,
-        "grasp_frame_name": 4,
-        "camera_name": 5,
-        "target_scene_object_id": 6,
-        "estimates": 7,
-        "min_safe_z": 8,
-      },
-    )
-    self.assertEqual(field_dict["pregrasp_frame_name"].arg, "infeed_pre_grasp")
-    self.assertEqual(field_dict["grasp_frame_name"].arg, "infeed_grasp")
+    self.assertEqual(detach_task.name, "Step 3e: Detach Block from Gripper")
 
   def test_create_move_through_frames_task_single_frame(self):
     task = create_move_through_frames_task(
@@ -535,6 +540,40 @@ class BehaviorsTest(absltest.TestCase):
         "move_to_contact:dir=(0.0, 0.0, 1.0),force=8.0",
       ],
     )
+
+  def test_app_config_from_yaml(self):
+    import src.main as main_mod
+
+    omts_cfg = main_mod.AppConfig.from_yaml("configs/omts/app_config.yaml")
+    self.assertEqual(omts_cfg.machine.machine_type, "dio")
+    self.assertTrue(omts_cfg.initial_close_door_and_vise)
+
+    lab_cfg = main_mod.AppConfig.from_yaml("configs/lab_bb_01/app_config.yaml")
+    self.assertEqual(lab_cfg.machine.machine_type, "none")
+    self.assertFalse(lab_cfg.initial_close_door_and_vise)
+
+  def test_build_machine_tending_bt_multi_cycle_loop(self):
+    tree_bounded = build_machine_tending_behavior_tree(
+      robot=self.robot,
+      gripper=self.gripper,
+      machine=self.machine,
+      vision=self.vision,
+      infeed_strategy=self.infeed_strategy,
+      workpiece=self.workpiece,
+      num_cycles=3,
+    )
+    self.assertIsInstance(tree_bounded.root, bt.Loop)
+
+    tree_infinite = build_machine_tending_behavior_tree(
+      robot=self.robot,
+      gripper=self.gripper,
+      machine=self.machine,
+      vision=self.vision,
+      infeed_strategy=self.infeed_strategy,
+      workpiece=self.workpiece,
+      num_cycles=-1,
+    )
+    self.assertIsInstance(tree_infinite.root, bt.Loop)
 
 
 MachineTendingBehaviorTreeTest = BehaviorsTest

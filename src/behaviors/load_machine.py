@@ -19,14 +19,14 @@ from typing import Any
 from intrinsic.solutions import behavior_tree as bt
 
 from src.behaviors.motions import (
+  DEFAULT_TOUCHDOWN,
   Touchdown,
-  create_clear_motion_planner_cache_task,
+  build_interaction_tasks,
   create_move_through_frames_task,
   create_move_to_frame_task,
-  create_seated_approach_tasks,
 )
 from src.core.workpiece import Workpiece
-from src.core.world import World
+from src.core.world import WorldInterface, resolve_world
 from src.hardware.gripper import GripperInterface
 from src.hardware.machine import CncMachineInterface
 from src.hardware.robot import RobotInterface
@@ -42,85 +42,59 @@ def build_load_machine_subtree(
   machine_approach_frame_name: str = "machine_approach",
   vise_approach_frame_name: str = "vise_pre_place",
   vise_place_frame_name: str = "vise_place",
-  touchdown: Touchdown | None = None,
+  touchdown: Touchdown = DEFAULT_TOUCHDOWN,
   solution: Any | None = None,
+  world: WorldInterface | None = None,
   name: str = "3. Load Machine Subtree",
-  clear_motion_planner_cache: bool = False,
   enable_object_reparenting: bool = False,
-  **kwargs: Any,
 ) -> bt.Node:
   """Builds Behavior Tree subtree for loading raw stock into the CNC machine."""
-  step_3a_task = create_move_through_frames_task(
-    robot=robot,
-    frame_names=[entry_via_frame_name, machine_approach_frame_name],
-    parent_object=parent_object,
-    motion_type="ANY",
-    solution=solution,
-    task_name=(
-      f"Step 3a: Blended Move to Machine Approach via {entry_via_frame_name}"
-      f" ({parent_object}/{entry_via_frame_name} -> {parent_object}/{machine_approach_frame_name})"
-    ),
-  )
-
   tasks: list[bt.Node] = [
-    step_3a_task,
-    create_move_to_frame_task(
+    create_move_through_frames_task(
       robot=robot,
-      frame_name=vise_approach_frame_name,
+      frame_names=[
+        entry_via_frame_name,
+        machine_approach_frame_name,
+        vise_approach_frame_name,
+      ],
       parent_object=parent_object,
-      motion_type="ANY",
+      motion_type=["ANY", "ANY", "LINEAR"],
       solution=solution,
       task_name=(
-        f"Step 3b: Move to Vise Approach ({parent_object}/{vise_approach_frame_name})"
+        f"Step 3a: Blended Move to Vise Approach"
+        f" ({parent_object}/{entry_via_frame_name} ->"
+        f" {parent_object}/{machine_approach_frame_name} ->"
+        f" {parent_object}/{vise_approach_frame_name})"
       ),
-    ),
+    )
   ]
 
-  if touchdown is None:
-    touchdown = Touchdown(
-      force_n=float(kwargs.get("contact_force_newtons", Touchdown.force_n)),
-      standoff_m=float(kwargs.get("standoff_distance_m", Touchdown.standoff_m)),
-      timeout_s=float(
-        kwargs.get("contact_timeout_seconds", Touchdown.timeout_s)
-      ),
-      retract_after_m=0.0,
+  reparent_task = (
+    resolve_world(solution, world).build_detach_from_gripper_task(
+      object_name=workpiece.object_name,
+      name=f"Step 3f: Detach Part to {parent_object} in Digital Twin",
     )
+    if enable_object_reparenting
+    else None
+  )
 
   tasks.extend(
-    create_seated_approach_tasks(
+    build_interaction_tasks(
       robot=robot,
       frame_name=vise_place_frame_name,
       parent_object=parent_object,
       touchdown=touchdown,
       label="Step 3c",
+      pre_reparent_tasks=[
+        machine.build_close_vise_task(name="Step 3d: Clamp CNC Vise"),
+        gripper.build_open_task(
+          name="Step 3e: Open Gripper (Release Part in Vise)"
+        ),
+      ],
+      reparent_task=reparent_task,
       solution=solution,
     )
   )
-
-  tasks.append(machine.build_close_vise_task(name="Step 3d: Clamp CNC Vise"))
-  tasks.append(
-    gripper.build_open_task(name="Step 3e: Open Gripper (Release Part in Vise)")
-  )
-
-  if enable_object_reparenting:
-    world = kwargs.get("world") or getattr(solution, "world", None)
-    if not hasattr(world, "build_reparent_task"):
-      world = World(world, solution=solution)
-    tasks.append(
-      world.build_reparent_task(
-        target=workpiece.scene_object_name,
-        new_parent=parent_object,
-        name=f"Step 3f: Detach Part to {parent_object} in Digital Twin",
-      )
-    )
-
-  if clear_motion_planner_cache:
-    tasks.append(
-      create_clear_motion_planner_cache_task(
-        solution=solution,
-        task_name="Step 3g: Clear Motion Planner Cache",
-      )
-    )
 
   tasks.append(
     create_move_to_frame_task(

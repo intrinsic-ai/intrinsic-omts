@@ -19,12 +19,6 @@ from src.core.infeed import (
   InfeedStrategy,
   PerceptionInfeedStrategy,
 )
-from src.core.solution import (
-  MockSolution,
-  OfflineExecutive,
-  Solution,
-  SolutionInterface,
-)
 from src.core.tray import Tray, TraySlot
 from src.core.types import (
   FixtureState,
@@ -39,7 +33,13 @@ from src.core.types import (
 )
 from src.core.workcell import WorkcellState
 from src.core.workpiece import Workpiece
-from src.core.world import MockWorld, World, WorldInterface
+from src.core.world import (
+  MockSolution,
+  MockWorld,
+  OfflineExecutive,
+  World,
+  WorldInterface,
+)
 
 __all__ = [
   "FixtureState",
@@ -57,8 +57,6 @@ __all__ = [
   "Phase",
   "Pose3D",
   "SlotState",
-  "Solution",
-  "SolutionInterface",
   "Tray",
   "TraySlot",
   "WorkcellState",

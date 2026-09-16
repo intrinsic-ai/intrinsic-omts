@@ -66,19 +66,22 @@ cmd_calibrate() {
       else
         mode_args=("$mode")
       fi
+      # --calibration_object="charuco_11x15_35mm_26mm_dict_4x4"
       run_target //tools/calibration:sample_calibration_poses -- \
         --robot="icon" \
         --camera="orbbec_camera" \
-        --calibration_object="charuco_11x15_35mm_26mm_dict_4x4" \
+        --calibration_object="charuco_9x14_20mm_15mm_dict_5x5" \
         ${mode_args[@]+"${mode_args[@]}"} \
         "$@"
       ;;
     run)
+      # --calibration_object="charuco_11x15_35mm_26mm_dict_4x4"
+      # --pose_estimator="charuco_11x15_35mm_26mm_dict_4x4_estimator"
       run_target //tools/calibration:calibrate_camera -- \
         --robot="icon" \
         --camera="orbbec_camera" \
-        --calibration_object="charuco_11x15_35mm_26mm_dict_4x4" \
-        --pose_estimator="charuco_11x15_35mm_26mm_dict_4x4_estimator" \
+        --calibration_object="charuco_9x14_20mm_15mm_dict_5x5" \
+        --pose_estimator="charuco_9x14_20mm_15mm_dict_5x5_estimator" \
         --import_waypoints_file="$(config_path "$CALIBRATION_WAYPOINTS_FILE")" \
         --moving_camera=true \
         --translation_rms_threshold=0.02 \

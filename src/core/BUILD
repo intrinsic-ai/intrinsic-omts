@@ -17,20 +17,13 @@ py_library(
     srcs = ["world.py"],
     deps = [
         ":types",
+        "//src/utils:dynamic_frame_calculator",
+        "//src/utils:execution_utils",
         "//src/utils:math_utils",
         "//src/utils:script_utils",
         "//tools/world:apply_scene_updates_lib",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:proto_building",
-    ],
-)
-
-py_library(
-    name = "solution",
-    srcs = ["solution.py"],
-    deps = [
-        ":world",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -76,7 +69,6 @@ py_library(
     srcs = ["__init__.py"],
     deps = [
         ":infeed",
-        ":solution",
         ":tray",
         ":types",
         ":workcell",
