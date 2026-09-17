@@ -26,7 +26,6 @@ from third_party.intrinsic_moveit.moveit_grasp_planning import (
   build_moveit_grasp_planning_subtree,
 )
 from third_party.intrinsic_moveit.tools.moveit_plan_grasp_and_move import (
-  DEFAULT_TARGET_OBJECT,
   resolve_target_objects,
 )
 
@@ -51,15 +50,13 @@ class GraspPlanningTest(absltest.TestCase):
       self.grasp_planner.planned_objects, [("raw_stock_50x50x75",)]
     )
 
-  def test_default_candidate_object_matches_the_default_scene(self):
-    build_moveit_grasp_planning_subtree(
-      grasp_planner=self.grasp_planner,
-      move_to_pregrasp=False,
-    )
-
-    self.assertEqual(
-      self.grasp_planner.planned_objects, [(DEFAULT_TARGET_OBJECT,)]
-    )
+  def test_missing_candidate_objects_raises(self):
+    with self.assertRaises(ValueError):
+      build_moveit_grasp_planning_subtree(
+        grasp_planner=self.grasp_planner,
+        candidate_objects=[],
+        move_to_pregrasp=False,
+      )
 
   def test_plan_only_subtree_omits_approach(self):
     subtree = build_moveit_grasp_planning_subtree(
@@ -134,9 +131,15 @@ class GraspPlanningTest(absltest.TestCase):
 
 
 class ResolveTargetObjectsTest(absltest.TestCase):
-  def test_missing_flag_falls_back_to_default(self):
-    self.assertEqual(resolve_target_objects(None), [DEFAULT_TARGET_OBJECT])
-    self.assertEqual(resolve_target_objects([]), [DEFAULT_TARGET_OBJECT])
+  def test_missing_flag_raises(self):
+    with self.assertRaises(ValueError):
+      resolve_target_objects(None)
+    with self.assertRaises(ValueError):
+      resolve_target_objects([])
+    with self.assertRaises(ValueError):
+      resolve_target_objects([""])
+    with self.assertRaises(ValueError):
+      resolve_target_objects(["  ", ", "])
 
   def test_repeated_flag_occurrences_are_collected(self):
     self.assertEqual(

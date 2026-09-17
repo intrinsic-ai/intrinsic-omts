@@ -34,8 +34,8 @@ from third_party.intrinsic_moveit.moveit_grasp_planner import (
 
 def build_moveit_grasp_planning_subtree(
   grasp_planner: MoveItGraspPlannerInterface,
+  candidate_objects: Sequence[str],
   robot: RobotInterface | None = None,
-  candidate_objects: Sequence[str] = ("raw_stock_50x50x75",),
   parent_object: str = "root",
   grasp_frame: str = "grasp",
   pregrasp_frame: str = "pre_grasp",
@@ -54,10 +54,10 @@ def build_moveit_grasp_planning_subtree(
 
   Args:
     grasp_planner: Grasp planner adapter invoking the MoveIt grasp skill.
-    robot: Robot adapter used for the approach motion. Required unless
-      `move_to_pregrasp` is False.
     candidate_objects: Object World object names to plan grasps for. All
       candidates are ranked jointly and the best one wins.
+    robot: Robot adapter used for the approach motion. Required unless
+      `move_to_pregrasp` is False.
     parent_object: Object owning the output frames (default: 'root').
     grasp_frame: Pre-existing frame updated to the planned grasp pose.
     pregrasp_frame: Pre-existing frame updated to the planned pre-grasp pose and

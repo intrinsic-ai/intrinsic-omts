@@ -11,7 +11,7 @@ CLI tool drives it for scene bring-up and verification.
 > This is **not** part of first-party OMTS and OMTS never deploys it for you.
 > Every command below is inert until you have completed the intrinsic-moveit
 > integration. If `//:omts_solution` is all you have deployed, start with
-> [Prerequisites](#prerequisites).
+> [Setup & Prerequisites](#setup--prerequisites).
 
 Once a first-party grasp planner ships it will become the default and will live
 under `src/` and `tools/grasping/` using the unqualified names. Everything here
@@ -19,52 +19,83 @@ is named `moveit_*` so the two never have to be told apart by context.
 
 ---
 
-## Prerequisites
+## Architecture
 
-Work through the intrinsic-moveit repository first — it is checked out beside
-`omts/` on a machine with IOC set up, so
-[`../../../intrinsic-moveit/README.md`](../../../intrinsic-moveit/README.md).
+The integration connects OMTS behavior orchestration to MoveIt 2 and MoveIt Task Constructor (MTC). To keep components simple and decoupled, the architecture is divided into two distinct flows:
+1. **Planning Scene Synchronization**: How the robot state and world objects are streamed into MoveIt in real time.
+2. **Grasp Planning & Execution**: How OMTS requests grasps, updates the world, and executes approach motions.
 
-1. **Build and install the bundles.** Follow *Build & Deploy to Flowstate
-   Cluster (Sideloading)* to produce and install
-   `ai.intrinsic.moveit_planning_service` and
-   `ai.intrinsic.moveit_plan_grasp_skill`. On IOC, install with
-   `inctl` directly rather than the repository's `make install_*` targets, which
-   assume `--org`/`--cluster`:
+### 1. Planning Scene Synchronization
 
-   ```bash
-   ./bin/inctl asset install --address localhost:17080 \
-       ./images/moveit_plan_grasp_skill.bundle.tar
-   ```
+MoveIt needs an accurate, live view of the robot and surrounding obstacles. The `flowstate_ros_bridge` continuously streams robot joint states and transform frames, while collision geometries from the Object World Service are synchronized into MoveIt's `PlanningSceneMonitor`.
 
-2. **Configure the ROS bridge, and bring it up first.** The bridge is the
-   *upstream* `flowstate_ros_bridge` from `sdk-ros` — intrinsic-moveit does not
-   ship one, it only supplies a configuration and a launch wrapper for it. Its
-   stock configuration carries placeholders (`robot/robot/base_link`, an empty
-   joint name list) that leave MoveIt with no usable joint states, so a
-   cluster-deployed bridge instance must first be reconfigured from
-   `configs/flowstate_ros_bridge_config.pbtxt` — chiefly
-   `robot_base_frame_id: "ur_module/base_link"`, `robot_controller_instance:
-   "icon"`, and the six UR joint names. See intrinsic-moveit's
-   `docs/flowstate_ros_bridge_configuration.md`.
+```mermaid
+flowchart LR
+    subgraph Solution["Intrinsic Solution (localhost:17080)"]
+        World["Object World Service\n- Scene obstacles & vice\n- Workpiece (raw_stock_50x50x75)"]
+        ICON["Robot Controller (ICON)\n- UR5e joint states"]
+        Bridge["flowstate_ros_bridge\n(configured for ur_module & icon)"]
 
-   Order matters: `moveit_planning_service` verifies its planning scene at
-   startup and needs the bridge's static transforms and `/joint_states` already
-   flowing. A locally launched bridge
-   (`ros2 launch moveit_planning_service flowstate_ros_bridge.launch.py`) applies
-   the correct values as launch defaults and needs no extra configuration.
+        World -->|"Link transforms"| Bridge
+        ICON -->|"Joint states"| Bridge
+    end
 
-3. **Create the output frames.** The grasp skill only *updates* frames; it never
-   creates them. `root/grasp` and `root/pre_grasp` are declared in
-   [`configs/scene.updates.pbtxt`](../../configs/scene.updates.pbtxt):
+    subgraph MoveIt["MoveIt Planning Layer"]
+        Service["moveit_planning_service"]
+        PSM["PlanningSceneMonitor\n(MoveIt Planning Scene)"]
+        RViz["RViz Window\n- Robot meshes\n- Green collision meshes"]
 
-   ```bash
-   bazel run //tools/world:apply_scene_updates -- --address=localhost:17080
-   ```
+        Service --- PSM
+        PSM --> RViz
+    end
 
-4. **Smoke-test the service** with the raw `ros2 service call` in
-   intrinsic-moveit's *Testing Integration with ROS 2 Service Calls* before
-   involving OMTS. If that call fails, nothing here will work.
+    World -.->|"Collision geometry sync"| PSM
+    Bridge -->|"/tf, /tf_static\n/joint_states (over Zenoh)"| PSM
+```
+
+- **Robot Transforms & Joints**: `flowstate_ros_bridge` streams `/tf`, `/tf_static` (anchored at `ur_module/base_link`), and `/joint_states` to ROS 2 over Zenoh.
+- **Collision Objects**: Object geometries from the Object World Service (such as tables, the CNC vice, and workpieces) are converted into MoveIt collision objects and displayed as green meshes in RViz.
+
+---
+
+### 2. Grasp Planning & Approach Execution
+
+When planning a grasp, OMTS does not directly move the robot through MoveIt. Instead, it runs a two-step Behavior Tree:
+1. **Plan Grasps**: Call the planning service via `ai.intrinsic.moveit_plan_grasp_skill` and save the resulting poses to the Object World Service (`root/grasp` and `root/pre_grasp`).
+2. **Approach Pre-Grasp**: Move the arm to the pre-grasp pose using native OMTS Cartesian motion primitives.
+
+```mermaid
+flowchart TD
+    subgraph OMTS["1. OMTS Client"]
+        CLI["moveit_plan_grasp_and_move (CLI)"]
+        BT["Behavior Tree Subtree\n- Step 1: Plan Grasps Task\n- Step 2: Approach Motion Task"]
+        CLI --> BT
+    end
+
+    subgraph Solution["2. Intrinsic Solution Runtime"]
+        Skill["ai.intrinsic.moveit_plan_grasp_skill\n(Sideloaded Skill)"]
+        World["Object World Service\n(root/grasp, root/pre_grasp)"]
+        ICON["Robot Controller (ICON)"]
+    end
+
+    subgraph MoveIt["3. MoveIt Planning Service"]
+        Service["moveit_planning_service\n(/grasp_planning/plan_grasps)"]
+        MTC["MoveIt Task Constructor (MTC)\n- Samples surface normals (0,1,4,5)\n- Computes IK & collision clearance"]
+        Service --- MTC
+    end
+
+    %% Execution sequence
+    BT -->|"Step 1: Execute skill"| Skill
+    Skill -->|"ROS 2 Service Call (over Zenoh)"| Service
+    Service -->|"Winning grasp & pre-grasp poses"| Skill
+    Skill -->|"Write poses into root/grasp & root/pre_grasp"| World
+    BT -->|"Step 2: Approach frame"| ICON
+    ICON -->|"Read root/pre_grasp pose"| World
+    ICON -->|"Move arm to pre-grasp"| Robot["UR5e Arm"]
+```
+
+- **Decoupled Hand-off**: The planning skill only updates poses in the Object World; it never commands motors directly.
+- **Native OMTS Motion**: The arm motion uses first-party OMTS Cartesian moves ([`create_move_to_frame_task`](../../src/behaviors/motions.py)), keeping first-party OMTS independent of ROS 2.
 
 ---
 
@@ -84,62 +115,126 @@ on anything here.
 
 ---
 
-## `tools:moveit_plan_grasp_and_move`
+## Setup & Prerequisites
 
-Plans a grasp and moves the arm to the resulting pre-grasp frame. Because the
-skill writes its result into the world, the approach motion just targets
-`root/pre_grasp` by name — there is no pose hand-off between the two steps.
+Users will also need to set up a ROS colcon workspace that has `intrinsic-moveit` built. See [`intrinsic-moveit`](https://github.com/intrinsic-ai/intrinsic-moveit) for the setup instructions.
+
+In order for the integration to work, we will need to reconfigure OMTS's running `flowstate_ros_bridge` service. The detailed configurations required can be found [here](https://github.com/intrinsic-ai/intrinsic-moveit/blob/main/docs/flowstate_ros_bridge_configuration.md).
+
+### 1. Reconfigure `flowstate_ros_bridge`
+
+```bash
+# Download the required binaries
+cd ~/Downloads/
+gh release download v0.0.2 -R intrinsic-ai/intrinsic-moveit \
+  -p "moveit_plan_grasp_skill.bundle.tar" \
+  -p "flowstate_ros_bridge_config.binarypb"
+
+# Stop flowstate_ros_bridge
+inctl service delete --address localhost:17080 flowstate_ros_bridge
+
+# Restart flowstate_ros_bridge with the config
+inctl service add --address localhost:17080 ai.intrinsic.flowstate_ros_bridge \
+  --config ~/Downloads/flowstate_ros_bridge_config.binarypb
+```
+
+### 2. Install the Grasp Planning Skill
+
+We will also need the `moveit_plan_grasp_skill` which can be called from OMTS, and interacts with the `moveit_planning_service` to obtain pre-grasps and grasps:
+
+```bash
+# Install the planning skill
+inctl asset install --address localhost:17080 \
+  ~/Downloads/moveit_plan_grasp_skill.bundle.tar
+```
+
+### 3. Ensure Output Frames Exist in the World
+
+The grasp skill only updates pre-existing frames; it never creates them. Make sure `root/grasp` and `root/pre_grasp` are declared in your world (from [`configs/scene.updates.pbtxt`](../../configs/scene.updates.pbtxt)):
+
+```bash
+bazel run //tools/world:apply_scene_updates -- --address=localhost:17080
+```
+
+### 4. Start `moveit_planning_service`
+
+We can now start the `moveit_planning_service`:
+
+```bash
+# These commands are generally required for all terminals running ROS
+source <path-to-workspace>/install/setup.bash
+export RMW_IMPLEMENTATION=rmw_zenoh_cpp
+export ZENOH_CONFIG_OVERRIDE='mode="client";connect/endpoints=["tcp/127.0.0.1:7447"]'
+
+# Start the service
+ros2 launch moveit_planning_service service.launch.py headless:=false \
+  start_service_status_monitor:=false
+```
+
+### 5. Verify Scene Synchronization in RViz
+
+Once the planning service launches, verify that the additional RViz window opens:
+- The robot is represented by its meshes.
+- All other objects in the scene are propagated as collision objects and represented as green meshes.
+
+The state of the robot and objects are synchronized with the MoveIt planning scene. This can be verified with:
+
+```bash
+# Jogging the robot, see tutorial "Jog the robot"
+bazel run //tools/jogging:jog_interactive -- \
+  --host=localhost \
+  --port=17080 \
+  --instance=icon
+
+# Updating the scene, see tutorial "Cell customization"
+bazel run //tools/world:apply_scene_updates -- \
+  --address localhost:17080 \
+  --files configs/raw_stock_in_vice.updates.pbtxt
+
+# Resetting the scene, see tutorial "Cell customization"
+inctl world reset --address localhost:17080
+```
+
+---
+
+## Tutorial Workflow: Planning & Approaching Grasps
+
+We can run `moveit_plan_grasp_and_move` to plan for each object and optionally move the robot to the pre-grasp frame.
 
 The tool stops at the pre-grasp and does not descend to the grasp pose, so the
 workpiece is untouched and the gripper is never commanded. This makes it safe
 to run repeatedly while validating that the part is plannable and reachable
 before executing real picks in [`src/behaviors/pick.py`](../../src/behaviors/pick.py).
 
-### Tutorial Workflow
-
-#### 1. Plan and Approach on the Tabletop Surface
-When the solution starts up, `raw_stock_50x50x75` is positioned on the table
-surface by default via [`configs/raw_stock_on_surface.updates.pbtxt`](../../configs/raw_stock_on_surface.updates.pbtxt).
-
 ```bash
 # Dry run: plan a grasp on raw_stock_50x50x75 without moving the arm
 bazel run //third_party/intrinsic_moveit/tools:moveit_plan_grasp_and_move -- \
-    --address=localhost:17080 --plan_only --surfaces=0,1,4,5
+  --address=localhost:17080 \
+  --target_object=raw_stock_50x50x75 \
+  --plan_only \
+  --surfaces=0,1,4,5
 
 # Plan and approach the pre-grasp on the table surface
 bazel run //third_party/intrinsic_moveit/tools:moveit_plan_grasp_and_move -- \
-    --address=localhost:17080 --surfaces=0,1,4,5
-```
+  --address=localhost:17080 \
+  --target_object=raw_stock_50x50x75 \
+  --surfaces=0,1,4,5
 
-#### 2. Relocate Workpiece to the CNC Vice & Plan Again
-Next, apply the vice scene update live to the running solution to place the block
-inside the CNC machine vice:
+# Optionally, reset the scene such that the trajectory to the CNC Vice is shorter
+# inctl world reset --address localhost:17080
 
-```bash
+# Relocate Workpiece to the CNC Vice
 bazel run //tools/world:apply_scene_updates -- \
-    --address=localhost:17080 \
-    --files configs/raw_stock_in_vice.updates.pbtxt
-```
+  --address=localhost:17080 \
+  --files configs/raw_stock_in_vice.updates.pbtxt
 
-Now execute `moveit_plan_grasp_and_move` again. The planner will generate reachable
-grasp candidates inside the vice and navigate the arm to the pre-grasp pose:
-
-```bash
+# Plan again to grasp the workpiece that is in the vice now
+# This planning step may take longer due to the length of the trajectory if the
+# world has not been reset
 bazel run //third_party/intrinsic_moveit/tools:moveit_plan_grasp_and_move -- \
-    --address=localhost:17080 --surfaces=0,1,4,5
-```
-
-#### 3. Resetting the Scene
-To return the workpiece to its initial pose on the tabletop surface, either apply
-the surface update config or reset the world:
-
-```bash
-bazel run //tools/world:apply_scene_updates -- \
-    --address=localhost:17080 \
-    --files configs/raw_stock_on_surface.updates.pbtxt
-
-# Or reset the entire world:
-inctl world reset --address localhost:17080
+  --address=localhost:17080 \
+  --target_object=raw_stock_50x50x75 \
+  --surfaces=0,1,4,5
 ```
 
 ---

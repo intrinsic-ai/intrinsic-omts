@@ -38,25 +38,22 @@ from third_party.intrinsic_moveit.moveit_grasp_planning import (
   build_moveit_grasp_planning_subtree,
 )
 
-# The default scene spawns a single raw_stock_50x50x75 object.
-DEFAULT_TARGET_OBJECT = "raw_stock_50x50x75"
-
 _EPILOG = """\
 examples (run through Bazel as `bazel run
   //third_party/intrinsic_moveit/tools:moveit_plan_grasp_and_move -- <flags>`):
 
   # Dry run: plan a grasp on raw_stock_50x50x75 without moving the arm.
-  moveit_plan_grasp_and_move --plan_only --surfaces=0,1,4,5
+  moveit_plan_grasp_and_move --target_object=raw_stock_50x50x75 --plan_only --surfaces=0,1,4,5
 
-  # Plan and approach the pre-grasp of the default part (on the surface).
-  moveit_plan_grasp_and_move --surfaces=0,1,4,5
+  # Plan and approach the pre-grasp of the workpiece on the surface.
+  moveit_plan_grasp_and_move --target_object=raw_stock_50x50x75 --surfaces=0,1,4,5
 
   # Move raw_stock_50x50x75 into the vice via scene updates and plan again:
   # bazel run //tools/world:apply_scene_updates -- --files configs/raw_stock_in_vice.updates.pbtxt
-  moveit_plan_grasp_and_move --surfaces=0,1,4,5
+  moveit_plan_grasp_and_move --target_object=raw_stock_50x50x75 --surfaces=0,1,4,5
 
   # Narrow further to force a strictly vertical approach.
-  moveit_plan_grasp_and_move --surfaces=4
+  moveit_plan_grasp_and_move --target_object=raw_stock_50x50x75 --surfaces=4
 
 prerequisites:
   This is a third-party integration. It does nothing until you have completed
@@ -132,10 +129,16 @@ def resolve_target_objects(raw_values: Sequence[str] | None) -> list[str]:
     raw_values: Raw flag occurrences, or None when the flag was not supplied.
 
   Returns:
-    Ordered, de-duplicated object names, falling back to the default target.
+    Ordered, de-duplicated object names.
+
+  Raises:
+    ValueError: If no target objects were provided or all values are empty.
   """
   if not raw_values:
-    return [DEFAULT_TARGET_OBJECT]
+    raise ValueError(
+      "--target_object is required. Specify at least one target object name"
+      " (e.g. --target_object=raw_stock_50x50x75)."
+    )
 
   names: list[str] = []
   for value in raw_values:
@@ -143,7 +146,12 @@ def resolve_target_objects(raw_values: Sequence[str] | None) -> list[str]:
       name = name.strip()
       if name and name not in names:
         names.append(name)
-  return names or [DEFAULT_TARGET_OBJECT]
+  if not names:
+    raise ValueError(
+      "--target_object is required. Specify at least one target object name"
+      " (e.g. --target_object=raw_stock_50x50x75)."
+    )
+  return names
 
 
 def _transform_node(
@@ -425,13 +433,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     "--target_object",
     type=str,
     action="append",
-    default=None,
+    required=True,
     dest="target_objects",
     metavar="NAME[,NAME...]",
     help=(
-      "Object World object name to plan grasps for. Repeatable, and each value"
-      " may be a comma-separated list. All candidates are ranked jointly and"
-      f" the single best grasp wins (default: {DEFAULT_TARGET_OBJECT})."
+      "Object World object name to plan grasps for (e.g. raw_stock_50x50x75)."
+      " Repeatable, and each value may be a comma-separated list. All"
+      " candidates are ranked jointly and the single best grasp wins. Required."
     ),
   )
   parser.add_argument(
@@ -578,7 +586,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     return 2
 
-  target_objects = resolve_target_objects(args.target_objects)
+  try:
+    target_objects = resolve_target_objects(args.target_objects)
+  except ValueError as exc:
+    print(f"Error: {exc}", file=sys.stderr)
+    return 2
 
   print(f"Connecting to solution at {args.address}...")
   try:

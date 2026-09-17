@@ -75,8 +75,6 @@ bazel run //tools/world:apply_scene_updates -- --address=localhost:17080
 > ```bash
 > inctl world reset --address localhost:17080
 > ```
->
-> This restores object poses only. It does not command the arm, so the robot stays wherever the last run left it; use [`tools/jogging:move_to_frame`](../tools/jogging/move_to_frame.py) if you need it back at a known pose.
 
 > [!CRITICAL]
 > **Camera Reparenting on Solution Startup:**
