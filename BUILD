@@ -2,7 +2,7 @@ load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@ioc//incode/intrinsic_inference/assets/inference_service/bazel:intrinsic_mlmodel.bzl", "intrinsic_mlmodel")
 load("@ioc//intrinsic/assets/build_defs:asset.bzl", "intrinsic_asset_instance")
-load("@ioc//intrinsic/config:def.bzl", "intrinsic_solution")
+load("@ioc//intrinsic/assets/build_defs:solution.bzl", "intrinsic_solution")
 load("//bazel:imported_asset.bzl", "imported_asset_bundle")
 
 package(default_visibility = ["//visibility:public"])
@@ -27,7 +27,6 @@ config_setting(
 # Solution deployment definition
 intrinsic_solution(
     name = "omts_solution",
-    add_compose_world_test = False,
     assets = [
         "@ioc//intrinsic/resources/catalog/resourcedata/gripper:robotiq_pinch_gripper_resource_type",
         "@ioc//intrinsic/resources/catalog/resourcedata/product/building_block",
