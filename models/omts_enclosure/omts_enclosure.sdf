@@ -16,6 +16,7 @@ limitations under the License.
 -->
 <sdf xmlns:intrinsic="https://intrinsic.ai/" version="1.9">
   <model name="omts_enclosure">
+    <static>true</static>
     <link name="base_link">
       <visual name="base_visual">
         <geometry>
