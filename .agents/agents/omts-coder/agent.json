@@ -1,0 +1,6 @@
+{
+  "name": "omts-coder",
+  "configPath": {
+    "relativePathToConfig": "config.yaml"
+  }
+}
