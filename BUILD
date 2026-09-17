@@ -52,7 +52,7 @@ intrinsic_solution(
         "@ioc//incode/intrinsic_inference/assets/inference_service:inference_service_asset",
         "@ioc//incode/intrinsic_perception/intrinsic/perception/service/ioc_pose_estimator:ioc_pose_estimator_service_asset",
         "@ioc//incode/intrinsic_perception/intrinsic/perception/service/ioc_train_service:ioc_train_service_asset",
-        "@ioc//intrinsic/perception/skills/multi_view:estimate_pose_multi_view_skill",
+        "@ioc//incode/intrinsic_perception/intrinsic/perception/skills/multi_view:estimate_pose_multi_view_skill",
         "@ioc//intrinsic/world/skills/create_object:create_object_skill",
         "@ioc//intrinsic/skills/apps:update_world_skill",
         "@ioc//intrinsic/skills/apps:attach_object_to_robot_skill",
