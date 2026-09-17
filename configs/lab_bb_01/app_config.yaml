@@ -12,23 +12,6 @@ gripper:
   open_position: 0.025
   close_position: 0.0
 
-machine:
-  door_open_pin: 2
-  door_close_pin: 3
-  vise_open_pin: 4
-  vise_close_pin: 5
-  cycle_start_pin: 6
-  cycle_complete_input_pin: null
-  device_name: "ur_module"
-  enclosure_object_name: null
-  vise_object_name: null
-  door_open_joints: [0.4]
-  door_closed_joints: [0.0]
-  vise_open_joints: [0.01, 0.01]
-  vise_closed_joints: [0.0, 0.0]
-  output_block_name: "standard_out"
-  input_block_name: "standard_in"
-
 vision:
   camera_name: "orbbec_camera"
   perception_service_name: "pose_estimator_service"
@@ -44,10 +27,9 @@ frames:
   view_frame: "view"
   pregrasp_frame: "pre_grasp"
   grasp_frame: "grasp"
-  transit_frame: "transit"
   machine_approach_frame: "machine_approach"
-  preplace_vise_frame: "machine_approach"
-  place_vise_frame: "machine_approach"
+  preplace_vise_frame: "pre_place_vise"
+  place_vise_frame: "place_vise"
 
 cycle:
   num_cycles: 1

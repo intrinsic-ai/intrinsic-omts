@@ -52,6 +52,7 @@ py_test(
 py_test(
     name = "test_behaviors",
     srcs = ["test_behaviors.py"],
+    data = ["//configs:all_configs"],
     deps = [
         "//src/behaviors:machine_tending_bt",
         "//src/core:config",

@@ -15,14 +15,10 @@
 """Cell configuration dataclasses and strict YAML loader for OMTS workcells."""
 
 import dataclasses
-import json
 import pathlib
 from typing import Any, TypeVar
 
-try:
-  import yaml
-except ImportError:
-  yaml = None  # type: ignore[assignment]
+import yaml
 
 _T = TypeVar("_T")
 
@@ -108,10 +104,10 @@ class FramesConfig:
   view_frame: str
   pregrasp_frame: str
   grasp_frame: str
-  transit_frame: str | None
   machine_approach_frame: str
   preplace_vise_frame: str
   place_vise_frame: str
+  transit_frame: str | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -137,72 +133,10 @@ class AppConfig:
   cell_name: str
   robot: RobotConfig
   gripper: GripperConfig
-  machine: MachineConfig
   vision: VisionConfig
   frames: FramesConfig
   cycle: CycleConfig
-
-
-def _parse_scalar(val: str) -> Any:
-  """Parses a scalar YAML value string into a Python primitive."""
-  val = val.strip()
-  if not val or val.lower() in ("null", "none", "~"):
-    return None
-  if val.lower() == "true":
-    return True
-  if val.lower() == "false":
-    return False
-  if (val.startswith('"') and val.endswith('"')) or (
-    val.startswith("'") and val.endswith("'")
-  ):
-    return val[1:-1]
-  if val.startswith("[") and val.endswith("]"):
-    inner = val[1:-1].strip()
-    if not inner:
-      return []
-    return [_parse_scalar(x) for x in inner.split(",")]
-  try:
-    if "." in val:
-      return float(val)
-    return int(val)
-  except ValueError:
-    return val
-
-
-def _parse_simple_yaml(text: str) -> dict[str, Any]:
-  """Parses a 2-level nested YAML mapping without external dependencies."""
-  try:
-    return json.loads(text)
-  except json.JSONDecodeError:
-    pass
-
-  result: dict[str, Any] = {}
-  current_section: dict[str, Any] | None = None
-
-  for raw_line in text.splitlines():
-    line_without_comment = raw_line.split("#", 1)[0].rstrip()
-    if not line_without_comment.strip():
-      continue
-
-    indent = len(line_without_comment) - len(line_without_comment.lstrip(" "))
-    if ":" not in line_without_comment:
-      continue
-
-    key, raw_val = line_without_comment.strip().split(":", 1)
-    key = key.strip()
-    raw_val = raw_val.strip()
-
-    if indent == 0:
-      if not raw_val:
-        current_section = {}
-        result[key] = current_section
-      else:
-        current_section = None
-        result[key] = _parse_scalar(raw_val)
-    elif current_section is not None:
-      current_section[key] = _parse_scalar(raw_val)
-
-  return result
+  machine: MachineConfig | None = None
 
 
 def _construct_section(
@@ -287,10 +221,7 @@ def load_app_config(path: str | pathlib.Path) -> AppConfig:
   """
   file_path = pathlib.Path(path)
   content = file_path.read_text(encoding="utf-8")
-  if yaml is not None:
-    raw_data = yaml.safe_load(content)
-  else:
-    raw_data = _parse_simple_yaml(content)
+  raw_data = yaml.safe_load(content)
 
   if not isinstance(raw_data, dict):
     raise ValueError(
@@ -299,11 +230,17 @@ def load_app_config(path: str | pathlib.Path) -> AppConfig:
   if "cell_name" not in raw_data or not raw_data["cell_name"]:
     raise KeyError(f"Missing required field 'cell_name' in {file_path}")
 
+  machine_config = (
+    _construct_section(MachineConfig, raw_data, "machine", file_path)
+    if "machine" in raw_data and raw_data["machine"] is not None
+    else None
+  )
+
   return AppConfig(
     cell_name=str(raw_data["cell_name"]),
     robot=_construct_section(RobotConfig, raw_data, "robot", file_path),
     gripper=_construct_section(GripperConfig, raw_data, "gripper", file_path),
-    machine=_construct_section(MachineConfig, raw_data, "machine", file_path),
+    machine=machine_config,
     vision=_construct_section(VisionConfig, raw_data, "vision", file_path),
     frames=_construct_section(FramesConfig, raw_data, "frames", file_path),
     cycle=_construct_section(CycleConfig, raw_data, "cycle", file_path),
