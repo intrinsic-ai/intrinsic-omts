@@ -15,36 +15,24 @@ module(name = "omts")
 # `git-lfs` installation. See README.md for setup.
 IOC_RELEASE = "v0.0.1-rc5"  # buildifier: disable=unused-variable
 
-IOC_COMMIT = "4796ef493bfd800de072cec58ea155b43df8787d"  # buildifier: disable=unused-variable
+IOC_COMMIT = "4796ef493bfd800de072cec58ea155b43df8787d"
 
-IOC_REMOTE = "https://github.com/intrinsic-ai/ioc-staging.git"  # buildifier: disable=unused-variable
+IOC_REMOTE = "https://github.com/intrinsic-ai/ioc-staging.git"
 
 bazel_dep(name = "intrinsic-core")
-
-# The git_override is disabled while the module rename is validated locally.
-# Restore it once `intrinsic-core` has landed on intrinsic-ai/ioc-staging main
-# and IOC_COMMIT has been re-pinned.
-#git_override(
-#    module_name = "intrinsic-core",
-#    commit = IOC_COMMIT,
-#    remote = IOC_REMOTE,
-#)
-local_path_override(
+git_override(
     module_name = "intrinsic-core",
-    path = "/usr/local/google/home/beardsworth/src/ioc-staging",
+    commit = IOC_COMMIT,
+    remote = IOC_REMOTE,
 )
 
 bazel_dep(name = "intrinsic_apis", version = "0.0.1")
-local_path_override(
+git_override(
     module_name = "intrinsic_apis",
-    path = "/usr/local/google/home/beardsworth/src/ioc-staging/incode/intrinsic_apis",
+    commit = IOC_COMMIT,
+    remote = IOC_REMOTE,
+    strip_prefix = "incode/intrinsic_apis",
 )
-#git_override(
-#    module_name = "intrinsic_apis",
-#    commit = IOC_COMMIT,
-#    remote = IOC_REMOTE,
-#    strip_prefix = "incode/intrinsic_apis",
-#)
 
 archive_override(
     module_name = "universal-robots-client-library",
