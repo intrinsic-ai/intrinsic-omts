@@ -124,3 +124,14 @@ py_test(
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )
+
+py_test(
+    name = "test_world_configs",
+    srcs = ["test_world_configs.py"],
+    data = ["//configs:all_world_updates"],
+    deps = [
+        "@com_google_absl_py//absl/testing:absltest",
+        "@com_google_protobuf//:protobuf_python",
+        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
+    ],
+)

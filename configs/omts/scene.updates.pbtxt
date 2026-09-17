@@ -3,15 +3,18 @@
 
 updates {
   create_frame {
-    new_frame_name: "grasp"
+    new_frame_name: "vise_pre_place"
     parent_t_new_frame {
       position {
-        x: 0.15
-        y: 0.25
-        z: 0.71
+        x: -0.5326
+        y: -0.3021
+        z: 1.2956
       }
       orientation {
-        x: 1.0
+        x: 0.6762
+        y: -0.7367
+        z: -0.0043
+        w: 0.0065
       }
     }
     parent_object_with_filter {
@@ -25,61 +28,18 @@ updates {
 }
 updates {
   create_frame {
-    new_frame_name: "pre_grasp"
+    new_frame_name: "vise_place"
     parent_t_new_frame {
       position {
-        x: 0.15
-        y: 0.25
-        z: 0.73
+        x: -0.5305
+        y: -0.3020
+        z: 1.2610
       }
       orientation {
-        x: 1.0
-      }
-    }
-    parent_object_with_filter {
-      reference {
-        by_name {
-          object_name: "root"
-        }
-      }
-    }
-  }
-}
-updates {
-  create_frame {
-    new_frame_name: "pre_place_vise"
-    parent_t_new_frame {
-      position {
-        x: 0.47
-        y: 0.37
-        z: 0.78
-      }
-      orientation {
-        x: 0.7071
-        y: 0.7071
-      }
-    }
-    parent_object_with_filter {
-      reference {
-        by_name {
-          object_name: "root"
-        }
-      }
-    }
-  }
-}
-updates {
-  create_frame {
-    new_frame_name: "place_vise"
-    parent_t_new_frame {
-      position {
-        x: 0.47
-        y: 0.37
-        z: 0.7
-      }
-      orientation {
-        x: 0.7071
-        y: 0.7071
+        x: 0.6842
+        y: -0.7286
+        z: 0.0220
+        w: -0.0226
       }
     }
     parent_object_with_filter {
@@ -96,13 +56,40 @@ updates {
     new_frame_name: "machine_approach"
     parent_t_new_frame {
       position {
-        x: 0.35
-        y: 0.4
-        z: 0.8
+        x: -0.2186
+        y: -0.3135
+        z: 1.3488
       }
       orientation {
-        x: 0.7071
-        y: 0.7071
+        x: 0.6822
+        y: -0.7311
+        z: 0.0012
+        w: 0.0087
+      }
+    }
+    parent_object_with_filter {
+      reference {
+        by_name {
+          object_name: "root"
+        }
+      }
+    }
+  }
+}
+updates {
+  create_frame {
+    new_frame_name: "work_view"
+    parent_t_new_frame {
+      position {
+        x: 0.4046
+        y: -0.2931
+        z: 1.4288
+      }
+      orientation {
+        x: 0.9681
+        y: 0.2054
+        z: -0.0254
+        w: -0.1409
       }
     }
     parent_object_with_filter {
@@ -119,15 +106,65 @@ updates {
     new_frame_name: "view"
     parent_t_new_frame {
       position {
-        x: 0.3433
-        y: 0.3786
-        z: 0.9078
+        x: 0.1753
+        y: -0.1008
+        z: 1.4011
       }
       orientation {
-        x: -0.2667
-        y: -0.9585
-        z: 0.1
-        w: 0.0092
+        x: 0.9162
+        y: -0.3672
+        z: 0.0124
+        w: -0.16
+      }
+    }
+    parent_object_with_filter {
+      reference {
+        by_name {
+          object_name: "root"
+        }
+      }
+    }
+  }
+}
+updates {
+  create_frame {
+    new_frame_name: "transit"
+    parent_t_new_frame {
+      position {
+        x: 0.0935
+        y: -0.4192
+        z: 1.4517
+      }
+      orientation {
+        x: -0.9999
+        y: -0.0036
+        z: 0.0106
+        w: 0.0122
+      }
+    }
+    parent_object_with_filter {
+      reference {
+        by_name {
+          object_name: "root"
+        }
+      }
+    }
+  }
+}
+updates {
+  create_frame {
+    new_frame_name: "vise_view"
+    parent_t_new_frame {
+      position {
+        x: -0.3357
+        y: -0.3787
+        z: 1.3363
+      }
+      orientation {
+        x: 0.5704
+        y: -0.7129
+        z: -0.3415
+        w: 0.223
       }
     }
     parent_object_with_filter {
@@ -162,19 +199,19 @@ updates {
         }
       }
     }
+    # Observed FoundationPose detection on the OMTS cell, expressed in root.
     a_t_b {
       position {
-        x: 0.25
-        y: 0.25
-        z: 0.71
+        x: 0.3807
+        y: 0.0167
+        z: 1.0634
       }
       orientation {
-        x: 0.7071
-        y: 0.0
-        z: 0.0
-        w: 0.7071
+        x: 0.516669
+        y: -0.482394
+        z: -0.480380
+        w: 0.519215
       }
     }
   }
 }
-

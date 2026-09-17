@@ -64,7 +64,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   parser.add_argument(
     "--scene_updates_file",
     type=str,
-    default="configs/scene.updates.pbtxt",
+    default="configs/omts/scene.updates.pbtxt",
     help="Path to scene.updates.pbtxt file to store frames in.",
   )
   return parser.parse_args(argv)
@@ -187,7 +187,7 @@ def save_frame_to_scene_updates(
   position: tuple[float, float, float],
   orientation: tuple[float, float, float, float],
   parent_object_name: str = "root",
-  filepath: str = "configs/scene.updates.pbtxt",
+  filepath: str = "configs/omts/scene.updates.pbtxt",
 ) -> str:
   """Saves or updates a frame's pose in the specified scene.updates.pbtxt file.
 

@@ -18,4 +18,9 @@ service_def {
       archive_filename: "orbbec_gemini_driver.tar"
     }
   }
+  sim_spec {
+    image {
+      archive_filename: "orbbec_gemini_driver.tar"
+    }
+  }
 }

@@ -43,7 +43,7 @@ py_library(
     name = "store_frame_lib",
     srcs = ["store_frame.py"],
     data = [
-        "//configs:scene.updates.pbtxt",
+        "//configs:omts/scene.updates.pbtxt",
     ],
     deps = [
         "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
@@ -56,7 +56,7 @@ py_binary(
     name = "store_frame",
     srcs = ["store_frame.py"],
     data = [
-        "//configs:scene.updates.pbtxt",
+        "//configs:omts/scene.updates.pbtxt",
     ],
     main = "store_frame.py",
     deps = [

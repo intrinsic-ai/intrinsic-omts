@@ -1,0 +1,41 @@
+# proto-file: intrinsic/world/public/proto/object_world_updates.proto
+# proto-message: intrinsic_proto.world.ObjectWorldUpdates
+
+updates: {
+  update_transform {
+    node_a {
+      by_name {
+        object {
+          object_name: "enclosure"
+        }
+      }
+    }
+    node_b {
+      by_name {
+        object {
+          object_name: "ur_module"
+        }
+      }
+    }
+    node_to_update: {
+      by_name {
+        object {
+          object_name: "ur_module"
+        }
+      }
+    }
+    a_t_b {
+      position {
+        x: 0.
+        y: -0.09
+        z: 1.02
+      }
+      orientation {
+        x: 0
+        y: 0
+        z: 0
+        w: 1
+      }
+    }
+  }
+}
