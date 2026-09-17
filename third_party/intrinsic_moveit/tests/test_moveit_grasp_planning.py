@@ -155,9 +155,7 @@ class ResolveTargetObjectsTest(absltest.TestCase):
 
   def test_duplicates_are_removed_preserving_order(self):
     self.assertEqual(
-      resolve_target_objects(
-        ["part_b,part_a", "part_b"]
-      ),
+      resolve_target_objects(["part_b,part_a", "part_b"]),
       ["part_b", "part_a"],
     )
 

@@ -172,9 +172,11 @@ class MoveItGraspPlanner(MoveItGraspPlannerInterface):
     obj_dims_in_meters: tuple[float, float, float] | None,
   ) -> Any:
     """Builds the box-shaped grasp annotation parameters for the request."""
-    annotations = self._grasp_skill.intrinsic_proto.grasping.BoxShapedGraspAnnotationParams(
-      surfaces=list(surfaces),
-      num_rotations=num_rotations,
+    annotations = (
+      self._grasp_skill.intrinsic_proto.grasping.BoxShapedGraspAnnotationParams(
+        surfaces=list(surfaces),
+        num_rotations=num_rotations,
+      )
     )
     if obj_dims_in_meters is not None:
       annotations.obj_dims_in_meters.CopyFrom(
@@ -305,13 +307,15 @@ class MockMoveItGraspPlanner(MoveItGraspPlannerInterface):
   ) -> bt.Node:
     task_name = name or f"Mock Plan Grasps ({', '.join(candidate_objects)})"
     self.planned_objects.append(tuple(candidate_objects))
-    self.plan_calls.append({
-      "candidate_objects": tuple(candidate_objects),
-      "surfaces": tuple(surfaces),
-      "num_rotations": num_rotations,
-      "retract_dist_m": retract_dist_m,
-      "obj_dims_in_meters": obj_dims_in_meters,
-    })
+    self.plan_calls.append(
+      {
+        "candidate_objects": tuple(candidate_objects),
+        "surfaces": tuple(surfaces),
+        "num_rotations": num_rotations,
+        "retract_dist_m": retract_dist_m,
+        "obj_dims_in_meters": obj_dims_in_meters,
+      }
+    )
     return bt.Task(
       action=bt.PythonScript(
         function_body=(
