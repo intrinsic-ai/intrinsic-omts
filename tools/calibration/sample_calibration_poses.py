@@ -39,9 +39,16 @@ from intrinsic.skills.proto import skills_pb2
 from intrinsic.solutions import deployments
 from intrinsic.util.grpc import connection
 
+try:
+  from intrinsic.solutions import perception
+except ImportError:
+  perception = None
+
 # Command line input flags
 _ADDRESS = flags.DEFINE_string(
-  "address", "localhost:17080", "Solution address to connect to."
+  "address",
+  "localhost:17080",
+  "gRPC address of the running SBL solution deployment.",
 )
 _ROBOT = flags.DEFINE_string(
   "robot", "icon", "Robot / controller resource name in the workcell."
@@ -49,10 +56,16 @@ _ROBOT = flags.DEFINE_string(
 _CAMERA = flags.DEFINE_string(
   "camera", "orbbec_camera", "Camera name in the workcell."
 )
+_ROBOT_MODULE = flags.DEFINE_string(
+  "robot_module",
+  "ur_module",
+  "Robot module object name in ObjectWorld.",
+)
 _CALIBRATION_OBJECT = flags.DEFINE_string(
   "calibration_object",
+  # "charuco_11x15_35mm_26mm_dict_4x4",
   "charuco_9x14_20mm_15mm_dict_5x5",
-  "Calibration pattern / object name.",
+  "Calibration board object name in ObjectWorld.",
 )
 _MOVING_CAMERA = flags.DEFINE_bool(
   "moving_camera",
@@ -104,7 +117,7 @@ _ICON_PORT = flags.DEFINE_integer(
 _STREAM_CAMERA = flags.DEFINE_bool(
   "stream_camera",
   True,
-  "Whether to continuously trigger camera captures in the background to publish images to ROS topics during sampling.",
+  "Whether to continuously trigger camera captures in the background.",
 )
 _STREAM_FPS = flags.DEFINE_float(
   "stream_fps",
@@ -114,7 +127,7 @@ _STREAM_FPS = flags.DEFINE_float(
 
 
 class CameraStreamer:
-  """Background worker to continuously trigger camera captures and stream to ROS topics."""
+  """Worker to continuously trigger camera captures and stream to ROS topics."""
 
   def __init__(
     self,
@@ -193,7 +206,7 @@ class CameraStreamer:
         elif self._capture_skill is not None and self._executive is not None:
           self._executive.run(self._capture_skill, silence_outputs=True)
       except Exception:
-        # Suppress transient network/frame capture errors during background streaming
+        # Suppress transient network errors during background streaming
         pass
 
       elapsed = time.time() - start_time
@@ -218,7 +231,7 @@ def get_key() -> str:
 
 
 def read_input(prompt: str, choices: list[str]) -> str:
-  """Reads characters from stdin until they uniquely match one of the choices."""
+  """Reads characters from stdin until they uniquely match a choice."""
   sys.stdout.write(prompt)
   sys.stdout.flush()
   current_input = ""
@@ -265,7 +278,7 @@ def run_manual_waypoint_loop(
   ndof: int | None,
   part_name: str | None,
   icon_client,
-  camera: object | None = None,
+  camera: Any | None = None,
   streamer: CameraStreamer | None = None,
 ) -> None:
   """Runs the interactive loop to record waypoints or jog the robot."""
@@ -376,7 +389,7 @@ def run_manual_waypoint_loop(
       while True:
         try:
           sys.stdout.write(
-            f"\r\x1b[K[Joint {active_joint}] Press Arrow to jog, 0-{ndof - 1} to switch, 'q' to quit: "
+            f"\r\x1b[K[Joint {active_joint}] jog: Arrow, switch: 0-{ndof - 1}: "
           )
           sys.stdout.flush()
 
@@ -404,9 +417,7 @@ def run_manual_waypoint_loop(
             ]
 
             if not current_positions or len(current_positions) != ndof:
-              print(
-                "\nError: Could not retrieve current joint positions from the robot."
-              )
+              print("\nError: Could not retrieve current joint positions.")
               continue
 
             # Calculate goal positions
@@ -427,7 +438,8 @@ def run_manual_waypoint_loop(
 
             session.start_action(action_id=action.id)
             sys.stdout.write(
-              f"\nJogged joint {active_joint} by {delta_value:+.2f} rad. Goal: {goal_position[active_joint]:.3f}\n"
+              f"\nJogged J{active_joint} by {delta_value:+.2f} rad. "
+              f"Goal: {goal_position[active_joint]:.3f}\n"
             )
             sys.stdout.flush()
 
@@ -507,9 +519,17 @@ def main(argv) -> None:
       session_context = None
 
       try:
-        print(f"\nConnecting to ICON on localhost:{_ICON_PORT.value}...")
+        icon_address = _ADDRESS.value
+        if flags.FLAGS["icon_port"].present:
+          host = (
+            _ADDRESS.value.split(":")[0]
+            if ":" in _ADDRESS.value
+            else "localhost"
+          )
+          icon_address = f"{host}:{_ICON_PORT.value}"
+        print(f"\nConnecting to ICON on {icon_address}...")
         icon_client = icon_api.Client.connect_with_params(
-          connection.ConnectionParams(f"localhost:{_ICON_PORT.value}", "icon")
+          connection.ConnectionParams(icon_address, "icon")
         )
 
         parts = icon_client.list_parts()
@@ -587,12 +607,16 @@ def main(argv) -> None:
           calibration_type_pb2.CAMERA_TO_ROBOT_CALIBRATION_TYPE_MOVING_CAMERA
         )
       else:
-        calibration_type = calibration_type_pb2.CAMERA_TO_ROBOT_CALIBRATION_TYPE_STATIONARY_CAMERA
+        cal_type = calibration_type_pb2
+        calibration_type = (
+          cal_type.CAMERA_TO_ROBOT_CALIBRATION_TYPE_STATIONARY_CAMERA
+        )
 
       sample_calibration_poses_skill = (
         skills.ai.intrinsic.sample_calibration_poses
       )
-      rbp = sample_calibration_poses_skill.intrinsic_proto.skills.RandomizedBoxParams(
+      skill_proto = sample_calibration_poses_skill.intrinsic_proto.skills
+      rbp = skill_proto.RandomizedBoxParams(
         num_samples=_NUM_SAMPLES.value,
         sample_box_halfsize=skills_pb2.VectorNdValue(
           value=[
@@ -605,11 +629,28 @@ def main(argv) -> None:
         rotation_randomization_roll_angle_degrees=float(_RAND_ROLL_ANGLE.value),
       )
 
+      arm_part_ref = world.get_object(_ROBOT_MODULE.value)
+      if not arm_part_ref:
+        try:
+          arm_part_ref = getattr(world, _ROBOT_MODULE.value)
+        except AttributeError:
+          raise ValueError(
+            f"Robot module '{_ROBOT_MODULE.value}' not found in the world"
+            " model."
+          )
+
+      try:
+        motion_planner_service = solution.resources["motion_planner_service"]
+      except KeyError:
+        raise ValueError(
+          "motion_planner_service not found in solution resources."
+        )
+
       sample_calibration_poses = sample_calibration_poses_skill(
         calibration_type=calibration_type,
         calibration_object=calibration_object_ref,
-        camera=camera_ref,
-        robot=robot_ref,
+        arm_part=arm_part_ref,
+        motion_planner_service=motion_planner_service,
         randomized_box_params=rbp,
       )
 
@@ -638,7 +679,8 @@ def main(argv) -> None:
           ["y", "n"],
         )
         if export_choice == "y":
-          default_filename = f"waypoints_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pbtxt"
+          dt_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+          default_filename = f"waypoints_{dt_str}.pbtxt"
           export_path = input(
             f"Enter file path to export [default: {default_filename}]: "
           ).strip()

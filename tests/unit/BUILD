@@ -1,4 +1,5 @@
 load("@ioc//bazel:python.bzl", "py_test")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -166,6 +167,16 @@ py_test(
 )
 
 py_test(
+    name = "test_script_math",
+    srcs = ["test_script_math.py"],
+    deps = [
+        "//src/utils:math_utils",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
+    ],
+)
+
+py_test(
     name = "test_script_utils",
     srcs = ["test_script_utils.py"],
     deps = [
@@ -178,12 +189,98 @@ py_test(
 )
 
 py_test(
-    name = "test_script_math",
-    srcs = ["test_script_math.py"],
+    name = "test_control_gripper",
+    srcs = ["test_control_gripper.py"],
     deps = [
-        "//src/utils:math_utils",
+        "//src/hardware:gripper",
+        "//tools/gripper:control_gripper_lib",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+    ],
+)
+
+py_test(
+    name = "test_store_joint_config",
+    srcs = ["test_store_joint_config.py"],
+    deps = [
+        "//tools/jogging:store_joint_config_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+    ],
+)
+
+py_test(
+    name = "test_move_to_joint",
+    srcs = ["test_move_to_joint.py"],
+    deps = [
+        "//tools/jogging:move_to_joint_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+    ],
+)
+
+py_test(
+    name = "test_apply_scene_updates",
+    srcs = ["test_apply_scene_updates.py"],
+    deps = [
+        "//tools/world:apply_scene_updates_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+    ],
+)
+
+py_test(
+    name = "test_execution_utils",
+    srcs = ["test_execution_utils.py"],
+    deps = [
+        "//src/core:types",
+        "//src/utils:execution_utils",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+    ],
+)
+
+py_test(
+    name = "test_world_configs",
+    srcs = ["test_world_configs.py"],
+    data = ["//configs:all_world_updates"],
+    deps = [
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
+    ],
+)
+
+py_test(
+    name = "test_calibrate_camera",
+    srcs = ["test_calibrate_camera.py"],
+    deps = [
+        "//tools/calibration:calibrate_camera_lib",
+        "//tools/world:apply_scene_updates_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@intrinsic_apis//intrinsic/perception/proto/v1:camera_to_robot_calibration_py_pb2",
+        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
+    ],
+)
+
+py_test(
+    name = "test_update_robot_kinematics",
+    srcs = ["test_update_robot_kinematics.py"],
+    deps = [
+        "//tools/calibration:update_robot_kinematics_lib",
+        "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//intrinsic/world/service/robot_calibration:robot_update_service_py_pb2",
+        "@ioc//intrinsic/world/service/robot_calibration:robot_update_service_py_pb2_grpc",
+    ],
+)
+
+py_test(
+    name = "test_control_machine",
+    srcs = ["test_control_machine.py"],
+    deps = [
+        "//src/hardware:machine",
+        "//tools/machine:control_machine_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )
 
@@ -218,44 +315,12 @@ py_test(
     ],
 )
 
-py_test(
-    name = "test_control_gripper",
-    srcs = ["test_control_gripper.py"],
-    deps = [
-        "//src/hardware:gripper",
-        "//tools/gripper:control_gripper_lib",
-        "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
-    ],
-)
-
-py_test(
-    name = "test_apply_scene_updates",
-    srcs = ["test_apply_scene_updates.py"],
-    deps = [
-        "//tools/world:apply_scene_updates_lib",
-        "@com_google_absl_py//absl/testing:absltest",
-    ],
-)
-
-py_test(
-    name = "test_execution_utils",
-    srcs = ["test_execution_utils.py"],
-    deps = [
-        "//src/core:types",
-        "//src/utils:execution_utils",
-        "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
-    ],
-)
-
-py_test(
-    name = "test_world_configs",
-    srcs = ["test_world_configs.py"],
-    data = ["//configs:all_world_updates"],
-    deps = [
-        "@com_google_absl_py//absl/testing:absltest",
-        "@com_google_protobuf//:protobuf_python",
-        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
+sh_test(
+    name = "test_omts_ctl",
+    size = "small",
+    srcs = ["test_omts_ctl.sh"],
+    data = [
+        "//tools:omts_ctl.sh",
+        "//tools/ctl:ctl_libs",
     ],
 )

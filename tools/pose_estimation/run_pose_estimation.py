@@ -16,7 +16,7 @@
 
 Connects to a running Intrinsic solution, sets up the `capture_images` and
 `estimate_pose_multi_view` skills connected to the `ioc_pose_estimator_service`,
-executes the pose estimation process on the solution executive, and retrieves and
+executes the pose estimation on the solution executive, and retrieves and
 displays the estimated 6D object poses.
 """
 
@@ -94,6 +94,11 @@ _TIMEOUT_SEC = flags.DEFINE_integer(
   "timeout_sec",
   None,
   help="Optional inference timeout in seconds.",
+)
+_CAPTURE_ONLY = flags.DEFINE_bool(
+  "capture_only",
+  False,
+  help="Only execute capture_images skill and inspect image buffers.",
 )
 
 FLAGS = flags.FLAGS
@@ -242,7 +247,7 @@ def create_pose_estimation_pipeline(
   log_debug_data: bool = True,
   timeout_sec: int | None = None,
 ) -> tuple[Any, Any]:
-  """Constructs the capture_images and estimate_pose_multi_view skills for the pipeline.
+  """Constructs the capture_images and estimate_pose_multi_view skills.
 
   Args:
     solution: Connected Solution instance.
@@ -250,7 +255,7 @@ def create_pose_estimation_pipeline(
     perception_resource: ResourceHandle for the IOC Pose Estimator Service.
     pose_estimator_id: Full ID of the pose estimator asset (e.g.
       'ai.intrinsic.my_pose_estimator').
-    sensor_ids: Optional list of sensor IDs to capture from the camera (e.g. [1, 4] for RGB-D).
+    sensor_ids: Optional list of sensor IDs (e.g. [1, 4] for RGB-D).
     min_num_instances: Minimum number of detected instances required.
     log_debug_data: Whether to enable debug data logging in the skills.
     timeout_sec: Optional inference timeout in seconds.
@@ -272,7 +277,7 @@ def create_pose_estimation_pipeline(
 
   skills = solution.skills
 
-  # 1. Set up capture_images skill with sensor_ids (e.g. 1 for RGB and 4 for Depth)
+  # 1. capture_images skill with sensor_ids (e.g. 1 for RGB and 4 for Depth)
   capture_images_kwargs: dict[str, Any] = {
     "camera": camera_resource,
     "log_debug_data": log_debug_data,
@@ -289,7 +294,7 @@ def create_pose_estimation_pipeline(
     package=package_name,
   )
 
-  # 2. Set up estimate_pose_multi_view skill connected to IOC Pose Estimator Service
+  # 2. estimate_pose_multi_view skill connected to Pose Estimator Service
   estimate_pose_kwargs: dict[str, Any] = {
     "camera_1": camera_resource,
     "camera_2": camera_resource,
@@ -331,10 +336,31 @@ def run_pose_estimation_pipeline(
   solution.executive.run(skills_to_run)
   print("Pipeline execution finished successfully.")
 
-  result: estimate_pose_multi_view_pb2.EstimatePoseMultiViewResult = (
-    solution.executive.get_value(estimate_pose_skill.result)
-  )
-  return result
+  if hasattr(solution.executive, "operation") and solution.executive.operation:
+    try:
+      keys = solution.executive.operation.blackboard.list_keys()
+      print(f"Available blackboard keys in operation: {keys}")
+    except Exception as e:
+      print(f"Error listing blackboard keys: {e}")
+
+  try:
+    result: estimate_pose_multi_view_pb2.EstimatePoseMultiViewResult = (
+      solution.executive.get_value(estimate_pose_skill.result)
+    )
+    return result
+  except Exception as e:
+    print(f"Direct executive.get_value failed: {e}")
+    if (
+      hasattr(solution.executive, "operation") and solution.executive.operation
+    ):
+      op_bb = solution.executive.operation.blackboard
+      for k in op_bb.list_keys():
+        if "estimate_pose" in k.key:
+          print(f"Found candidate estimate_pose key: {k}")
+          val = op_bb.get_value(k.key, scope=k.scope)
+          print(f"Retrieved candidate value: {type(val)}")
+          return val
+    raise
 
 
 def display_results(
@@ -429,6 +455,28 @@ def main(argv: Sequence[str]) -> None:
     )
   except ValueError as e:
     print(f"Failed to create pose estimation pipeline: {e}")
+    return
+
+  if _CAPTURE_ONLY.value:
+    print("Executing capture_images only on executive...")
+    try:
+      solution.executive.run(capture_skill)
+      print("capture_images executed successfully.")
+    except execution.ExecutionFailedError as e:
+      print(f"capture_images execution failed: {e}")
+      if hasattr(solution.executive, "get_errors"):
+        print(solution.executive.get_errors())
+      return
+
+    cap_res = solution.executive.get_value(capture_skill.result)
+    print("\n=== Capture Images Result Inspection ===")
+    print(f"Result type: {type(cap_res)}")
+    print(f"cap_res fields: {[f.name for f, _ in cap_res.ListFields()]}")
+    if hasattr(cap_res, "capture_data"):
+      cd = cap_res.capture_data
+      print(f"Capture data type: {type(cd)}")
+      print(f"Capture data fields: {[f.name for f, _ in cd.ListFields()]}")
+      print(f"Capture data proto string:\n{cd}")
     return
 
   try:

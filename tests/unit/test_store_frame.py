@@ -177,6 +177,14 @@ updates: {
     )
 
     mock_world.update_transform.assert_called_once()
+    _, kwargs = mock_world.update_transform.call_args
+    self.assertIs(kwargs["node_a"], mock_root)
+    self.assertIs(kwargs["node_b"], mock_root.view)
+    pose = kwargs["a_t_b"]
+    self.assertSequenceAlmostEqual(pose.translation, (0.34, 0.37, 0.85))
+    self.assertSequenceAlmostEqual(
+      pose.rotation.quaternion.xyzw, (1.0, 0.0, 0.0, 0.0)
+    )
 
   def test_update_live_world_frame_new(self):
     mock_world = mock.MagicMock()
@@ -188,11 +196,28 @@ updates: {
       world=mock_world,
       frame_name="new_frame",
       position=(0.15, 0.25, 0.71),
-      orientation=(1.0, 0.0, 0.0, 0.0),
+      orientation=(0.0, 1.0, 0.0, 0.0),
       parent_object_name="root",
     )
 
     mock_world.batch_update.assert_called_once()
+    (updates,), _ = mock_world.batch_update.call_args
+    self.assertLen(updates.updates, 1)
+    create_frame = updates.updates[0].create_frame
+    self.assertEqual(create_frame.new_frame_name, "new_frame")
+    self.assertEqual(
+      create_frame.parent_object_with_filter.reference.by_name.object_name,
+      "root",
+    )
+    position = create_frame.parent_t_new_frame.position
+    self.assertSequenceAlmostEqual(
+      (position.x, position.y, position.z), (0.15, 0.25, 0.71)
+    )
+    orientation = create_frame.parent_t_new_frame.orientation
+    self.assertSequenceAlmostEqual(
+      (orientation.x, orientation.y, orientation.z, orientation.w),
+      (0.0, 1.0, 0.0, 0.0),
+    )
 
   def test_parse_args(self):
     args = parse_args(["view", "--address", "localhost:17080"])

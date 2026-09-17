@@ -114,26 +114,26 @@ sequenceDiagram
     Note over Robot,World: 2. Machine Loading Subtree
     CNC->>CNC: Open Door & Open Vise (DIO)
     Robot->>Robot: Move to machine_approach entry frame (ANY)
-    Robot->>Robot: Move to pre_place_vise insertion frame (ANY)
+    Robot->>Robot: Move to vise_pre_place insertion frame (ANY)
     Robot->>Robot: Compliant Seating into Vise (+Z tool contact, 15N)
     CNC->>CNC: Clamp Vise (DIO)
     Gripper->>Gripper: Open Gripper (Release Part)
-    Robot->>Robot: Linear Retract to pre_place_vise (LINEAR)
+    Robot->>Robot: Linear Retract to vise_pre_place (LINEAR)
     Robot->>Robot: Retract to machine_approach (LINEAR)
 
     Note over Robot,World: 3. Machining Handshake Subtree
     Robot->>Robot: Standby at machine_approach
-    CNC->>CNC: Close Door & Pulse Cycle Start (DIO)
-    CNC->>CNC: Wait for Machining Cycle Complete (DIO input / timeout)
+    CNC->>CNC: Close Door & Set Cycle Start High (DIO)
+    CNC->>CNC: Wait for Machining Cycle (DIO read, fixed dwell)
 
     Note over Robot,World: 4. Machine Unload Subtree
     CNC->>CNC: Open Door & Open Vise (DIO)
     Robot->>Robot: Move to machine_approach (ANY)
-    Robot->>Robot: Move to pre_place_vise (ANY)
+    Robot->>Robot: Move to vise_pre_place (ANY)
     Robot->>Robot: Compliant Touchdown to Machined Part (+Z tool contact, 15N)
     Robot->>Robot: Linear Retract 3 cm (-Z tool relative motion)
     Gripper->>Gripper: Close Gripper (Grasp Part)
-    Robot->>Robot: Linear Retract to pre_place_vise (LINEAR)
+    Robot->>Robot: Linear Retract to vise_pre_place (LINEAR)
     Robot->>Robot: Retract to machine_approach (LINEAR)
 
     Note over Robot,World: 5. Return / Outfeed Subtree

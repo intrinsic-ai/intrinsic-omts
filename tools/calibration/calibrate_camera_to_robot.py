@@ -28,11 +28,16 @@ from intrinsic.perception.skills.calibration import sample_calibration_poses_pb2
 from intrinsic.solutions import behavior_tree as bt
 from intrinsic.solutions import deployments, execution, provided
 from intrinsic.world.proto import object_world_updates_pb2
-from intrinsic.world.python import object_world_ids
+
+# Where a calibration run writes its camera extrinsic by default. Must name the
+# same cell as apply_scene_updates.DEFAULT_UPDATE_FILES, which reads it back.
+DEFAULT_UPDATES_FILE = "configs/omts/orbbec_gemini.updates.pbtxt"
 
 # Command line input flags
 _ADDRESS = flags.DEFINE_string(
-  "address", "localhost:17080", "Solution address to connect to."
+  "address",
+  "localhost:17080",
+  "gRPC address of the running SBL solution deployment.",
 )
 _ROBOT = flags.DEFINE_string(
   "robot", "icon", "Robot / controller resource name in the workcell."
@@ -42,13 +47,15 @@ _CAMERA = flags.DEFINE_string(
 )
 _CALIBRATION_OBJECT = flags.DEFINE_string(
   "calibration_object",
+  # "charuco_11x15_35mm_26mm_dict_4x4",
   "charuco_9x14_20mm_15mm_dict_5x5",
-  "Calibration pattern / object name.",
+  "Calibration board object name in ObjectWorld.",
 )
 _POSE_ESTIMATOR = flags.DEFINE_string(
   "pose_estimator",
+  # "charuco_11x15_35mm_26mm_dict_4x4_estimator",
   "charuco_9x14_20mm_15mm_dict_5x5_estimator",
-  "Pose estimator name.",
+  "Pose estimator asset name for the calibration board.",
 )
 _MOVING_CAMERA = flags.DEFINE_bool(
   "moving_camera",
@@ -60,6 +67,162 @@ _IMPORT_WAYPOINTS_FILE = flags.DEFINE_string(
   "",
   "Import manual waypoints from this local file path.",
 )
+_TRANSLATION_RMS_THRESHOLD = flags.DEFINE_float(
+  "translation_rms_threshold",
+  0.02,
+  "Threshold on translation RMS error in meters (default 0.02 = 20mm).",
+)
+_ROTATION_RMS_THRESHOLD = flags.DEFINE_float(
+  "rotation_rms_threshold",
+  5.0,
+  "Threshold on rotation RMS error in degrees (default 5.0 deg).",
+)
+_DISABLE_COLLISION_CHECKING = flags.DEFINE_bool(
+  "disable_collision_checking",
+  False,
+  "Whether to disable collision checking during calibration waypoints.",
+)
+_APPLY_TO_WORLD = flags.DEFINE_bool(
+  "apply_to_world",
+  None,
+  "Whether to apply the calibrated camera pose directly to the live"
+  " ObjectWorld without prompting. If None, prompts interactively.",
+)
+_OUTPUT_UPDATES_FILE = flags.DEFINE_string(
+  "output_updates_file",
+  "",
+  "Path to export/overwrite with the ObjectWorldUpdates .pbtxt file.",
+)
+_ROBOT_MODULE = flags.DEFINE_string(
+  "robot_module",
+  "ur_module",
+  "Robot module object name in ObjectWorld for moving camera attachment.",
+)
+_ROBOT_FRAME = flags.DEFINE_string(
+  "robot_frame",
+  "flange",
+  "Flange frame name on robot module for moving camera attachment.",
+)
+_REPARENT_CAMERA = flags.DEFINE_bool(
+  "reparent_camera",
+  True,
+  "Whether to reparent moving camera to the robot module.",
+)
+
+
+_CalibRes = calibration_type_pb2.CameraToRobotCalibrationResult
+_StatPoses = _CalibRes.StationaryCameraResultPoses
+
+
+def build_camera_world_updates(
+  camera_name: str,
+  moving_camera: bool,
+  moving_camera_poses: (
+    calibration_type_pb2.CameraToRobotCalibrationResult.MovingCameraResultPoses
+    | None
+  ) = None,
+  stationary_camera_poses: (_StatPoses | None) = None,
+  robot_module_name: str = "ur_module",
+  robot_flange_frame: str = "flange",
+  reparent_camera: bool = True,
+) -> object_world_updates_pb2.ObjectWorldUpdates:
+  """Constructs ObjectWorldUpdates proto for the calibrated camera transform."""
+  object_world_updates = object_world_updates_pb2.ObjectWorldUpdates()
+
+  if moving_camera:
+    if not moving_camera_poses:
+      raise ValueError(
+        "moving_camera_poses must be provided when moving_camera is True."
+      )
+    new_pose_proto = moving_camera_poses.flange_t_camera
+
+    a_t_b_pose = pose_pb2.Pose()
+    a_t_b_pose.ParseFromString(new_pose_proto.SerializeToString())
+
+    # 1. Update Transform: ur_module:flange -> orbbec_camera
+    update_request = object_world_updates_pb2.UpdateTransformRequest()
+    update_request.node_a.by_name.frame.object_name = robot_module_name
+    update_request.node_a.by_name.frame.frame_name = robot_flange_frame
+    update_request.node_b.by_name.object.object_name = camera_name
+    update_request.node_to_update.by_name.object.object_name = camera_name
+    update_request.a_t_b.CopyFrom(a_t_b_pose)
+
+    object_world_updates.updates.append(
+      object_world_updates_pb2.ObjectWorldUpdate(
+        update_transform=update_request
+      )
+    )
+
+    # 2. Reparent camera to robot module
+    if reparent_camera:
+      reparent_request = object_world_updates_pb2.ReparentObjectRequest()
+      reparent_request.object.by_name.object_name = camera_name
+      reparent_request.new_parent.reference.by_name.object_name = (
+        robot_module_name
+      )
+      reparent_request.new_parent.entity_filter.include_final_entity = True
+
+      object_world_updates.updates.append(
+        object_world_updates_pb2.ObjectWorldUpdate(
+          reparent_object=reparent_request
+        )
+      )
+
+  else:
+    if not stationary_camera_poses:
+      raise ValueError(
+        "stationary_camera_poses must be provided when moving_camera is False."
+      )
+    new_pose_proto = stationary_camera_poses.base_t_camera
+
+    a_t_b_pose = pose_pb2.Pose()
+    a_t_b_pose.ParseFromString(new_pose_proto.SerializeToString())
+
+    update_request = object_world_updates_pb2.UpdateTransformRequest()
+    update_request.node_a.by_name.object.object_name = "root"
+    update_request.node_b.by_name.object.object_name = camera_name
+    update_request.node_to_update.by_name.object.object_name = camera_name
+    update_request.a_t_b.CopyFrom(a_t_b_pose)
+
+    object_world_updates.updates.append(
+      object_world_updates_pb2.ObjectWorldUpdate(
+        update_transform=update_request
+      )
+    )
+
+  return object_world_updates
+
+
+def apply_camera_updates_to_world(
+  world, updates: object_world_updates_pb2.ObjectWorldUpdates
+) -> None:
+  """Applies ObjectWorldUpdates live to the active ObjectWorld deployment."""
+  print(
+    f"\nApplying {len(updates.updates)} update rule(s) to live ObjectWorld..."
+  )
+  world.batch_update(updates)
+  print(
+    "[✓] Successfully applied updated camera transform to live ObjectWorld!"
+  )
+
+
+def save_updates_to_file(
+  updates: object_world_updates_pb2.ObjectWorldUpdates, filepath: str
+) -> None:
+  """Saves ObjectWorldUpdates proto to a .pbtxt file on disk."""
+  workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")
+  if workspace_dir and not os.path.isabs(filepath):
+    resolved_path = os.path.normpath(os.path.join(workspace_dir, filepath))
+  else:
+    resolved_path = filepath
+
+  parent_dir = os.path.dirname(resolved_path)
+  if parent_dir and not os.path.exists(parent_dir):
+    os.makedirs(parent_dir, exist_ok=True)
+
+  with open(resolved_path, "w", encoding="utf-8") as f:
+    f.write(text_format.MessageToString(updates))
+  print(f"[✓] Successfully saved ObjectWorldUpdates to {resolved_path}")
 
 
 def read_input(prompt: str, choices: list[str]) -> str:
@@ -95,22 +258,24 @@ def main(argv) -> None:
   skills = solution.skills
   world = solution.world
 
-  try:
-    robot_ref = solution.resources[_ROBOT.value]
+  arm_part_ref = world.get_object(_ROBOT_MODULE.value)
+  if not arm_part_ref:
+    try:
+      arm_part_ref = getattr(world, _ROBOT_MODULE.value)
+    except AttributeError:
+      raise ValueError(
+        f"Robot module '{_ROBOT_MODULE.value}' not found in the world model."
+      )
 
+  try:
+    calibration_service = solution.resources["calibration_service"]
   except KeyError:
-    raise ValueError(
-      f"Robot '{_ROBOT.value}' not found in resources. Available resources:"
-      f" {dir(solution.resources)}"
-    )
+    raise ValueError("calibration_service not found in solution resources.")
 
   try:
-    camera_ref = solution.resources[_CAMERA.value]
+    motion_planner_service = solution.resources["motion_planner_service"]
   except KeyError:
-    raise ValueError(
-      f"Camera '{_CAMERA.value}' not found in resources. Available resources:"
-      f" {dir(solution.resources)}"
-    )
+    raise ValueError("motion_planner_service not found in solution resources.")
 
   calibration_object_ref = world.get_object(_CALIBRATION_OBJECT.value)
   if not calibration_object_ref:
@@ -154,15 +319,12 @@ def main(argv) -> None:
   initialize_calibration = skills.ai.intrinsic.initialize_calibration(
     pose_estimator=pose_estimator,
     calibration_object=calibration_object_ref,
-    camera_1=camera_ref,
-    camera_2=camera_ref,
-    camera_3=camera_ref,
-    camera_4=camera_ref,
+    arm_part=arm_part_ref,
+    calibration_service=calibration_service,
     data_assets_service=provided.ResourceHandle.create(
       name="intrinsic_runtime",
       capabilities=["intrinsic_proto.data.v1.DataAssets"],
     ),
-    robot=robot_ref,
   )
   collect_calibration_data_skill = skills.ai.intrinsic.collect_calibration_data
   calibrate_camera_to_robot_skill = (
@@ -170,19 +332,29 @@ def main(argv) -> None:
   )
 
   # Setup calibration subtree
+  skill_proto = collect_calibration_data_skill.intrinsic_proto.skills
+  motion_type_joint = skill_proto.MotionType.MOTION_TYPE_JOINT
+
   collect_calibration_data = collect_calibration_data_skill(
     calibration_type=calibration_type,
     calibration_object=calibration_object_ref,
     waypoints=waypoints,
-    robot=robot_ref,
-    disable_collision_checking=True,
-    motion_type=collect_calibration_data_skill.intrinsic_proto.skills.MotionType.MOTION_TYPE_JOINT,
+    arm_part=arm_part_ref,
+    motion_planner_service=motion_planner_service,
+    calibration_service=calibration_service,
+    disable_collision_checking=_DISABLE_COLLISION_CHECKING.value,
+    motion_type=(motion_type_joint),
     skip_return_to_base_between_waypoints=True,
   )
   collect_calibration_data.execute_timeout = datetime.timedelta(seconds=600)
 
   calibrate = calibrate_camera_to_robot_skill(
     calibration_type=calibration_type,
+    translation_root_mean_square_error_threshold=(
+      _TRANSLATION_RMS_THRESHOLD.value
+    ),
+    rotation_root_mean_square_error_threshold=_ROTATION_RMS_THRESHOLD.value,
+    calibration_service=calibration_service,
   )
 
   calibration_children = [
@@ -202,6 +374,7 @@ def main(argv) -> None:
 
   try:
     executive.run(calibration, silence_outputs=True)
+    print("Execution completed successfully.")
   except execution.ExecutionFailedError as e:
     print("=== Execution Failed ===")
     print("Error message:", e)
@@ -260,7 +433,12 @@ def main(argv) -> None:
     return
 
   # Retrieve results from blackboard
-  res = executive.get_value(calibrate.result).calibration_results[0]
+  try:
+    res = executive.operation.blackboard.get_value(
+      calibrate.result
+    ).calibration_results[0]
+  except Exception:
+    res = executive.get_value(calibrate.result).calibration_results[0]
 
   # Print results
   print("=== Calibration Results ===")
@@ -284,46 +462,65 @@ def main(argv) -> None:
     print("Moving Camera Result Poses:")
     print(res.moving_camera_result_poses)
 
-  save_pose = read_input(
-    "\nDo you want to persist the new camera pose? [y/n]: ", ["y", "n"]
-  )
-  if save_pose == "y":
+  # Build ObjectWorldUpdates proto
+  try:
+    object_world_updates = build_camera_world_updates(
+      camera_name=_CAMERA.value,
+      moving_camera=_MOVING_CAMERA.value,
+      moving_camera_poses=(
+        res.moving_camera_result_poses
+        if res.HasField("moving_camera_result_poses")
+        else None
+      ),
+      stationary_camera_poses=(
+        res.stationary_camera_result_poses
+        if res.HasField("stationary_camera_result_poses")
+        else None
+      ),
+      robot_module_name=_ROBOT_MODULE.value,
+      robot_flange_frame=_ROBOT_FRAME.value,
+      reparent_camera=_REPARENT_CAMERA.value,
+    )
+  except Exception as e:
+    print(f"Error building ObjectWorldUpdates proto: {e}")
+    return
+
+  print("\n=== Generated ObjectWorldUpdates ===")
+  print(object_world_updates)
+
+  # Determine whether to apply to live ObjectWorld
+  apply_to_world = _APPLY_TO_WORLD.value
+  if apply_to_world is None:
+    apply_choice = read_input(
+      "\nApply the new camera transform directly to the live ObjectWorld?"
+      " [y/n]: ",
+      ["y", "n"],
+    )
+    apply_to_world = apply_choice == "y"
+
+  if apply_to_world:
     try:
-      object_world_updates = object_world_updates_pb2.ObjectWorldUpdates()
-      objects_list = world.list_object_names()
-      camera_name = _CAMERA.value
-      if camera_name not in objects_list:
-        raise ValueError(f"{camera_name} not in list of available objects.")
-      scene_object = world.get_object(
-        object_world_ids.WorldObjectName(camera_name)
-      )
-      if _MOVING_CAMERA.value:
-        new_pose_proto = res.moving_camera_result_poses.flange_t_camera
-      else:
-        new_pose_proto = res.stationary_camera_result_poses.base_t_camera
-
-      a_t_b_pose = pose_pb2.Pose()
-      a_t_b_pose.ParseFromString(new_pose_proto.SerializeToString())
-
-      update_request = object_world_updates_pb2.UpdateTransformRequest(
-        node_a=scene_object.parent.transform_node_reference,
-        node_b=scene_object.transform_node_reference,
-        a_t_b=a_t_b_pose,
-        node_to_update=scene_object.transform_node_reference,
-      )
-
-      object_world_update = object_world_updates_pb2.ObjectWorldUpdate(
-        update_transform=update_request
-      )
-      object_world_updates.updates.append(object_world_update)
-
-      print(
-        "You need to copy-paste the following proto to the appropriate"
-        " world_updates.pbtxt file of your solution.\n\n"
-      )
-      print(object_world_updates)
+      apply_camera_updates_to_world(world, object_world_updates)
     except Exception as e:
-      print(f"Error fetching camera pose updates: {e}")
+      print(f"Error applying camera updates to live ObjectWorld: {e}")
+
+  # Determine whether to save to file
+  export_path = _OUTPUT_UPDATES_FILE.value
+  if not export_path and _APPLY_TO_WORLD.value is None:
+    save_choice = read_input(
+      "\nSave ObjectWorldUpdates to a .pbtxt config file on disk? [y/n]: ",
+      ["y", "n"],
+    )
+    if save_choice == "y":
+      default_path = DEFAULT_UPDATES_FILE
+      user_path = input(f"Enter file path [default: {default_path}]: ").strip()
+      export_path = user_path if user_path else default_path
+
+  if export_path:
+    try:
+      save_updates_to_file(object_world_updates, export_path)
+    except Exception as e:
+      print(f"Error saving ObjectWorldUpdates to file: {e}")
 
 
 if __name__ == "__main__":
