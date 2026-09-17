@@ -82,6 +82,10 @@ triton_python_env_tar = rule(
         "wheels": attr.label_list(
             mandatory = True,
             allow_files = [".whl"],
+            cfg = py312_transition,
+        ),
+        "_allowlist_function_transition": attr.label(
+            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
         ),
         "_builder": attr.label(
             default = "//third_party/foundationpose:build_triton_env",

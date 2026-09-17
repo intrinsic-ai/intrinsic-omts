@@ -17,6 +17,7 @@ load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("@rules_license//rules:license.bzl", "license")
 load("@rules_license//rules:package_info.bzl", "package_info")
 load("@rules_python//python:defs.bzl", "py_binary")
+load("@rules_python//python/pip_install:requirements.bzl", "compile_pip_requirements")
 load(":build_defs.bzl", "py312_file", "triton_python_env_tar")
 
 package(
@@ -42,7 +43,14 @@ package_info(
 exports_files([
     "LICENSE",
     "model.py",
+    "requirements_lock.txt",
 ])
+
+compile_pip_requirements(
+    name = "requirements",
+    src = "requirements.in",
+    requirements_txt = "requirements_lock.txt",
+)
 
 py_binary(
     name = "build_triton_env",
@@ -115,13 +123,18 @@ triton_python_env_tar(
     patchelf = "@patchelf//:bin/patchelf",
     so_file = ":foundationpose_cpp_so",
     wheels = [
-        "@fp_py312_flatbuffers//file",
-        "@fp_py312_numpy//file",
-        "@fp_py312_onnxruntime_gpu//file",
-        "@fp_py312_opencv_python_headless//file",
-        "@fp_py312_pillow//file",
-        "@fp_py312_protobuf//file",
-        "@fp_py312_scipy//file",
-        "@fp_py312_trimesh//file",
+        "@foundationpose_pip_deps//coloredlogs:whl",
+        "@foundationpose_pip_deps//flatbuffers:whl",
+        "@foundationpose_pip_deps//humanfriendly:whl",
+        "@foundationpose_pip_deps//mpmath:whl",
+        "@foundationpose_pip_deps//numpy:whl",
+        "@foundationpose_pip_deps//onnxruntime_gpu:whl",
+        "@foundationpose_pip_deps//opencv_python_headless:whl",
+        "@foundationpose_pip_deps//packaging:whl",
+        "@foundationpose_pip_deps//pillow:whl",
+        "@foundationpose_pip_deps//protobuf:whl",
+        "@foundationpose_pip_deps//scipy:whl",
+        "@foundationpose_pip_deps//sympy:whl",
+        "@foundationpose_pip_deps//trimesh:whl",
     ],
 )

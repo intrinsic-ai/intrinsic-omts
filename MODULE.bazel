@@ -222,15 +222,19 @@ use_repo(
 foundationpose_deps = use_extension("//third_party/foundationpose:deps.bzl", "foundationpose_deps")
 use_repo(
     foundationpose_deps,
-    "fp_py312_flatbuffers",
-    "fp_py312_numpy",
-    "fp_py312_onnxruntime_gpu",
-    "fp_py312_opencv_python_headless",
-    "fp_py312_pillow",
-    "fp_py312_protobuf",
-    "fp_py312_scipy",
-    "fp_py312_trimesh",
     "isaac_ros_pose_estimation",
     "patchelf",
 )
+
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    experimental_index_url = "https://pypi.org/simple",
+    hub_name = "foundationpose_pip_deps",
+    python_version = "3.12",
+    requirements_lock = "//third_party/foundationpose:requirements_lock.txt",
+    target_platforms = [
+        "linux_x86_64",
+    ],
+)
+use_repo(pip, "foundationpose_pip_deps")
 
