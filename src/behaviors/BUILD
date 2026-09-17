@@ -7,6 +7,8 @@ py_library(
     srcs = ["motions.py"],
     deps = [
         "//src/hardware:robot",
+        "//src/utils:execution_utils",
+        "//src/utils:script_utils",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
@@ -17,8 +19,11 @@ py_library(
     deps = [
         ":motions",
         "//src/core:infeed",
+        "//src/core:types",
         "//src/core:workpiece",
+        "//src/core:world",
         "//src/hardware:gripper",
+        "//src/hardware:machine",
         "//src/hardware:robot",
         "//src/hardware:vision",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
@@ -31,6 +36,7 @@ py_library(
     deps = [
         ":motions",
         "//src/core:workpiece",
+        "//src/core:world",
         "//src/hardware:gripper",
         "//src/hardware:machine",
         "//src/hardware:robot",
@@ -55,6 +61,7 @@ py_library(
     deps = [
         ":motions",
         "//src/core:workpiece",
+        "//src/core:world",
         "//src/hardware:gripper",
         "//src/hardware:machine",
         "//src/hardware:robot",
@@ -68,6 +75,7 @@ py_library(
     deps = [
         ":motions",
         "//src/core:workpiece",
+        "//src/core:world",
         "//src/hardware:gripper",
         "//src/hardware:robot",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
@@ -80,11 +88,15 @@ py_library(
     deps = [
         ":load_machine",
         ":machining",
+        ":motions",
         ":pick",
         ":return_infeed",
         ":unload_machine",
         "//src/core:infeed",
+        "//src/core:types",
+        "//src/core:workcell",
         "//src/core:workpiece",
+        "//src/core:world",
         "//src/hardware:gripper",
         "//src/hardware:machine",
         "//src/hardware:robot",

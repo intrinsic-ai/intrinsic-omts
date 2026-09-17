@@ -16,32 +16,48 @@
 
 from src.hardware.gripper import (
   DioGripper,
+  GripperConfig,
   GripperInterface,
   MockGripper,
   RobotiqGripper,
-  SideloadedGripperCmd,
 )
 from src.hardware.machine import (
   CncMachineInterface,
   DioCncMachine,
+  MachineConfig,
   MockCncMachine,
+  run_initial_machine_prep,
 )
-from src.hardware.robot import MockRobot, RobotInterface, UrRobot
-from src.hardware.vision import MockVision, OrbbecVision, VisionInterface
+from src.hardware.robot import (
+  MockRobot,
+  MotionConfig,
+  RobotInterface,
+  UrRobot,
+)
+from src.hardware.vision import (
+  MockVision,
+  OrbbecVision,
+  PerceptionConfig,
+  VisionInterface,
+)
 
 __all__ = [
   "CncMachineInterface",
   "DioCncMachine",
   "DioGripper",
+  "GripperConfig",
   "GripperInterface",
+  "MachineConfig",
   "MockCncMachine",
   "MockGripper",
   "MockRobot",
   "MockVision",
+  "MotionConfig",
   "OrbbecVision",
+  "PerceptionConfig",
   "RobotInterface",
   "RobotiqGripper",
-  "SideloadedGripperCmd",
   "UrRobot",
   "VisionInterface",
+  "run_initial_machine_prep",
 ]

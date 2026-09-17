@@ -14,18 +14,25 @@
 
 """Master Behavior Tree builder for the Open Machine Tending Solution."""
 
+import dataclasses
+from typing import Any
+
 from intrinsic.solutions import behavior_tree as bt
 
 from src.behaviors.load_machine import build_load_machine_subtree
 from src.behaviors.machining import build_machining_handshake_subtree
+from src.behaviors.motions import DEFAULT_TOUCHDOWN, Touchdown
 from src.behaviors.pick import build_pick_from_infeed_subtree
 from src.behaviors.return_infeed import build_return_to_infeed_subtree
 from src.behaviors.unload_machine import build_unload_machine_subtree
 from src.core.infeed import InfeedStrategy
+from src.core.types import DEFAULT_FRAMES, Frames, Phase
+from src.core.workcell import WorkcellState
 from src.core.workpiece import Workpiece
+from src.core.world import WorldInterface
 from src.hardware.gripper import GripperInterface
 from src.hardware.machine import CncMachineInterface
-from src.hardware.robot import RobotInterface
+from src.hardware.robot import DEFAULT_MOTION, MotionConfig, RobotInterface
 from src.hardware.vision import VisionInterface
 
 
@@ -36,53 +43,53 @@ def build_machine_tending_behavior_tree(
   vision: VisionInterface,
   infeed_strategy: InfeedStrategy,
   workpiece: Workpiece,
-  parent_object: str = "root",
-  view_frame_name: str = "view",
-  pregrasp_frame_name: str = "pre_grasp",
-  grasp_frame_name: str = "grasp",
-  machine_approach_frame_name: str = "machine_approach",
-  preplace_vise_frame_name: str = "pre_place_vise",
-  place_vise_frame_name: str = "place_vise",
+  *,
+  frames: Frames = DEFAULT_FRAMES,
+  touchdown: Touchdown = DEFAULT_TOUCHDOWN,
+  motion: MotionConfig = DEFAULT_MOTION,
+  state: WorkcellState | None = None,
+  machining_timeout_seconds: float = 30.0,
+  solution: Any | None = None,
+  world: WorldInterface | None = None,
   tree_name: str = "OMTS Machine Tending Master Cycle",
+  enable_object_reparenting: bool = False,
+  perception_max_retries: int = 3,
+  perception_retry_delay_sec: float = 1.0,
+  start_phase: Phase | str | None = None,
+  num_cycles: int = 1,
 ) -> bt.BehaviorTree:
-  """Assembles the complete machine tending sequence into an SBL Behavior Tree.
+  """Assembles complete machine tending sequence into an SBL Behavior Tree."""
+  grasp_td = dataclasses.replace(
+    touchdown, retract_after_m=motion.grasp_offset_z
+  )
+  release_td = dataclasses.replace(touchdown, retract_after_m=0.0)
 
-  Sequence:
-  1. Pick raw stock from infeed (view -> perception -> open gripper -> pre_grasp -> touch -> linear retract 3cm -> grasp -> linear retract).
-  2. Load part into CNC vise (machine_approach -> pre_place_vise -> touch into vise -> clamp -> release -> retract).
-  3. Standby & execute CNC machining cycle handshake (machine_approach standby -> door close -> cycle start -> complete).
-  4. Unclamp & extract finished part from CNC vise (machine_approach -> pre_place_vise -> touch -> linear retract 3cm -> grasp -> retract).
-  5. Return finished part back to infeed (pre_grasp -> touch table -> release -> retract -> view).
+  raw_start_phase = (
+    start_phase
+    if start_phase is not None
+    else (state.phase if state is not None else Phase.PICK)
+  )
+  phase = Phase(raw_start_phase)
 
-  Args:
-      robot: Robot controller adapter.
-      gripper: End-effector gripper adapter.
-      machine: CNC machine controller adapter.
-      vision: 3D camera adapter.
-      infeed_strategy: Infeed acquisition strategy (Perception vs. Grid).
-      workpiece: Workpiece domain instance being processed.
-      parent_object: Name of parent object for target frames (default: 'root').
-      view_frame_name: Name of perception view frame (default: 'view').
-      pregrasp_frame_name: Name of pre-grasp frame (default: 'pre_grasp').
-      grasp_frame_name: Name of grasp frame (default: 'grasp').
-      machine_approach_frame_name: Name of machine entry approach frame (default: 'machine_approach').
-      preplace_vise_frame_name: Name of pre-place vise frame (default: 'pre_place_vise').
-      place_vise_frame_name: Name of place vise frame (default: 'place_vise').
-      tree_name: Descriptive name for the Behavior Tree.
-
-  Returns:
-      Executable SBL BehaviorTree instance.
-  """
   pick_subtree = build_pick_from_infeed_subtree(
     robot=robot,
     gripper=gripper,
     vision=vision,
     infeed_strategy=infeed_strategy,
     workpiece=workpiece,
-    parent_object=parent_object,
-    view_frame_name=view_frame_name,
-    pregrasp_frame_name=pregrasp_frame_name,
-    grasp_frame_name=grasp_frame_name,
+    machine=machine,
+    parent_object=frames.root,
+    view_frame_name=frames.view,
+    pregrasp_frame_name=frames.infeed_pre_grasp,
+    grasp_frame_name=frames.infeed_grasp,
+    min_safe_z=motion.min_safe_z,
+    touchdown=grasp_td,
+    approach_offset_z=motion.approach_height_m,
+    enable_object_reparenting=enable_object_reparenting,
+    perception_max_retries=perception_max_retries,
+    perception_retry_delay_sec=perception_retry_delay_sec,
+    solution=solution,
+    world=world,
   )
 
   load_subtree = build_load_machine_subtree(
@@ -90,17 +97,24 @@ def build_machine_tending_behavior_tree(
     gripper=gripper,
     machine=machine,
     workpiece=workpiece,
-    parent_object=parent_object,
-    machine_approach_frame_name=machine_approach_frame_name,
-    preplace_vise_frame_name=preplace_vise_frame_name,
-    place_vise_frame_name=place_vise_frame_name,
+    parent_object=frames.root,
+    entry_via_frame_name=frames.transit,
+    machine_approach_frame_name=frames.machine_approach,
+    vise_approach_frame_name=frames.vise_pre_place,
+    vise_place_frame_name=frames.vise_place,
+    touchdown=release_td,
+    solution=solution,
+    world=world,
+    enable_object_reparenting=enable_object_reparenting,
   )
 
   machining_subtree = build_machining_handshake_subtree(
     robot=robot,
     machine=machine,
-    parent_object=parent_object,
-    standby_frame_name=machine_approach_frame_name,
+    parent_object=frames.root,
+    standby_frame_name=frames.machine_approach,
+    machining_timeout_seconds=machining_timeout_seconds,
+    solution=solution,
   )
 
   unload_subtree = build_unload_machine_subtree(
@@ -108,31 +122,71 @@ def build_machine_tending_behavior_tree(
     gripper=gripper,
     machine=machine,
     workpiece=workpiece,
-    parent_object=parent_object,
-    machine_approach_frame_name=machine_approach_frame_name,
-    preplace_vise_frame_name=preplace_vise_frame_name,
-    place_vise_frame_name=place_vise_frame_name,
+    parent_object=frames.root,
+    machine_approach_frame_name=frames.machine_approach,
+    vise_approach_frame_name=frames.vise_pre_place,
+    vise_place_frame_name=frames.vise_place,
+    touchdown=grasp_td,
+    solution=solution,
+    world=world,
+    enable_object_reparenting=enable_object_reparenting,
   )
 
   return_subtree = build_return_to_infeed_subtree(
     robot=robot,
     gripper=gripper,
     workpiece=workpiece,
-    parent_object=parent_object,
-    pregrasp_frame_name=pregrasp_frame_name,
-    grasp_frame_name=grasp_frame_name,
-    view_frame_name=view_frame_name,
+    parent_object=frames.root,
+    transit_frame_name=frames.transit,
+    preplace_frame_name=frames.infeed_pre_grasp,
+    place_frame_name=frames.infeed_grasp,
+    view_frame_name=frames.view,
+    touchdown=release_td,
+    enable_object_reparenting=enable_object_reparenting,
+    solution=solution,
+    world=world,
   )
 
+  subtrees = {
+    Phase.PICK: pick_subtree,
+    Phase.LOAD: load_subtree,
+    Phase.MACHINING: machining_subtree,
+    Phase.UNLOAD: unload_subtree,
+    Phase.RETURN: return_subtree,
+  }
+
+  root_name = "OMTS Master Machine Tending Pipeline"
+  if phase is not Phase.PICK:
+    root_name += f" (from {phase})"
   root_sequence = bt.Sequence(
-    name="OMTS Master Machine Tending Pipeline",
-    children=[
-      pick_subtree,
-      load_subtree,
-      machining_subtree,
-      unload_subtree,
-      return_subtree,
-    ],
+    name=root_name,
+    children=[subtrees[p] for p in phase.remaining],
   )
 
-  return bt.BehaviorTree(name=tree_name, root=root_sequence)
+  if num_cycles == 1:
+    root_node: bt.Node = root_sequence
+  elif phase is Phase.PICK:
+    root_node = bt.Loop(
+      max_times=max(0, num_cycles),
+      do_child=root_sequence,
+      name=f"{root_name} Loop ({num_cycles} cycles)",
+    )
+  else:
+    full_cycle_seq = bt.Sequence(
+      name="OMTS Master Machine Tending Pipeline",
+      children=[subtrees[p] for p in Phase.PICK.remaining],
+    )
+    remaining_cycles = 0 if num_cycles <= 0 else num_cycles - 1
+    root_node = bt.Sequence(
+      name=f"{root_name} + {remaining_cycles} Cycles",
+      children=[
+        root_sequence,
+        bt.Loop(
+          max_times=remaining_cycles,
+          do_child=full_cycle_seq,
+          name=f"Subsequent Cycles Loop ({remaining_cycles} cycles)",
+        ),
+      ],
+    )
+
+  return bt.BehaviorTree(name=tree_name, root=root_node)

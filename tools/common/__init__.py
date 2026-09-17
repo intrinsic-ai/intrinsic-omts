@@ -12,26 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@ioc//bazel:python.bzl", "py_binary", "py_library")
+"""Common utilities for OMTS tools."""
 
-package(default_visibility = ["//visibility:public"])
-
-py_library(
-    name = "control_gripper_lib",
-    srcs = ["control_gripper.py"],
-    deps = [
-        "//src/hardware:gripper",
-        "//tools/common:cli",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
-    ],
+from tools.common.cli import (
+  add_dio_gripper_arguments,
+  add_dio_machine_arguments,
+  prompt_menu,
 )
 
-py_binary(
-    name = "control_gripper",
-    srcs = ["control_gripper.py"],
-    main = "control_gripper.py",
-    deps = [
-        ":control_gripper_lib",
-    ],
-)
+__all__ = [
+  "add_dio_gripper_arguments",
+  "add_dio_machine_arguments",
+  "prompt_menu",
+]

@@ -38,6 +38,7 @@ py_test(
     name = "test_hardware_adapters",
     srcs = ["test_hardware_adapters.py"],
     deps = [
+        "//src/core:world",
         "//src/hardware:gripper",
         "//src/hardware:machine",
         "//src/hardware:robot",
@@ -51,14 +52,93 @@ py_test(
     name = "test_behaviors",
     srcs = ["test_behaviors.py"],
     deps = [
+        "//src:omts_app_lib",
         "//src/behaviors:machine_tending_bt",
+        "//src/behaviors:motions",
         "//src/core:infeed",
+        "//src/core:types",
         "//src/core:workpiece",
+        "//src/core:world",
         "//src/hardware:gripper",
         "//src/hardware:machine",
         "//src/hardware:robot",
         "//src/hardware:vision",
         "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+    ],
+)
+
+py_test(
+    name = "test_pick_subtree",
+    srcs = ["test_pick_subtree.py"],
+    deps = [
+        "//src/behaviors:pick",
+        "//src/core:infeed",
+        "//src/core:tray",
+        "//src/core:workpiece",
+        "//src/core:world",
+        "//src/hardware:gripper",
+        "//src/hardware:machine",
+        "//src/hardware:robot",
+        "//src/hardware:vision",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+    ],
+)
+
+py_test(
+    name = "test_load_machine_subtree",
+    srcs = ["test_load_machine_subtree.py"],
+    deps = [
+        "//src/behaviors:load_machine",
+        "//src/core:workpiece",
+        "//src/core:world",
+        "//src/hardware:gripper",
+        "//src/hardware:machine",
+        "//src/hardware:robot",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+    ],
+)
+
+py_test(
+    name = "test_unload_machine_subtree",
+    srcs = ["test_unload_machine_subtree.py"],
+    deps = [
+        "//src/behaviors:unload_machine",
+        "//src/core:workpiece",
+        "//src/core:world",
+        "//src/hardware:gripper",
+        "//src/hardware:machine",
+        "//src/hardware:robot",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+    ],
+)
+
+py_test(
+    name = "test_return_infeed_subtree",
+    srcs = ["test_return_infeed_subtree.py"],
+    deps = [
+        "//src/behaviors:return_infeed",
+        "//src/core:workpiece",
+        "//src/core:world",
+        "//src/hardware:gripper",
+        "//src/hardware:robot",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+    ],
+)
+
+py_test(
+    name = "test_machining_subtree",
+    srcs = ["test_machining_subtree.py"],
+    deps = [
+        "//src/behaviors:machining",
+        "//src/hardware:machine",
+        "//src/hardware:robot",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
