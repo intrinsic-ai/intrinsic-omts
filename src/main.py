@@ -20,6 +20,12 @@ from absl import app, flags, logging
 from intrinsic.solutions import deployments
 
 from src.behaviors.machine_tending_bt import build_machine_tending_behavior_tree
+from src.core.config import (
+  GripperConfig,
+  MachineConfig,
+  RobotConfig,
+  VisionConfig,
+)
 from src.core.infeed import (
   GridInfeedStrategy,
   InfeedMode,
@@ -28,10 +34,10 @@ from src.core.infeed import (
 from src.core.types import SimulationMode
 from src.core.workcell import WorkcellState
 from src.core.workpiece import Workpiece
-from src.hardware.gripper import DioGripper, MockGripper, RobotiqGripper
-from src.hardware.machine import MockCncMachine
-from src.hardware.robot import MockRobot, UrRobot
-from src.hardware.vision import MockVision, OrbbecVision
+from src.hardware.gripper import DioGripper, RobotiqGripper
+from src.hardware.machine import DioCncMachine
+from src.hardware.robot import UrRobot
+from src.hardware.vision import OrbbecVision
 from src.utils.execution_utils import to_executive_simulation_mode
 
 _ADDRESS = flags.DEFINE_string(
@@ -54,16 +60,11 @@ _SIMULATION_MODE = flags.DEFINE_enum_class(
   "visualization). If unset, the mode currently configured in the executive "
   "is kept.",
 )
-_MOCK_HARDWARE = flags.DEFINE_bool(
-  "mock_hardware",
-  False,
-  "Use offline mock hardware adapters instead of live SBL skill stubs.",
-)
 _GRIPPER_TYPE = flags.DEFINE_enum(
   "gripper_type",
   "robotiq",
-  ["mock", "dio", "robotiq"],
-  "Gripper backend type: 'mock', 'dio', or 'robotiq'.",
+  ["dio", "robotiq"],
+  "Gripper backend type: 'dio' or 'robotiq'.",
 )
 _GRIPPER_JOINT_NAME = flags.DEFINE_string(
   "gripper_joint_name",
@@ -185,7 +186,6 @@ _PLACE_VISE_FRAME = flags.DEFINE_string(
 def run_machine_tending_cycle(
   solution_address: str,
   infeed_mode: InfeedMode,
-  mock_hardware: bool = False,
   simulation_mode: SimulationMode | None = None,
   gripper_type: str = "robotiq",
   gripper_joint_name: str = "robotiq_hande_left_finger_joint",
@@ -217,7 +217,6 @@ def run_machine_tending_cycle(
   Args:
       solution_address: gRPC address of the running solution deployment.
       infeed_mode: Infeed strategy to use for part localization.
-      mock_hardware: If True, use offline mock hardware adapters.
       simulation_mode: Executive execution mode to request for this run. If
         None, the mode currently set in the executive is kept.
       **: Remaining arguments configure hardware adapters, world entities and
@@ -226,11 +225,56 @@ def run_machine_tending_cycle(
   logging.info("Connecting to Intrinsic solution at %s...", solution_address)
   solution = deployments.connect(address=solution_address)
 
+  if gripper_type == "dio":
+    gripper_config = GripperConfig(
+      type="dio",
+      dio_open_pin=gripper_dio_open_pin,
+      dio_close_pin=gripper_dio_close_pin,
+      dio_device_name=gripper_dio_device_name,
+      dio_output_block_name="standard_out",
+    )
+  else:
+    gripper_config = GripperConfig(
+      type=gripper_type,
+      joint_name=gripper_joint_name,
+      open_position=gripper_open_position,
+      close_position=gripper_close_position,
+      action_name=gripper_action_name,
+    )
+  robot_config = RobotConfig(
+    arm_part_name=arm_part_name,
+    tool_object_name=tool_object_name,
+    tool_frame_name=tool_frame_name,
+  )
+  machine_config = MachineConfig(
+    door_open_pin=2,
+    door_close_pin=3,
+    vise_open_pin=4,
+    vise_close_pin=5,
+    cycle_start_pin=6,
+    cycle_complete_input_pin=None,
+    device_name=gripper_dio_device_name,
+    enclosure_object_name="cnc_enclosure",
+    vise_object_name="schunk_egp_64nnb",
+    door_open_joints=(0.4,),
+    door_closed_joints=(0.0,),
+    vise_open_joints=(0.01, 0.01),
+    vise_closed_joints=(0.0, 0.0),
+    output_block_name="standard_out",
+    input_block_name="standard_in",
+  )
+  vision_config = VisionConfig(
+    camera_name=camera_name,
+    perception_service_name=perception_service_name,
+    pose_estimator_id=pose_estimator_id,
+    scene_object_id=scene_object_id,
+    sensor_ids=tuple(sensor_ids),
+    min_num_instances=min_num_instances,
+    infeed_mode=infeed_mode.value,
+  )
+
   # Initialize gripper adapter based on selected type
-  if mock_hardware or gripper_type == "mock":
-    logging.info("Using mock gripper adapter.")
-    gripper = MockGripper()
-  elif gripper_type == "dio":
+  if gripper_type == "dio":
     logging.info(
       "Initializing DioGripper (open_pin=%d, close_pin=%d, device=%s)...",
       gripper_dio_open_pin,
@@ -239,9 +283,7 @@ def run_machine_tending_cycle(
     )
     gripper = DioGripper(
       solution=solution,
-      open_pin=gripper_dio_open_pin,
-      close_pin=gripper_dio_close_pin,
-      device_name=gripper_dio_device_name,
+      config=gripper_config,
     )
   elif gripper_type == "robotiq":
     logging.info(
@@ -252,37 +294,25 @@ def run_machine_tending_cycle(
     )
     gripper = RobotiqGripper(
       solution=solution,
-      joint_name=gripper_joint_name,
-      open_position=gripper_open_position,
-      close_position=gripper_close_position,
-      action_name=gripper_action_name,
+      config=gripper_config,
     )
   else:
     raise ValueError(f"Unsupported gripper_type: {gripper_type}")
 
   # Initialize remaining hardware adapters
-  if mock_hardware:
-    logging.info("Using offline mock robot, CNC machine, and vision adapters.")
-    robot = MockRobot()
-    machine = MockCncMachine()
-    vision = MockVision()
-  else:
-    logging.info(
-      "Initializing live hardware adapters from solution deployment."
-    )
-    robot = UrRobot(
-      solution=solution,
-      arm_part_name=arm_part_name,
-      tool_object_name=tool_object_name,
-      tool_frame_name=tool_frame_name,
-    )
-    machine = MockCncMachine()
-    vision = OrbbecVision(
-      solution=solution,
-      camera_name=camera_name,
-      perception_service_name=perception_service_name,
-      sensor_ids=sensor_ids,
-    )
+  logging.info("Initializing live hardware adapters from solution deployment.")
+  robot = UrRobot(
+    solution=solution,
+    config=robot_config,
+  )
+  machine = DioCncMachine(
+    solution=solution,
+    config=machine_config,
+  )
+  vision = OrbbecVision(
+    solution=solution,
+    config=vision_config,
+  )
 
   # Select infeed strategy
   workpiece = Workpiece(id="raw_stock_01")
@@ -292,11 +322,7 @@ def run_machine_tending_cycle(
   if infeed_mode == InfeedMode.PERCEPTION:
     logging.info("Configuring Vision-Guided Perception Infeed Strategy.")
     infeed_strategy = PerceptionInfeedStrategy(
-      camera_name=camera_name,
-      pose_estimator_id=pose_estimator_id,
-      scene_object_id=scene_object_id,
-      sensor_ids=sensor_ids,
-      min_num_instances=min_num_instances,
+      config=vision_config,
       view_frame_name=view_frame,
     )
   else:
@@ -354,7 +380,6 @@ def main(argv: Sequence[str]) -> None:
   run_machine_tending_cycle(
     solution_address=_ADDRESS.value,
     infeed_mode=_INFEED_MODE.value,
-    mock_hardware=_MOCK_HARDWARE.value,
     simulation_mode=_SIMULATION_MODE.value,
     gripper_type=_GRIPPER_TYPE.value,
     gripper_joint_name=_GRIPPER_JOINT_NAME.value,

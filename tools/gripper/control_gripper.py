@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Interactive and CLI tool to command robotic grippers (Robotiq, DIO, mock)."""
+"""Interactive and CLI tool to command robotic grippers (Robotiq, DIO)."""
 
 import argparse
 import sys
@@ -21,12 +21,11 @@ from typing import Any
 
 from intrinsic.solutions import deployments, execution
 
+from src.core.config import GripperConfig
 from src.hardware.gripper import (
   DioGripper,
   GripperInterface,
-  MockGripper,
   RobotiqGripper,
-  SideloadedGripperCmd,
 )
 
 VALID_ACTIONS: tuple[str, ...] = ("open", "close")
@@ -44,7 +43,7 @@ def create_gripper(
 
   Args:
     args: Parsed command-line arguments.
-    solution: Connected solution deployment, or None in mock mode.
+    solution: Connected solution deployment.
 
   Returns:
     An instance of GripperInterface.
@@ -52,41 +51,29 @@ def create_gripper(
   Raises:
     ValueError: If gripper_type is unsupported.
   """
-  if (
-    getattr(args, "mock", False)
-    or getattr(args, "gripper_type", None) == "mock"
-  ):
-    return MockGripper()
-
-  gripper_type = getattr(args, "gripper_type", None)
+  gripper_type = getattr(args, "gripper_type", "robotiq")
   if gripper_type == "dio":
+    config = GripperConfig(
+      type="dio",
+      dio_open_pin=getattr(args, "open_pin", 0),
+      dio_close_pin=getattr(args, "close_pin", 1),
+      dio_device_name=getattr(args, "device_name", "ur_module"),
+      dio_output_block_name=getattr(args, "output_block_name", "standard_out"),
+    )
     return DioGripper(
       solution=solution,
-      open_pin=args.open_pin,
-      close_pin=args.close_pin,
-      output_block_name=args.output_block_name,
-      device_name=args.device_name,
+      config=config,
     )
-  elif gripper_type == "robotiq":
-    return RobotiqGripper(
-      solution=solution,
-      joint_name=args.joint_name,
-      open_position=args.open_position,
-      close_position=args.close_position,
-      action_name=args.action_name,
+  if gripper_type in ("robotiq", "sideloaded"):
+    config = GripperConfig(
+      type="robotiq",
+      joint_name=getattr(args, "joint_name", "robotiq_hande_left_finger_joint"),
+      open_position=getattr(args, "open_position", 0.025),
+      close_position=getattr(args, "close_position", 0.0),
+      action_name=getattr(args, "action_name", None),
     )
-  elif gripper_type == "sideloaded":
-    kwargs: dict[str, Any] = {
-      "solution": solution,
-      "joint_name": args.joint_name,
-      "open_position": args.open_position,
-      "close_position": args.close_position,
-    }
-    if getattr(args, "action_name", None) is not None:
-      kwargs["action_name"] = args.action_name
-    return SideloadedGripperCmd(**kwargs)
-  else:
-    raise ValueError(f"Unsupported gripper type: {gripper_type}")
+    return RobotiqGripper(solution=solution, config=config)
+  raise ValueError(f"Unsupported gripper type: {gripper_type}")
 
 
 def execute_action(
@@ -99,7 +86,7 @@ def execute_action(
   Args:
     gripper: Gripper interface implementation.
     action: Action key matching one of VALID_ACTIONS ("open", "close").
-    solution: Connected solution deployment, or None if in mock mode.
+    solution: Connected solution deployment.
 
   Returns:
     True on success, False on error.
@@ -111,10 +98,6 @@ def execute_action(
   else:
     print(f"Unknown action: {action}")
     return False
-
-  if isinstance(gripper, MockGripper):
-    print(f"Successfully executed action: {action}")
-    return True
 
   if solution is None:
     print(
@@ -184,16 +167,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     help="Specific action to execute. If omitted, runs in interactive menu.",
   )
   parser.add_argument(
-    "--mock",
-    action="store_true",
-    default=False,
-    help="Use mock gripper without connecting to a deployment.",
-  )
-  parser.add_argument(
     "--gripper_type",
     type=str,
     default="robotiq",
-    help="Gripper type: 'robotiq', 'dio', 'sideloaded', or 'mock'.",
+    choices=["robotiq", "dio", "sideloaded"],
+    help="Gripper type: 'robotiq' or 'dio' (default: 'robotiq').",
   )
   parser.add_argument(
     "--joint_name",
@@ -218,7 +196,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   parser.add_argument(
     "--action_name",
     type=str,
-    default=None,
+    default="/gripper/gripper_action_controller/gripper_cmd",
     help="ROS action controller name for gripper_cmd_skill.",
   )
   parser.add_argument(
@@ -242,7 +220,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   parser.add_argument(
     "--device_name",
     type=str,
-    default=None,
+    default="ur_module",
     help="Optional device name for DIO skills.",
   )
   return parser.parse_args(argv)
@@ -252,12 +230,8 @@ def main(argv: Sequence[str] | None = None) -> None:
   """Main entry point for gripper control tool."""
   args = parse_args(argv)
 
-  if args.mock or args.gripper_type == "mock":
-    solution = None
-  else:
-    print(f"Connecting to solution at {args.address}...")
-    solution = deployments.connect(address=args.address)
-
+  print(f"Connecting to solution at {args.address}...")
+  solution = deployments.connect(address=args.address)
   gripper = create_gripper(args, solution=solution)
 
   if args.action:

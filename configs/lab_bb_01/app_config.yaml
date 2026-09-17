@@ -1,0 +1,62 @@
+# Lab BB-01 Machine Tending Cell Configuration
+cell_name: "lab_bb_01"
+
+robot:
+  arm_part_name: "ur_module"
+  tool_object_name: "gripper"
+  tool_frame_name: "tool_frame"
+
+gripper:
+  type: "robotiq"
+  joint_name: "robotiq_hande_left_finger_joint"
+  open_position: 0.025
+  close_position: 0.0
+
+machine:
+  door_open_pin: 2
+  door_close_pin: 3
+  vise_open_pin: 4
+  vise_close_pin: 5
+  cycle_start_pin: 6
+  cycle_complete_input_pin: null
+  device_name: "ur_module"
+  enclosure_object_name: null
+  vise_object_name: null
+  door_open_joints: [0.4]
+  door_closed_joints: [0.0]
+  vise_open_joints: [0.01, 0.01]
+  vise_closed_joints: [0.0, 0.0]
+  output_block_name: "standard_out"
+  input_block_name: "standard_in"
+
+vision:
+  camera_name: "orbbec_camera"
+  perception_service_name: "pose_estimator_service"
+  pose_estimator_id: "ai.intrinsic.raw_stock_2x3x5_estimator"
+  scene_object_id: "ai.intrinsic.raw_stock_2x3x5"
+  sensor_ids: [1, 4]
+  min_num_instances: 1
+  infeed_mode: "perception"
+  min_safe_z: 0.60
+
+frames:
+  parent_object: "root"
+  view_frame: "view"
+  pregrasp_frame: "pre_grasp"
+  grasp_frame: "grasp"
+  transit_frame: "transit"
+  machine_approach_frame: "machine_approach"
+  preplace_vise_frame: "machine_approach"
+  place_vise_frame: "machine_approach"
+
+cycle:
+  num_cycles: 1
+  workpiece_id: "raw_stock_2x3x5"
+  approach_offset_z: 0.08
+  retract_distance_meters: 0.03
+  pick_touchdown_force_newtons: 15.0
+  load_seat_force_newtons: 8.0
+  unload_touchdown_force_newtons: 15.0
+  return_touchdown_force_newtons: 5.0
+  touchdown_timeout_seconds: 20.0
+  machining_timeout_seconds: 30.0

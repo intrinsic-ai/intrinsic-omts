@@ -21,7 +21,7 @@ from src.behaviors.motions import (
   create_move_to_frame_task,
   create_relative_retract_task,
 )
-from src.core.infeed import InfeedMode, InfeedStrategy, PerceptionInfeedStrategy
+from src.core.infeed import InfeedMode, InfeedStrategy
 from src.core.workpiece import Workpiece
 from src.hardware.gripper import GripperInterface
 from src.hardware.robot import RobotInterface
@@ -72,22 +72,6 @@ def build_pick_from_infeed_subtree(
   tasks: list[bt.Node] = []
 
   if infeed_strategy.mode == InfeedMode.PERCEPTION:
-    target_object_id = (
-      infeed_strategy.scene_object_id
-      if isinstance(infeed_strategy, PerceptionInfeedStrategy)
-      else "ai.intrinsic.raw_stock_2x3x5"
-    )
-    pose_estimator_id = (
-      infeed_strategy.pose_estimator_id
-      if isinstance(infeed_strategy, PerceptionInfeedStrategy)
-      else "ai.intrinsic.raw_stock_2x3x5_estimator"
-    )
-    min_instances = (
-      infeed_strategy.min_num_instances
-      if isinstance(infeed_strategy, PerceptionInfeedStrategy)
-      else 1
-    )
-
     tasks.extend(
       [
         create_move_to_frame_task(
@@ -98,13 +82,12 @@ def build_pick_from_infeed_subtree(
           task_name=f"Step 01: Move to View Frame ({parent_object}/{view_frame_name})",
         ),
         vision.build_perception_and_spawn_task(
-          target_scene_object_id=target_object_id,
-          pose_estimator_id=pose_estimator_id,
-          min_num_instances=min_instances,
           approach_offset_z=approach_offset_z,
           parent_object=parent_object,
           pregrasp_frame_name=pregrasp_frame_name,
           grasp_frame_name=grasp_frame_name,
+          tool_object_name="gripper",
+          tool_frame_name="tool_frame",
           name="Step 02: Perception & Dynamic Grasp Frame Update Pipeline",
         ),
       ]

@@ -25,9 +25,15 @@ py_library(
 )
 
 py_library(
+    name = "config",
+    srcs = ["config.py"],
+)
+
+py_library(
     name = "infeed",
     srcs = ["infeed.py"],
     deps = [
+        ":config",
         ":tray",
         ":types",
         ":workpiece",
@@ -48,6 +54,7 @@ py_library(
     name = "core",
     srcs = ["__init__.py"],
     deps = [
+        ":config",
         ":infeed",
         ":tray",
         ":types",
