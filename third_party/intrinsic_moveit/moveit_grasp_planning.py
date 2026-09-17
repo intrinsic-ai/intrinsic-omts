@@ -35,7 +35,7 @@ from third_party.intrinsic_moveit.moveit_grasp_planner import (
 def build_moveit_grasp_planning_subtree(
   grasp_planner: MoveItGraspPlannerInterface,
   robot: RobotInterface | None = None,
-  candidate_objects: Sequence[str] = ("raw_stock_50x50x75_1",),
+  candidate_objects: Sequence[str] = ("raw_stock_50x50x75",),
   parent_object: str = "root",
   grasp_frame: str = "grasp",
   pregrasp_frame: str = "pre_grasp",
@@ -92,8 +92,8 @@ def build_moveit_grasp_planning_subtree(
   if not candidate_objects:
     raise ValueError(
       "build_moveit_grasp_planning_subtree requires at least one candidate"
-      " object name. Object names must match the world exactly, including any"
-      " instance suffix (e.g. 'raw_stock_50x50x75_1')."
+      " object name. Object names must match the world exactly (e.g."
+      " 'raw_stock_50x50x75')."
     )
   if move_to_pregrasp and robot is None:
     raise ValueError(

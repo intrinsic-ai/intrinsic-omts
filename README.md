@@ -308,7 +308,7 @@ This covers first-party OMTS only. Integrations under [`third_party/`](third_par
 
 ### Third-Party Integrations
 
-Grasp planning with MoveIt — including the `moveit_grasp_tour` rehearsal loop — is a third-party integration rather than part of OMTS, and lives under [`third_party/intrinsic_moveit/`](third_party/intrinsic_moveit/README.md).
+Grasp planning with MoveIt — driven by the `moveit_plan_grasp_and_move` CLI tool — is a third-party integration rather than part of OMTS, and lives under [`third_party/intrinsic_moveit/`](third_party/intrinsic_moveit/README.md).
 
 > [!NOTE]
 > `//:omts_solution` does not deploy the MoveIt planning service or grasp skill, and the tools do nothing until you have completed the [intrinsic-moveit](https://github.com/intrinsic-ai/intrinsic-moveit) integration against your solution. See [`third_party/intrinsic_moveit/README.md`](third_party/intrinsic_moveit/README.md) for the prerequisites and the tool reference.

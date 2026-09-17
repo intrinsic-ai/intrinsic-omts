@@ -84,9 +84,7 @@ intrinsic_solution(
         ":robotiq_pinch_gripper",
         ":building_block",
         ":raw_stock_2x3x5",
-        ":raw_stock_50x50x75_1",
-        ":raw_stock_50x50x75_2",
-        ":raw_stock_50x50x75_3",
+        ":raw_stock_50x50x75",
         ":gazebo_simulator",
         ":charuco_9x14_20mm_15mm_dict_5x5",
         ":calibration_service_instance",
@@ -113,7 +111,7 @@ intrinsic_solution(
         "//configs:ur_module.attachments.updates.pbtxt",
         "//configs:scene.updates.pbtxt",
         "//configs:align_robot.updates.pbtxt",
-        "//configs:relocate_raw_stock.updates.pbtxt",
+        "//configs:raw_stock_on_surface.updates.pbtxt",
     ] + select({
         ":is_lab_bb_01": [
             "//configs:lab_bb_01_orbbec_gemini.updates.pbtxt",
@@ -173,17 +171,7 @@ intrinsic_asset_instance(
 )
 
 intrinsic_asset_instance(
-    name = "raw_stock_50x50x75_1",
-    asset = "ai.intrinsic.raw_stock_50x50x75",
-)
-
-intrinsic_asset_instance(
-    name = "raw_stock_50x50x75_2",
-    asset = "ai.intrinsic.raw_stock_50x50x75",
-)
-
-intrinsic_asset_instance(
-    name = "raw_stock_50x50x75_3",
+    name = "raw_stock_50x50x75",
     asset = "ai.intrinsic.raw_stock_50x50x75",
 )
 

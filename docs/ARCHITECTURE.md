@@ -150,24 +150,20 @@ sequenceDiagram
 
 ## 5. Standalone Behavior Subtrees
 
-Not every subtree belongs to the master cycle. [`third_party/intrinsic_moveit/moveit_grasp_tour.py`](../third_party/intrinsic_moveit/moveit_grasp_tour.py) builds a self-contained rehearsal sequence, driven by [`//third_party/intrinsic_moveit/tools:moveit_grasp_tour`](../third_party/intrinsic_moveit/tools/moveit_grasp_tour.py), that visits a list of parts one at a time. It is a **third-party integration** and requires [intrinsic-moveit](https://github.com/intrinsic-ai/intrinsic-moveit) to have been integrated first:
+Not every subtree belongs to the master cycle. [`third_party/intrinsic_moveit/moveit_grasp_planning.py`](../third_party/intrinsic_moveit/moveit_grasp_planning.py) builds a self-contained grasp planning and approach sequence, driven by [`//third_party/intrinsic_moveit/tools:moveit_plan_grasp_and_move`](../third_party/intrinsic_moveit/tools/moveit_plan_grasp_and_move.py). It is a **third-party integration** and requires [intrinsic-moveit](https://github.com/intrinsic-ai/intrinsic-moveit) to have been integrated first:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Tour as Grasp Tour
+    participant CLI as moveit_plan_grasp_and_move
     participant Skill as moveit_plan_grasp_skill
     participant Robot as UR Robot
     participant World as SBL ObjectWorld
 
-    loop For each object, in order
-        Tour->>Skill: Plan grasp for this object alone
-        Skill->>World: Overwrite root/grasp and root/pre_grasp
-        Robot->>Robot: Move to root/pre_grasp (ANY)
-    end
+    CLI->>Skill: Plan grasp for candidate object(s)
+    Skill->>World: Overwrite root/grasp and root/pre_grasp
+    CLI->>Robot: Move to root/pre_grasp (ANY)
 ```
 
-It stops at the pre-grasp and never descends to the grasp pose, which makes it safe to run repeatedly while tuning a scene. This is the Infeed Pick subtree truncated at step 05: the touchdown, unstick, gripper close and return all belong to `pick.py`, where the gripper is in the loop.
-
-The plan is issued per object rather than once for all of them because `root/grasp` and `root/pre_grasp` are singletons that the skill overwrites in place. Pooling the candidates would rank them jointly and leave only the winner's pose in the world, so sequencing the plans is what lets a tour work without per-object frames.
+It approaches the pre-grasp and stops there without descending to the grasp pose, which makes it safe to run repeatedly while validating part reachability and grasp planning across different scene locations (e.g. tabletop surface vs. inside the CNC vice). The touchdown, compliant contact, gripper grasp, and retreat motions belong to `pick.py`, where the physical gripper and real workcell operations are in the loop.
 

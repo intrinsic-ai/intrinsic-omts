@@ -25,7 +25,7 @@ from third_party.intrinsic_moveit.moveit_grasp_planner import (
 from third_party.intrinsic_moveit.moveit_grasp_planning import (
   build_moveit_grasp_planning_subtree,
 )
-from third_party.intrinsic_moveit.tools.moveit_plan_and_move import (
+from third_party.intrinsic_moveit.tools.moveit_plan_grasp_and_move import (
   DEFAULT_TARGET_OBJECT,
   resolve_target_objects,
 )
@@ -41,14 +41,14 @@ class GraspPlanningTest(absltest.TestCase):
     subtree = build_moveit_grasp_planning_subtree(
       grasp_planner=self.grasp_planner,
       robot=self.robot,
-      candidate_objects=["raw_stock_50x50x75_1"],
+      candidate_objects=["raw_stock_50x50x75"],
     )
 
     self.assertIsNotNone(subtree)
     self.assertEqual(subtree.name, "Plan Grasp and Approach")
     self.assertLen(subtree.children, 2)
     self.assertEqual(
-      self.grasp_planner.planned_objects, [("raw_stock_50x50x75_1",)]
+      self.grasp_planner.planned_objects, [("raw_stock_50x50x75",)]
     )
 
   def test_default_candidate_object_matches_the_default_scene(self):
@@ -64,7 +64,7 @@ class GraspPlanningTest(absltest.TestCase):
   def test_plan_only_subtree_omits_approach(self):
     subtree = build_moveit_grasp_planning_subtree(
       grasp_planner=self.grasp_planner,
-      candidate_objects=["raw_stock_50x50x75_1"],
+      candidate_objects=["raw_stock_50x50x75"],
       move_to_pregrasp=False,
     )
 
@@ -74,7 +74,7 @@ class GraspPlanningTest(absltest.TestCase):
     with self.assertRaises(ValueError):
       build_moveit_grasp_planning_subtree(
         grasp_planner=self.grasp_planner,
-        candidate_objects=["raw_stock_50x50x75_1"],
+        candidate_objects=["raw_stock_50x50x75"],
         move_to_pregrasp=True,
       )
 
@@ -83,9 +83,9 @@ class GraspPlanningTest(absltest.TestCase):
       grasp_planner=self.grasp_planner,
       robot=self.robot,
       candidate_objects=[
-        "raw_stock_50x50x75_1",
-        "raw_stock_50x50x75_2",
-        "raw_stock_50x50x75_3",
+        "part_a",
+        "part_b",
+        "part_c",
       ],
       surfaces=[SURFACE_Z_POS, SURFACE_Z_NEG],
       num_rotations=8,
@@ -95,9 +95,9 @@ class GraspPlanningTest(absltest.TestCase):
       self.grasp_planner.planned_objects,
       [
         (
-          "raw_stock_50x50x75_1",
-          "raw_stock_50x50x75_2",
-          "raw_stock_50x50x75_3",
+          "part_a",
+          "part_b",
+          "part_c",
         )
       ],
     )
@@ -106,7 +106,7 @@ class GraspPlanningTest(absltest.TestCase):
     build_moveit_grasp_planning_subtree(
       grasp_planner=self.grasp_planner,
       robot=self.robot,
-      candidate_objects=["raw_stock_50x50x75_1"],
+      candidate_objects=["raw_stock_50x50x75"],
       parent_object="root",
       pregrasp_frame="pre_grasp",
       motion_type="LINEAR",
@@ -119,10 +119,10 @@ class GraspPlanningTest(absltest.TestCase):
 
   def test_mock_planner_task_is_named_after_candidates(self):
     task = self.grasp_planner.build_plan_grasps_task(
-      candidate_objects=["raw_stock_50x50x75_1"],
+      candidate_objects=["raw_stock_50x50x75"],
     )
 
-    self.assertIn("raw_stock_50x50x75_1", task.name)
+    self.assertIn("raw_stock_50x50x75", task.name)
 
   def test_empty_candidate_list_raises(self):
     with self.assertRaises(ValueError):
@@ -140,22 +140,22 @@ class ResolveTargetObjectsTest(absltest.TestCase):
 
   def test_repeated_flag_occurrences_are_collected(self):
     self.assertEqual(
-      resolve_target_objects(["raw_stock_50x50x75_1", "raw_stock_50x50x75_2"]),
-      ["raw_stock_50x50x75_1", "raw_stock_50x50x75_2"],
+      resolve_target_objects(["part_a", "part_b"]),
+      ["part_a", "part_b"],
     )
 
   def test_comma_separated_values_are_split(self):
     self.assertEqual(
-      resolve_target_objects(["raw_stock_50x50x75_1, raw_stock_50x50x75_3"]),
-      ["raw_stock_50x50x75_1", "raw_stock_50x50x75_3"],
+      resolve_target_objects(["part_a, part_c"]),
+      ["part_a", "part_c"],
     )
 
   def test_duplicates_are_removed_preserving_order(self):
     self.assertEqual(
       resolve_target_objects(
-        ["raw_stock_50x50x75_2,raw_stock_50x50x75_1", "raw_stock_50x50x75_2"]
+        ["part_b,part_a", "part_b"]
       ),
-      ["raw_stock_50x50x75_2", "raw_stock_50x50x75_1"],
+      ["part_b", "part_a"],
     )
 
 

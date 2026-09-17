@@ -8,9 +8,9 @@ updates {
         object_name: "ur_module"
       }
     }
-    joint_positions: -0.976446378
-    joint_positions: -1.072874694511967
-    joint_positions: -2.0014009468308576
+    joint_positions: -1.5707
+    joint_positions: -0.9120332544274503
+    joint_positions: -2.25124030298918
     joint_positions: -1.5707
     joint_positions: 1.535902725005341
     joint_positions: 3.1415926

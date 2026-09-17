@@ -64,7 +64,13 @@ bazel run //tools/world:apply_scene_updates -- --address=localhost:17080
 * **Automated Cleanup:** Checks for and deletes stale `detected_workpiece` objects to prevent SBL name collisions.
 
 > [!TIP]
-> `apply_scene_updates` does **not** restore the raw stock poses — [`configs/relocate_raw_stock.updates.pbtxt`](../configs/relocate_raw_stock.updates.pbtxt) is not in its default file set. To put the whole scene back between demo runs, reset the world instead:
+> `raw_stock_50x50x75` defaults to the tabletop surface at startup via [`configs/raw_stock_on_surface.updates.pbtxt`](../configs/raw_stock_on_surface.updates.pbtxt). To move it into the CNC machine vice for testing or demo workflows, apply [`configs/raw_stock_in_vice.updates.pbtxt`](../configs/raw_stock_in_vice.updates.pbtxt):
+>
+> ```bash
+> bazel run //tools/world:apply_scene_updates -- --files configs/raw_stock_in_vice.updates.pbtxt --address=localhost:17080
+> ```
+>
+> To put the whole scene back between demo runs, reset the world:
 >
 > ```bash
 > inctl world reset --address localhost:17080
@@ -125,9 +131,9 @@ bazel run //tools/gripper:control_gripper -- --mock --action=open
 
 ### E. MoveIt Grasp Planning (third-party)
 
-Model-based grasp planning and the `moveit_grasp_tour` rehearsal loop are a
-third-party integration, not part of OMTS. They are documented with the code
-they belong to, in
+Model-based grasp planning and the `moveit_plan_grasp_and_move` verification
+tool are a third-party integration, not part of OMTS. They are documented with
+the code they belong to, in
 [`third_party/intrinsic_moveit/README.md`](../third_party/intrinsic_moveit/README.md).
 
 > [!NOTE]

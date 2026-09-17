@@ -4,8 +4,8 @@ Model-based grasp planning for OMTS, backed by
 [`intrinsic-ai/intrinsic-moveit`](https://github.com/intrinsic-ai/intrinsic-moveit)
 and MoveIt Task Constructor. Given a part in the Object World, the planning
 service enumerates grasp candidates over the part's surfaces, ranks them, and
-writes the winner's grasp and pre-grasp poses back into the world. Two CLIs
-drive it for scene bring-up and rehearsal.
+writes the winner's grasp and pre-grasp poses back into the world. A dedicated
+CLI tool drives it for scene bring-up and verification.
 
 > [!IMPORTANT]
 > This is **not** part of first-party OMTS and OMTS never deploys it for you.
@@ -74,9 +74,8 @@ Work through the intrinsic-moveit repository first — it is checked out beside
 | :--- | :--- |
 | [`moveit_grasp_planner.py`](./moveit_grasp_planner.py) | `MoveItGraspPlannerInterface` and its `MoveItGraspPlanner` / `MockMoveItGraspPlanner` implementations; surface constants. |
 | [`moveit_grasp_planning.py`](./moveit_grasp_planning.py) | `build_moveit_grasp_planning_subtree` — plan a grasp, then approach the resulting pre-grasp. |
-| [`moveit_grasp_tour.py`](./moveit_grasp_tour.py) | `build_moveit_grasp_tour_subtree` — the same block repeated over several parts. |
-| [`tools/`](./tools/) | The two CLIs. |
-| [`tests/`](./tests/) | Offline tests for both subtrees and both CLIs' argument parsing. |
+| [`tools/moveit_plan_grasp_and_move.py`](./tools/moveit_plan_grasp_and_move.py) | CLI tool to plan a grasp on target workpiece(s) and move the arm to pre-grasp. |
+| [`tests/`](./tests/) | Offline unit tests for grasp planning subtree and CLI argument parsing. |
 
 The integration borrows exactly two things from first-party OMTS:
 `//src/hardware:robot` (for `RobotInterface` and `UrRobot`) and
@@ -85,112 +84,63 @@ on anything here.
 
 ---
 
-## `tools:moveit_plan_and_move`
+## `tools:moveit_plan_grasp_and_move`
 
 Plans a grasp and moves the arm to the resulting pre-grasp frame. Because the
 skill writes its result into the world, the approach motion just targets
 `root/pre_grasp` by name — there is no pose hand-off between the two steps.
 
-```bash
-# Dry run: plan a grasp on raw_stock_50x50x75_1 without moving the arm
-bazel run //third_party/intrinsic_moveit/tools:moveit_plan_and_move -- \
-    --address=localhost:17080 --plan_only --surfaces=0,1,4,5
+The tool stops at the pre-grasp and does not descend to the grasp pose, so the
+workpiece is untouched and the gripper is never commanded. This makes it safe
+to run repeatedly while validating that the part is plannable and reachable
+before executing real picks in [`src/behaviors/pick.py`](../../src/behaviors/pick.py).
 
-# Plan and approach the pre-grasp of a specific part
-bazel run //third_party/intrinsic_moveit/tools:moveit_plan_and_move -- \
-    --address=localhost:17080 --surfaces=0,1,4,5 \
-    --target_object=raw_stock_50x50x75_2
+### Tutorial Workflow
 
-# Rank grasps across all three parts and approach the best one.
-# --target_object is repeatable and each value accepts a comma-separated list.
-bazel run //third_party/intrinsic_moveit/tools:moveit_plan_and_move -- \
-    --address=localhost:17080 --surfaces=0,1,4,5 \
-    --target_object=raw_stock_50x50x75_1,raw_stock_50x50x75_2,raw_stock_50x50x75_3
-
-# Narrow further to force a strictly vertical approach
-bazel run //third_party/intrinsic_moveit/tools:moveit_plan_and_move -- \
-    --address=localhost:17080 --surfaces=4 --num_rotations=8
-```
-
----
-
-## `tools:moveit_grasp_tour`
-
-Visits several parts in sequence. For each object it plans a grasp and
-approaches the resulting pre-grasp frame, then moves on. The arm stops at the
-pre-grasp and never descends to the grasp pose, so nothing is touched and the
-gripper is never commanded. This is the rehearsal loop for validating that every
-part in a scene is plannable and reachable before wiring a real pick.
+#### 1. Plan and Approach on the Tabletop Surface
+When the solution starts up, `raw_stock_50x50x75` is positioned on the table
+surface by default via [`configs/raw_stock_on_surface.updates.pbtxt`](../../configs/raw_stock_on_surface.updates.pbtxt).
 
 ```bash
-# Plan a grasp for every part without moving the arm
-bazel run //third_party/intrinsic_moveit/tools:moveit_grasp_tour -- \
+# Dry run: plan a grasp on raw_stock_50x50x75 without moving the arm
+bazel run //third_party/intrinsic_moveit/tools:moveit_plan_grasp_and_move -- \
     --address=localhost:17080 --plan_only --surfaces=0,1,4,5
 
-# Full tour over the default objects (_1 .. _3)
-bazel run //third_party/intrinsic_moveit/tools:moveit_grasp_tour -- \
+# Plan and approach the pre-grasp on the table surface
+bazel run //third_party/intrinsic_moveit/tools:moveit_plan_grasp_and_move -- \
     --address=localhost:17080 --surfaces=0,1,4,5
-
-# Objects are visited in the order given; --object is repeatable
-bazel run //third_party/intrinsic_moveit/tools:moveit_grasp_tour -- \
-    --address=localhost:17080 --surfaces=0,1,4,5 \
-    --object=raw_stock_50x50x75_2 \
-    --object=raw_stock_50x50x75_1
-
-# Validate spec syntax offline, without connecting to a solution
-bazel run //third_party/intrinsic_moveit/tools:moveit_grasp_tour -- \
-    --dry_run --surfaces=0,1,4,5
 ```
 
-Apart from `--surfaces`, the default scene needs no tuning: every part,
-including the one held in the vice, plans and approaches with the stock rotation
-count and pre-grasp gap. Per-object overrides are appended to the object name as
-`name[:key=value]...` and win over the corresponding global flag:
+#### 2. Relocate Workpiece to the CNC Vice & Plan Again
+Next, apply the vice scene update live to the running solution to place the block
+inside the CNC machine vice:
 
-| Key | Meaning | Global fallback |
-| :--- | :--- | :--- |
-| `surfaces` | Surface indices to sample, `0:+X 1:-X 2:+Y 3:-Y 4:+Z 5:-Z`, or `all` | `--surfaces` (default `all`) |
-| `rotations` | Grasp candidates per surface | `--num_rotations` (default `4`) |
-| `retract` | Gap in meters between the grasp and pre-grasp frames | `--retract_dist_m` (default: the planner's own 0.05 m) |
+```bash
+bazel run //tools/world:apply_scene_updates -- \
+    --address=localhost:17080 \
+    --files configs/raw_stock_in_vice.updates.pbtxt
+```
 
-Narrowing the surface set does not improve the odds of finding *a* grasp — it
-removes candidates. Use it to choose which grasps are acceptable (`0,1,4,5` to
-bar end-cap picks, `4` to force a strictly vertical approach), and reach for
-`rotations` or `retract` only when a part actually fails.
+Now execute `moveit_plan_grasp_and_move` again. The planner will generate reachable
+grasp candidates inside the vice and navigate the arm to the pre-grasp pose:
 
-Per object the tool emits a single motion: `move_cartesian` to `root/pre_grasp`
-with motion type `ANY`, issued after that object's plan lands.
+```bash
+bazel run //third_party/intrinsic_moveit/tools:moveit_plan_grasp_and_move -- \
+    --address=localhost:17080 --surfaces=0,1,4,5
+```
 
-> [!IMPORTANT]
-> One plan is issued **per object**, never pooled. `root/grasp` and
-> `root/pre_grasp` are singleton frames that the skill overwrites in place, so a
-> pooled request would rank all candidates jointly and approach only the winner.
-> Sequencing the plans is what makes a tour possible without per-object frames
-> or a blackboard.
+#### 3. Resetting the Scene
+To return the workpiece to its initial pose on the tabletop surface, either apply
+the surface update config or reset the world:
 
-> [!CAUTION]
-> The tour deliberately does **not** descend from the pre-grasp to the grasp
-> pose. An earlier version ran a compliant touchdown at each stop and crashed on
-> the way down. Approaching a planned pre-grasp is a much weaker claim than
-> executing the descent into it: the pre-grasp is collision-checked as a goal
-> pose, whereas the descent traverses the volume immediately around the part,
-> where the planned grasp axis and the real clearances have to agree. Keep
-> descent work in [`src/behaviors/pick.py`](../../src/behaviors/pick.py), where
-> the gripper is actually in the loop.
+```bash
+bazel run //tools/world:apply_scene_updates -- \
+    --address=localhost:17080 \
+    --files configs/raw_stock_on_surface.updates.pbtxt
 
-`retract_dist_m` therefore does double duty: it is both the gap between the
-grasp and pre-grasp frames *and* how far above the part the tour comes to rest.
-Shrinking it makes the rehearsal a closer approximation of a real pick, and a
-more demanding one.
-
-Three defaults differ from what you might expect, and all three are
-flag-controlled:
-
-| Default | Value | Why |
-| :--- | :--- | :--- |
-| Failure handling | fail fast | The tour aborts on the first unplannable or unreachable object, so the error surfaces immediately during bring-up. `--continue_on_failure` skips the object instead. |
-| `--transit_frame` | off | Objects are swept pre-grasp to pre-grasp. Pass `--transit_frame=view` to route via `root/view` if the direct transit paths are awkward. |
-| Collision checking | on | Unlike `UrRobot`'s own default, which disables it. The tour reaches into the vice, and it runs unattended across several parts, so the check is worth its cost here. |
+# Or reset the entire world:
+inctl world reset --address localhost:17080
+```
 
 ---
 
@@ -238,6 +188,5 @@ cluster, robot or planning service is required.
 | `moveit_plan_grasp_skill: Robot model does not define the required end-effector or IK frame` | `--tool_frame_name` or `--end_effector_group` names something absent from the SRDF. Note `hande_tcp`, `hande_tool_frame` and `tool_frame` are all valid coincident aliases, so this is usually a typo or a hardware description that lacks the alias links. | Check the `hand` group in `robot_hardware.srdf` and pass a link listed there. |
 | `moveit_plan_grasp_skill: Output pregrasp frame could not be resolved in World Service` | The skill only updates pre-existing frames; it never creates them. | Run `bazel run //tools/world:apply_scene_updates` so `root/grasp` and `root/pre_grasp` exist before planning. |
 | `moveit_plan_grasp_skill: Target object was not found in the planning scene` | The part was moved moments before planning and the MoveIt scene has not caught up, or the object name does not resolve. | Raise `--settle_sec`, and confirm the name with `bazel run //tools/world:inspect_world`. |
-| `moveit_plan_grasp_skill: No reachable or collision-free grasp candidates found` | The surface set is too narrow for how the part is currently lying, the part is out of reach or occluded, or the candidate set is too coarse. | Widen `--surfaces` — `all` is the widest, and `0,1,4,5` is the demo's set. Then raise `--num_rotations`. Confirm reachability with `bazel run //tools/world:inspect_world`. |
-| A part that used to work now finds no candidates, or its pre-grasp is unreachable | All three default parts, including the one in the vice, are known to plan and approach with `--surfaces=0,1,4,5` and stock rotations and retract. A new failure usually means the part moved, the scene drifted, or the arm is starting from an awkward pose. | Reset the world with `inctl world reset --address localhost:17080`, then re-check the pose with `bazel run //tools/world:inspect_world`. Only then reach for `--object=<name>:surfaces=...` or `:retract=...`. |
-| The tour aborts partway and you want the remaining objects checked anyway | The tour fails fast by design, so the first bad object stops the run. | Re-run with `--continue_on_failure` to skip unplannable objects and collect every failure in one pass. |
+| `moveit_plan_grasp_skill: No reachable or collision-free grasp candidates found` | The surface set is too narrow for how the part is currently lying, the part is out of reach or occluded, or the candidate set is too coarse. | Widen `--surfaces` — `all` is the widest, and `0,1,4,5` is the demo's set. Confirm reachability with `bazel run //tools/world:inspect_world`. |
+| A part that used to work now finds no candidates, or its pre-grasp is unreachable | The part, including when placed in the vice, plans and approaches with `--surfaces=0,1,4,5` and default retraction. A new failure usually means the part moved, the scene drifted, or the arm is starting from an awkward pose. | Reset the world with `inctl world reset --address localhost:17080`, re-apply the position updates, and re-check the pose with `bazel run //tools/world:inspect_world`. |

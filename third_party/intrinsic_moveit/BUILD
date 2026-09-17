@@ -24,15 +24,3 @@ py_library(
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
-
-py_library(
-    name = "moveit_grasp_tour",
-    srcs = ["moveit_grasp_tour.py"],
-    deps = [
-        ":moveit_grasp_planner",
-        ":moveit_grasp_planning",
-        "//src/behaviors:motions",
-        "//src/hardware:robot",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
-    ],
-)

@@ -7,7 +7,7 @@ it.
 
 | Integration | Upstream | What it adds |
 | :--- | :--- | :--- |
-| [`intrinsic_moveit/`](./intrinsic_moveit/) | [`intrinsic-ai/intrinsic-moveit`](https://github.com/intrinsic-ai/intrinsic-moveit) | Model-based grasp planning via MoveIt Task Constructor, plus two rehearsal CLIs. |
+| [`intrinsic_moveit/`](./intrinsic_moveit/) | [`intrinsic-ai/intrinsic-moveit`](https://github.com/intrinsic-ai/intrinsic-moveit) | Model-based grasp planning via MoveIt Task Constructor, plus a verification CLI. |
 
 ## Ground rules
 
@@ -23,7 +23,7 @@ it.
   states what must already be running before its tools do anything, and its CLIs
   repeat that in `--help`.
 * **Names are explicit.** Modules, Bazel targets and public symbols carry the
-  integration's name — `moveit_grasp_tour`, `MoveItGraspPlanner` — so they stay
+  integration's name — `moveit_plan_grasp_and_move`, `MoveItGraspPlanner` — so they stay
   distinguishable from the first-party equivalents that may later occupy the
   generic names.
 * **Tests live with the code.** `bazel test //tests/unit:all` covers first-party

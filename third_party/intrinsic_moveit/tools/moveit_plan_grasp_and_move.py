@@ -38,32 +38,25 @@ from third_party.intrinsic_moveit.moveit_grasp_planning import (
   build_moveit_grasp_planning_subtree,
 )
 
-# The default scene spawns raw_stock_50x50x75_1 .. _3. Object names must match
-# the world exactly: the planning service resolves an id by exact match, then
-# "<id>/whole", so a bare "raw_stock_50x50x75" matches none of the instances.
-DEFAULT_TARGET_OBJECT = "raw_stock_50x50x75_1"
+# The default scene spawns a single raw_stock_50x50x75 object.
+DEFAULT_TARGET_OBJECT = "raw_stock_50x50x75"
 
 _EPILOG = """\
 examples (run through Bazel as `bazel run
-  //third_party/intrinsic_moveit/tools:moveit_plan_and_move -- <flags>`):
+  //third_party/intrinsic_moveit/tools:moveit_plan_grasp_and_move -- <flags>`):
 
-  # Dry run: plan a grasp on raw_stock_50x50x75_1 without moving the arm.
-  moveit_plan_and_move --plan_only --surfaces=0,1,4,5
+  # Dry run: plan a grasp on raw_stock_50x50x75 without moving the arm.
+  moveit_plan_grasp_and_move --plan_only --surfaces=0,1,4,5
 
-  # Plan and approach the pre-grasp of a specific part.
-  moveit_plan_and_move --surfaces=0,1,4,5 --target_object=raw_stock_50x50x75_2
+  # Plan and approach the pre-grasp of the default part (on the surface).
+  moveit_plan_grasp_and_move --surfaces=0,1,4,5
 
-  # Rank grasps across several parts and approach the best one. The flag is
-  # repeatable and also accepts comma-separated names.
-  moveit_plan_and_move --surfaces=0,1,4,5 \\
-      --target_object=raw_stock_50x50x75_1,raw_stock_50x50x75_2
-  moveit_plan_and_move --surfaces=0,1,4,5 \\
-      --target_object=raw_stock_50x50x75_1 \\
-      --target_object=raw_stock_50x50x75_2 \\
-      --target_object=raw_stock_50x50x75_3
+  # Move raw_stock_50x50x75 into the vice via scene updates and plan again:
+  # bazel run //tools/world:apply_scene_updates -- --files configs/raw_stock_in_vice.updates.pbtxt
+  moveit_plan_grasp_and_move --surfaces=0,1,4,5
 
-  # Narrow further to force a strictly vertical approach, 8 rotations.
-  moveit_plan_and_move --surfaces=4 --num_rotations=8
+  # Narrow further to force a strictly vertical approach.
+  moveit_plan_grasp_and_move --surfaces=4
 
 prerequisites:
   This is a third-party integration. It does nothing until you have completed
@@ -257,7 +250,7 @@ def report_selected_object(
     print(f"Grasp was planned on '{ranked[0][1]}' (nearest candidate).")
 
 
-def moveit_plan_and_move(
+def moveit_plan_grasp_and_move(
   solution: Any,
   candidate_objects: Sequence[str],
   parent_object: str = "root",
@@ -414,7 +407,7 @@ def moveit_plan_and_move(
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   """Parses command line arguments."""
   parser = argparse.ArgumentParser(
-    prog="moveit_plan_and_move",
+    prog="moveit_plan_grasp_and_move",
     description=(
       "Plan a grasp with the MoveIt grasp planning service and move the arm"
       " to the resulting pre-grasp frame."
@@ -600,7 +593,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 1
 
   try:
-    succeeded = moveit_plan_and_move(
+    succeeded = moveit_plan_grasp_and_move(
       solution=solution,
       candidate_objects=target_objects,
       parent_object=args.parent_object,

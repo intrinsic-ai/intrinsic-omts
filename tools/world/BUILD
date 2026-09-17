@@ -36,6 +36,8 @@ py_binary(
     data = [
         "//configs:align_robot.updates.pbtxt",
         "//configs:lab_bb_01_orbbec_gemini.updates.pbtxt",
+        "//configs:raw_stock_in_vice.updates.pbtxt",
+        "//configs:raw_stock_on_surface.updates.pbtxt",
         "//configs:scene.updates.pbtxt",
         "//configs:ur_module.attachments.updates.pbtxt",
     ],
