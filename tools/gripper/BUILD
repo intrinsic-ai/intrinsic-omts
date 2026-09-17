@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@ioc//bazel:python.bzl", "py_binary", "py_library")
+load("@intrinsic-core//bazel:python.bzl", "py_binary", "py_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -21,8 +21,8 @@ py_library(
     srcs = ["control_gripper.py"],
     deps = [
         "//src/hardware:gripper",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )
 

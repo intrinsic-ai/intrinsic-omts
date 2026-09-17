@@ -1,4 +1,4 @@
-load("@ioc//bazel:python.bzl", "py_test")
+load("@intrinsic-core//bazel:python.bzl", "py_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -42,7 +42,7 @@ py_test(
         "//src/hardware:robot",
         "//src/hardware:vision",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -68,8 +68,8 @@ py_test(
         "//src/hardware:robot",
         "//tools/jogging:move_to_frame_lib",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )
 
@@ -79,8 +79,8 @@ py_test(
     deps = [
         "//tools/jogging:store_frame_lib",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
-        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/math/python:data_types",
+        "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
@@ -101,7 +101,7 @@ py_test(
         "//src/hardware:gripper",
         "//tools/gripper:control_gripper_lib",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )
 
@@ -121,6 +121,6 @@ py_test(
         "//src/core:types",
         "//src/utils:execution_utils",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )

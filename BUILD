@@ -1,8 +1,8 @@
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
-load("@ioc//incode/intrinsic_inference/assets/inference_service/bazel:intrinsic_mlmodel.bzl", "intrinsic_mlmodel")
-load("@ioc//intrinsic/assets/build_defs:asset.bzl", "intrinsic_asset_instance")
-load("@ioc//intrinsic/config:def.bzl", "intrinsic_solution")
+load("@intrinsic-core//incode/intrinsic_inference/assets/inference_service/bazel:intrinsic_mlmodel.bzl", "intrinsic_mlmodel")
+load("@intrinsic-core//intrinsic/assets/build_defs:asset.bzl", "intrinsic_asset_instance")
+load("@intrinsic-core//intrinsic/config:def.bzl", "intrinsic_solution")
 load("//bazel:imported_asset.bzl", "imported_asset_bundle")
 
 package(default_visibility = ["//visibility:public"])
@@ -29,34 +29,34 @@ intrinsic_solution(
     name = "omts_solution",
     add_compose_world_test = False,
     assets = [
-        "@ioc//intrinsic/resources/catalog/resourcedata/gripper:robotiq_pinch_gripper_resource_type",
-        "@ioc//intrinsic/resources/catalog/resourcedata/product/building_block",
-        "@ioc//intrinsic/simulation/gazebo/asset:gazebo_simulator_type",
-        "@ioc//incode/intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5",
-        "@ioc//incode/intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5_estimator",
-        "@ioc//incode/intrinsic_perception/intrinsic/perception/calibration/services/v1:calibration_service",
-        "@ioc//incode/intrinsic_perception/intrinsic/perception/skills:capture_images_skill",
-        "@ioc//incode/intrinsic_perception/intrinsic/perception/skills/calibration:calibrate_camera_to_robot_skill",
-        "@ioc//incode/intrinsic_perception/intrinsic/perception/skills/calibration:sample_calibration_poses_skill",
-        "@ioc//incode/intrinsic_perception/intrinsic/perception/skills/calibration:collect_calibration_data_skill",
-        "@ioc//incode/intrinsic_perception/intrinsic/perception/skills/calibration:initialize_calibration_skill",
-        "@ioc//incode/intrinsic_perception/intrinsic/perception/cameras/hardware_devices:orbbec_gemini_335le_hardware_device",
-        "@ioc//incode/intrinsic_motion_planning/intrinsic/motion_planning/service:motion_planner_service_asset",
-        "@ioc//incode/motion_planning/skills:clear_motion_planner_service_cache_skill",
-        "@ioc//incode/motion_planning/skills:preplan_motion_skill",
-        "@ioc//incode/motion_planning/skills:move_robot_skill",
-        "@ioc//incode/intrinsic_control/intrinsic/icon/machines/common:generic_icon_mainloop_type",
-        "@ioc//intrinsic/manipulation/skills/force:move_to_contact_skill",
-        "@ioc//incode/intrinsic_control/intrinsic/icon/skills:dio_read_input_skill",
-        "@ioc//incode/intrinsic_control/intrinsic/icon/skills:dio_set_output_skill",
-        "@ioc//incode/intrinsic_inference/assets/inference_service:inference_service_asset",
-        "@ioc//incode/intrinsic_perception/intrinsic/perception/service/ioc_pose_estimator:ioc_pose_estimator_service_asset",
-        "@ioc//incode/intrinsic_perception/intrinsic/perception/service/ioc_train_service:ioc_train_service_asset",
-        "@ioc//intrinsic/perception/skills/multi_view:estimate_pose_multi_view_skill",
-        "@ioc//intrinsic/world/skills/create_object:create_object_skill",
-        "@ioc//intrinsic/skills/apps:update_world_skill",
-        "@ioc//intrinsic/skills/apps:attach_object_to_robot_skill",
-        "@ioc//intrinsic/skills/apps:detach_object_skill",
+        "@intrinsic-core//intrinsic/resources/catalog/resourcedata/gripper:robotiq_pinch_gripper_resource_type",
+        "@intrinsic-core//intrinsic/resources/catalog/resourcedata/product/building_block",
+        "@intrinsic-core//intrinsic/simulation/gazebo/asset:gazebo_simulator_type",
+        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5",
+        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5_estimator",
+        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/calibration/services/v1:calibration_service",
+        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/skills:capture_images_skill",
+        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/skills/calibration:calibrate_camera_to_robot_skill",
+        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/skills/calibration:sample_calibration_poses_skill",
+        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/skills/calibration:collect_calibration_data_skill",
+        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/skills/calibration:initialize_calibration_skill",
+        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/cameras/hardware_devices:orbbec_gemini_335le_hardware_device",
+        "@intrinsic-core//incode/intrinsic_motion_planning/intrinsic/motion_planning/service:motion_planner_service_asset",
+        "@intrinsic-core//incode/motion_planning/skills:clear_motion_planner_service_cache_skill",
+        "@intrinsic-core//incode/motion_planning/skills:preplan_motion_skill",
+        "@intrinsic-core//incode/motion_planning/skills:move_robot_skill",
+        "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/machines/common:generic_icon_mainloop_type",
+        "@intrinsic-core//intrinsic/manipulation/skills/force:move_to_contact_skill",
+        "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/skills:dio_read_input_skill",
+        "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/skills:dio_set_output_skill",
+        "@intrinsic-core//incode/intrinsic_inference/assets/inference_service:inference_service_asset",
+        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/service/ioc_pose_estimator:ioc_pose_estimator_service_asset",
+        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/service/ioc_train_service:ioc_train_service_asset",
+        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/skills/multi_view:estimate_pose_multi_view_skill",
+        "@intrinsic-core//intrinsic/world/skills/create_object:create_object_skill",
+        "@intrinsic-core//intrinsic/skills/apps:update_world_skill",
+        "@intrinsic-core//intrinsic/skills/apps:attach_object_to_robot_skill",
+        "@intrinsic-core//intrinsic/skills/apps:detach_object_skill",
         ":flowstate_ros_bridge_asset",
         ":gripper_cmd_skill_asset",
         ":hande_gripper_service_asset",
@@ -67,11 +67,11 @@ intrinsic_solution(
         "//models/raw_stock_50x50x75",
     ] + select({
         ":is_lab_bb_01": [
-            "@ioc//intrinsic/apps/bluebird_caw/resources:caw_enclosure",
-            "@ioc//incode/intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_ioc",
+            "@intrinsic-core//intrinsic/apps/bluebird_caw/resources:caw_enclosure",
+            "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_core",
         ],
         "//conditions:default": [
-            "@ioc//incode/intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_ioc",
+            "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_core",
             "//models/camera_mount",
             "//models/cnc_enclosure",
             "//models/omts_enclosure",
@@ -200,8 +200,8 @@ intrinsic_asset_instance(
 intrinsic_asset_instance(
     name = "ur_module",
     asset = select({
-        ":is_lab_bb_01": "ai.intrinsic.ur3e_hardware_module_ioc",
-        "//conditions:default": "ai.intrinsic.ur5e_hardware_module_ioc",
+        ":is_lab_bb_01": "ai.intrinsic.ur3e_hardware_module_core",
+        "//conditions:default": "ai.intrinsic.ur5e_hardware_module_core",
     }),
     instance_name = "ur_module",
     service_config = "//configs:ur_module_config.textproto",
