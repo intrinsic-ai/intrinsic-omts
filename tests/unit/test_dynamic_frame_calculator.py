@@ -119,7 +119,8 @@ class DynamicFrameCalculatorTest(absltest.TestCase):
     self.assertAlmostEqual(created["infeed_grasp"].translation[1], 3.0)
 
   def test_mixed_negative_and_positive_scores_selects_most_negative(self):
-    # FoundationPose produces negative scores for confident fits (most negative is best),
+    # FoundationPose produces negative scores for confident fits
+    # (most negative is best),
     # while scores >= 0 are unconfident/bad fits that must be filtered out.
     est_target = DummyEstimate(DummyPoint(3.0, 3.0, 0.10), score=-20.69)
     est_mid = DummyEstimate(DummyPoint(2.0, 2.0, 0.10), score=-16.19)

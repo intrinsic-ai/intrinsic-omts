@@ -16,7 +16,7 @@
 
 Connects to a running Intrinsic solution, sets up the `capture_images` and
 `estimate_pose_multi_view` skills connected to the `ioc_pose_estimator_service`,
-executes the pose estimation process on the solution executive, and retrieves and
+executes the pose estimation on the solution executive, and retrieves and
 displays the estimated 6D object poses.
 """
 
@@ -247,7 +247,7 @@ def create_pose_estimation_pipeline(
   log_debug_data: bool = True,
   timeout_sec: int | None = None,
 ) -> tuple[Any, Any]:
-  """Constructs the capture_images and estimate_pose_multi_view skills for the pipeline.
+  """Constructs the capture_images and estimate_pose_multi_view skills.
 
   Args:
     solution: Connected Solution instance.
@@ -255,7 +255,7 @@ def create_pose_estimation_pipeline(
     perception_resource: ResourceHandle for the IOC Pose Estimator Service.
     pose_estimator_id: Full ID of the pose estimator asset (e.g.
       'ai.intrinsic.my_pose_estimator').
-    sensor_ids: Optional list of sensor IDs to capture from the camera (e.g. [1, 4] for RGB-D).
+    sensor_ids: Optional list of sensor IDs (e.g. [1, 4] for RGB-D).
     min_num_instances: Minimum number of detected instances required.
     log_debug_data: Whether to enable debug data logging in the skills.
     timeout_sec: Optional inference timeout in seconds.
@@ -277,7 +277,7 @@ def create_pose_estimation_pipeline(
 
   skills = solution.skills
 
-  # 1. Set up capture_images skill with sensor_ids (e.g. 1 for RGB and 4 for Depth)
+  # 1. capture_images skill with sensor_ids (e.g. 1 for RGB and 4 for Depth)
   capture_images_kwargs: dict[str, Any] = {
     "camera": camera_resource,
     "log_debug_data": log_debug_data,
@@ -294,7 +294,7 @@ def create_pose_estimation_pipeline(
     package=package_name,
   )
 
-  # 2. Set up estimate_pose_multi_view skill connected to IOC Pose Estimator Service
+  # 2. estimate_pose_multi_view skill connected to Pose Estimator Service
   estimate_pose_kwargs: dict[str, Any] = {
     "camera_1": camera_resource,
     "camera_2": camera_resource,

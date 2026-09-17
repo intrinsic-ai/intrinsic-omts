@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Interactive and CLI tool to move the robot to a target joint configuration or positions."""
+"""Interactive & CLI tool to move robot to a target joint config or pos."""
 
 import argparse
 from collections.abc import Sequence
@@ -70,7 +70,7 @@ def parse_joint_values(joint_str: str) -> list[float] | None:
 def prompt_for_joint_target(
   available_configs: list[tuple[str, list[float]]],
 ) -> str | list[float] | None:
-  """Prompts the user to select a named joint config or enter joint positions."""
+  """Prompts the user to select a named joint config or enter joint pos."""
   print("\nAvailable Joint Configurations:")
   if available_configs:
     for i, (name, positions) in enumerate(available_configs, start=1):
@@ -225,7 +225,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def resolve_joint_target(
   args: argparse.Namespace,
 ) -> str | list[float] | None:
-  """Resolves the target joint positions or configuration name from arguments."""
+  """Resolves the target joint positions or config name from arguments."""
   if args.joints:
     return list(args.joints)
   if args.name:

@@ -127,7 +127,7 @@ def save_frame_to_scene_updates(
   parent_object_name: str = "root",
   filepath: str = "configs/omts/scene.updates.pbtxt",
 ) -> str:
-  """Saves or updates a frame's pose in the specified scene.updates.pbtxt file."""
+  """Saves or updates a frame's pose in the given scene updates file."""
   resolved_path = find_scene_updates_file(filepath)
 
   updates = object_world_updates_pb2.ObjectWorldUpdates()

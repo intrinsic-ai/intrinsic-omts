@@ -53,7 +53,7 @@ def create_seated_approach_tasks(
   approach_motion_types: str | Sequence[str] = "ANY",
   solution: Any | None = None,
 ) -> list[bt.Node]:
-  """Builds a standoff approach (linear or blended), compliant touchdown, and optional lift."""
+  """Builds a standoff approach, compliant touchdown, and optional lift."""
   standoff_offset = (
     (0.0, 0.0, -float(touchdown.standoff_m)),
     (0.0, 0.0, 0.0, 1.0),
@@ -123,7 +123,7 @@ def build_interaction_tasks(
   post_reparent_tasks: Sequence[bt.Node] = (),
   solution: Any | None = None,
 ) -> list[bt.Node]:
-  """Builds a seated approach, hardware actuation, optional reparenting, and post tasks."""
+  """Builds seated approach, hardware actuation, reparenting and post tasks."""
   tasks = create_seated_approach_tasks(
     robot=robot,
     frame_name=frame_name,
@@ -278,7 +278,7 @@ def create_clear_robot_faults_task(
   solution: Any | None = None,
   task_name: str | None = None,
 ) -> bt.Node:
-  """Builds a behavior tree task to clear robot/ICON faults and re-enable control."""
+  """Builds a task to clear robot faults and re-enable control."""
   name = task_name or "Clear Robot Faults & Enable Robot"
   if solution is not None:
     try:

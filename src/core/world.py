@@ -141,7 +141,7 @@ class WorldInterface(abc.ABC):
     min_safe_z: float = 0.95,
     name: str | None = None,
   ) -> bt.Node:
-    """Builds a task updating dynamic grasp frames and workpiece pose in ObjectWorld."""
+    """Builds a task updating grasp frames and workpiece pose in ObjectWorld."""
     raise NotImplementedError
 
   @abc.abstractmethod
@@ -248,7 +248,7 @@ class World(WorldInterface):
     name: str | None = None,
     task_name: str | None = None,
   ) -> bt.Node:
-    """Builds a behavior tree task updating joint positions via update_world skill."""
+    """Builds a task updating joint positions via update_world skill."""
     label = name or task_name or f"Update joints for {object_name}"
     vals = [
       float(p)
@@ -280,7 +280,7 @@ class World(WorldInterface):
     min_safe_z: float = 0.95,
     name: str | None = None,
   ) -> bt.Node:
-    """Builds a task updating dynamic grasp frames and workpiece pose in ObjectWorld."""
+    """Builds a task updating grasp frames and workpiece pose in ObjectWorld."""
     signature = _build_dynamic_frame_signature(
       proto_builder=getattr(self._solution, "proto_builder", None),
       approach_offset_z=approach_offset_z,
@@ -330,7 +330,7 @@ class World(WorldInterface):
     clear_faults: bool = False,
     **kwargs: Any,
   ) -> list[str]:
-    """Clears dynamic frames, reapplies scene updates, and optionally clears robot faults."""
+    """Clears dynamic frames, reapplies scene updates, defaults off faults."""
     from tools.world.apply_scene_updates import apply_pbtxt_file
 
     del workpiece_name, solution, kwargs
@@ -352,7 +352,7 @@ class World(WorldInterface):
 
 
 class OfflineExecutive:
-  """Executive that records behavior trees without executing hardware actions."""
+  """Executive that records behavior trees without running hardware actions."""
 
   def __init__(self) -> None:
     self.executed: list[Any] = []
@@ -366,7 +366,7 @@ class OfflineExecutive:
 
 
 class MockWorld(WorldInterface):
-  """In-memory stand-in for ObjectWorldClient used in offline execution and tests."""
+  """In-memory ObjectWorldClient stand-in for offline execution and tests."""
 
   def __init__(self, objects: dict[str, Any] | None = None) -> None:
     self.transforms: dict[tuple[str, str], Any] = {}
@@ -393,7 +393,7 @@ class MockWorld(WorldInterface):
     return list(self._objects.values())
 
   def get_object(self, name: Any) -> Any:
-    """Returns the object registered under name or matching short name, or None."""
+    """Returns the object matching the name or short name, or None."""
     key = self.name_of(name)
     if key in self._objects:
       return self._objects[key]

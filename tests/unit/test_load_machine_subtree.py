@@ -230,7 +230,7 @@ class LoadMachineSubtreeTest(absltest.TestCase):
     )
 
   def test_build_load_machine_subtree_workpiece_identifier_resolution(self):
-    """Verifies identifier resolution with world.build_detach_from_gripper_task."""
+    """Verifies resolution with world.build_detach_from_gripper_task."""
     mock_world = mock.MagicMock(spec=World)
     mock_world.build_detach_from_gripper_task.return_value = bt.Task(
       action=bt.PythonScript(function_body="pass"),

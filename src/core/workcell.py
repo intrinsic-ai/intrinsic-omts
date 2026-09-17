@@ -59,12 +59,12 @@ class WorkcellState:
     current_workpiece: Workpiece | None = None,
     infeed_tray: Tray | None = None,
   ) -> "WorkcellState":
-    """Constructs a WorkcellState, clamping total_cycles to 1 if resuming mid-cycle."""
+    """Constructs a WorkcellState, clamping total_cycles to 1 mid-cycle."""
     resolved_phase = Phase(phase) if not isinstance(phase, Phase) else phase
     resolved_cycles = total_cycles
     if resolved_phase is not Phase.PICK and resolved_cycles != 1:
       logging.warning(
-        "Resuming from non-infeed phase '%s'. Clamping total_cycles from %d to 1"
+        "Resuming from non-infeed phase '%s'. Clamping cycles from %d to 1"
         " for safety.",
         resolved_phase,
         resolved_cycles,

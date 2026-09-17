@@ -47,7 +47,7 @@ def _resolve_resource(
   capability_type: str,
   label: str,
 ) -> provided.ResourceHandle:
-  """Resolves a resource handle from solution resources by name or capability."""
+  """Resolves a resource handle from solution resources by name/capability."""
   if isinstance(solution.resources, dict) and target_name in solution.resources:
     return solution.resources[target_name]
   try:
@@ -88,7 +88,7 @@ def _get_perception_resource(
 def _build_pose_estimator_proto(
   pose_estimator_id: str,
 ) -> pose_estimator_id_pb2.PoseEstimatorId:
-  """Constructs a PoseEstimatorId protobuf message from an asset or package ID."""
+  """Constructs a PoseEstimatorId proto from an asset or package ID."""
   pkg = (
     id_utils.package_from(pose_estimator_id)
     if id_utils.is_id(pose_estimator_id)
@@ -103,7 +103,7 @@ def _build_pose_estimator_proto(
 
 
 class VisionInterface(abc.ABC):
-  """Stateless abstract interface for perception acquisition and pose estimation."""
+  """Stateless abstract interface for perception and pose estimation."""
 
   @classmethod
   def from_config(

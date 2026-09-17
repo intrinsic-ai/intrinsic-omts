@@ -45,7 +45,7 @@ from src.utils.tree_diagnostics import log_tree_failure_diagnostics
 
 @dataclasses.dataclass(frozen=True)
 class AppConfig:
-  """Complete tending application configuration assembled from YAML and flags."""
+  """Complete tending app configuration assembled from YAML and flags."""
 
   solution_address: str = "localhost:17080"
   mock_hardware: bool = False

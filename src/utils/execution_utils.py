@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Helpers for mapping OMTS options onto Intrinsic executive settings and world refs."""
+"""Mapping OMTS options to Intrinsic executive settings and world refs."""
 
 from collections.abc import Sequence
 from typing import Any

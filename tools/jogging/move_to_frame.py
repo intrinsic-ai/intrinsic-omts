@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Interactive CLI tool to move the robot tool frame to a target frame in the scene."""
+"""Interactive CLI to move the robot tool frame to a target frame."""
 
 import argparse
 from collections.abc import Sequence
@@ -117,7 +117,7 @@ def move_robot_to_frame(
   tool_object_name: str = "gripper",
   tool_frame_name: str = "tool_frame",
 ) -> None:
-  """Plans and executes a Cartesian motion moving the robot tool to the target frame."""
+  """Plans and executes a Cartesian motion moving robot tool to frame."""
   print(
     f"\nPlanning motion for '{arm_part_name}' moving tool"
     f" '{tool_object_name}/{tool_frame_name}' ->"

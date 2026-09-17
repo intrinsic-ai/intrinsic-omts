@@ -104,7 +104,8 @@ def build_load_machine_subtree(
       motion_type="LINEAR",
       solution=solution,
       task_name=(
-        f"Step 3h: Linear Retract to Vise Approach ({parent_object}/{vise_approach_frame_name})"
+        f"Step 3h: Linear Retract to Vise Approach "
+        f"({parent_object}/{vise_approach_frame_name})"
       ),
     )
   )

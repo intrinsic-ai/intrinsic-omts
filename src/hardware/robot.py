@@ -88,7 +88,7 @@ class RobotInterface(abc.ABC):
     joint_target: str | JointPosition | Sequence[float] | Any,
     name: str | None = None,
   ) -> bt.Node:
-    """Builds a task to move the robot arm to a named joint pose or configuration."""
+    """Builds a task to move the robot arm to a named joint pose or config."""
     raise NotImplementedError
 
   def build_move_to_joint_position_task(
@@ -128,7 +128,7 @@ class RobotInterface(abc.ABC):
     ) = None,
     name: str | None = None,
   ) -> bt.Node:
-    """Builds a task to move through multiple target frames in a blended trajectory."""
+    """Builds a task to move through target frames in blended motion."""
     raise NotImplementedError
 
   @abc.abstractmethod
@@ -216,7 +216,7 @@ class UrRobot(RobotInterface):
     return True
 
   def _motion_type_enum(self, motion_type: str) -> Any:
-    """Maps a motion type name onto MotionSegment.MotionType, defaulting to ANY."""
+    """Maps a motion type name to MotionSegment.MotionType, default to ANY."""
     motion_proto = (
       self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType
     )
@@ -226,7 +226,7 @@ class UrRobot(RobotInterface):
     }.get(motion_type.upper(), motion_proto.ANY)
 
   def _get_collision_settings(self) -> Any | None:
-    """Returns CollisionSettings with disabled collision checking when configured."""
+    """Returns CollisionSettings without collision checking, if configured."""
     if not self._disable_collision_checking:
       return None
     world_proto = getattr(
@@ -286,7 +286,10 @@ class UrRobot(RobotInterface):
     else:
       raise ValueError(f"Unsupported joint target type: {type(joint_target)}")
 
-    motion_type_joint = self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType.JOINT
+    skill = self._move_robot_skill
+    motion_type_joint = (
+      skill.intrinsic_proto.skills.MotionSegment.MotionType.JOINT
+    )
     segment = self._build_trajectory_segment(
       motion_type_enum=motion_type_joint,
       joint_position=target_pos,
@@ -361,7 +364,8 @@ class UrRobot(RobotInterface):
     motion_types = normalize_motion_types(motion_type, len(target_frames))
     path_desc = " -> ".join(f"{obj}/{frame}" for obj, frame in target_frames)
     task_name = name or (
-      f"Blended Move through {path_desc} ({describe_motion_types(motion_types)})"
+      f"Blended Move through {path_desc} "
+      f"({describe_motion_types(motion_types)})"
     )
 
     motion_segments = []

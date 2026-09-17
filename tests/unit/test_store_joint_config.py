@@ -73,12 +73,14 @@ class StoreJointConfigTest(absltest.TestCase):
     self.assertEqual(curr, mock_robot.joint_positions)
     # 3.57518 normalized is 3.57518 - 2*pi ≈ -2.70800
     self.assertAlmostEqual(norm[5], 3.57518 - 6.283185307179586, places=4)
-    mock_solution.world.update_kinematic_object_joint_configurations.assert_called_once()
+    world = mock_solution.world
+    world.update_kinematic_object_joint_configurations.assert_called_once()
     mock_world_connect.assert_called_once_with(
       world_id="init_world",
       grpc_channel=mock_solution.grpc_channel,
     )
-    mock_init_world.update_kinematic_object_joint_configurations.assert_called_once()
+    mock_world = mock_init_world
+    mock_world.update_kinematic_object_joint_configurations.assert_called_once()
 
   @mock.patch("tools.jogging.store_joint_config.worlds.ObjectWorld.connect")
   def test_store_joint_configuration_init_world_failure_handled(
@@ -100,7 +102,8 @@ class StoreJointConfigTest(absltest.TestCase):
     self.assertEqual(curr, mock_robot.joint_positions)
     for n, e in zip(norm, mock_robot.joint_positions, strict=False):
       self.assertAlmostEqual(n, e, places=5)
-    mock_solution.world.update_kinematic_object_joint_configurations.assert_called_once()
+    world = mock_solution.world
+    world.update_kinematic_object_joint_configurations.assert_called_once()
 
 
 if __name__ == "__main__":

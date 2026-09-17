@@ -76,7 +76,7 @@ class ScriptUtilsTest(absltest.TestCase):
     self.assertIsNotNone(compiled)
 
   def test_prelude_is_stdlib_only(self):
-    """Asserts math_utils prelude has no non-hermetic src imports and compiles."""
+    """Asserts math_utils prelude has no non-hermetic src imports & compiles."""
     with open(math_utils.__file__, encoding="utf-8") as f:
       source = f.read()
     for line in source.splitlines():

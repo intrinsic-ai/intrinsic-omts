@@ -111,7 +111,8 @@ class BehaviorsTest(absltest.TestCase):
     )
     expected_robot_commands = [
       "move_cartesian:root/view:ANY",
-      "move_blended_cartesian:root/infeed_pre_grasp->root/infeed_grasp:ANY/LINEAR",
+      "move_blended_cartesian:root/infeed_pre_grasp->root/infeed_grasp:"
+      "ANY/LINEAR",
       "move_to_contact:dir=(0.0, 0.0, 1.0),force=8.0",
       "move_relative_cartesian:(0.0, 0.0, -0.005):LINEAR",
       "move_cartesian:root/infeed_pre_grasp:LINEAR",
@@ -289,7 +290,7 @@ class BehaviorsTest(absltest.TestCase):
     )
 
   def test_build_machine_tending_bt_start_phase_unload(self):
-    """Verifies start_phase='unload' produces only unload and return subtrees."""
+    """Verifies start_phase='unload' produces only unload & return subtrees."""
     tree = build_machine_tending_behavior_tree(
       robot=self.robot,
       gripper=self.gripper,

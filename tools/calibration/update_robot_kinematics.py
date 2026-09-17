@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""CLI tool to fetch and update calibrated robot kinematics from physical hardware."""
+"""CLI tool to fetch and update calibrated robot kinematics from hardware."""
 
 from collections.abc import Sequence
 
@@ -66,7 +66,7 @@ def check_kinematics_match(
   world_id: str,
   timeout: float = 10.0,
 ) -> bool:
-  """Checks whether the world model kinematics match the physical hardware calibration."""
+  """Checks whether the world model kinematics match hardware calibration."""
   request = robot_update_service_pb2.CheckWorldMatchesHardwareKinematicsRequest(
     resource_id=resource_id,
     world_id=world_id,
@@ -87,7 +87,7 @@ def update_robot_kinematics(
   world_id: str,
   timeout: float = 60.0,
 ) -> None:
-  """Requests the RobotUpdateService to fetch calibration from hardware and update the world."""
+  """Requests the RobotUpdateService to fetch calib from hardware & update."""
   request = robot_update_service_pb2.RobotKinematicsUpdateRequest(
     resource_id=resource_id,
     world_id=world_id,

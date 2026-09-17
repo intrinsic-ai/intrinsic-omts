@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Interactive and CLI tool to command CNC machine door, vise, cycle, and prep."""
+"""Interactive and CLI tool to command CNC machine door, vise, cycle."""
 
 import argparse
 import sys

@@ -92,7 +92,7 @@ def _children_of(node: Any) -> list[Any]:
 def extract_failed_nodes(
   operation_or_bt_proto: Any,
 ) -> list[FailedNodeDiagnostic]:
-  """Extracts failing or active nodes from an Executive operation or BT proto."""
+  """Extracts failing or active nodes from an Executive operation or tree."""
   if operation_or_bt_proto is None:
     return []
 
@@ -138,7 +138,7 @@ def extract_failed_nodes(
 
 
 def log_tree_failure_diagnostics(solution: Any) -> None:
-  """Logs diagnostic information about failed nodes in the executive operation."""
+  """Logs diagnostic info about failed nodes in the executive operation."""
   if not hasattr(solution, "executive"):
     return
   op = getattr(solution.executive, "operation", None) or getattr(

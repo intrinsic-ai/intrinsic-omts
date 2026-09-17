@@ -79,7 +79,7 @@ class Tray:
     return self._slots[row][col]
 
   def get_slot_relative_pose(self, row: int, col: int) -> Pose3D:
-    """Calculates relative 3D pose of slot (row, col) from the tray origin frame."""
+    """Calculates relative 3D pose of slot (row, col) from tray origin."""
     if not (0 <= row < self.rows and 0 <= col < self.cols):
       raise IndexError(
         f"Slot ({row}, {col}) out of bounds for tray '{self.name}'."

@@ -68,7 +68,7 @@ def build_pick_from_infeed_subtree(
   perception_max_retries: int = 3,
   perception_retry_delay_sec: float = 1.0,
 ) -> bt.Node:
-  """Builds the Behavior Tree subtree for locating and grasping a raw workpiece."""
+  """Builds the Behavior Tree subtree for locating and grasping a workpiece."""
   tasks: list[bt.Node] = []
   w = resolve_world(solution, world)
 
@@ -89,7 +89,8 @@ def build_pick_from_infeed_subtree(
       else 1
     )
 
-    # TODO: on subsequent cylcles, return_infeed.py will have already moved us back to the view frame, so we could skip it from then on to save on cylce time
+    # TODO: on subsequent cycles, return_infeed.py will have already moved
+    # us back to the view frame, so we could skip it to save cycle time
     step_01_children: list[bt.Node] = [
       create_move_to_frame_task(
         robot=robot,

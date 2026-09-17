@@ -85,9 +85,8 @@ def main(argv: Sequence[str] | None = None) -> None:
       for obj in objects:
         parent = getattr(obj, "parent", None)
         parent_name = getattr(parent, "name", str(parent)) if parent else "None"
-        print(
-          f"\nObject: {obj.name} (id={getattr(obj, 'id', None)}, parent={parent_name})"
-        )
+        op = getattr(obj, "id", None)
+        print(f"\nObject: {obj.name} (id={op}, parent={parent_name})")
         if hasattr(obj, "joint_positions") and obj.joint_positions:
           print(f"  Joint positions: {obj.joint_positions}")
         if hasattr(obj, "joint_entity_names") and obj.joint_entity_names:
@@ -141,14 +140,16 @@ def main(argv: Sequence[str] | None = None) -> None:
       print("WARNING: FOUND ENTITIES WITH MISSING PARENT ENTITIES:")
       for obj_name, ent_name, ent_id, parent_id in missing_parents:
         print(
-          f"  Object '{obj_name}' entity '{ent_name}' (id={ent_id}) has MISSING parent_id={parent_id}!"
+          f"  Object '{obj_name}' entity '{ent_name}' (id={ent_id}) "
+          f"has MISSING parent_id={parent_id}!"
         )
     else:
       print("All entity parent references resolved within known entities.")
     for eid, (obj_name, ent_name) in all_known_entities.items():
       if "1056" in eid:
         print(
-          f"MATCH FOR 1056: eid={eid} in object '{obj_name}' entity '{ent_name}'"
+          f"MATCH FOR 1056: eid={eid} in object '{obj_name}' "
+          f"entity '{ent_name}'"
         )
   except Exception as e:
     print(f"Error listing objects: {e}")

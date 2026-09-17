@@ -80,7 +80,7 @@ _ROTATION_RMS_THRESHOLD = flags.DEFINE_float(
 _DISABLE_COLLISION_CHECKING = flags.DEFINE_bool(
   "disable_collision_checking",
   False,
-  "Whether to disable collision checking during calibration data collection waypoints.",
+  "Whether to disable collision checking during calibration waypoints.",
 )
 _APPLY_TO_WORLD = flags.DEFINE_bool(
   "apply_to_world",
@@ -110,6 +110,10 @@ _REPARENT_CAMERA = flags.DEFINE_bool(
 )
 
 
+_CalibRes = calibration_type_pb2.CameraToRobotCalibrationResult
+_StatPoses = _CalibRes.StationaryCameraResultPoses
+
+
 def build_camera_world_updates(
   camera_name: str,
   moving_camera: bool,
@@ -117,10 +121,7 @@ def build_camera_world_updates(
     calibration_type_pb2.CameraToRobotCalibrationResult.MovingCameraResultPoses
     | None
   ) = None,
-  stationary_camera_poses: (
-    calibration_type_pb2.CameraToRobotCalibrationResult.StationaryCameraResultPoses
-    | None
-  ) = None,
+  stationary_camera_poses: (_StatPoses | None) = None,
   robot_module_name: str = "ur_module",
   robot_flange_frame: str = "flange",
   reparent_camera: bool = True,
@@ -331,6 +332,9 @@ def main(argv) -> None:
   )
 
   # Setup calibration subtree
+  skill_proto = collect_calibration_data_skill.intrinsic_proto.skills
+  motion_type_joint = skill_proto.MotionType.MOTION_TYPE_JOINT
+
   collect_calibration_data = collect_calibration_data_skill(
     calibration_type=calibration_type,
     calibration_object=calibration_object_ref,
@@ -339,14 +343,16 @@ def main(argv) -> None:
     motion_planner_service=motion_planner_service,
     calibration_service=calibration_service,
     disable_collision_checking=_DISABLE_COLLISION_CHECKING.value,
-    motion_type=collect_calibration_data_skill.intrinsic_proto.skills.MotionType.MOTION_TYPE_JOINT,
+    motion_type=(motion_type_joint),
     skip_return_to_base_between_waypoints=True,
   )
   collect_calibration_data.execute_timeout = datetime.timedelta(seconds=600)
 
   calibrate = calibrate_camera_to_robot_skill(
     calibration_type=calibration_type,
-    translation_root_mean_square_error_threshold=_TRANSLATION_RMS_THRESHOLD.value,
+    translation_root_mean_square_error_threshold=(
+      _TRANSLATION_RMS_THRESHOLD.value
+    ),
     rotation_root_mean_square_error_threshold=_ROTATION_RMS_THRESHOLD.value,
     calibration_service=calibration_service,
   )

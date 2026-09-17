@@ -246,7 +246,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         "Tool Frame in root:"
         f" {world.get_transform(world.root, world.gripper.tool_frame)}"
       )
-  except Exception as e:
+  except Exception as e:  # pylint: disable=broad-exception-caught
     print(f"Transform query error: {e}")
 
   if (
@@ -259,7 +259,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     try:
       solution.simulator.reset()
       print("[✓] Simulation reset successfully executed.")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
       print(f"[-] Warning: Failed to reset simulation: {e}")
 
   print("\n[✓] Live world updates complete.")

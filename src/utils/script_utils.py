@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Utilities for extracting and injecting Python script code into SBL BT tasks."""
+"""Utilities for extracting and injecting Python code into SBL BT tasks."""
 
 import importlib
 import inspect
@@ -70,7 +70,7 @@ def load_python_script(
   call_args: str | None = "context, params",
   preludes: Sequence[types.ModuleType] = (),
 ) -> str:
-  """Extracts executable Python source code from a module, function, or file for SBL bt.PythonScript.
+  """Extracts executable Python source code for SBL bt.PythonScript.
 
   Args:
     source: A Python module object, callable function within a module, or module

@@ -121,7 +121,8 @@ class PickSubtreeTest(absltest.TestCase):
       self.robot.executed_commands,
       [
         "move_cartesian:root/view:ANY",
-        "move_blended_cartesian:root/infeed_pre_grasp->root/infeed_grasp:ANY/LINEAR",
+        "move_blended_cartesian:root/infeed_pre_grasp->root/infeed_grasp:"
+        "ANY/LINEAR",
         "move_to_contact:dir=(0.0, 0.0, 1.0),force=8.0",
         "move_cartesian:root/infeed_pre_grasp:LINEAR",
       ],

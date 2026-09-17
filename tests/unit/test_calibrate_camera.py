@@ -83,7 +83,8 @@ class CalibrateCameraToRobotTest(absltest.TestCase):
     self.assertTrue(ro.new_parent.entity_filter.include_final_entity)
 
   def test_build_stationary_camera_world_updates(self):
-    res_pose = calibration_pb2.CameraToRobotCalibrationResult.StationaryCameraResultPoses()
+    calib_res = calibration_pb2.CameraToRobotCalibrationResult
+    res_pose = calib_res.StationaryCameraResultPoses()
     res_pose.base_t_camera.position.x = 1.200
     res_pose.base_t_camera.position.y = 0.500
     res_pose.base_t_camera.position.z = 0.800

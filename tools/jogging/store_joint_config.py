@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Script to store current robot joint configuration with a given name in SBL world."""
+"""Script to store current robot joint config with a given name in SBL world."""
 
 import argparse
 from collections.abc import Sequence

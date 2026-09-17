@@ -24,7 +24,7 @@ class Workpiece:
   """Represents an individual physical workpiece being processed.
 
   Attributes:
-      asset_id: Asset or package identifier (e.g. 'ai.intrinsic.raw_stock_2x3x5').
+      asset_id: Asset or pkg identifier (e.g. 'ai.intrinsic.raw_stock_2x3').
       object_name: Scene object name in ObjectWorld (e.g. 'raw_stock_2x3x5').
       object_id: Optional integer entity ID in ObjectWorld.
       state: Lifecycle status in the manufacturing flow.
