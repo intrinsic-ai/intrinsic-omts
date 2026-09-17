@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_cc//cc:defs.bzl", "cc_library")
 load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("@rules_license//rules:license.bzl", "license")
 load("@rules_license//rules:package_info.bzl", "package_info")
@@ -38,8 +37,11 @@ package_info(
 )
 
 cuda_library(
-    name = "nvdiffrast_cuda",
+    name = "nvdiffrast",
     srcs = [
+        "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/common.cpp",
+        "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/Buffer.cpp",
+        "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/CudaRaster.cpp",
         "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/RasterImpl.cpp",
         "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/RasterImpl.cu",
         "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/interpolate.cu",
@@ -58,29 +60,6 @@ cuda_library(
         "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common",
     ],
     deps = [
-        "@cuda//:cuda_headers",
-    ],
-)
-
-cc_library(
-    name = "nvdiffrast",
-    srcs = [
-        "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/common.cpp",
-        "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/Buffer.cpp",
-        "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/CudaRaster.cpp",
-    ],
-    hdrs = glob([
-        "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/**/*.h",
-        "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/**/*.hpp",
-        "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/**/*.inl",
-    ]),
-    includes = [
-        "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose",
-        "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common",
-    ],
-    alwayslink = True,
-    deps = [
-        ":nvdiffrast_cuda",
         "@cuda//:cuda_headers",
     ],
 )

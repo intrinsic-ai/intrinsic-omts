@@ -14,6 +14,8 @@
 
 """Custom build rules for FoundationPose Python 3.12 C++ extension and Triton environment."""
 
+load("@foundationpose_pip_deps//:requirements.bzl", "all_whl_requirements")
+
 def _py312_transition_impl(_settings, _attr):
     return {"@rules_python//python/config_settings:python_version": "3.12"}
 
@@ -71,7 +73,7 @@ triton_python_env_tar = rule(
     attrs = {
         "out": attr.string(mandatory = True),
         "patchelf": attr.label(
-            mandatory = True,
+            default = "@patchelf//:bin/patchelf",
             allow_single_file = True,
             cfg = "exec",
         ),
@@ -80,7 +82,7 @@ triton_python_env_tar = rule(
             allow_single_file = True,
         ),
         "wheels": attr.label_list(
-            mandatory = True,
+            default = all_whl_requirements,
             allow_files = [".whl"],
             cfg = py312_transition,
         ),

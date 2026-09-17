@@ -122,26 +122,6 @@ use_repo(
     "intrinsic_llvm_sysroot",
 )
 
-http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
-
-http_file(
-    name = "foundationpose_refine_onnx",
-    downloaded_file_path = "foundationpose_refine.onnx",
-    sha256 = "06ad19f2c3598cb76733feec084d3f6802e7ff143882ec42ba368df7e38ae094",
-    urls = [
-        "https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.0_onnx/files/refine_model.onnx",
-    ],
-)
-
-http_file(
-    name = "foundationpose_score_onnx",
-    downloaded_file_path = "foundationpose_score.onnx",
-    sha256 = "49a4f5f094358913670733ec31e856b96271c869f9949aa3a0361cf7cf8f0be8",
-    urls = [
-        "https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.0_onnx/files/score_model.onnx",
-    ],
-)
-
 llvm.sysroot(
     label = "@intrinsic_llvm_sysroot//:all_files",
     targets = ["linux-x86_64"],
@@ -222,6 +202,8 @@ use_repo(
 foundationpose_deps = use_extension("//third_party/foundationpose:deps.bzl", "foundationpose_deps")
 use_repo(
     foundationpose_deps,
+    "foundationpose_refine_onnx",
+    "foundationpose_score_onnx",
     "isaac_ros_pose_estimation",
     "patchelf",
 )

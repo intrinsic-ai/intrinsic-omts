@@ -64,7 +64,7 @@ intrinsic_solution(
         ":gripper_cmd_skill_asset",
         ":hande_gripper_service_asset",
         ":orbbec_gemini_driver_asset",
-        ":foundationpose_mlmodel",
+        "//src/foundationpose:foundationpose_mlmodel",
         ":rfdetr_mlmodel",
         "//models/raw_stock_2x3x5",
     ] + select({
@@ -323,36 +323,6 @@ intrinsic_mlmodel(
     id = "ai.intrinsic.ioc_pose_estimation.segmentor.rfdetr",
     model_files = {
         ":rfdetr_segmentation_onnx_file": "1/segmentation.onnx",
-    },
-)
-
-copy_file(
-    name = "foundationpose_refine_onnx_file",
-    src = "@foundationpose_refine_onnx//file",
-    out = "foundationpose_refine.onnx",
-    allow_symlink = True,
-)
-
-copy_file(
-    name = "foundationpose_score_onnx_file",
-    src = "@foundationpose_score_onnx//file",
-    out = "foundationpose_score.onnx",
-    allow_symlink = True,
-)
-
-intrinsic_mlmodel(
-    name = "foundationpose_mlmodel",
-    backend = "triton",
-    config = "//src/foundationpose:config.pbtxt",
-    description = "FoundationPose 6D object pose estimation model.",
-    display_name = "FoundationPose model weights",
-    id = "ai.intrinsic.ioc_pose_estimation.pose_estimator.foundationpose",
-    model_files = {
-        ":foundationpose_refine_onnx_file": "1/foundationpose_refine.onnx",
-        ":foundationpose_score_onnx_file": "1/foundationpose_score.onnx",
-        "//third_party/foundationpose:model.py": "1/model.py",
-        "//third_party/foundationpose:foundationpose_cpp_so": "1/foundationpose_cpp.so",
-        "//third_party/foundationpose:env_tar_gz": "env.tar.gz",
     },
 )
 
