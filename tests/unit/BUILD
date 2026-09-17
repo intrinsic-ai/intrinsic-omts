@@ -1,4 +1,4 @@
-load("@ioc//bazel:python.bzl", "py_test")
+load("@intrinsic-core//bazel:python.bzl", "py_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -45,7 +45,7 @@ py_test(
         "//src/hardware:robot",
         "//src/hardware:vision",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -63,7 +63,7 @@ py_test(
         "//src/hardware:robot",
         "//src/hardware:vision",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -75,8 +75,8 @@ py_test(
         "//src/hardware:robot",
         "//tools/jogging:move_to_frame_lib",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )
 
@@ -97,8 +97,8 @@ py_test(
     deps = [
         "//tools/jogging:store_frame_lib",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
-        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/math/python:data_types",
+        "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
@@ -120,7 +120,7 @@ py_test(
         "//src/hardware:gripper",
         "//tools/gripper:control_gripper_lib",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )
 
@@ -132,7 +132,7 @@ py_test(
         "//src/hardware:machine",
         "//tools/machine:control_machine_lib",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )
 
@@ -152,7 +152,7 @@ py_test(
         "//src/core:types",
         "//src/utils:execution_utils",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )
 
@@ -162,7 +162,7 @@ py_test(
     data = ["//configs:all_world_updates"],
     deps = [
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
+        "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
@@ -173,8 +173,8 @@ py_test(
         "//tools/calibration:calibrate_camera_lib",
         "//tools/world:apply_scene_updates_lib",
         "@com_google_absl_py//absl/testing:absltest",
+        "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
         "@intrinsic_apis//intrinsic/perception/proto/v1:camera_to_robot_calibration_py_pb2",
-        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
@@ -185,8 +185,8 @@ py_test(
         "//tools/calibration:update_robot_kinematics_lib",
         "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
         "@com_google_absl_py//absl/testing:absltest",
-        "@ioc//intrinsic/world/service/robot_calibration:robot_update_service_py_pb2",
-        "@ioc//intrinsic/world/service/robot_calibration:robot_update_service_py_pb2_grpc",
+        "@intrinsic-core//intrinsic/world/service/robot_calibration:robot_update_service_py_pb2",
+        "@intrinsic-core//intrinsic/world/service/robot_calibration:robot_update_service_py_pb2_grpc",
     ],
 )
 
@@ -198,11 +198,11 @@ py_test(
         "@com_google_absl_py//absl/testing:absltest",
         "@com_google_googleapis//google/longrunning:operations_py_proto",
         "@com_google_googleapis//google/rpc:status_py_proto",
+        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/service/ioc_train_service/proto:ioc_pose_estimator_params_py_pb2",
+        "@intrinsic-core//intrinsic/assets/proto:installed_assets_py_pb2",
         "@intrinsic_apis//intrinsic/assets/proto:view_py_pb2",
         "@intrinsic_apis//intrinsic/perception/proto/v1:train_service_py_pb2",
         "@intrinsic_apis//intrinsic/scene/proto/v1:scene_object_py_pb2",
-        "@ioc//incode/intrinsic_perception/intrinsic/perception/service/ioc_train_service/proto:ioc_pose_estimator_params_py_pb2",
-        "@ioc//intrinsic/assets/proto:installed_assets_py_pb2",
     ],
 )
 

@@ -1,4 +1,4 @@
-load("@ioc//bazel:python.bzl", "py_library")
+load("@intrinsic-core//bazel:python.bzl", "py_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -7,7 +7,7 @@ py_library(
     srcs = ["motions.py"],
     deps = [
         "//src/hardware:robot",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -22,7 +22,7 @@ py_library(
         "//src/hardware:machine",
         "//src/hardware:robot",
         "//src/hardware:vision",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -35,7 +35,7 @@ py_library(
         "//src/hardware:gripper",
         "//src/hardware:machine",
         "//src/hardware:robot",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -47,7 +47,7 @@ py_library(
         "//src/core:config",
         "//src/hardware:machine",
         "//src/hardware:robot",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -60,7 +60,7 @@ py_library(
         "//src/hardware:gripper",
         "//src/hardware:machine",
         "//src/hardware:robot",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -72,7 +72,7 @@ py_library(
         "//src/core:config",
         "//src/hardware:gripper",
         "//src/hardware:robot",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -91,7 +91,7 @@ py_library(
         "//src/hardware:machine",
         "//src/hardware:robot",
         "//src/hardware:vision",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 

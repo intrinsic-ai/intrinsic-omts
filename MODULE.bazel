@@ -13,15 +13,16 @@ module(name = "omts")
 # ioc-staging is currently private, and its binary assets are stored in Git LFS,
 # so fetching requires git credentials for the repository and a working
 # `git-lfs` installation. See README.md for setup.
-IOC_RELEASE = "v0.0.1-rc5"  # buildifier: disable=unused-variable
+IOC_RELEASE = "20260918.0"
 
-IOC_COMMIT = "4796ef493bfd800de072cec58ea155b43df8787d"
+IOC_COMMIT = "88714614d154e8aafcbbe9f52f306e729c91ef20"
 
 IOC_REMOTE = "https://github.com/intrinsic-ai/ioc-staging.git"
 
-bazel_dep(name = "insrc", repo_name = "ioc")
+
+bazel_dep(name = "intrinsic-core")
 git_override(
-    module_name = "insrc",
+    module_name = "intrinsic-core",
     commit = IOC_COMMIT,
     patch_strip = 1,
     patches = ["//bazel/patches:robotiq_hande_finger_offset.patch"],
@@ -30,10 +31,10 @@ git_override(
 
 bazel_dep(name = "intrinsic_apis", version = "0.0.1")
 git_override(
-    module_name = "intrinsic_apis",
-    commit = IOC_COMMIT,
-    remote = IOC_REMOTE,
-    strip_prefix = "incode/intrinsic_apis",
+   module_name = "intrinsic_apis",
+   commit = IOC_COMMIT,
+   remote = IOC_REMOTE,
+   strip_prefix = "incode/intrinsic_apis",
 )
 
 archive_override(
@@ -103,7 +104,7 @@ llvm.toolchain(
     llvm_version = "19.1.0",
 )
 
-non_module_deps = use_extension("@ioc//bazel:non_module_deps.bzl", "non_module_deps_ext")
+non_module_deps = use_extension("@intrinsic-core//bazel:non_module_deps.bzl", "non_module_deps_ext")
 use_repo(
     non_module_deps,
     "intrinsic_llvm_sysroot",

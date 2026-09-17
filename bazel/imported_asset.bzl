@@ -1,6 +1,6 @@
 """Bazel rule to import a pre-packaged asset bundle into Flowstate solutions."""
 
-load("@ioc//intrinsic/assets/build_defs:asset.bzl", "AssetInfo", "AssetLocalInfo")
+load("@intrinsic-core//intrinsic/assets/build_defs:asset.bzl", "AssetInfo", "AssetLocalInfo")
 
 def _imported_asset_bundle_impl(ctx):
     asset_info_output = ctx.actions.declare_file(ctx.label.name + ".asset_info.binpb")
@@ -62,7 +62,7 @@ imported_asset_bundle = rule(
             doc = "Asset type string (e.g. ASSET_TYPE_SERVICE, ASSET_TYPE_HARDWARE_DEVICE, ASSET_TYPE_SKILL).",
         ),
         "_assetlocalinfogen": attr.label(
-            default = Label("@ioc//intrinsic/assets/build_defs:assetlocalinfogen"),
+            default = Label("@intrinsic-core//intrinsic/assets/build_defs:assetlocalinfogen"),
             cfg = "exec",
             executable = True,
         ),
