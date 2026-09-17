@@ -16,6 +16,23 @@
 
 import enum
 from dataclasses import dataclass
+from typing import Any
+
+
+class Phase(enum.StrEnum):
+  """Ordered stages of one machine tending cycle."""
+
+  PICK = "pick"
+  LOAD = "load"
+  MACHINING = "machining"
+  UNLOAD = "unload"
+  RETURN = "return"
+
+  @property
+  def remaining(self) -> tuple["Phase", ...]:
+    """Returns this phase and every phase after it, in execution order."""
+    order = tuple(Phase)
+    return order[order.index(self) :]
 
 
 class PartState(enum.Enum):
@@ -38,13 +55,6 @@ class SlotState(enum.Enum):
   RESERVED = "reserved"
   PROCESSED = "processed"
   FAULT = "fault"
-
-
-class InfeedMode(enum.Enum):
-  """Infeed part localization and acquisition strategy."""
-
-  PERCEPTION = "perception"
-  GRID = "grid"
 
 
 class SimulationMode(enum.Enum):
@@ -82,6 +92,21 @@ class MachineDoorState(enum.Enum):
   ERROR = "error"
 
 
+class InfeedMode(enum.StrEnum):
+  """Acquisition mode for raw workpieces at the cell infeed."""
+
+  PERCEPTION = "perception"
+  GRID = "grid"
+
+
+class GripperState(enum.Enum):
+  """Commanded aperture of the end effector."""
+
+  OPEN = "open"
+  CLOSED = "closed"
+  UNKNOWN = "unknown"
+
+
 @dataclass(frozen=True)
 class Pose3D:
   """Represents a 3D Cartesian position and orientation quaternion.
@@ -104,6 +129,16 @@ class Pose3D:
   qz: float = 0.0
   qw: float = 1.0
 
+  @property
+  def position(self) -> tuple[float, float, float]:
+    """Returns (x, y, z) translation tuple."""
+    return (self.x, self.y, self.z)
+
+  @property
+  def orientation(self) -> tuple[float, float, float, float]:
+    """Returns (qx, qy, qz, qw) quaternion tuple."""
+    return (self.qx, self.qy, self.qz, self.qw)
+
   def to_translation_tuple(self) -> tuple[float, float, float]:
     """Returns (x, y, z) translation coordinates."""
     return (self.x, self.y, self.z)
@@ -111,6 +146,42 @@ class Pose3D:
   def to_quaternion_tuple(self) -> tuple[float, float, float, float]:
     """Returns (qx, qy, qz, qw) orientation values."""
     return (self.qx, self.qy, self.qz, self.qw)
+
+  def to_proto(self) -> Any:
+    """Converts this Pose3D into an intrinsic_proto.Pose protobuf message."""
+    from intrinsic.math.proto import point_pb2, pose_pb2, quaternion_pb2
+
+    return pose_pb2.Pose(
+      position=point_pb2.Point(x=self.x, y=self.y, z=self.z),
+      orientation=quaternion_pb2.Quaternion(
+        x=self.qx, y=self.qy, z=self.qz, w=self.qw
+      ),
+    )
+
+  @classmethod
+  def from_proto(cls, proto: Any) -> "Pose3D":
+    """Constructs a Pose3D from a Pose proto or data_types.Pose3 object."""
+    pos = getattr(proto, "position", None)
+    if pos is None:
+      pos = getattr(proto, "translation", None)
+    ori = getattr(proto, "orientation", None)
+    if ori is None:
+      rot = getattr(proto, "rotation", None)
+      ori = getattr(rot, "quaternion", None)
+    if pos is not None and ori is not None:
+      x = float(pos.x) if hasattr(pos, "x") else float(pos[0])
+      y = float(pos.y) if hasattr(pos, "y") else float(pos[1])
+      z = float(pos.z) if hasattr(pos, "z") else float(pos[2])
+      return cls(
+        x=x,
+        y=y,
+        z=z,
+        qx=float(ori.x),
+        qy=float(ori.y),
+        qz=float(ori.z),
+        qw=float(ori.w),
+      )
+    raise TypeError(f"Unsupported pose representation: {type(proto)}")
 
 
 @dataclass(frozen=True)
@@ -126,3 +197,20 @@ class JointPosition:
   def to_list(self) -> list[float]:
     """Returns joint angles as a list."""
     return list(self.positions)
+
+
+@dataclass(frozen=True)
+class Frames:
+  """World frame names the tending cycle drives to."""
+
+  root: str = "root"
+  view: str = "view"
+  transit: str = "transit"
+  machine_approach: str = "machine_approach"
+  infeed_pre_grasp: str = "infeed_pre_grasp"
+  infeed_grasp: str = "infeed_grasp"
+  vise_pre_place: str = "vise_pre_place"
+  vise_place: str = "vise_place"
+
+
+DEFAULT_FRAMES = Frames()

@@ -79,7 +79,7 @@ class Tray:
     return self._slots[row][col]
 
   def get_slot_relative_pose(self, row: int, col: int) -> Pose3D:
-    """Calculates relative 3D pose of slot (row, col) from the tray origin frame."""
+    """Calculates relative 3D pose of slot (row, col) from tray origin."""
     if not (0 <= row < self.rows and 0 <= col < self.cols):
       raise IndexError(
         f"Slot ({row}, {col}) out of bounds for tray '{self.name}'."
@@ -100,14 +100,16 @@ class Tray:
           return self._slots[r][c]
     return None
 
-  def populate_all_slots(self, part_cad_model: str = "raw_stock_2x3x5") -> None:
+  def populate_all_slots(
+    self, asset_id: str = "ai.intrinsic.raw_stock_2x3x5"
+  ) -> None:
     """Populates all slots with new raw stock workpieces."""
     for r in range(self.rows):
       for c in range(self.cols):
-        part_id = f"{self.name}_r{r}_c{c}"
+        part_name = f"{self.name}_r{r}_c{c}"
         self._slots[r][c].workpiece = Workpiece(
-          id=part_id,
-          cad_model_name=part_cad_model,
+          asset_id=asset_id,
+          object_name=part_name,
         )
         self._slots[r][c].state = SlotState.OCCUPIED
 

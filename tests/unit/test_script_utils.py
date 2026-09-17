@@ -16,16 +16,16 @@
 
 from absl.testing import absltest
 
-from src.utils import dynamic_frame_calculator
-from src.utils.dynamic_frame_calculator import (
-  calculate_and_update_dynamic_frames,
-)
+from src.utils import dynamic_frame_calculator, math_utils
 from src.utils.script_utils import load_python_script
 
 
 class ScriptUtilsTest(absltest.TestCase):
   def test_load_python_script_from_function(self):
-    code = load_python_script(calculate_and_update_dynamic_frames)
+    code = load_python_script(
+      dynamic_frame_calculator.calculate_and_update_dynamic_frames,
+      preludes=(math_utils,),
+    )
     self.assertIsInstance(code, str)
     self.assertIn("def calculate_and_update_dynamic_frames", code)
     self.assertIn("calculate_and_update_dynamic_frames(context, params)", code)
@@ -35,6 +35,7 @@ class ScriptUtilsTest(absltest.TestCase):
     code = load_python_script(
       dynamic_frame_calculator,
       function_name="calculate_and_update_dynamic_frames",
+      preludes=(math_utils,),
     )
     self.assertIsInstance(code, str)
     self.assertIn("def calculate_and_update_dynamic_frames", code)
@@ -44,6 +45,7 @@ class ScriptUtilsTest(absltest.TestCase):
     code = load_python_script(
       "src.utils.dynamic_frame_calculator",
       function_name="calculate_and_update_dynamic_frames",
+      preludes=(math_utils,),
     )
     self.assertIsInstance(code, str)
     self.assertIn("def calculate_and_update_dynamic_frames", code)
@@ -53,12 +55,36 @@ class ScriptUtilsTest(absltest.TestCase):
     code = load_python_script(
       dynamic_frame_calculator,
       call_args=None,
+      preludes=(math_utils,),
     )
     self.assertIsInstance(code, str)
     self.assertIn("def calculate_and_update_dynamic_frames", code)
     self.assertNotIn(
       "calculate_and_update_dynamic_frames(context, params)", code
     )
+
+  def test_sbl_scripts_are_hermetic(self):
+    """Ensures SBL script payloads avoid non-hermetic src.* imports."""
+    code = load_python_script(
+      dynamic_frame_calculator.calculate_and_update_dynamic_frames,
+      preludes=(math_utils,),
+    )
+    self.assertNotIn("from src", code)
+    self.assertNotIn("import src", code)
+    self.assertIn("def compute_top_down_grasp_quaternion", code)
+    compiled = compile(code, "<string>", "exec")
+    self.assertIsNotNone(compiled)
+
+  def test_prelude_is_stdlib_only(self):
+    """Asserts math_utils prelude has no non-hermetic src imports & compiles."""
+    with open(math_utils.__file__, encoding="utf-8") as f:
+      source = f.read()
+    for line in source.splitlines():
+      stripped = line.strip()
+      self.assertFalse(
+        stripped.startswith("from src") or stripped.startswith("import src"),
+        f"math_utils must not import from src: {line}",
+      )
 
 
 if __name__ == "__main__":

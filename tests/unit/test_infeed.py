@@ -16,9 +16,13 @@
 
 from absl.testing import absltest
 
-from src.core.infeed import GridInfeedStrategy, PerceptionInfeedStrategy
+from src.core.infeed import (
+  GridInfeedStrategy,
+  InfeedMode,
+  PerceptionInfeedStrategy,
+)
 from src.core.tray import Tray
-from src.core.types import InfeedMode, PartState
+from src.core.types import PartState
 
 
 class InfeedStrategyTest(absltest.TestCase):
@@ -33,11 +37,9 @@ class InfeedStrategyTest(absltest.TestCase):
 
     part1 = strategy.get_target_part()
     self.assertIsNotNone(part1)
-    self.assertEqual(part1.id, "workpiece_0")
+    self.assertEqual(part1.asset_id, "ai.intrinsic.test_object")
+    self.assertEqual(part1.object_name, "test_object")
     self.assertEqual(part1.state, PartState.RAW)
-
-    part2 = strategy.get_target_part()
-    self.assertEqual(part2.id, "workpiece_1")
 
   def test_grid_infeed_strategy(self):
     tray = Tray(
@@ -55,7 +57,7 @@ class InfeedStrategyTest(absltest.TestCase):
 
     part = strategy.get_target_part()
     self.assertIsNotNone(part)
-    self.assertEqual(part.id, "test_infeed_r0_c0")
+    self.assertEqual(part.object_name, "test_infeed_r0_c0")
 
 
 if __name__ == "__main__":

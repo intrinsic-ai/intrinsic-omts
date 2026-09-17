@@ -17,6 +17,7 @@ py_test(
     srcs = ["test_workpiece.py"],
     deps = [
         "//src/core:types",
+        "//src/core:workcell",
         "//src/core:workpiece",
         "@com_google_absl_py//absl/testing:absltest",
     ],
@@ -88,8 +89,51 @@ py_test(
     name = "test_script_utils",
     srcs = ["test_script_utils.py"],
     deps = [
+        "//src/core:world",
         "//src/utils:dynamic_frame_calculator",
+        "//src/utils:math_utils",
         "//src/utils:script_utils",
+        "@com_google_absl_py//absl/testing:absltest",
+    ],
+)
+
+py_test(
+    name = "test_script_math",
+    srcs = ["test_script_math.py"],
+    deps = [
+        "//src/utils:math_utils",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
+    ],
+)
+
+py_test(
+    name = "test_dynamic_frame_calculator",
+    srcs = ["test_dynamic_frame_calculator.py"],
+    deps = [
+        "//src/utils:dynamic_frame_calculator",
+        "//src/utils:math_utils",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
+    ],
+)
+
+py_test(
+    name = "test_world",
+    srcs = ["test_world.py"],
+    deps = [
+        "//src/core:types",
+        "//src/core:world",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+    ],
+)
+
+py_test(
+    name = "test_tree_diagnostics",
+    srcs = ["test_tree_diagnostics.py"],
+    deps = [
+        "//src/utils:tree_diagnostics",
         "@com_google_absl_py//absl/testing:absltest",
     ],
 )

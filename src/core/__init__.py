@@ -15,36 +15,52 @@
 """Core domain models for the Open Machine Tending Solution."""
 
 from src.core.infeed import (
-  GridInfeedStrategy,
+  InfeedMode,
   InfeedStrategy,
   PerceptionInfeedStrategy,
 )
 from src.core.tray import Tray, TraySlot
 from src.core.types import (
   FixtureState,
-  InfeedMode,
+  Frames,
+  GripperState,
   JointPosition,
   MachineDoorState,
   PartState,
+  Phase,
   Pose3D,
   SlotState,
 )
 from src.core.workcell import WorkcellState
 from src.core.workpiece import Workpiece
+from src.core.world import (
+  MockSolution,
+  MockWorld,
+  OfflineExecutive,
+  World,
+  WorldInterface,
+)
 
 __all__ = [
   "FixtureState",
-  "GridInfeedStrategy",
+  "Frames",
+  "GripperState",
   "InfeedMode",
   "InfeedStrategy",
   "JointPosition",
   "MachineDoorState",
+  "MockSolution",
+  "MockWorld",
+  "OfflineExecutive",
   "PartState",
   "PerceptionInfeedStrategy",
+  "Phase",
   "Pose3D",
   "SlotState",
   "Tray",
   "TraySlot",
   "WorkcellState",
   "Workpiece",
+  "World",
+  "WorldInterface",
 ]

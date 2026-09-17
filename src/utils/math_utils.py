@@ -12,12 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Math and geometric transform utility functions for OMTS."""
+"""Pure math and geometric orientation utility functions for OMTS."""
 
 import math
 from collections.abc import Sequence
+from typing import Any
 
-from src.core.types import Pose3D
+__all__ = [
+  "compute_top_down_grasp_quaternion",
+  "extract_in_plane_alignment_axis",
+  "normalize_angle",
+  "normalize_joint_angles",
+]
 
 
 def normalize_angle(angle: float) -> float:
@@ -30,23 +36,130 @@ def normalize_joint_angles(joint_angles: Sequence[float]) -> list[float]:
   return [normalize_angle(angle) for angle in joint_angles]
 
 
-def compute_euclidean_distance(pose_a: Pose3D, pose_b: Pose3D) -> float:
-  """Computes Euclidean translation distance between two 3D poses (meters)."""
-  dx = pose_a.x - pose_b.x
-  dy = pose_a.y - pose_b.y
-  dz = pose_a.z - pose_b.z
-  return math.sqrt(dx * dx + dy * dy + dz * dz)
+def extract_in_plane_alignment_axis(pose: Any) -> tuple[float, float, float]:
+  """Extracts deterministic in-plane alignment axis from pose or rotation.
+
+  Identifies which local axis is vertical (aligned with world Z) and selects
+  the appropriate in-plane axis according to workpiece conventions:
+  - When flat, local Y is vertical (max_z_idx = 1) -> local X is in-plane.
+  - If local X is vertical (max_z_idx = 0) -> local Y is in-plane.
+  - If local Z is vertical (max_z_idx = 2) -> local X is in-plane.
+
+  Args:
+    pose: 3D pose, rotation, or quaternion tuple.
+
+  Returns:
+    Normalized (vx, vy, 0.0) vector representing the planar alignment axis.
+  """
+  if hasattr(pose, "rotate_point"):
+    ax = [float(v) for v in pose.rotate_point([1.0, 0.0, 0.0])]
+    ay = [float(v) for v in pose.rotate_point([0.0, 1.0, 0.0])]
+    az = [float(v) for v in pose.rotate_point([0.0, 0.0, 1.0])]
+  elif hasattr(pose, "rotation"):
+    return extract_in_plane_alignment_axis(pose.rotation)
+  else:
+    if hasattr(pose, "quaternion"):
+      q = pose.quaternion
+      qx, qy, qz, qw = float(q.x), float(q.y), float(q.z), float(q.w)
+    elif hasattr(pose, "qx"):
+      qx, qy, qz, qw = (
+        float(pose.qx),
+        float(pose.qy),
+        float(pose.qz),
+        float(pose.qw),
+      )
+    elif isinstance(pose, (tuple, list)) and len(pose) == 4:
+      qx, qy, qz, qw = (
+        float(pose[0]),
+        float(pose[1]),
+        float(pose[2]),
+        float(pose[3]),
+      )
+    else:
+      return (1.0, 0.0, 0.0)
+
+    ax = [
+      1.0 - 2.0 * (qy * qy + qz * qz),
+      2.0 * (qx * qy + qz * qw),
+      2.0 * (qx * qz - qy * qw),
+    ]
+    ay = [
+      2.0 * (qx * qy - qz * qw),
+      1.0 - 2.0 * (qx * qx + qz * qz),
+      2.0 * (qy * qz + qx * qw),
+    ]
+    az = [
+      2.0 * (qx * qz + qy * qw),
+      2.0 * (qy * qz - qx * qw),
+      1.0 - 2.0 * (qx * qx + qy * qy),
+    ]
+
+  abs_z = [abs(ax[2]), abs(ay[2]), abs(az[2])]
+  max_z_idx = abs_z.index(max(abs_z))
+
+  if max_z_idx == 0:  # Local X is vertical
+    vx, vy = ay[0], ay[1]
+    if math.hypot(vx, vy) < 1e-6:
+      vx, vy = az[0], az[1]
+  elif max_z_idx == 1:  # Local Y is vertical (flat raw_stock)
+    vx, vy = ax[0], ax[1]
+    if math.hypot(vx, vy) < 1e-6:
+      vx, vy = az[0], az[1]
+  else:  # Local Z is vertical
+    vx, vy = ax[0], ax[1]
+    if math.hypot(vx, vy) < 1e-6:
+      vx, vy = ay[0], ay[1]
+
+  norm = math.hypot(vx, vy)
+  if norm > 1e-6:
+    return (vx / norm, vy / norm, 0.0)
+  return (1.0, 0.0, 0.0)
 
 
-def interpolate_poses(pose_a: Pose3D, pose_b: Pose3D, alpha: float) -> Pose3D:
-  """Linearly interpolates translation between pose_a and pose_b by alpha in [0, 1]."""
-  alpha = max(0.0, min(1.0, alpha))
-  return Pose3D(
-    x=pose_a.x + alpha * (pose_b.x - pose_a.x),
-    y=pose_a.y + alpha * (pose_b.y - pose_a.y),
-    z=pose_a.z + alpha * (pose_b.z - pose_a.z),
-    qx=pose_b.qx,
-    qy=pose_b.qy,
-    qz=pose_b.qz,
-    qw=pose_b.qw,
-  )
+def compute_top_down_grasp_quaternion(
+  target_pose: Any,
+  current_tool_q: tuple[float, float, float, float] | None = None,
+) -> tuple[float, float, float, float]:
+  """Computes best aligned top-down grasp quaternion minimizing wrist rotation.
+
+  Selects between the two antipodal top-down yaw orientations (yaw and yaw + pi)
+  by choosing whichever is closest in wrapped yaw to current_tool_q (at most 90
+  degrees rotation), and signs the quaternion to lie in the same S^3 hemisphere
+  as current_tool_q to prevent 360-degree wrist unwinds.
+
+  Args:
+    target_pose: Pose3D or rotation of the target object.
+    current_tool_q: Quaternion (qx, qy, qz, qw) of the current tool frame.
+
+  Returns:
+    A quaternion (qx, qy, qz, qw) representing the optimal grasp orientation.
+  """
+  vx, vy, _ = extract_in_plane_alignment_axis(target_pose)
+  yaw = math.atan2(vy, vx)
+
+  if current_tool_q is not None:
+    try:
+      cur_qx, cur_qy, _cur_qz, _cur_qw = (
+        float(current_tool_q[0]),
+        float(current_tool_q[1]),
+        float(current_tool_q[2]),
+        float(current_tool_q[3]),
+      )
+      cur_yaw = 2.0 * math.atan2(cur_qy, cur_qx)
+      d1 = abs(normalize_angle(yaw - cur_yaw))
+      d2 = abs(normalize_angle((yaw + math.pi) - cur_yaw))
+      best_yaw = yaw if d1 <= d2 else (yaw + math.pi)
+
+      half_psi = best_yaw / 2.0
+      qx = math.cos(half_psi)
+      qy = math.sin(half_psi)
+
+      dot = qx * cur_qx + qy * cur_qy
+      if dot < 0.0:
+        qx, qy = -qx, -qy
+      return (qx, qy, 0.0, 0.0)
+    except (TypeError, ValueError, IndexError):
+      pass
+
+  half_psi = yaw / 2.0
+  return (math.cos(half_psi), math.sin(half_psi), 0.0, 0.0)

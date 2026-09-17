@@ -12,138 +12,156 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Dynamic grasp and pre-grasp frame calculation for vision perception pipeline."""
+"""Dynamic grasp and pre-grasp frame calculation for perception pipeline."""
 
-import math
+import logging
+from collections.abc import Sequence
 from typing import Any
 
 from intrinsic.math.python import data_types
 
+from src.utils.math_utils import compute_top_down_grasp_quaternion
+
+
+def _resolve_camera_transform(
+  world: Any, parent_obj: Any, camera_name: str
+) -> data_types.Pose3 | None:
+  """Resolves the camera sensor transform relative to parent_obj."""
+  cam_obj = getattr(world, camera_name, None)
+  target = (
+    getattr(cam_obj, "sensor", cam_obj) if cam_obj is not None else camera_name
+  )
+  tf = world.get_transform(parent_obj, target)
+  return estimate_to_pose(tf) if tf is not None else None
+
+
+def estimate_to_pose(est: Any) -> data_types.Pose3:
+  """Converts a perception estimate or pose into data_types.Pose3."""
+  if isinstance(est, data_types.Pose3):
+    return est
+  target = getattr(est, "root_t_target", None) or getattr(
+    est, "pose_t_target", est
+  )
+  pos = target.position
+  ori = getattr(target, "orientation", None) or target.rotation.quaternion
+  return data_types.Pose3(
+    data_types.Rotation3(
+      data_types.Quaternion(
+        [float(ori.x), float(ori.y), float(ori.z), float(ori.w)]
+      )
+    ),
+    [float(pos.x), float(pos.y), float(pos.z)],
+  )
+
+
+def _extract_target_estimate(params: Any) -> data_types.Pose3 | None:
+  """Extracts the highest-confidence FoundationPose estimate."""
+  raw = getattr(params, "estimates", None)
+  if raw is None:
+    est_res = getattr(params, "estimate_result", None)
+    raw = getattr(est_res, "estimates", None) if est_res is not None else None
+
+  if not isinstance(raw, (list, tuple, Sequence)) or isinstance(
+    raw, (str, bytes)
+  ):
+    return None
+
+  valid = [e for e in raw if float(getattr(e, "score", 0.0)) < 0.0]
+  if not valid:
+    logging.warning("No confident negative FoundationPose estimates found.")
+    return None
+
+  valid.sort(key=lambda e: float(getattr(e, "score", 0.0)))
+  return estimate_to_pose(valid[0])
+
+
+def _sync_frame(
+  world: Any, parent_obj: Any, frame_name: str, pose: data_types.Pose3
+) -> None:
+  """Creates or updates a dynamic frame on parent_obj in ObjectWorld."""
+  existing = (
+    set(str(f) for f in parent_obj.list_frames())
+    if hasattr(parent_obj, "list_frames")
+    else set()
+  )
+  if frame_name in existing or hasattr(parent_obj, frame_name):
+    frame_node = getattr(parent_obj, frame_name)
+    world.update_transform(node_a=parent_obj, node_b=frame_node, a_t_b=pose)
+  else:
+    world.create_frame(
+      frame_name=frame_name, parent=parent_obj, parent_t_frame=pose
+    )
+
+
+def _resolve_current_tool_quaternion(
+  world: Any, parent_obj: Any
+) -> tuple[float, float, float, float] | None:
+  """Resolves the active tool frame quaternion relative to parent_obj."""
+  tool_obj = getattr(world, "gripper", None)
+  tool_node = getattr(tool_obj, "tool_frame", None) if tool_obj else None
+  if tool_node is not None:
+    tf = world.get_transform(parent_obj, tool_node)
+    if tf is not None:
+      q = tf.rotation.quaternion
+      return (float(q.x), float(q.y), float(q.z), float(q.w))
+  return None
+
 
 def calculate_and_update_dynamic_frames(context: Any, params: Any) -> None:
-  """Calculates workpiece grasp frames and injects them into the SBL ObjectWorld.
-
-  Aligns gripper Z rotation with the short side of the workpiece based on
-  detected 6D pose and the current robot tool frame, and updates pre_grasp
-  and grasp frames in the active belief world.
-
-  Args:
-      context: SBL BT PythonScript execution context providing `object_world`.
-      params: Dynamic parameters protobuf containing detected pose and frame
-        names.
-  """
+  """Calculates workpiece grasp frames and updates SBL ObjectWorld."""
   world = context.object_world
-  parent_obj = getattr(
-    world, params.parent_object, getattr(world, "root", None)
-  )
+  parent_name = getattr(params, "parent_object", "root") or "root"
+  parent_obj = getattr(world, parent_name, getattr(world, "root", None))
 
-  # Resolve camera sensor transform in parent object (root)
-  camera_obj = getattr(world, params.camera_name, None)
-  if camera_obj is None:
-    for obj_name in ["ur_module", "robot", "root"]:
-      p = getattr(world, obj_name, None)
-      if p is not None and hasattr(p, params.camera_name):
-        camera_obj = getattr(p, params.camera_name)
-        break
+  cam_pose = _extract_target_estimate(params)
+  if cam_pose is None:
+    return
 
-  camera_sensor_node = (
-    getattr(camera_obj, "sensor", camera_obj) if camera_obj else None
-  )
-  root_t_camera = (
-    world.get_transform(parent_obj, camera_sensor_node)
-    if camera_sensor_node
-    else None
-  )
+  camera_name = getattr(params, "camera_name", "") or "orbbec_camera"
+  root_t_camera = _resolve_camera_transform(world, parent_obj, camera_name)
+  if root_t_camera is None:
+    raise ValueError(f"Camera transform for '{camera_name}' not found in world")
 
-  # Construct detected pose in camera frame
-  cam_q = data_types.Quaternion(
-    [params.ori_x, params.ori_y, params.ori_z, params.ori_w]
-  )
-  cam_pose = data_types.Pose3(
-    data_types.Rotation3(cam_q), [params.pos_x, params.pos_y, params.pos_z]
-  )
-
-  if root_t_camera is not None:
-    root_t_target = root_t_camera * cam_pose
-  else:
-    root_t_target = cam_pose
-
+  root_t_target = root_t_camera * cam_pose
   target_pos = root_t_target.translation
   target_rot = root_t_target.rotation
 
-  # Determine longest axis alignment in root XY plane:
-  # Local X is the longest axis (5"), local Z is the medium axis (3"), local Y is the thickness (2").
-  ax = target_rot.rotate_point([1.0, 0.0, 0.0])
-  az = target_rot.rotate_point([0.0, 0.0, 1.0])
-
-  if abs(float(ax[2])) < 0.7:
-    vx, vy = float(ax[0]), float(ax[1])
-  else:
-    vx, vy = float(az[0]), float(az[1])
-
-  theta_longest = math.atan2(vy, vx)
-  # Grasp on the short side of the workpiece (rotated 90° around Z relative to long-side grasp):
-  psi = theta_longest
-
-  half_psi = psi / 2.0
-  c1 = (math.cos(half_psi), math.sin(half_psi), 0.0, 0.0)
-  c2 = (-math.sin(half_psi), math.cos(half_psi), 0.0, 0.0)
-  candidates = [
-    c1,
-    (-c1[0], -c1[1], 0.0, 0.0),
-    c2,
-    (-c2[0], -c2[1], 0.0, 0.0),
-  ]
-
-  tool_obj = getattr(world, "gripper", None)
-  tool_node = getattr(tool_obj, "tool_frame", None) if tool_obj else None
-  cur_tool_tf = (
-    world.get_transform(parent_obj, tool_node) if tool_node else None
-  )
-
-  if cur_tool_tf is not None:
-    cur_q = cur_tool_tf.rotation.quaternion
-    grasp_ori = max(
-      candidates,
-      key=lambda c: (
-        c[0] * float(cur_q.x)
-        + c[1] * float(cur_q.y)
-        + c[2] * float(cur_q.z)
-        + c[3] * float(cur_q.w)
-      ),
+  min_safe_z = getattr(params, "min_safe_z", None)
+  if min_safe_z is not None and float(target_pos[2]) < float(min_safe_z):
+    raise ValueError(
+      f"Calculated workpiece target Z ({float(target_pos[2]):.4f}m) is below "
+      f"minimum safe height min_safe_z ({float(min_safe_z):.4f}m)."
     )
-  else:
-    grasp_ori = c1
 
-  grasp_pos = (float(target_pos[0]), float(target_pos[1]), float(target_pos[2]))
-  pregrasp_pos = (
-    float(target_pos[0]),
-    float(target_pos[1]),
-    float(target_pos[2]) + params.approach_offset_z,
-  )
-
-  frame_poses = {
-    params.pregrasp_frame_name: (pregrasp_pos, grasp_ori),
-    params.grasp_frame_name: (grasp_pos, grasp_ori),
-  }
-
-  existing_frames = set()
-  if hasattr(parent_obj, "list_frames"):
-    existing_frames = set(parent_obj.list_frames())
-  elif hasattr(parent_obj, "__dict__"):
-    existing_frames = set(parent_obj.__dict__.keys())
-
-  for fname, (pos, ori) in frame_poses.items():
-    pose = data_types.Pose3(
-      data_types.Rotation3(
-        data_types.Quaternion([ori[0], ori[1], ori[2], ori[3]])
-      ),
-      [pos[0], pos[1], pos[2]],
+  target_id = getattr(params, "target_scene_object_id", "")
+  if target_id:
+    target_obj = getattr(world, target_id, None) or getattr(
+      world, target_id.split(".")[-1], None
     )
-    if fname in existing_frames or hasattr(parent_obj, fname):
-      frame_node = getattr(parent_obj, fname)
-      world.update_transform(node_a=parent_obj, node_b=frame_node, a_t_b=pose)
-    else:
-      world.create_frame(
-        frame_name=fname, parent=parent_obj, parent_t_frame=pose
+    if target_obj is not None:
+      actual_parent = (
+        getattr(target_obj, "parent", None)
+        or getattr(target_obj, "parent_object", None)
+        or parent_obj
       )
+      world.update_transform(
+        node_a=actual_parent, node_b=target_obj, a_t_b=root_t_target
+      )
+
+  current_tool_q = _resolve_current_tool_quaternion(world, parent_obj)
+  grasp_ori = compute_top_down_grasp_quaternion(target_rot, current_tool_q)
+  grasp_rot = data_types.Rotation3(data_types.Quaternion(list(grasp_ori)))
+
+  approach_offset_z = float(getattr(params, "approach_offset_z", 0.08))
+  gx, gy, gz = float(target_pos[0]), float(target_pos[1]), float(target_pos[2])
+
+  grasp_pose = data_types.Pose3(grasp_rot, [gx, gy, gz])
+  pregrasp_pose = data_types.Pose3(grasp_rot, [gx, gy, gz + approach_offset_z])
+
+  pregrasp_name = (
+    getattr(params, "pregrasp_frame_name", None) or "infeed_pre_grasp"
+  )
+  grasp_name = getattr(params, "grasp_frame_name", None) or "infeed_grasp"
+
+  _sync_frame(world, parent_obj, pregrasp_name, pregrasp_pose)
+  _sync_frame(world, parent_obj, grasp_name, grasp_pose)
