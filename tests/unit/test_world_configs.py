@@ -73,6 +73,8 @@ def _load_updates_proto(
 
 
 class WorldUpdateConfigsTest(absltest.TestCase):
+  """Tests for world update configuration files."""
+
   def test_configs_are_present(self):
     # Guards against the glob silently matching nothing, which would make
     # every other assertion in this file vacuous.

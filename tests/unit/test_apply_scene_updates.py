@@ -75,7 +75,7 @@ class ApplySceneUpdatesTest(absltest.TestCase):
   def test_main_skips_sim_reset_when_disabled(
     self, mock_apply_file: mock.MagicMock, mock_connect: mock.MagicMock
   ) -> None:
-    """Tests that simulation reset is skipped when --no-reset_sim is provided."""
+    """Tests that sim reset is skipped when --no-reset_sim is provided."""
     mock_solution = mock.MagicMock()
     mock_solution.is_simulated = True
     mock_solution.simulator = mock.MagicMock()
