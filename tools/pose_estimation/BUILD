@@ -1,4 +1,4 @@
-load("@ioc//bazel:python.bzl", "py_binary")
+load("@ioc//bazel:python.bzl", "py_binary", "py_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -19,8 +19,8 @@ py_binary(
     ],
 )
 
-py_binary(
-    name = "register_using_train_service",
+py_library(
+    name = "register_using_train_service_lib",
     srcs = ["register_using_train_service.py"],
     deps = [
         "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
@@ -40,7 +40,17 @@ py_binary(
         "@ioc//incode/intrinsic_perception/intrinsic/perception/service/ioc_train_service:ioc_train_service_lib",
         "@ioc//incode/intrinsic_perception/intrinsic/perception/service/ioc_train_service/proto:ioc_pose_estimator_params_py_pb2",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
+        "@ioc//intrinsic/assets:id_utils_py",
         "@ioc//intrinsic/assets/proto:installed_assets_pb2_grpc",
         "@ioc//intrinsic/assets/proto:installed_assets_py_pb2",
+    ],
+)
+
+py_binary(
+    name = "register_using_train_service",
+    srcs = ["register_using_train_service.py"],
+    main = "register_using_train_service.py",
+    deps = [
+        ":register_using_train_service_lib",
     ],
 )

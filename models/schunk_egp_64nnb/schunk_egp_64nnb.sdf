@@ -16,6 +16,7 @@ limitations under the License.
 -->
 <sdf xmlns:intrinsic="https://intrinsic.ai/" version="1.9">
   <model name="schunk_egp_64nnb">
+    <static>true</static>
     <link name="base_link">
       <visual name="base_visual">
         <geometry>
@@ -147,7 +148,7 @@ limitations under the License.
       </collision>
     </link>
     <joint name="jaw_l_link_joint_prismatic" type="prismatic">
-      <pose relative_to="base_link">0.0 0.0 0.0 0 0 0</pose>
+      <pose relative_to="base_link">-0.01 0.0 0.0 0 0 0</pose>
       <parent>base_link</parent>
       <child>jaw_l_link</child>
       <axis>
@@ -159,7 +160,7 @@ limitations under the License.
       </axis>
     </joint>
     <joint name="jaw_r_link_joint_prismatic" type="prismatic">
-      <pose relative_to="base_link">0.0 0.0 0.0 0 0 0</pose>
+      <pose relative_to="base_link">0.01 0.0 0.0 0 0 0</pose>
       <parent>base_link</parent>
       <child>jaw_r_link</child>
       <axis>

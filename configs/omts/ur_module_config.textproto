@@ -1,0 +1,18 @@
+[type.googleapis.com/intrinsic_proto.icon.HardwareModuleConfig]:  {
+  module_config:  {
+    [type.googleapis.com/intrinsic_proto.icon.UniversalRobotsModuleConfig]:  {
+      robot_ip:  "192.170.10.100"
+      default_advanced_control:  {}
+    }
+  }
+  drives_realtime_clock:  true
+  simulation_module_config:  {
+    additional_devices:  {
+      name:  "analog_input"
+      analog_input:  {
+        num_inputs:  2
+      }
+    }
+  }
+  control_frequency_hz:  500
+}

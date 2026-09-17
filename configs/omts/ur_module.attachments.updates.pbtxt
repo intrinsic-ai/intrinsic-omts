@@ -21,45 +21,6 @@ updates: {
   update_transform {
     node_a {
       by_name {
-        object {
-          object_name: "enclosure"
-        }
-      }
-    }
-    node_b {
-      by_name {
-        object {
-          object_name: "ur_module"
-        }
-      }
-    }
-    node_to_update: {
-      by_name {
-        object {
-          object_name: "ur_module"
-        }
-      }
-    }
-    a_t_b {
-      position {
-        x: 0.32
-        y: 0.685
-        z: 0.658
-      }
-      orientation {
-        x: 0
-        y: 0
-        z: 1
-        w: 0
-      }
-    }
-  }
-}
-
-updates: {
-  update_transform {
-    node_a {
-      by_name {
         frame: {
           object_name: "ur_module"
           frame_name: "flange"
@@ -84,7 +45,7 @@ updates: {
       position {
         x: 0
         y: 0
-        z: 0
+        z: 0.064
       }
       orientation {
         x: 0
@@ -125,7 +86,7 @@ updates: {
       position {
         x: 0
         y: 0
-        z: 0.128
+        z: 0.155
       }
       orientation {
         x: 0

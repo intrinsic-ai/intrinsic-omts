@@ -57,10 +57,10 @@ bazel run //tools/world:apply_scene_updates -- --address=localhost:17080
 ```
 
 * **Files applied by default:**
-  * [`configs/ur_module.attachments.updates.pbtxt`](../configs/ur_module.attachments.updates.pbtxt) (robot mounting, gripper, and tool frame attachments).
-  * [`configs/lab_bb_01_orbbec_gemini.updates.pbtxt`](../configs/lab_bb_01_orbbec_gemini.updates.pbtxt) (camera wrist mounting and flange parentage).
-  * [`configs/scene.updates.pbtxt`](../configs/scene.updates.pbtxt) (pre-defined scene frames: `view`, `pre_grasp`, `grasp`, `machine_approach`, `pre_place_vise`, `place_vise`).
-  * [`configs/align_robot.updates.pbtxt`](../configs/align_robot.updates.pbtxt) (base mounting pose).
+  * [`configs/common/ur_module.attachments.updates.pbtxt`](../configs/common/ur_module.attachments.updates.pbtxt) (robot mounting, gripper, and tool frame attachments).
+  * [`configs/omts/orbbec_gemini.updates.pbtxt`](../configs/omts/orbbec_gemini.updates.pbtxt) (camera wrist mounting and flange parentage). The lab_bb_01 cell has its own at [`configs/lab_bb_01/orbbec_gemini.updates.pbtxt`](../configs/lab_bb_01/orbbec_gemini.updates.pbtxt).
+  * [`configs/omts/scene.updates.pbtxt`](../configs/omts/scene.updates.pbtxt) (pre-defined scene frames: `view`, `pre_grasp`, `grasp`, `machine_approach`, `vise_pre_place`, `vise_place`).
+  * [`configs/omts/align_robot.updates.pbtxt`](../configs/omts/align_robot.updates.pbtxt) (base mounting pose).
 * **Automated Cleanup:** Checks for and deletes stale `detected_workpiece` objects to prevent SBL name collisions.
 
 > [!CRITICAL]
@@ -95,7 +95,7 @@ bazel run //tools/jogging:move_to_frame -- --address=localhost:17080 --frame=pre
 ```
 
 ### D. Gripper Controller (`tools/gripper:control_gripper`)
-Commands robotic end-effectors (Robotiq Hand-e, DIO, sideloaded, or mock) via interactive CLI menu or direct command-line arguments:
+Commands robotic end-effectors (Robotiq Hand-e, DIO, or mock) via interactive CLI menu or direct command-line arguments:
 
 ```bash
 # Interactive terminal menu (open, close, quit)
