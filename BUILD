@@ -325,4 +325,3 @@ intrinsic_mlmodel(
         ":rfdetr_segmentation_onnx_file": "1/segmentation.onnx",
     },
 )
-

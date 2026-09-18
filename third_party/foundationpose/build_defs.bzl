@@ -25,30 +25,6 @@ py312_transition = transition(
     outputs = ["@rules_python//python/config_settings:python_version"],
 )
 
-def _py312_file_impl(ctx):
-    out = ctx.actions.declare_file(ctx.attr.out)
-    src_file = ctx.files.src[0]
-    ctx.actions.symlink(
-        output = out,
-        target_file = src_file,
-    )
-    return [DefaultInfo(files = depset([out]))]
-
-py312_file = rule(
-    implementation = _py312_file_impl,
-    attrs = {
-        "out": attr.string(mandatory = True),
-        "src": attr.label(
-            mandatory = True,
-            allow_files = True,
-            cfg = py312_transition,
-        ),
-        "_allowlist_function_transition": attr.label(
-            default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
-        ),
-    },
-)
-
 def _triton_python_env_tar_impl(ctx):
     out = ctx.actions.declare_file(ctx.attr.out)
     args = ctx.actions.args()
@@ -70,6 +46,7 @@ def _triton_python_env_tar_impl(ctx):
 
 triton_python_env_tar = rule(
     implementation = _triton_python_env_tar_impl,
+    cfg = py312_transition,
     attrs = {
         "out": attr.string(mandatory = True),
         "patchelf": attr.label(
@@ -84,7 +61,6 @@ triton_python_env_tar = rule(
         "wheels": attr.label_list(
             default = all_whl_requirements,
             allow_files = [".whl"],
-            cfg = py312_transition,
         ),
         "_allowlist_function_transition": attr.label(
             default = "@bazel_tools//tools/allowlists/function_transition_allowlist",

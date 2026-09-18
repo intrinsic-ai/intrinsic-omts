@@ -17,8 +17,10 @@ load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("@rules_license//rules:license.bzl", "license")
 load("@rules_license//rules:package_info.bzl", "package_info")
 load("@rules_python//python:defs.bzl", "py_binary")
-load("@rules_python//python/pip_install:requirements.bzl", "compile_pip_requirements")
-load(":build_defs.bzl", "py312_file", "triton_python_env_tar")
+load("@rules_uv//uv:pip.bzl", "pip_compile")
+
+# load("@rules_python//python/pip_install:requirements.bzl", "compile_pip_requirements")
+load(":build_defs.bzl", "triton_python_env_tar")
 
 package(
     default_applicable_licenses = [":license"],
@@ -44,14 +46,28 @@ exports_files([
     "LICENSE",
     "isaac_ros_pose_estimation.BUILD",
     "model.py",
-    "patchelf.BUILD",
-    "requirements_lock.txt",
+    "requirements.in",
+    "requirements.txt",
 ])
 
-compile_pip_requirements(
+# compile_pip_requirements(
+#     name = "requirements",
+#     src = "requirements.in",
+#     requirements_txt = ":requirements.txt",
+# )
+
+pip_compile(
     name = "requirements",
-    src = "requirements.in",
-    requirements_txt = "requirements_lock.txt",
+    # data = ["//:pyproject.toml"],
+    # extra_args = [
+    #     "pyproject.toml",
+    # ],
+    requirements_in = ":requirements.in",
+    requirements_txt = ":requirements.txt",
+    # Disable the automatically generated test target as it is slow, requires
+    # network access and adds unnecessary dependencies on external services we
+    # do not control.
+    tags = ["manual"],
 )
 
 py_binary(
@@ -69,7 +85,6 @@ cuda_library(
         "cpp/foundationpose_render.cu.hpp",
         "cpp/foundationpose_utils.hpp",
     ],
-    alwayslink = True,
     copts = ["-DPYBIND11"],
     includes = ["cpp"],
     deps = [
@@ -77,10 +92,11 @@ cuda_library(
         "@cuda//:cuda_headers",
         "@isaac_ros_pose_estimation//:nvdiffrast",
     ],
+    alwayslink = True,
 )
 
 cc_binary(
-    name = "foundationpose_cpp_raw.so",
+    name = "foundationpose_cpp.so",
     srcs = [
         "cpp/foundationpose_binding.cpp",
         "cpp/foundationpose_render.cu.hpp",
@@ -108,18 +124,12 @@ cc_binary(
         "@com_gitlab_libeigen_eigen//:eigen",
         "@cuda//:cuda_runtime_static",
         "@isaac_ros_pose_estimation//:nvdiffrast",
-        "@pybind11//:pybind11",
+        "@pybind11",
     ],
-)
-
-py312_file(
-    name = "foundationpose_cpp_so",
-    out = "foundationpose_cpp.so",
-    src = ":foundationpose_cpp_raw.so",
 )
 
 triton_python_env_tar(
     name = "env_tar_gz",
     out = "env.tar.gz",
-    so_file = ":foundationpose_cpp_so",
+    so_file = ":foundationpose_cpp.so",
 )

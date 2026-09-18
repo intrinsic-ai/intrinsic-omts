@@ -70,6 +70,7 @@ bazel_dep(name = "pybind11_bazel", version = "3.0.1")
 bazel_dep(name = "rules_cc", version = "0.2.22")
 bazel_dep(name = "rules_cuda", version = "0.3.0")
 bazel_dep(name = "rules_python", version = "1.9.2")
+bazel_dep(name = "rules_uv", version = "0.89.2")
 bazel_dep(name = "toolchains_llvm", version = "1.6.0")
 bazel_dep(name = "googleapis", version = "0.0.0-20260728-b8486a2f", repo_name = "com_google_googleapis")
 bazel_dep(name = "protobuf", version = "32.1", repo_name = "com_google_protobuf")
@@ -90,7 +91,6 @@ python.toolchain(
 
 internal_configure = use_extension("@pybind11_bazel//:internal_configure.bzl", "internal_configure_extension")
 use_repo(internal_configure, "pybind11")
-
 
 cuda = use_extension("@rules_cuda//cuda:extensions.bzl", "toolchain")
 cuda.redist_json(
@@ -213,10 +213,9 @@ pip.parse(
     experimental_index_url = "https://pypi.org/simple",
     hub_name = "foundationpose_pip_deps",
     python_version = "3.12",
-    requirements_lock = "//third_party/foundationpose:requirements_lock.txt",
+    requirements_lock = "//third_party/foundationpose:requirements.txt",
     target_platforms = [
         "linux_x86_64",
     ],
 )
 use_repo(pip, "foundationpose_pip_deps")
-

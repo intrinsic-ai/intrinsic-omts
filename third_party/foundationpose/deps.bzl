@@ -33,7 +33,7 @@ def _foundationpose_deps_impl(_ctx):
 
     http_archive(
         name = "patchelf",
-        build_file = "//third_party/foundationpose:patchelf.BUILD",
+        build_file_content = 'exports_files(["bin/patchelf"])\n',
         sha256 = "ce84f2447fb7a8679e58bc54a20dc2b01b37b5802e12c57eece772a6f14bf3f0",
         urls = [
             "https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz",

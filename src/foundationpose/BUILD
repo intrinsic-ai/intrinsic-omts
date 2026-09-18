@@ -32,7 +32,6 @@ exports_files([
         ("refine_onnx", "@foundationpose_refine_onnx//file", "foundationpose_refine.onnx"),
         ("score_onnx", "@foundationpose_score_onnx//file", "foundationpose_score.onnx"),
         ("model_py", "//third_party/foundationpose:model.py", "model.py"),
-        ("cpp_so", "//third_party/foundationpose:foundationpose_cpp_so", "foundationpose_cpp.so"),
         ("env_tar_gz", "//third_party/foundationpose:env_tar_gz", "env.tar.gz"),
     ]
 ]
@@ -48,7 +47,6 @@ intrinsic_mlmodel(
         ":refine_onnx": "1/foundationpose_refine.onnx",
         ":score_onnx": "1/foundationpose_score.onnx",
         ":model_py": "1/model.py",
-        ":cpp_so": "1/foundationpose_cpp.so",
         ":env_tar_gz": "env.tar.gz",
     },
 )
