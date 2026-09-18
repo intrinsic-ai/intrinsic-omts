@@ -20,12 +20,6 @@ from collections.abc import Sequence
 import grpc
 from absl import app, flags
 from google.longrunning import operations_pb2
-from incode.intrinsic_perception.intrinsic.perception.service.ioc_train_service.proto import (
-  ioc_pose_estimator_params_pb2,
-)
-from incode.intrinsic_perception.intrinsic.perception.service.ioc_train_service.service import (
-  ioc_train_service,
-)
 from intrinsic.assets import id_utils
 from intrinsic.assets.proto import (
   id_pb2,
@@ -42,6 +36,12 @@ from intrinsic.perception.proto.v1 import (
 )
 from intrinsic.scene.proto.v1 import scene_object_pb2
 from intrinsic.solutions import deployments
+from intrinsic_perception.intrinsic.perception.service.ioc_train_service.proto import (
+  ioc_pose_estimator_params_pb2,
+)
+from intrinsic_perception.intrinsic.perception.service.ioc_train_service.service import (
+  ioc_train_service,
+)
 
 _VERSION = "0.0.1"
 
