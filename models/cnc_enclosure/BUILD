@@ -5,5 +5,5 @@ package(default_visibility = ["//visibility:public"])
 intrinsic_scene_object(
     name = "cnc_enclosure",
     manifest = ":cnc_enclosure_manifest.textproto",
-    scene_object = "@ioc//incode/intrinsic_sdk/intrinsic/resources/catalog/resourcedata/product/imts:cnc_enclosure",
+    scene_object = "@ioc//intrinsic/resources/catalog/resourcedata/product/imts:cnc_enclosure",
 )
