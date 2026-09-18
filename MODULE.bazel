@@ -205,7 +205,6 @@ use_repo(
     "foundationpose_refine_onnx",
     "foundationpose_score_onnx",
     "isaac_ros_pose_estimation",
-    "patchelf",
 )
 
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
@@ -218,4 +217,8 @@ pip.parse(
         "linux_x86_64",
     ],
 )
-use_repo(pip, "foundationpose_pip_deps")
+use_repo(
+    pip,
+    "ai_intrinsic_sdks_pip_deps",
+    "foundationpose_pip_deps",
+)

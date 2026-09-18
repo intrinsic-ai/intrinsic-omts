@@ -20,23 +20,12 @@ def _foundationpose_deps_impl(_ctx):
     http_archive(
         name = "isaac_ros_pose_estimation",
         build_file = "//third_party/foundationpose:isaac_ros_pose_estimation.BUILD",
-        patch_cmds = [
-            "sed -i 's/%lanemask_/%%lanemask_/g' isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/Util.inl",
-            "sed -i 's/^void \\(.*RasterKernel\\|triangleSetupKernel\\)/__global__ void \\1/' isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/RasterImpl.cpp",
-        ],
+        patch_args = ["-p1"],
+        patches = ["//third_party/foundationpose:nvdiffrast.patch"],
         sha256 = "5339cf3cfe04a53785926058032a9dac293879cb9f0812dc98f06610cbc4dd93",
         strip_prefix = "isaac_ros_pose_estimation-9caca619bcc9d637b3107e17c1a77132c9d7863b",
         urls = [
             "https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_pose_estimation/archive/9caca619bcc9d637b3107e17c1a77132c9d7863b.tar.gz",
-        ],
-    )
-
-    http_archive(
-        name = "patchelf",
-        build_file_content = 'exports_files(["bin/patchelf"])\n',
-        sha256 = "ce84f2447fb7a8679e58bc54a20dc2b01b37b5802e12c57eece772a6f14bf3f0",
-        urls = [
-            "https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz",
         ],
     )
 

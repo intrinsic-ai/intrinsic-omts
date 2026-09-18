@@ -29,13 +29,12 @@ def _triton_python_env_tar_impl(ctx):
     out = ctx.actions.declare_file(ctx.attr.out)
     args = ctx.actions.args()
     args.add("--output", out)
-    args.add("--patchelf", ctx.file.patchelf)
     args.add("--so-file", ctx.file.so_file)
     for whl in ctx.files.wheels:
         args.add("--wheel", whl)
 
     ctx.actions.run(
-        inputs = [ctx.file.patchelf, ctx.file.so_file] + ctx.files.wheels,
+        inputs = [ctx.file.so_file] + ctx.files.wheels,
         outputs = [out],
         executable = ctx.executable._builder,
         arguments = [args],
@@ -49,11 +48,6 @@ triton_python_env_tar = rule(
     cfg = py312_transition,
     attrs = {
         "out": attr.string(mandatory = True),
-        "patchelf": attr.label(
-            default = "@patchelf//:bin/patchelf",
-            allow_single_file = True,
-            cfg = "exec",
-        ),
         "so_file": attr.label(
             mandatory = True,
             allow_single_file = True,

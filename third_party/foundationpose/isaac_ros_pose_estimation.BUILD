@@ -51,6 +51,7 @@ cuda_library(
     hdrs = glob([
         "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/**/*.h",
         "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/**/*.hpp",
+        "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/**/*.cuh",
         "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/**/*.inl",
     ]),
     alwayslink = True,

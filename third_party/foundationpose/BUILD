@@ -44,12 +44,17 @@ exports_files([
     "LICENSE",
     "isaac_ros_pose_estimation.BUILD",
     "model.py",
+    "nvdiffrast.patch",
     "requirements.in",
     "requirements.txt",
 ])
 
 pip_compile(
     name = "requirements",
+    extra_args = [
+        "--python-version=3.12",
+    ],
+    python_platform = "x86_64-unknown-linux-gnu",
     requirements_in = ":requirements.in",
     requirements_txt = ":requirements.txt",
     # Disable the automatically generated test target as it is slow, requires
