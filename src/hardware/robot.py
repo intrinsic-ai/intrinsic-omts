@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Robot hardware interface and implementations for Universal Robots and Mocks."""
+"""Robot hardware interface and Universal Robots implementation for SBL."""
 
 import abc
+from collections.abc import Sequence
 from typing import Any
 
 from intrinsic.manipulation.skills.force import move_to_contact_pb2
@@ -26,35 +27,72 @@ from intrinsic.math.proto import (
 )
 from intrinsic.motion_planning.proto.v1 import geometric_constraints_pb2
 from intrinsic.solutions import behavior_tree as bt
-from intrinsic.world.proto import object_world_refs_pb2
+from intrinsic.world.proto import (
+  collision_action_pb2,
+  collision_settings_pb2,
+  object_world_refs_pb2,
+)
+
+from src.core.config import RobotConfig
+from src.core.types import JointPosition
+from src.utils.math_utils import (
+  create_transform_node_ref,
+  describe_motion_types,
+  normalize_motion_types,
+  object_exists_in_world,
+)
 
 
 class RobotInterface(abc.ABC):
-  """Abstract interface for robot motion and compliant contact control."""
+  """Abstract interface for robot motion, compliant contact, and object attachment."""
 
   @abc.abstractmethod
   def build_move_joint_task(
-    self, joint_configuration_name: str, name: str | None = None
+    self,
+    joint_target: str | JointPosition | Sequence[float] | Any,
+    name: str | None = None,
   ) -> bt.Node:
-    """Builds a behavior tree task to move the robot arm to a named joint pose."""
+    """Builds a behavior tree task to move the robot arm to a named joint pose or configuration."""
     raise NotImplementedError
+
+  def build_move_to_joint_position_task(
+    self,
+    joint_position: JointPosition,
+    name: str | None = None,
+  ) -> bt.Node:
+    """Builds a behavior tree task to move the robot arm to an explicit JointPosition."""
+    return self.build_move_joint_task(
+      joint_target=joint_position,
+      name=name,
+    )
 
   @abc.abstractmethod
   def build_move_cartesian_task(
     self,
-    target_frame_name: str | None = None,
-    target_object_name: str = "root",
-    motion_type: str = "ANY",
+    target_frame_name: str | None,
+    target_object_name: str,
+    motion_type: str,
     allow_tool_z_rotation: bool = False,
     cone_opening_half_angle: float = 0.0,
     moving_frame_offset: tuple[float, float, float] | None = None,
-    target_frame_offset: tuple[
-      tuple[float, float, float], tuple[float, float, float, float]
-    ]
-    | None = None,
+    target_frame_offset: (
+      tuple[tuple[float, float, float], tuple[float, float, float, float]]
+      | None
+    ) = None,
+    excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
     name: str | None = None,
   ) -> bt.Node:
     """Builds a behavior tree task to move the robot tool to a target frame or object."""
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def build_move_blended_cartesian_task(
+    self,
+    target_frames: Sequence[tuple[str, str]],
+    motion_type: str | Sequence[str] = "ANY",
+    name: str | None = None,
+  ) -> bt.Node:
+    """Builds a behavior tree task to execute a blended trajectory through target frames."""
     raise NotImplementedError
 
   @abc.abstractmethod
@@ -62,6 +100,8 @@ class RobotInterface(abc.ABC):
     self,
     translation: tuple[float, float, float],
     motion_type: str = "LINEAR",
+    exclude_collision: bool = False,
+    excluded_collision_objects: Sequence[str] | None = None,
     name: str | None = None,
   ) -> bt.Node:
     """Builds a behavior tree task to move the robot tool relative to its current pose."""
@@ -70,12 +110,30 @@ class RobotInterface(abc.ABC):
   @abc.abstractmethod
   def build_move_to_contact_task(
     self,
-    direction: tuple[float, float, float] = (0.0, 0.0, 1.0),
-    contact_force_newtons: float = 5.0,
-    timeout_seconds: float = 15.0,
+    direction: tuple[float, float, float],
+    contact_force_newtons: float,
+    timeout_seconds: float,
     name: str | None = None,
   ) -> bt.Node:
     """Builds a compliant move_to_contact behavior tree task."""
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def build_attach_object_task(
+    self,
+    object_name: str,
+    name: str | None = None,
+  ) -> bt.Node:
+    """Builds a task to attach an object to the robot gripper in the object world."""
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def build_detach_object_task(
+    self,
+    object_name: str,
+    name: str | None = None,
+  ) -> bt.Node:
+    """Builds a task to detach an object from the robot gripper in the object world."""
     raise NotImplementedError
 
 
@@ -85,42 +143,20 @@ class UrRobot(RobotInterface):
   def __init__(
     self,
     solution: Any,
-    arm_part_name: str = "ur_module",
-    tool_object_name: str = "gripper",
-    tool_frame_name: str = "tool_frame",
-    disable_collision_checking: bool = True,
+    config: RobotConfig,
   ) -> None:
-    """Initializes UR robot adapter.
+    """Initializes UR robot adapter with collision checking enabled.
 
     Args:
         solution: Connected SBL deployment instance (from deployments.connect).
-        arm_part_name: Attribute name of robot arm in solution.world.
-        tool_object_name: Object name for moving tool frame (default: 'gripper').
-        tool_frame_name: Frame name under tool_object_name (default: 'tool_frame').
-        disable_collision_checking: Whether to disable collision checking in motion planning.
+        config: Scoped RobotConfig defining arm part and tool frame names.
     """
     self._solution = solution
-    self._arm_part_name = arm_part_name
-    self._tool_object_name = tool_object_name
-    self._tool_frame_name = tool_frame_name
-    self._disable_collision_checking = disable_collision_checking
+    self._arm_part_name = config.arm_part_name
+    self._tool_object_name = config.tool_object_name
+    self._tool_frame_name = config.tool_frame_name
     self._move_robot_skill = solution.skills.ai.intrinsic.move_robot
     self._move_to_contact_skill = solution.skills.ai.intrinsic.move_to_contact
-
-  def _get_collision_settings(self) -> Any | None:
-    """Returns CollisionSettings with disabled collision checking if configured."""
-    if not self._disable_collision_checking:
-      return None
-    try:
-      if hasattr(self._move_robot_skill, "intrinsic_proto") and hasattr(
-        self._move_robot_skill.intrinsic_proto, "world"
-      ):
-        return self._move_robot_skill.intrinsic_proto.world.CollisionSettings(
-          disable_collision_checking=True
-        )
-    except (AttributeError, TypeError, ValueError):
-      pass
-    return None
 
   @property
   def arm_part(self) -> Any:
@@ -132,96 +168,77 @@ class UrRobot(RobotInterface):
     self,
   ) -> object_world_refs_pb2.TransformNodeReference:
     """Constructs the moving tool frame reference (gripper TCP)."""
-    return object_world_refs_pb2.TransformNodeReference(
-      by_name=object_world_refs_pb2.TransformNodeReferenceByName(
-        frame=object_world_refs_pb2.FrameReferenceByName(
-          object_name=self._tool_object_name,
-          frame_name=self._tool_frame_name,
-        )
-      )
+    return create_transform_node_ref(
+      self._tool_object_name, self._tool_frame_name
     )
+
+  def _motion_type_enum(self, motion_type: str) -> Any:
+    """Maps a motion type string to MotionSegment.MotionType enum."""
+    motion_proto = (
+      self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType
+    )
+    return {
+      "LINEAR": motion_proto.LINEAR,
+      "JOINT": motion_proto.JOINT,
+    }.get(motion_type.upper(), motion_proto.ANY)
 
   def build_move_joint_task(
-    self, joint_configuration_name: str, name: str | None = None
+    self,
+    joint_target: str | JointPosition | Sequence[float] | Any,
+    name: str | None = None,
   ) -> bt.Node:
     """Builds an SBL move_robot joint motion task."""
-    task_name = name or f"Move to {joint_configuration_name}"
-    joint_target = getattr(
-      self.arm_part.joint_configurations, joint_configuration_name
+    if isinstance(joint_target, str):
+      task_name = name or f"Move to {joint_target}"
+      target_pos = getattr(self.arm_part.joint_configurations, joint_target)
+    elif isinstance(joint_target, JointPosition):
+      task_name = name or f"Move to JointPosition {joint_target.to_list()}"
+      target_pos = joint_target.to_list()
+    elif isinstance(joint_target, Sequence):
+      target_pos = [float(v) for v in joint_target]
+      task_name = name or f"Move to Joint {target_pos}"
+    else:
+      task_name = name or "Move Joint"
+      target_pos = joint_target
+
+    motion_segment = (
+      self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
+        joint_position=target_pos,
+        motion_type=self._motion_type_enum("JOINT"),
+      )
     )
-
-    segment_kwargs: dict[str, Any] = {
-      "joint_position": joint_target,
-      "motion_type": (
-        self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType.JOINT
-      ),
-    }
-    col_settings = self._get_collision_settings()
-    if col_settings is not None:
-      segment_kwargs["collision_settings"] = col_settings
-
     skill_action = self._move_robot_skill(
-      motion_segments=[
-        self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
-          **segment_kwargs
-        )
-      ],
+      motion_segments=[motion_segment],
       arm_part=self.arm_part,
     )
     return bt.Task(action=skill_action, name=task_name)
 
   def build_move_cartesian_task(
     self,
-    target_frame_name: str | None = None,
-    target_object_name: str = "root",
-    motion_type: str = "ANY",
+    target_frame_name: str | None,
+    target_object_name: str,
+    motion_type: str,
     allow_tool_z_rotation: bool = False,
     cone_opening_half_angle: float = 0.0,
     moving_frame_offset: tuple[float, float, float] | None = None,
-    target_frame_offset: tuple[
-      tuple[float, float, float], tuple[float, float, float, float]
-    ]
-    | None = None,
+    target_frame_offset: (
+      tuple[tuple[float, float, float], tuple[float, float, float, float]]
+      | None
+    ) = None,
+    excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
     name: str | None = None,
   ) -> bt.Node:
-    """Builds an SBL move_robot Cartesian motion task aligning tool to target frame or object.
-
-    When `allow_tool_z_rotation=True`, replaces strict 6-DOF PoseEquality with a
-    ConstraintIntersection of PositionEquality and RotationCone along tool +Z.
-    This frees the wrist rotation around the approach axis, significantly
-    expanding the feasible IK solution space.
-    """
+    """Builds an SBL move_robot Cartesian motion task aligning tool to target frame or object."""
     target_desc = (
       f"{target_object_name}/{target_frame_name}"
       if target_frame_name
       else target_object_name
     )
     task_name = name or f"Move to {target_desc} ({motion_type})"
-
-    if target_frame_name:
-      target_node_ref = object_world_refs_pb2.TransformNodeReference(
-        by_name=object_world_refs_pb2.TransformNodeReferenceByName(
-          frame=object_world_refs_pb2.FrameReferenceByName(
-            object_name=target_object_name,
-            frame_name=target_frame_name,
-          )
-        )
-      )
-    else:
-      target_node_ref = object_world_refs_pb2.TransformNodeReference(
-        by_name=object_world_refs_pb2.TransformNodeReferenceByName(
-          object=object_world_refs_pb2.ObjectReferenceByName(
-            object_name=target_object_name,
-          )
-        )
-      )
-
-    if motion_type.upper() == "LINEAR":
-      motion_type_enum = self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType.LINEAR
-    elif motion_type.upper() == "JOINT":
-      motion_type_enum = self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType.JOINT
-    else:
-      motion_type_enum = self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType.ANY
+    target_node_ref = create_transform_node_ref(
+      target_object_name, target_frame_name
+    )
+    motion_type_enum = self._motion_type_enum(motion_type)
 
     if allow_tool_z_rotation:
       pos_equality = geometric_constraints_pb2.PositionEquality(
@@ -242,22 +259,12 @@ class UrRobot(RobotInterface):
           point_pb2.Point(x=pos[0], y=pos[1], z=pos[2])
         )
 
-      # Constrain tool +Z to point vertically downwards (-Z in root) into the table,
-      # freeing rotation around the tool approach axis.
-      rot_cone_target_frame = object_world_refs_pb2.TransformNodeReference(
-        by_name=object_world_refs_pb2.TransformNodeReferenceByName(
-          object=object_world_refs_pb2.ObjectReferenceByName(
-            object_name="root",
-          )
-        )
-      )
-      rot_cone_target_axis = vector3_pb2.Vector3(x=0.0, y=0.0, z=-1.0)
-
+      rot_cone_target_frame = create_transform_node_ref("root")
       rot_cone = geometric_constraints_pb2.RotationCone(
         moving_frame=self.tool_frame_reference,
         target_frame=rot_cone_target_frame,
         moving_axis=vector3_pb2.Vector3(x=0.0, y=0.0, z=1.0),
-        target_axis=rot_cone_target_axis,
+        target_axis=vector3_pb2.Vector3(x=0.0, y=0.0, z=-1.0),
         cone_opening_half_angle=cone_opening_half_angle,
       )
       constraint_intersection = (
@@ -272,7 +279,7 @@ class UrRobot(RobotInterface):
           ]
         )
       )
-      segment_kwargs = {
+      segment_kwargs: dict[str, Any] = {
         "constraint_intersection": constraint_intersection,
         "motion_type": motion_type_enum,
       }
@@ -296,9 +303,45 @@ class UrRobot(RobotInterface):
         "motion_type": motion_type_enum,
       }
 
-    col_settings = self._get_collision_settings()
-    if col_settings is not None:
-      segment_kwargs["collision_settings"] = col_settings
+    if excluded_collision_pairs:
+      valid_pairs = [
+        (left_obj, right_obj)
+        for left_obj, right_obj in excluded_collision_pairs
+        if object_exists_in_world(self._solution, left_obj)
+        and object_exists_in_world(self._solution, right_obj)
+      ]
+      if valid_pairs:
+        collision_rules = [
+          collision_settings_pb2.CollisionSettings.CollisionRule(
+            left=[
+              collision_settings_pb2.ObjectOrEntityReference(
+                object=object_world_refs_pb2.ObjectReference(
+                  by_name=object_world_refs_pb2.ObjectReferenceByName(
+                    object_name=left_obj,
+                  )
+                )
+              )
+            ],
+            right=[
+              collision_settings_pb2.ObjectOrEntityReference(
+                object=object_world_refs_pb2.ObjectReference(
+                  by_name=object_world_refs_pb2.ObjectReferenceByName(
+                    object_name=right_obj,
+                  )
+                )
+              )
+            ],
+            collision_action=collision_action_pb2.CollisionAction(
+              is_excluded=True,
+            ),
+          )
+          for left_obj, right_obj in valid_pairs
+        ]
+        collision_settings = collision_settings_pb2.CollisionSettings(
+          disable_collision_checking=False,
+          collision_rules=collision_rules,
+        )
+        segment_kwargs["collision_settings"] = collision_settings
 
     motion_segment = (
       self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
@@ -312,10 +355,50 @@ class UrRobot(RobotInterface):
     )
     return bt.Task(action=skill_action, name=task_name)
 
+  def build_move_blended_cartesian_task(
+    self,
+    target_frames: Sequence[tuple[str, str]],
+    motion_type: str | Sequence[str] = "ANY",
+    name: str | None = None,
+  ) -> bt.Node:
+    """Builds an SBL move_robot task executing a blended trajectory through target frames."""
+    if not target_frames:
+      raise ValueError("target_frames must contain at least one target frame.")
+
+    motion_types = normalize_motion_types(motion_type, len(target_frames))
+    path_desc = " -> ".join(f"{obj}/{frame}" for obj, frame in target_frames)
+    task_name = name or (
+      f"Blended Move through {path_desc} ({describe_motion_types(motion_types)})"
+    )
+
+    motion_segments = []
+    for (obj_name, frame_name), segment_type in zip(
+      target_frames, motion_types, strict=True
+    ):
+      target_node_ref = create_transform_node_ref(obj_name, frame_name)
+      cartesian_pose = geometric_constraints_pb2.PoseEquality(
+        moving_frame=self.tool_frame_reference,
+        target_frame=target_node_ref,
+      )
+      motion_segments.append(
+        self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
+          cartesian_pose=cartesian_pose,
+          motion_type=self._motion_type_enum(segment_type),
+        )
+      )
+
+    skill_action = self._move_robot_skill(
+      motion_segments=motion_segments,
+      arm_part=self.arm_part,
+    )
+    return bt.Task(action=skill_action, name=task_name)
+
   def build_move_relative_cartesian_task(
     self,
     translation: tuple[float, float, float],
     motion_type: str = "LINEAR",
+    exclude_collision: bool = False,
+    excluded_collision_objects: Sequence[str] | None = None,
     name: str | None = None,
   ) -> bt.Node:
     """Builds a relative Cartesian motion task along tool frames using RelativePoseEquality."""
@@ -323,13 +406,6 @@ class UrRobot(RobotInterface):
       name
       or f"Move relative ({translation[0]:.3f}, {translation[1]:.3f}, {translation[2]:.3f}) [{motion_type}]"
     )
-
-    if motion_type.upper() == "LINEAR":
-      motion_type_enum = self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType.LINEAR
-    elif motion_type.upper() == "JOINT":
-      motion_type_enum = self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType.JOINT
-    else:
-      motion_type_enum = self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType.ANY
 
     relative_cartesian_pose = geometric_constraints_pb2.RelativePoseEquality(
       moving_frame=self.tool_frame_reference,
@@ -340,14 +416,38 @@ class UrRobot(RobotInterface):
         orientation=quaternion_pb2.Quaternion(x=0.0, y=0.0, z=0.0, w=1.0),
       ),
     )
-    segment_kwargs = {
+    segment_kwargs: dict[str, Any] = {
       "relative_cartesian_pose": relative_cartesian_pose,
-      "motion_type": motion_type_enum,
+      "motion_type": self._motion_type_enum(motion_type),
     }
-
-    col_settings = self._get_collision_settings()
-    if col_settings is not None:
-      segment_kwargs["collision_settings"] = col_settings
+    if exclude_collision or excluded_collision_objects:
+      object_names = [self._tool_object_name]
+      if excluded_collision_objects:
+        for obj_name in excluded_collision_objects:
+          if obj_name not in object_names:
+            object_names.append(obj_name)
+      left_refs = [
+        collision_settings_pb2.ObjectOrEntityReference(
+          object=object_world_refs_pb2.ObjectReference(
+            by_name=object_world_refs_pb2.ObjectReferenceByName(
+              object_name=obj_name
+            )
+          )
+        )
+        for obj_name in object_names
+      ]
+      collision_settings = collision_settings_pb2.CollisionSettings(
+        disable_collision_checking=False,
+        collision_rules=[
+          collision_settings_pb2.CollisionSettings.CollisionRule(
+            collision_action=collision_action_pb2.CollisionAction(
+              is_excluded=True
+            ),
+            left=left_refs,
+          )
+        ],
+      )
+      segment_kwargs["collision_settings"] = collision_settings
 
     motion_segment = (
       self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
@@ -363,9 +463,9 @@ class UrRobot(RobotInterface):
 
   def build_move_to_contact_task(
     self,
-    direction: tuple[float, float, float] = (0.0, 0.0, 1.0),
-    contact_force_newtons: float = 5.0,
-    timeout_seconds: float = 15.0,
+    direction: tuple[float, float, float],
+    contact_force_newtons: float,
+    timeout_seconds: float,
     name: str | None = None,
   ) -> bt.Node:
     """Builds an SBL move_to_contact compliance task."""
@@ -385,66 +485,50 @@ class UrRobot(RobotInterface):
     )
     return bt.Task(action=skill_action, name=task_name)
 
-
-class MockRobot(RobotInterface):
-  """Mock robot adapter for offline simulation and unit testing."""
-
-  def __init__(self) -> None:
-    self.executed_commands: list[str] = []
-
-  def build_move_joint_task(
-    self, joint_configuration_name: str, name: str | None = None
-  ) -> bt.Node:
-    task_name = name or f"Mock Move to {joint_configuration_name}"
-    self.executed_commands.append(f"move_joint:{joint_configuration_name}")
-    return bt.Sequence(name=task_name, children=[])
-
-  def build_move_cartesian_task(
+  def build_attach_object_task(
     self,
-    target_frame_name: str | None = None,
-    target_object_name: str = "root",
-    motion_type: str = "ANY",
-    allow_tool_z_rotation: bool = False,
-    cone_opening_half_angle: float = 0.0,
-    moving_frame_offset: tuple[float, float, float] | None = None,
-    target_frame_offset: (
-      tuple[tuple[float, float, float], tuple[float, float, float, float]]
-      | None
-    ) = None,
+    object_name: str,
     name: str | None = None,
   ) -> bt.Node:
-    target_desc = (
-      f"{target_object_name}/{target_frame_name}"
-      if target_frame_name
-      else target_object_name
+    """Builds an SBL attach_object_to_robot task to attach an object to the gripper."""
+    task_name = name or f"Attach {object_name} to {self._tool_object_name}"
+    attach_skill = self._solution.skills.ai.intrinsic.attach_object_to_robot
+    gripper_ref = object_world_refs_pb2.ObjectReference(
+      by_name=object_world_refs_pb2.ObjectReferenceByName(
+        object_name=self._tool_object_name
+      )
     )
-    task_name = name or f"Mock Move to {target_desc} ({motion_type})"
-    self.executed_commands.append(
-      f"move_cartesian:{target_desc}:{motion_type}:z_rot={allow_tool_z_rotation}"
+    object_ref = object_world_refs_pb2.ObjectReference(
+      by_name=object_world_refs_pb2.ObjectReferenceByName(
+        object_name=object_name
+      )
     )
-    return bt.Sequence(name=task_name, children=[])
+    action = attach_skill(
+      gripper_entity=gripper_ref,
+      object_entity=object_ref,
+    )
+    return bt.Task(action=action, name=task_name)
 
-  def build_move_relative_cartesian_task(
+  def build_detach_object_task(
     self,
-    translation: tuple[float, float, float],
-    motion_type: str = "LINEAR",
+    object_name: str,
     name: str | None = None,
   ) -> bt.Node:
-    task_name = name or f"Mock Move Relative ({translation}) [{motion_type}]"
-    self.executed_commands.append(
-      f"move_relative_cartesian:{translation}:{motion_type}"
+    """Builds an SBL detach_object task to detach an object from the gripper."""
+    task_name = name or f"Detach {object_name} from {self._tool_object_name}"
+    detach_skill = self._solution.skills.ai.intrinsic.detach_object
+    gripper_ref = object_world_refs_pb2.ObjectReference(
+      by_name=object_world_refs_pb2.ObjectReferenceByName(
+        object_name=self._tool_object_name
+      )
     )
-    return bt.Sequence(name=task_name, children=[])
-
-  def build_move_to_contact_task(
-    self,
-    direction: tuple[float, float, float] = (0.0, 0.0, 1.0),
-    contact_force_newtons: float = 5.0,
-    timeout_seconds: float = 15.0,
-    name: str | None = None,
-  ) -> bt.Node:
-    task_name = name or "Mock Move to Contact"
-    self.executed_commands.append(
-      f"move_to_contact:dir={direction},force={contact_force_newtons}"
+    object_ref = object_world_refs_pb2.ObjectReference(
+      by_name=object_world_refs_pb2.ObjectReferenceByName(
+        object_name=object_name
+      )
     )
-    return bt.Sequence(name=task_name, children=[])
+    action = detach_skill(
+      gripper_entity=gripper_ref,
+      object_entity=object_ref,
+    )
+    return bt.Task(action=action, name=task_name)

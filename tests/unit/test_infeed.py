@@ -16,6 +16,7 @@
 
 from absl.testing import absltest
 
+from src.core.config import VisionConfig
 from src.core.infeed import GridInfeedStrategy, PerceptionInfeedStrategy
 from src.core.tray import Tray
 from src.core.types import InfeedMode, PartState
@@ -23,10 +24,18 @@ from src.core.types import InfeedMode, PartState
 
 class InfeedStrategyTest(absltest.TestCase):
   def test_perception_infeed_strategy(self):
-    strategy = PerceptionInfeedStrategy(
+    vision_config = VisionConfig(
       camera_name="test_camera",
+      perception_service_name="test_perception_service",
       pose_estimator_id="ai.intrinsic.test_estimator",
       scene_object_id="ai.intrinsic.test_object",
+      sensor_ids=(1, 4),
+      min_num_instances=1,
+      infeed_mode="perception",
+      min_safe_z=0.95,
+    )
+    strategy = PerceptionInfeedStrategy(
+      config=vision_config,
       view_frame_name="view",
     )
     self.assertEqual(strategy.mode, InfeedMode.PERCEPTION)

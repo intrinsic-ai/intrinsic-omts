@@ -64,7 +64,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   parser.add_argument(
     "--scene_updates_file",
     type=str,
-    default="configs/scene.updates.pbtxt",
+    default="configs/omts/scene.updates.pbtxt",
     help="Path to scene.updates.pbtxt file to store frames in.",
   )
   return parser.parse_args(argv)

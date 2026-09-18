@@ -7,12 +7,16 @@ py_library(
     srcs = ["math_utils.py"],
     deps = [
         "//src/core:types",
+        "@intrinsic_apis//intrinsic/world/proto:object_world_refs_py_pb2",
     ],
 )
 
 py_library(
     name = "script_utils",
     srcs = ["script_utils.py"],
+    deps = [
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+    ],
 )
 
 py_library(

@@ -20,6 +20,7 @@ py_library(
     name = "control_gripper_lib",
     srcs = ["control_gripper.py"],
     deps = [
+        "//src/core:config",
         "//src/hardware:gripper",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",

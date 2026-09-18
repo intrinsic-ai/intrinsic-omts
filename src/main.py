@@ -20,366 +20,126 @@ from absl import app, flags, logging
 from intrinsic.solutions import deployments
 
 from src.behaviors.machine_tending_bt import build_machine_tending_behavior_tree
+from src.core.config import AppConfig, load_app_config
 from src.core.infeed import (
-  GridInfeedStrategy,
   InfeedMode,
   PerceptionInfeedStrategy,
 )
 from src.core.types import SimulationMode
-from src.core.workcell import WorkcellState
-from src.core.workpiece import Workpiece
-from src.hardware.gripper import DioGripper, MockGripper, RobotiqGripper
-from src.hardware.machine import MockCncMachine
-from src.hardware.robot import MockRobot, UrRobot
-from src.hardware.vision import MockVision, OrbbecVision
+from src.hardware.gripper import DioGripper, GripperInterface, RobotiqGripper
+from src.hardware.machine import DioCncMachine
+from src.hardware.robot import UrRobot
+from src.hardware.vision import OrbbecVision
 from src.utils.execution_utils import to_executive_simulation_mode
 
+_CONFIG = flags.DEFINE_string(
+  "config",
+  "configs/omts/app_config.yaml",
+  "Path to the cell YAML configuration file.",
+)
 _ADDRESS = flags.DEFINE_string(
   "address",
   "localhost:17080",
   "gRPC address of the running SBL solution deployment.",
 )
-_INFEED_MODE = flags.DEFINE_enum_class(
-  "infeed_mode",
-  InfeedMode.PERCEPTION,
-  InfeedMode,
-  "Infeed strategy mode: 'perception' (3D vision) or 'grid' (slot math).",
-)
 _SIMULATION_MODE = flags.DEFINE_enum_class(
   "simulation_mode",
   None,
   SimulationMode,
-  "Executive execution mode: 'reality' (full physics), 'preview' "
-  "(simulated with visualization), or 'fast_preview' (simulated without "
-  "visualization). If unset, the mode currently configured in the executive "
-  "is kept.",
+  "Executive execution mode override: 'reality', 'preview', or 'fast_preview'.",
 )
-_MOCK_HARDWARE = flags.DEFINE_bool(
-  "mock_hardware",
-  False,
-  "Use offline mock hardware adapters instead of live SBL skill stubs.",
-)
-_GRIPPER_TYPE = flags.DEFINE_enum(
-  "gripper_type",
-  "robotiq",
-  ["mock", "dio", "robotiq"],
-  "Gripper backend type: 'mock', 'dio', or 'robotiq'.",
-)
-_GRIPPER_JOINT_NAME = flags.DEFINE_string(
-  "gripper_joint_name",
-  "robotiq_hande_left_finger_joint",
-  "Robotiq finger joint name.",
-)
-_GRIPPER_OPEN_POSITION = flags.DEFINE_float(
-  "gripper_open_position",
-  0.025,
-  "Robotiq finger position in meters for open state (0.025 = fully open).",
-)
-_GRIPPER_CLOSE_POSITION = flags.DEFINE_float(
-  "gripper_close_position",
-  0.0,
-  "Robotiq finger position in meters for close/grasp state (0.0 = fully closed).",
-)
-_GRIPPER_ACTION_NAME = flags.DEFINE_string(
-  "gripper_action_name",
+_NUM_CYCLES = flags.DEFINE_integer(
+  "num_cycles",
   None,
-  "Optional action name for gripper_cmd_skill.",
-)
-_GRIPPER_DIO_OPEN_PIN = flags.DEFINE_integer(
-  "gripper_dio_open_pin",
-  0,
-  "Digital output pin index to open gripper (DIO).",
-)
-_GRIPPER_DIO_CLOSE_PIN = flags.DEFINE_integer(
-  "gripper_dio_close_pin",
-  1,
-  "Digital output pin index to close gripper (DIO).",
-)
-_GRIPPER_DIO_DEVICE_NAME = flags.DEFINE_string(
-  "gripper_dio_device_name",
-  "ur_module",
-  "Device name owning DIO pins.",
-)
-_ARM_PART_NAME = flags.DEFINE_string(
-  "arm_part_name",
-  "ur_module",
-  "ICON part name for the robot arm in solution.world.",
-)
-_TOOL_OBJECT_NAME = flags.DEFINE_string(
-  "tool_object_name",
-  "gripper",
-  "Object name for the robot end-effector tool.",
-)
-_TOOL_FRAME_NAME = flags.DEFINE_string(
-  "tool_frame_name",
-  "tool_frame",
-  "Frame name on tool_object_name to use as moving tool reference.",
-)
-_CAMERA_NAME = flags.DEFINE_string(
-  "camera_name",
-  "orbbec_camera",
-  "Attribute name of 3D camera in solution.world.",
-)
-_PERCEPTION_SERVICE_NAME = flags.DEFINE_string(
-  "perception_service_name",
-  "pose_estimator_service",
-  "Name of the IOC pose estimator service in solution resources.",
-)
-_POSE_ESTIMATOR_ID = flags.DEFINE_string(
-  "pose_estimator_id",
-  "ai.intrinsic.raw_stock_2x3x5_estimator",
-  "Asset ID of the registered pose estimator model.",
-)
-_SCENE_OBJECT_ID = flags.DEFINE_string(
-  "scene_object_id",
-  "ai.intrinsic.raw_stock_2x3x5",
-  "Asset ID of the target scene object to spawn in belief world.",
-)
-_SENSOR_IDS = flags.DEFINE_list(
-  "sensor_ids",
-  ["1", "4"],
-  "Sensor IDs to capture from the RGB-D camera (1=RGB, 4=Depth).",
-)
-_MIN_NUM_INSTANCES = flags.DEFINE_integer(
-  "min_num_instances",
-  1,
-  "Minimum number of detected workpiece instances required.",
-)
-_PARENT_OBJECT = flags.DEFINE_string(
-  "parent_object",
-  "root",
-  "Parent object in world for target motion frames (default: 'root').",
-)
-_VIEW_FRAME = flags.DEFINE_string(
-  "view_frame",
-  "view",
-  "Perception camera viewing target frame name.",
-)
-_PREGRASP_FRAME = flags.DEFINE_string(
-  "pregrasp_frame",
-  "pre_grasp",
-  "Pre-grasp approach target frame name.",
-)
-_GRASP_FRAME = flags.DEFINE_string(
-  "grasp_frame",
-  "grasp",
-  "Grasp target frame name.",
-)
-_MACHINE_APPROACH_FRAME = flags.DEFINE_string(
-  "machine_approach_frame",
-  "machine_approach",
-  "Machine entry approach target frame name.",
-)
-_PREPLACE_VISE_FRAME = flags.DEFINE_string(
-  "preplace_vise_frame",
-  "pre_place_vise",
-  "Pre-place CNC vise approach frame name.",
-)
-_PLACE_VISE_FRAME = flags.DEFINE_string(
-  "place_vise_frame",
-  "place_vise",
-  "Place CNC vise frame name.",
+  "Optional override for number of cycles (1 = single, >1 = Repeat, <=0 = Loop).",
 )
 
 
-def run_machine_tending_cycle(
+def run_machine_tending_pipeline(
   solution_address: str,
-  infeed_mode: InfeedMode,
-  mock_hardware: bool = False,
+  config: AppConfig,
   simulation_mode: SimulationMode | None = None,
-  gripper_type: str = "robotiq",
-  gripper_joint_name: str = "robotiq_hande_left_finger_joint",
-  gripper_open_position: float = 0.025,
-  gripper_close_position: float = 0.0,
-  gripper_action_name: str | None = None,
-  gripper_dio_open_pin: int = 0,
-  gripper_dio_close_pin: int = 1,
-  gripper_dio_device_name: str = "ur_module",
-  arm_part_name: str = "ur_module",
-  tool_object_name: str = "gripper",
-  tool_frame_name: str = "tool_frame",
-  camera_name: str = "orbbec_camera",
-  perception_service_name: str = "pose_estimator_service",
-  pose_estimator_id: str = "ai.intrinsic.raw_stock_2x3x5_estimator",
-  scene_object_id: str = "ai.intrinsic.raw_stock_2x3x5",
-  sensor_ids: Sequence[int] = (1, 4),
-  min_num_instances: int = 1,
-  parent_object: str = "root",
-  view_frame: str = "view",
-  pregrasp_frame: str = "pre_grasp",
-  grasp_frame: str = "grasp",
-  machine_approach_frame: str = "machine_approach",
-  preplace_vise_frame: str = "pre_place_vise",
-  place_vise_frame: str = "place_vise",
+  num_cycles_override: int | None = None,
 ) -> None:
-  """Executes one full machine tending cycle.
-
-  Args:
-      solution_address: gRPC address of the running solution deployment.
-      infeed_mode: Infeed strategy to use for part localization.
-      mock_hardware: If True, use offline mock hardware adapters.
-      simulation_mode: Executive execution mode to request for this run. If
-        None, the mode currently set in the executive is kept.
-      **: Remaining arguments configure hardware adapters, world entities and
-        motion target frame names; see the corresponding flag definitions.
-  """
-  logging.info("Connecting to Intrinsic solution at %s...", solution_address)
+  """Connects to the solution deployment and executes the machine tending BT."""
+  logging.info(
+    "Connecting to Intrinsic solution at %s (cell: %s)...",
+    solution_address,
+    config.cell_name,
+  )
   solution = deployments.connect(address=solution_address)
 
-  # Initialize gripper adapter based on selected type
-  if mock_hardware or gripper_type == "mock":
-    logging.info("Using mock gripper adapter.")
-    gripper = MockGripper()
-  elif gripper_type == "dio":
-    logging.info(
-      "Initializing DioGripper (open_pin=%d, close_pin=%d, device=%s)...",
-      gripper_dio_open_pin,
-      gripper_dio_close_pin,
-      gripper_dio_device_name,
-    )
+  gripper: GripperInterface
+  if config.gripper.type == "dio":
     gripper = DioGripper(
       solution=solution,
-      open_pin=gripper_dio_open_pin,
-      close_pin=gripper_dio_close_pin,
-      device_name=gripper_dio_device_name,
+      config=config.gripper,
     )
-  elif gripper_type == "robotiq":
-    logging.info(
-      "Initializing RobotiqGripper (joint=%s, open=%.3fm, close=%.3fm)...",
-      gripper_joint_name,
-      gripper_open_position,
-      gripper_close_position,
-    )
+  else:
     gripper = RobotiqGripper(
       solution=solution,
-      joint_name=gripper_joint_name,
-      open_position=gripper_open_position,
-      close_position=gripper_close_position,
-      action_name=gripper_action_name,
+      config=config.gripper,
     )
-  else:
-    raise ValueError(f"Unsupported gripper_type: {gripper_type}")
 
-  # Initialize remaining hardware adapters
-  if mock_hardware:
-    logging.info("Using offline mock robot, CNC machine, and vision adapters.")
-    robot = MockRobot()
-    machine = MockCncMachine()
-    vision = MockVision()
-  else:
-    logging.info(
-      "Initializing live hardware adapters from solution deployment."
-    )
-    robot = UrRobot(
+  robot = UrRobot(
+    solution=solution,
+    config=config.robot,
+  )
+  machine = (
+    DioCncMachine(
       solution=solution,
-      arm_part_name=arm_part_name,
-      tool_object_name=tool_object_name,
-      tool_frame_name=tool_frame_name,
+      config=config.machine,
     )
-    machine = MockCncMachine()
-    vision = OrbbecVision(
-      solution=solution,
-      camera_name=camera_name,
-      perception_service_name=perception_service_name,
-      sensor_ids=sensor_ids,
+    if config.machine is not None
+    else None
+  )
+  vision = OrbbecVision(
+    solution=solution,
+    config=config.vision,
+  )
+
+  infeed_mode = InfeedMode(config.vision.infeed_mode)
+  if infeed_mode != InfeedMode.PERCEPTION:
+    raise ValueError(
+      f"Unsupported infeed_mode '{config.vision.infeed_mode}'. Only "
+      f"'{InfeedMode.PERCEPTION.value}' is currently supported."
     )
+  infeed_strategy = PerceptionInfeedStrategy(
+    config=config.vision,
+    view_frame_name=config.frames.view_frame,
+  )
 
-  # Select infeed strategy
-  workpiece = Workpiece(id="raw_stock_01")
-  workcell_state = WorkcellState()
-  workcell_state.start_new_cycle(workpiece)
-
-  if infeed_mode == InfeedMode.PERCEPTION:
-    logging.info("Configuring Vision-Guided Perception Infeed Strategy.")
-    infeed_strategy = PerceptionInfeedStrategy(
-      camera_name=camera_name,
-      pose_estimator_id=pose_estimator_id,
-      scene_object_id=scene_object_id,
-      sensor_ids=sensor_ids,
-      min_num_instances=min_num_instances,
-      view_frame_name=view_frame,
-    )
-  else:
-    logging.info("Configuring Blind Grid Pallet Infeed Strategy.")
-    infeed_strategy = GridInfeedStrategy(slot_count=4)
-
-  # Build master Behavior Tree
-  logging.info("Constructing SBL Behavior Tree for machine tending cycle...")
   tree = build_machine_tending_behavior_tree(
     robot=robot,
     gripper=gripper,
     machine=machine,
     vision=vision,
     infeed_strategy=infeed_strategy,
-    workpiece=workpiece,
-    parent_object=parent_object,
-    view_frame_name=view_frame,
-    pregrasp_frame_name=pregrasp_frame,
-    grasp_frame_name=grasp_frame,
-    machine_approach_frame_name=machine_approach_frame,
-    preplace_vise_frame_name=preplace_vise_frame,
-    place_vise_frame_name=place_vise_frame,
+    config=config,
+    num_cycles_override=num_cycles_override,
   )
 
-  executive_simulation_mode = to_executive_simulation_mode(simulation_mode)
-  logging.info(
-    "Executing OMTS Infeed, Acquisition & Vise Approach Pipeline "
-    "(simulation mode: %s)...",
-    simulation_mode.value if simulation_mode else "executive default",
+  exec_sim_mode = to_executive_simulation_mode(simulation_mode)
+  num_cycles = (
+    num_cycles_override
+    if num_cycles_override is not None
+    else config.cycle.num_cycles
   )
-  try:
-    solution.executive.run(tree, simulation_mode=executive_simulation_mode)
-    duration = workcell_state.record_cycle_success()
-    logging.info(
-      "Pipeline execution completed successfully in %.2fs.", duration
-    )
-  except Exception as e:
-    workcell_state.record_cycle_failure()
-    logging.error("Pipeline execution failed: %s", e)
-    if hasattr(solution.executive, "get_errors"):
-      logging.error("Executive errors: %s", solution.executive.get_errors())
-    raise
+  logging.info(
+    "Executing machine tending Behavior Tree (cycles=%d)...", num_cycles
+  )
+  solution.executive.run(tree, simulation_mode=exec_sim_mode)
 
 
 def main(argv: Sequence[str]) -> None:
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
-
-  sensor_ids = (
-    [int(s.strip()) for s in _SENSOR_IDS.value if s.strip()]
-    if _SENSOR_IDS.value
-    else [1, 4]
-  )
-
-  run_machine_tending_cycle(
+  config = load_app_config(_CONFIG.value)
+  run_machine_tending_pipeline(
     solution_address=_ADDRESS.value,
-    infeed_mode=_INFEED_MODE.value,
-    mock_hardware=_MOCK_HARDWARE.value,
+    config=config,
     simulation_mode=_SIMULATION_MODE.value,
-    gripper_type=_GRIPPER_TYPE.value,
-    gripper_joint_name=_GRIPPER_JOINT_NAME.value,
-    gripper_open_position=_GRIPPER_OPEN_POSITION.value,
-    gripper_close_position=_GRIPPER_CLOSE_POSITION.value,
-    gripper_action_name=_GRIPPER_ACTION_NAME.value,
-    gripper_dio_open_pin=_GRIPPER_DIO_OPEN_PIN.value,
-    gripper_dio_close_pin=_GRIPPER_DIO_CLOSE_PIN.value,
-    gripper_dio_device_name=_GRIPPER_DIO_DEVICE_NAME.value,
-    arm_part_name=_ARM_PART_NAME.value,
-    tool_object_name=_TOOL_OBJECT_NAME.value,
-    tool_frame_name=_TOOL_FRAME_NAME.value,
-    camera_name=_CAMERA_NAME.value,
-    perception_service_name=_PERCEPTION_SERVICE_NAME.value,
-    pose_estimator_id=_POSE_ESTIMATOR_ID.value,
-    scene_object_id=_SCENE_OBJECT_ID.value,
-    sensor_ids=sensor_ids,
-    min_num_instances=_MIN_NUM_INSTANCES.value,
-    parent_object=_PARENT_OBJECT.value,
-    view_frame=_VIEW_FRAME.value,
-    pregrasp_frame=_PREGRASP_FRAME.value,
-    grasp_frame=_GRASP_FRAME.value,
-    machine_approach_frame=_MACHINE_APPROACH_FRAME.value,
-    preplace_vise_frame=_PREPLACE_VISE_FRAME.value,
-    place_vise_frame=_PLACE_VISE_FRAME.value,
+    num_cycles_override=_NUM_CYCLES.value,
   )
 
 
