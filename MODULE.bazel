@@ -13,7 +13,7 @@ module(name = "omts")
 # ioc-staging is currently private, and its binary assets are stored in Git LFS,
 # so fetching requires git credentials for the repository and a working
 # `git-lfs` installation. See README.md for setup.
-IOC_RELEASE = "20260918.0"
+IOC_RELEASE = "20260918.0"  # buildifier: disable=unused-variable
 
 IOC_COMMIT = "88714614d154e8aafcbbe9f52f306e729c91ef20"
 
