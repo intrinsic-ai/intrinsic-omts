@@ -192,7 +192,6 @@ gh.download(
 use_repo(
     gh,
     "flowstate_ros_bridge_bundle",
-    "foundationpose_py312_bundle",
     "gripper_cmd_skill_bundle",
     "hande_gripper_service_bundle",
     "orbbec_gemini_driver_bundle",
