@@ -19,7 +19,6 @@ IOC_COMMIT = "88714614d154e8aafcbbe9f52f306e729c91ef20"
 
 IOC_REMOTE = "https://github.com/intrinsic-ai/ioc-staging.git"
 
-
 bazel_dep(name = "intrinsic-core")
 git_override(
     module_name = "intrinsic-core",
@@ -31,10 +30,10 @@ git_override(
 
 bazel_dep(name = "intrinsic_apis", version = "0.0.1")
 git_override(
-   module_name = "intrinsic_apis",
-   commit = IOC_COMMIT,
-   remote = IOC_REMOTE,
-   strip_prefix = "incode/intrinsic_apis",
+    module_name = "intrinsic_apis",
+    commit = IOC_COMMIT,
+    remote = IOC_REMOTE,
+    strip_prefix = "incode/intrinsic_apis",
 )
 
 archive_override(
