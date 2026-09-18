@@ -1,11 +1,10 @@
-load("@ioc//bazel:python.bzl", "py_binary")
+load("@ioc//bazel:python.bzl", "py_binary", "py_library")
 
 package(default_visibility = ["//visibility:public"])
 
-py_binary(
-    name = "calibrate_camera",
+py_library(
+    name = "calibrate_camera_lib",
     srcs = ["calibrate_camera_to_robot.py"],
-    main = "calibrate_camera_to_robot.py",
     deps = [
         "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
         "@com_google_absl_py//absl:app",
@@ -15,15 +14,46 @@ py_binary(
         "@intrinsic_apis//intrinsic/perception/proto/v1:camera_to_robot_calibration_py_pb2",
         "@ioc//incode/intrinsic_control/intrinsic/icon/python:create_action_utils",
         "@ioc//incode/intrinsic_control/intrinsic/icon/python:icon",
+        "@ioc//incode/intrinsic_perception/intrinsic/perception/skills/calibration:sample_calibration_poses_py_pb2",
         "@ioc//incode/intrinsic_sdk/intrinsic/math/python:proto_conversion",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:provided",
-        "@ioc//incode/intrinsic_sdk/intrinsic/world/python:object_world_ids",
         "@ioc//intrinsic/util/grpc:connection",
         "@ioc//intrinsic/util/grpc:interceptor",
         "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
+    ],
+)
+
+py_binary(
+    name = "calibrate_camera",
+    srcs = ["calibrate_camera_to_robot.py"],
+    main = "calibrate_camera_to_robot.py",
+    deps = [
+        ":calibrate_camera_lib",
+    ],
+)
+
+py_library(
+    name = "update_robot_kinematics_lib",
+    srcs = ["update_robot_kinematics.py"],
+    deps = [
+        "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
+        "@com_google_absl_py//absl:app",
+        "@com_google_absl_py//absl/flags",
+        "@com_google_absl_py//absl/logging",
+        "@ioc//intrinsic/world/service/robot_calibration:robot_update_service_py_pb2",
+        "@ioc//intrinsic/world/service/robot_calibration:robot_update_service_py_pb2_grpc",
+    ],
+)
+
+py_binary(
+    name = "update_robot_kinematics",
+    srcs = ["update_robot_kinematics.py"],
+    main = "update_robot_kinematics.py",
+    deps = [
+        ":update_robot_kinematics_lib",
     ],
 )
 

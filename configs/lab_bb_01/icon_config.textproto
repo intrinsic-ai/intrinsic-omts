@@ -1,4 +1,7 @@
 [type.googleapis.com/intrinsic_proto.icon.IconMainConfig]:  {
+  intrinsic_runtime {
+    name: "intrinsic_runtime"
+  }
   control_frequency_hz:  500
   services:  {
     world_service_from_grpc:  {
@@ -76,6 +79,12 @@
                 interface_name:  "tool_digital_output_command"
               }
               export_name:  "tool_out"
+            }
+            analog_inputs:  {
+              interface:  {
+                module_name:  "ur_module"
+                interface_name:  "analog_input_status"
+              }
             }
           }
         }

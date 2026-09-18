@@ -20,6 +20,7 @@ from typing import Any
 
 from intrinsic.solutions import deployments, execution
 
+from src.core.config import RobotConfig
 from src.hardware.robot import UrRobot
 
 
@@ -175,11 +176,14 @@ def move_robot_to_frame(
   except Exception as te:
     print(f"Could not query target frame: {te}")
 
-  robot = UrRobot(
-    solution=solution,
+  config = RobotConfig(
     arm_part_name=arm_part_name,
     tool_object_name=tool_object_name,
     tool_frame_name=tool_frame_name,
+  )
+  robot = UrRobot(
+    solution=solution,
+    config=config,
   )
 
   task = robot.build_move_cartesian_task(

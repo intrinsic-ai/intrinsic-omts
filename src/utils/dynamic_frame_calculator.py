@@ -24,8 +24,9 @@ def calculate_and_update_dynamic_frames(context: Any, params: Any) -> None:
   """Calculates workpiece grasp frames and injects them into the SBL ObjectWorld.
 
   Aligns gripper Z rotation with the short side of the workpiece based on
-  detected 6D pose and the current robot tool frame, and updates pre_grasp
-  and grasp frames in the active belief world.
+  detected 6D pose and the current robot tool frame, updates the detected
+  workpiece object pose if configured, and updates pre_grasp and grasp frames
+  in the active belief world.
 
   Args:
       context: SBL BT PythonScript execution context providing `object_world`.
@@ -40,11 +41,9 @@ def calculate_and_update_dynamic_frames(context: Any, params: Any) -> None:
   # Resolve camera sensor transform in parent object (root)
   camera_obj = getattr(world, params.camera_name, None)
   if camera_obj is None:
-    for obj_name in ["ur_module", "robot", "root"]:
-      p = getattr(world, obj_name, None)
-      if p is not None and hasattr(p, params.camera_name):
-        camera_obj = getattr(p, params.camera_name)
-        break
+    raise ValueError(
+      f"Camera object '{params.camera_name}' not found in world."
+    )
 
   camera_sensor_node = (
     getattr(camera_obj, "sensor", camera_obj) if camera_obj else None
@@ -71,6 +70,29 @@ def calculate_and_update_dynamic_frames(context: Any, params: Any) -> None:
   target_pos = root_t_target.translation
   target_rot = root_t_target.rotation
 
+  min_safe_z = float(params.min_safe_z)
+  if float(target_pos[2]) < min_safe_z:
+    raise ValueError(
+      f"Calculated workpiece target Z ({float(target_pos[2]):.4f}m) is below "
+      f"minimum safe height min_safe_z ({min_safe_z:.4f}m)."
+    )
+
+  # Update world object pose if target_scene_object_id is present
+  target_id = getattr(params, "target_scene_object_id", "")
+  if target_id and hasattr(world, "update_transform"):
+    target_obj = getattr(world, target_id, None) or getattr(
+      world, target_id.split(".")[-1], None
+    )
+    if target_obj is not None:
+      actual_parent = (
+        getattr(target_obj, "parent", None)
+        or getattr(target_obj, "parent_object", None)
+        or parent_obj
+      )
+      world.update_transform(
+        node_a=actual_parent, node_b=target_obj, a_t_b=root_t_target
+      )
+
   # Determine longest axis alignment in root XY plane:
   # Local X is the longest axis (5"), local Z is the medium axis (3"), local Y is the thickness (2").
   ax = target_rot.rotate_point([1.0, 0.0, 0.0])
@@ -95,8 +117,10 @@ def calculate_and_update_dynamic_frames(context: Any, params: Any) -> None:
     (-c2[0], -c2[1], 0.0, 0.0),
   ]
 
-  tool_obj = getattr(world, "gripper", None)
-  tool_node = getattr(tool_obj, "tool_frame", None) if tool_obj else None
+  tool_object_name = str(params.tool_object_name)
+  tool_frame_name = str(params.tool_frame_name)
+  tool_obj = getattr(world, tool_object_name, None)
+  tool_node = getattr(tool_obj, tool_frame_name, None) if tool_obj else None
   cur_tool_tf = (
     world.get_transform(parent_obj, tool_node) if tool_node else None
   )

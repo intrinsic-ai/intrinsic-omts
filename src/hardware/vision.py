@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Vision and 3D camera hardware interfaces and implementations."""
+"""Vision and 3D camera hardware interfaces and Orbbec SBL implementation."""
 
 import abc
-from collections.abc import Sequence
 from unittest import mock
 
 from intrinsic.assets import id_utils
@@ -24,60 +23,43 @@ from intrinsic.solutions import behavior_tree as bt
 from intrinsic.solutions import deployments, provided
 from intrinsic.solutions import proto_building as pb
 
-from src.core.types import Pose3D
+from src.core.config import VisionConfig
 from src.utils.dynamic_frame_calculator import (
   calculate_and_update_dynamic_frames,
 )
-from src.utils.script_utils import load_python_script
+from src.utils.script_utils import create_dwell_task, load_python_script
 
 
 def _get_camera_resource(
   solution: deployments.Solution,
-  camera_name: str | None = None,
+  camera_name: str,
 ) -> provided.ResourceHandle:
   """Resolves the camera resource handle from solution resources."""
-  target_name = camera_name or "orbbec_camera"
-  if isinstance(solution.resources, dict) and target_name in solution.resources:
-    return solution.resources[target_name]
+  if isinstance(solution.resources, dict) and camera_name in solution.resources:
+    return solution.resources[camera_name]
   try:
-    return solution.resources[target_name]
-  except (KeyError, AttributeError, TypeError):
-    pass
-
-  # Fallback to capability search
-  for handle in getattr(
-    solution.resources, "values", lambda: solution.resources
-  )():
-    if hasattr(handle, "types") and "CameraConfig" in handle.types:
-      return handle
-  raise ValueError(f"Camera resource '{target_name}' not found in solution.")
+    return solution.resources[camera_name]
+  except (KeyError, AttributeError, TypeError) as exc:
+    raise ValueError(
+      f"Camera resource '{camera_name}' not found in solution resources."
+    ) from exc
 
 
 def _get_perception_resource(
   solution: deployments.Solution,
-  service_name: str | None = None,
+  service_name: str,
 ) -> provided.ResourceHandle:
   """Resolves the perception service resource handle from solution resources."""
-  target_name = service_name or "pose_estimator_service"
-  if isinstance(solution.resources, dict) and target_name in solution.resources:
-    return solution.resources[target_name]
+  if (
+    isinstance(solution.resources, dict) and service_name in solution.resources
+  ):
+    return solution.resources[service_name]
   try:
-    return solution.resources[target_name]
-  except (KeyError, AttributeError, TypeError):
-    pass
-
-  # Fallback to capability search
-  for handle in getattr(
-    solution.resources, "values", lambda: solution.resources
-  )():
-    if (
-      hasattr(handle, "types")
-      and "intrinsic_proto.perception.v1.PoseEstimationService" in handle.types
-    ):
-      return handle
-  raise ValueError(
-    f"Perception service resource '{target_name}' not found in solution."
-  )
+    return solution.resources[service_name]
+  except (KeyError, AttributeError, TypeError) as exc:
+    raise ValueError(
+      f"Perception service resource '{service_name}' not found in solution resources."
+    ) from exc
 
 
 class VisionInterface(abc.ABC):
@@ -91,13 +73,14 @@ class VisionInterface(abc.ABC):
   @abc.abstractmethod
   def build_perception_and_spawn_task(
     self,
-    target_scene_object_id: str = "ai.intrinsic.raw_stock_2x3x5",
-    pose_estimator_id: str = "ai.intrinsic.raw_stock_2x3x5_estimator",
-    min_num_instances: int = 1,
-    approach_offset_z: float = 0.05,
-    parent_object: str = "root",
-    pregrasp_frame_name: str = "pre_grasp",
-    grasp_frame_name: str = "grasp",
+    approach_offset_z: float,
+    parent_object: str,
+    pregrasp_frame_name: str,
+    grasp_frame_name: str,
+    tool_object_name: str,
+    tool_frame_name: str,
+    max_tries: int = 3,
+    retry_delay_sec: float = 1.0,
     name: str | None = None,
   ) -> bt.Node:
     """Builds a composite task to capture RGB-D, estimate 6D poses, and update world frames."""
@@ -110,21 +93,23 @@ class OrbbecVision(VisionInterface):
   def __init__(
     self,
     solution: deployments.Solution,
-    camera_name: str = "orbbec_camera",
-    perception_service_name: str = "pose_estimator_service",
-    sensor_ids: Sequence[int] = (1, 4),
+    config: VisionConfig,
     log_debug_data: bool = True,
   ) -> None:
     self._solution = solution
-    self._camera_name = camera_name
-    self._perception_service_name = perception_service_name
-    self._sensor_ids = list(sensor_ids)
+    self._camera_name = config.camera_name
+    self._perception_service_name = config.perception_service_name
+    self._pose_estimator_id = config.pose_estimator_id
+    self._scene_object_id = config.scene_object_id
+    self._sensor_ids = list(config.sensor_ids)
+    self._min_num_instances = config.min_num_instances
+    self._min_safe_z = config.min_safe_z
     self._log_debug_data = log_debug_data
 
-    # Resolve resource handles
-    self._camera_resource = _get_camera_resource(solution, camera_name)
+    # Resolve resource handles strictly by configured name
+    self._camera_resource = _get_camera_resource(solution, config.camera_name)
     self._perception_resource = _get_perception_resource(
-      solution, perception_service_name
+      solution, config.perception_service_name
     )
 
   def build_capture_image_task(self, name: str | None = None) -> bt.Node:
@@ -139,13 +124,14 @@ class OrbbecVision(VisionInterface):
 
   def build_perception_and_spawn_task(
     self,
-    target_scene_object_id: str = "ai.intrinsic.raw_stock_2x3x5",
-    pose_estimator_id: str = "ai.intrinsic.raw_stock_2x3x5_estimator",
-    min_num_instances: int = 1,
-    approach_offset_z: float = 0.05,
-    parent_object: str = "root",
-    pregrasp_frame_name: str = "pre_grasp",
-    grasp_frame_name: str = "grasp",
+    approach_offset_z: float,
+    parent_object: str,
+    pregrasp_frame_name: str,
+    grasp_frame_name: str,
+    tool_object_name: str,
+    tool_frame_name: str,
+    max_tries: int = 3,
+    retry_delay_sec: float = 1.0,
     name: str | None = None,
   ) -> bt.Node:
     """Builds the pipeline to capture RGB-D, estimate 6D poses, and dynamically update grasp frames."""
@@ -165,14 +151,14 @@ class OrbbecVision(VisionInterface):
 
     # 2. Estimate 6D Poses via Multi-View / FoundationPose
     pkg = (
-      id_utils.package_from(pose_estimator_id)
-      if id_utils.is_id(pose_estimator_id)
+      id_utils.package_from(self._pose_estimator_id)
+      if id_utils.is_id(self._pose_estimator_id)
       else "ai.intrinsic"
     )
     est_name = (
-      id_utils.name_from(pose_estimator_id)
-      if id_utils.is_id(pose_estimator_id)
-      else pose_estimator_id
+      id_utils.name_from(self._pose_estimator_id)
+      if id_utils.is_id(self._pose_estimator_id)
+      else self._pose_estimator_id
     )
 
     pose_estimator_proto = pose_estimator_id_pb2.PoseEstimatorId(
@@ -188,7 +174,7 @@ class OrbbecVision(VisionInterface):
       perception=self._perception_resource,
       pose_estimator=pose_estimator_proto,
       capture_data=[capture_action.result.capture_data],
-      min_num_instances=min_num_instances,
+      min_num_instances=self._min_num_instances,
       log_debug_data=self._log_debug_data,
     )
     estimate_task = bt.Task(
@@ -275,6 +261,30 @@ class OrbbecVision(VisionInterface):
               number=12,
               arg=self._camera_name,
             ),
+            pb.FieldSpec(
+              type="string",
+              name="target_scene_object_id",
+              number=13,
+              arg=self._scene_object_id,
+            ),
+            pb.FieldSpec(
+              type="float",
+              name="min_safe_z",
+              number=14,
+              arg=self._min_safe_z,
+            ),
+            pb.FieldSpec(
+              type="string",
+              name="tool_object_name",
+              number=15,
+              arg=tool_object_name,
+            ),
+            pb.FieldSpec(
+              type="string",
+              name="tool_frame_name",
+              number=16,
+              arg=tool_frame_name,
+            ),
           ]
         ),
       )
@@ -290,41 +300,24 @@ class OrbbecVision(VisionInterface):
       name="3. Calculate & Update Dynamic Grasp & Pre-Grasp Frames",
     )
 
-    return bt.Sequence(
-      name=task_name,
+    acquisition_and_calc_seq = bt.Sequence(
+      name="Perception Capture, Estimation & Frame Calculation",
       children=[
         capture_task,
         estimate_task,
         calc_task,
       ],
     )
-
-
-class MockVision(VisionInterface):
-  """Mock vision sensor for offline testing."""
-
-  def __init__(self, simulated_pose: Pose3D | None = None) -> None:
-    self.simulated_pose = simulated_pose or Pose3D(x=0.15, y=0.25, z=0.71)
-    self.capture_count: int = 0
-    self.pipeline_count: int = 0
-
-  def build_capture_image_task(self, name: str | None = None) -> bt.Node:
-    self.capture_count += 1
-    return bt.Sequence(name=name or "Mock Capture Image", children=[])
-
-  def build_perception_and_spawn_task(
-    self,
-    target_scene_object_id: str = "ai.intrinsic.raw_stock_2x3x5",
-    pose_estimator_id: str = "ai.intrinsic.raw_stock_2x3x5_estimator",
-    min_num_instances: int = 1,
-    approach_offset_z: float = 0.05,
-    parent_object: str = "root",
-    pregrasp_frame_name: str = "pre_grasp",
-    grasp_frame_name: str = "grasp",
-    name: str | None = None,
-  ) -> bt.Node:
-    self.pipeline_count += 1
-    return bt.Sequence(
-      name=name or "Mock Perception & Dynamic Grasp Frame Update Pipeline",
-      children=[],
-    )
+    if max_tries > 1:
+      recovery_task = create_dwell_task(
+        dwell_time_sec=retry_delay_sec,
+        solution=self._solution,
+        task_name=f"Perception Retry Dwell ({retry_delay_sec}s)",
+      )
+      return bt.Retry(
+        max_tries=max_tries,
+        child=acquisition_and_calc_seq,
+        recovery=recovery_task,
+        name=task_name,
+      )
+    return acquisition_and_calc_seq

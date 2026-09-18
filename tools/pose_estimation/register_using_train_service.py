@@ -20,10 +20,12 @@ from collections.abc import Sequence
 import grpc
 from absl import app, flags
 from google.longrunning import operations_pb2
-from incode.perception.ioc_train_service.proto import (
+from incode.intrinsic_perception.intrinsic.perception.service.ioc_train_service.proto import (
   ioc_pose_estimator_params_pb2,
 )
-from incode.perception.ioc_train_service.service import ioc_train_service
+from incode.intrinsic_perception.intrinsic.perception.service.ioc_train_service.service import (
+  ioc_train_service,
+)
 from intrinsic.assets import id_utils
 from intrinsic.assets.proto import (
   id_pb2,
@@ -47,7 +49,6 @@ _ADDRESS = flags.DEFINE_string(
   "address",
   None,
   help="Direct cluster/ingress address (e.g. 'localhost:17080').",
-  required=True,
 )
 _SCENE_OBJECT_ID = flags.DEFINE_string(
   "scene_object_id",
@@ -56,7 +57,6 @@ _SCENE_OBJECT_ID = flags.DEFINE_string(
     "Asset ID of the scene object (e.g., 'ai.intrinsic.new_object' or"
     " 'new_object')."
   ),
-  required=True,
 )
 _POSE_ESTIMATOR_ID = flags.DEFINE_string(
   "pose_estimator_id",
@@ -65,7 +65,6 @@ _POSE_ESTIMATOR_ID = flags.DEFINE_string(
     "Asset ID of the pose estimator. Needs to be a valid id, that follows"
     " the format <package>.<name>, for example ai.intrinsic.pose_estimator"
   ),
-  required=True,
 )
 _REFINEMENT_ITERS = flags.DEFINE_integer(
   "refinement_iters",
@@ -375,4 +374,7 @@ def main(argv: Sequence[str]) -> None:
 
 
 if __name__ == "__main__":
+  flags.mark_flags_as_required(
+    ["address", "scene_object_id", "pose_estimator_id"]
+  )
   app.run(main)

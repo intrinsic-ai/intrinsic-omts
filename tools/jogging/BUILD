@@ -6,6 +6,7 @@ py_library(
     name = "move_to_frame_lib",
     srcs = ["move_to_frame.py"],
     deps = [
+        "//src/core:config",
         "//src/hardware:robot",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
@@ -18,6 +19,27 @@ py_binary(
     main = "move_to_frame.py",
     deps = [
         ":move_to_frame_lib",
+    ],
+)
+
+py_library(
+    name = "move_to_joint_lib",
+    srcs = ["move_to_joint.py"],
+    deps = [
+        "//src/core:config",
+        "//src/core:types",
+        "//src/hardware:robot",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
+        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+    ],
+)
+
+py_binary(
+    name = "move_to_joint",
+    srcs = ["move_to_joint.py"],
+    main = "move_to_joint.py",
+    deps = [
+        ":move_to_joint_lib",
     ],
 )
 
@@ -43,7 +65,7 @@ py_library(
     name = "store_frame_lib",
     srcs = ["store_frame.py"],
     data = [
-        "//configs:scene.updates.pbtxt",
+        "//configs:all_world_updates",
     ],
     deps = [
         "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
@@ -56,7 +78,7 @@ py_binary(
     name = "store_frame",
     srcs = ["store_frame.py"],
     data = [
-        "//configs:scene.updates.pbtxt",
+        "//configs:all_world_updates",
     ],
     main = "store_frame.py",
     deps = [

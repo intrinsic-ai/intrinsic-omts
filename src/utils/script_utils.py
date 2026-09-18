@@ -119,3 +119,30 @@ def load_python_script(
     code = f"{code}\n\n{call_stmt}\n"
 
   return code
+
+
+def create_dwell_task(
+  dwell_time_sec: float,
+  solution: Any | None = None,
+  task_name: str | None = None,
+) -> Any:
+  """Creates a Task node that pauses execution for a specified duration.
+
+  Args:
+    dwell_time_sec: Dwell duration in seconds.
+    solution: Optional live solution deployment handle.
+    task_name: Custom descriptive name for the task node.
+
+  Returns:
+    Task node executing the dwell Python script action.
+  """
+  from intrinsic.solutions import (
+    behavior_tree as bt,  # pylint: disable=g-import-not-at-top
+  )
+
+  del solution
+  name = task_name or f"Dwell ({dwell_time_sec}s)"
+  action = bt.PythonScript(
+    function_body=f"import time\ntime.sleep({float(dwell_time_sec)})\n",
+  )
+  return bt.Task(action=action, name=name)

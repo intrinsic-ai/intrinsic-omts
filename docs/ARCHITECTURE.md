@@ -25,8 +25,8 @@ flowchart TD
         MAIN[main.py] --> ADAPTERS[Hardware Adapters]
         ADAPTERS --> ROBOT_ADAPT[UrRobot]
         ADAPTERS --> VISION_ADAPT[OrbbecVision]
-        ADAPTERS --> GRIP_ADAPT[DioGripper / MockGripper]
-        ADAPTERS --> CNC_ADAPT[DioCncMachine / MockCncMachine]
+        ADAPTERS --> GRIP_ADAPT[RobotiqGripper / DioGripper]
+        ADAPTERS --> CNC_ADAPT[DioCncMachine]
         
         MAIN --> STRATEGY[Infeed Strategy]
         STRATEGY -.-> PERCEP[PerceptionInfeedStrategy]
@@ -47,16 +47,16 @@ flowchart TD
 
 ## 2. Hardware Abstraction Layer (HAL)
 
-All hardware interactions are mediated by abstract interfaces in [`src/hardware/`](../src/hardware/):
+All hardware interactions are mediated by stateless interfaces in [`src/hardware/`](../src/hardware/):
 
 | Interface | Implementations | Key Responsibilities |
 | :--- | :--- | :--- |
-| [`RobotInterface`](../src/hardware/robot.py) | `UrRobot`, `MockRobot` | Joint motions (`build_move_joint_task`), absolute Cartesian motions (`build_move_cartesian_task`), relative linear Cartesian motions (`build_move_relative_cartesian_task`), and compliant contact (`build_move_to_contact_task`). |
-| [`GripperInterface`](../src/hardware/gripper.py) | `DioGripper`, `RobotiqGripper`, `MockGripper` | Gripper open/close tasks and stroke position control. |
-| [`CncMachineInterface`](../src/hardware/machine.py) | `DioCncMachine`, `MockCncMachine` | Door actuation, pneumatic vise clamping, cycle start pulsing, and cycle complete waiting. |
-| [`VisionInterface`](../src/hardware/vision.py) | `OrbbecVision`, `MockVision` | RGB-D image acquisition, 6D pose estimation, and in-tree dynamic frame calculation via `bt.PythonScript`. |
+| [`RobotInterface`](../src/hardware/robot.py) | `UrRobot` | Joint motions (`build_move_joint_task`), absolute Cartesian motions (`build_move_cartesian_task`), blended trajectories (`build_move_blended_cartesian_task`), relative motions (`build_move_relative_cartesian_task`), compliant contact (`build_move_to_contact_task`), and native object attachment (`build_attach_object_task`, `build_detach_object_task`). |
+| [`GripperInterface`](../src/hardware/gripper.py) | `DioGripper`, `RobotiqGripper` | Gripper open/close tasks and stroke position control. |
+| [`CncMachineInterface`](../src/hardware/machine.py) | `DioCncMachine` | Door actuation, pneumatic vise clamping with belief-world joint synchronization (`update_world`), cycle start pulsing, and cycle complete waiting. |
+| [`VisionInterface`](../src/hardware/vision.py) | `OrbbecVision` | Atomic retryable RGB-D image acquisition, 6D pose estimation, and in-tree dynamic frame calculation via `bt.PythonScript`. |
 
-This abstraction ensures that high-level process behavior trees remain decoupled from the underlying hardware interfaces, facilitating offline unit testing without real hardware or simulators.
+This abstraction keeps process behavior trees decoupled from hardware details while leveraging Flowstate's native `SimulationMode` (`REALITY`, `PREVIEW`, `FAST_PREVIEW`) for simulation.
 
 ---
 
@@ -101,6 +101,7 @@ sequenceDiagram
     participant World as SBL ObjectWorld
 
     Note over Robot,World: 1. Infeed Pick Subtree
+    CNC->>CNC: Prep: Open CNC Door & Open CNC Vise (DIO)
     Robot->>Robot: Move to view frame (ANY)
     Vision->>Vision: Capture RGB-D & run FoundationPose
     Vision->>World: PythonScript dynamic frame update (root/pre_grasp, root/grasp)
@@ -109,16 +110,18 @@ sequenceDiagram
     Robot->>Robot: Compliant Touchdown (+Z tool contact, 15N)
     Robot->>Robot: Linear Retract 3 cm (-Z tool relative motion)
     Gripper->>Gripper: Close Gripper (Grasp Part)
+    Robot->>World: Attach workpiece to Gripper
     Robot->>Robot: Linear Retract to root/pre_grasp (LINEAR)
 
     Note over Robot,World: 2. Machine Loading Subtree
-    CNC->>CNC: Open Door & Open Vise (DIO)
-    Robot->>Robot: Move to machine_approach entry frame (ANY)
-    Robot->>Robot: Move to pre_place_vise insertion frame (ANY)
-    Robot->>Robot: Compliant Seating into Vise (+Z tool contact, 15N)
+    CNC->>CNC: Ensure CNC Door & Vise Open (DIO)
+    Robot->>Robot: Blended Transit to machine_approach entry frame (ANY)
+    Robot->>Robot: Move to vise_pre_place insertion frame (ANY)
+    Robot->>Robot: Compliant Seating into Vise (+Z tool contact, 8.0N)
     CNC->>CNC: Clamp Vise (DIO)
     Gripper->>Gripper: Open Gripper (Release Part)
-    Robot->>Robot: Linear Retract to pre_place_vise (LINEAR)
+    Robot->>World: Detach workpiece from Gripper
+    Robot->>Robot: Linear Retract to vise_pre_place (LINEAR)
     Robot->>Robot: Retract to machine_approach (LINEAR)
 
     Note over Robot,World: 3. Machining Handshake Subtree
@@ -129,17 +132,19 @@ sequenceDiagram
     Note over Robot,World: 4. Machine Unload Subtree
     CNC->>CNC: Open Door & Open Vise (DIO)
     Robot->>Robot: Move to machine_approach (ANY)
-    Robot->>Robot: Move to pre_place_vise (ANY)
+    Robot->>Robot: Move to vise_pre_place (ANY)
     Robot->>Robot: Compliant Touchdown to Machined Part (+Z tool contact, 15N)
     Robot->>Robot: Linear Retract 3 cm (-Z tool relative motion)
     Gripper->>Gripper: Close Gripper (Grasp Part)
-    Robot->>Robot: Linear Retract to pre_place_vise (LINEAR)
+    Robot->>World: Attach workpiece to Gripper
+    Robot->>Robot: Linear Retract to vise_pre_place (LINEAR)
     Robot->>Robot: Retract to machine_approach (LINEAR)
 
     Note over Robot,World: 5. Return / Outfeed Subtree
-    Robot->>Robot: Move to root/pre_grasp (ANY)
+    Robot->>Robot: Blended Transit to root/pre_grasp (ANY)
     Robot->>Robot: Compliant Touchdown to Table (+Z tool contact, 5N)
     Gripper->>Gripper: Open Gripper (Release Finished Part)
+    Robot->>World: Detach workpiece from Gripper
     Robot->>Robot: Linear Retract from Table (LINEAR)
     Robot->>Robot: Return to view frame (ANY)
 ```
