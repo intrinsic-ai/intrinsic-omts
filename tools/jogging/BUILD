@@ -35,7 +35,7 @@ py_binary(
         "@ioc//incode/intrinsic_control/intrinsic/icon/actions:joint_jogging_py_pb2",
         "@ioc//incode/intrinsic_control/intrinsic/icon/python:icon",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
-        "@ioc//intrinsic/util/grpc:connection",
+        "@ioc//incode/intrinsic_sdk/intrinsic/util/grpc:connection",
     ],
 )
 
@@ -48,7 +48,7 @@ py_library(
     deps = [
         "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
-        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
+        "@ioc//incode/intrinsic_sdk/intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
@@ -72,6 +72,6 @@ py_binary(
         "//src/utils:math_utils",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:worlds",
-        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
+        "@ioc//incode/intrinsic_sdk/intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )

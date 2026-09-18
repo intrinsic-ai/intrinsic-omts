@@ -80,7 +80,7 @@ py_test(
         "//tools/jogging:store_frame_lib",
         "@com_google_absl_py//absl/testing:absltest",
         "@ioc//incode/intrinsic_sdk/intrinsic/math/python:data_types",
-        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
+        "@ioc//incode/intrinsic_sdk/intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 

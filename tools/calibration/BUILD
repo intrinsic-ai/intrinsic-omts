@@ -20,10 +20,10 @@ py_binary(
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:provided",
+        "@ioc//incode/intrinsic_sdk/intrinsic/util/grpc:connection",
+        "@ioc//incode/intrinsic_sdk/intrinsic/util/grpc:interceptor",
+        "@ioc//incode/intrinsic_sdk/intrinsic/world/proto:object_world_updates_py_pb2",
         "@ioc//incode/intrinsic_sdk/intrinsic/world/python:object_world_ids",
-        "@ioc//intrinsic/util/grpc:connection",
-        "@ioc//intrinsic/util/grpc:interceptor",
-        "@ioc//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
@@ -48,7 +48,7 @@ py_binary(
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:provided",
-        "@ioc//intrinsic/util/grpc:connection",
-        "@ioc//intrinsic/util/grpc:interceptor",
+        "@ioc//incode/intrinsic_sdk/intrinsic/util/grpc:connection",
+        "@ioc//incode/intrinsic_sdk/intrinsic/util/grpc:interceptor",
     ],
 )

@@ -10,11 +10,11 @@ py_binary(
         "@com_google_absl_py//absl:app",
         "@com_google_absl_py//absl/flags",
         "@intrinsic_apis//intrinsic/perception/proto/v1:pose_estimator_id_py_pb2",
+        "@ioc//incode/intrinsic_sdk/intrinsic/assets:id_utils_py",
         "@ioc//incode/intrinsic_sdk/intrinsic/math/python:proto_conversion",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:provided",
-        "@ioc//intrinsic/assets:id_utils_py",
         "@ioc//intrinsic/perception/skills/multi_view:estimate_pose_multi_view_py_pb2",
     ],
 )
@@ -39,8 +39,8 @@ py_binary(
         "@intrinsic_apis//intrinsic/scene/proto/v1:scene_object_py_pb2",
         "@ioc//incode/intrinsic_perception/intrinsic/perception/service/ioc_train_service:ioc_train_service_lib",
         "@ioc//incode/intrinsic_perception/intrinsic/perception/service/ioc_train_service/proto:ioc_pose_estimator_params_py_pb2",
+        "@ioc//incode/intrinsic_sdk/intrinsic/assets/proto:installed_assets_pb2_grpc",
+        "@ioc//incode/intrinsic_sdk/intrinsic/assets/proto:installed_assets_py_pb2",
         "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
-        "@ioc//intrinsic/assets/proto:installed_assets_pb2_grpc",
-        "@ioc//intrinsic/assets/proto:installed_assets_py_pb2",
     ],
 )
