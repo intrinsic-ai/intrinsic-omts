@@ -2,7 +2,7 @@ load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@ioc//incode/intrinsic_inference/assets/inference_service/bazel:intrinsic_mlmodel.bzl", "intrinsic_mlmodel")
 load("@ioc//intrinsic/assets/build_defs:asset.bzl", "intrinsic_asset_instance")
-load("@ioc//intrinsic/config:def.bzl", "intrinsic_solution")
+load("@ioc//intrinsic/assets/build_defs:solution.bzl", "intrinsic_solution")
 load("//bazel:imported_asset.bzl", "imported_asset_bundle")
 
 package(default_visibility = ["//visibility:public"])
@@ -31,7 +31,6 @@ config_setting(
 # Solution deployment definition
 intrinsic_solution(
     name = "omts_solution",
-    add_compose_world_test = False,
     assets = [
         "@ioc//intrinsic/resources/catalog/resourcedata/gripper:robotiq_pinch_gripper_resource_type",
         "@ioc//intrinsic/simulation/gazebo/asset:gazebo_simulator_type",
@@ -61,8 +60,8 @@ intrinsic_solution(
         "@ioc//intrinsic/skills/apps:attach_object_to_robot_skill",
         "@ioc//intrinsic/skills/apps:detach_object_skill",
         ":flowstate_ros_bridge_asset",
-        ":gripper_cmd_skill_asset",
-        ":hande_gripper_service_asset",
+        ":hand_e_gripper_cmd_skill_asset",
+        ":hand_e_gripper_service_asset",
         ":orbbec_gemini_driver_asset",
         "//src/foundationpose:foundationpose_mlmodel",
         ":rfdetr_mlmodel",
@@ -97,7 +96,7 @@ intrinsic_solution(
         ":pose_estimator_service",
         ":train_service",
         ":flowstate_ros_bridge",
-        ":hande_gripper_service",
+        ":hand_e_gripper_service",
     ] + select({
         ":is_lab_bb_01": [
         ],
@@ -257,27 +256,27 @@ intrinsic_asset_instance(
 # taken straight out of the bundle rather than being maintained as a checked-in
 # copy that could drift from the released tarball.
 genrule(
-    name = "gripper_cmd_skill_manifest",
-    srcs = ["@gripper_cmd_skill_bundle//:gripper_cmd_skill.bundle.tar"],
-    outs = ["gripper_cmd_skill_manifest.binpb"],
+    name = "hand_e_gripper_cmd_skill_manifest",
+    srcs = ["@hand_e_gripper_cmd_skill_bundle//:hand_e_gripper_cmd_skill.bundle.tar"],
+    outs = ["hand_e_gripper_cmd_skill_manifest.binpb"],
     cmd = "tar -xOf $< skill_manifest.binpb > $@",
 )
 
 imported_asset_bundle(
-    name = "gripper_cmd_skill_asset",
+    name = "hand_e_gripper_cmd_skill_asset",
     asset_type = "ASSET_TYPE_SKILL",
-    bundle = "@gripper_cmd_skill_bundle//:gripper_cmd_skill.bundle.tar",
-    manifest = ":gripper_cmd_skill_manifest.binpb",
+    bundle = "@hand_e_gripper_cmd_skill_bundle//:hand_e_gripper_cmd_skill.bundle.tar",
+    manifest = ":hand_e_gripper_cmd_skill_manifest.binpb",
 )
 
 imported_asset_bundle(
-    name = "hande_gripper_service_asset",
-    bundle = "@hande_gripper_service_bundle//:hande_gripper_service.bundle.tar",
+    name = "hand_e_gripper_service_asset",
+    bundle = "@hand_e_gripper_service_bundle//:hand_e_gripper_service.bundle.tar",
     manifest = "//configs:common/hande_gripper_service_manifest.textproto",
 )
 
 intrinsic_asset_instance(
-    name = "hande_gripper_service",
+    name = "hand_e_gripper_service",
     asset = "ai.intrinsic.hande_gripper_aquarium_hande_gripper_launch_xml",
     instance_name = "hande_gripper",
 )
