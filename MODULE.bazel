@@ -1,11 +1,11 @@
 module(name = "omts")
 
-# Intrinsic Open Core, pinned to an intrinsic-ai/ioc-staging revision.
+# Intrinsic Core, pinned to an intrinsic-ai/ioc-staging revision.
 #
-# IOC is built from source as part of the OMTS build. Bazel clones it directly,
+# Intrinsic Core is built from source as part of the OMTS build. Bazel clones it directly,
 # so no manual sibling checkout is required.
 #
-# IOC_COMMIT is pinned rather than the tag because git tags are mutable. It is
+# INTRINSIC_CORE_COMMIT is pinned rather than the tag because git tags are mutable. It is
 # the commit that `v0.0.1-rc5` points at:
 #   git ls-remote https://github.com/intrinsic-ai/ioc-staging.git \
 #     refs/tags/<tag>^{}
@@ -13,26 +13,26 @@ module(name = "omts")
 # ioc-staging is currently private, and its binary assets are stored in Git LFS,
 # so fetching requires git credentials for the repository and a working
 # `git-lfs` installation. See README.md for setup.
-IOC_RELEASE = "20260918.0"  # buildifier: disable=unused-variable
+INTRINSIC_CORE_RELEASE = "20260918.0"  # buildifier: disable=unused-variable
 
-IOC_COMMIT = "88714614d154e8aafcbbe9f52f306e729c91ef20"
+INTRINSIC_CORE_COMMIT = "88714614d154e8aafcbbe9f52f306e729c91ef20"
 
-IOC_REMOTE = "https://github.com/intrinsic-ai/ioc-staging.git"
+INTRINSIC_CORE_REMOTE = "https://github.com/intrinsic-ai/ioc-staging.git"
 
 bazel_dep(name = "intrinsic-core")
 git_override(
     module_name = "intrinsic-core",
-    commit = IOC_COMMIT,
+    commit = INTRINSIC_CORE_COMMIT,
     patch_strip = 1,
     patches = ["//bazel/patches:robotiq_hande_finger_offset.patch"],
-    remote = IOC_REMOTE,
+    remote = INTRINSIC_CORE_REMOTE,
 )
 
 bazel_dep(name = "intrinsic_apis", version = "0.0.1")
 git_override(
     module_name = "intrinsic_apis",
-    commit = IOC_COMMIT,
-    remote = IOC_REMOTE,
+    commit = INTRINSIC_CORE_COMMIT,
+    remote = INTRINSIC_CORE_REMOTE,
     strip_prefix = "incode/intrinsic_apis",
 )
 
