@@ -2,9 +2,9 @@
 # proto-message: intrinsic_proto.services.ServiceManifest
 #
 # Mirrors the manifest shipped inside
-# hande-gripper-aquarium-hande-gripper.launch.xml.bundle.tar. Only the asset id
-# is consumed at build time (see //bazel:imported_asset.bzl); the bundle's own
-# manifest governs the deployment.
+# hand_e_gripper_service.bundle.tar. Only the asset id is consumed at build time
+# (see //bazel:imported_asset.bzl); the bundle's own manifest governs the
+# deployment.
 
 metadata {
   id {
@@ -30,7 +30,12 @@ service_def {
   }
   sim_spec {
     image {
-      archive_filename: "hande-gripper-aquarium-hande-gripper.launch.xml.tar"
+      archive_filename: "hande-gripper-sim-driver-hande-gripper.launch.xml.tar"
+      settings {
+        security_context {
+          privileged: true
+        }
+      }
     }
   }
 }
