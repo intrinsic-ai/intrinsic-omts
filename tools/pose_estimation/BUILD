@@ -9,12 +9,12 @@ py_binary(
         "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
         "@com_google_absl_py//absl:app",
         "@com_google_absl_py//absl/flags",
+        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/skills/multi_view:estimate_pose_multi_view_py_pb2",
         "@intrinsic-core//incode/intrinsic_sdk/intrinsic/math/python:proto_conversion",
         "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:deployments",
         "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:execution",
         "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:provided",
         "@intrinsic-core//intrinsic/assets:id_utils_py",
-        "@intrinsic-core//intrinsic/perception/skills/multi_view:estimate_pose_multi_view_py_pb2",
         "@intrinsic_apis//intrinsic/perception/proto/v1:pose_estimator_id_py_pb2",
     ],
 )

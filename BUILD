@@ -54,7 +54,7 @@ intrinsic_solution(
         "@intrinsic-core//incode/intrinsic_inference/assets/inference_service:inference_service_asset",
         "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/service/ioc_pose_estimator:ioc_pose_estimator_service_asset",
         "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/service/ioc_train_service:ioc_train_service_asset",
-        "@intrinsic-core//intrinsic/perception/skills/multi_view:estimate_pose_multi_view_skill",
+        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/skills/multi_view:estimate_pose_multi_view_skill",
         "@intrinsic-core//intrinsic/world/skills/create_object:create_object_skill",
         "@intrinsic-core//intrinsic/skills/apps:update_world_skill",
         "@intrinsic-core//intrinsic/skills/apps:attach_object_to_robot_skill",
@@ -69,10 +69,10 @@ intrinsic_solution(
     ] + select({
         ":is_lab_bb_01": [
             "@intrinsic-core//intrinsic/apps/bluebird_caw/resources:caw_enclosure",
-            "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_ioc",
+            "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_core",
         ],
         "//conditions:default": [
-            "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_ioc",
+            "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_core",
             "//models/camera_mount",
             "//models/cnc_enclosure",
             "//models/omts_enclosure",
@@ -195,8 +195,8 @@ intrinsic_asset_instance(
 intrinsic_asset_instance(
     name = "ur_module",
     asset = select({
-        ":is_lab_bb_01": "ai.intrinsic.ur3e_hardware_module_ioc",
-        "//conditions:default": "ai.intrinsic.ur5e_hardware_module_ioc",
+        ":is_lab_bb_01": "ai.intrinsic.ur3e_hardware_module_core",
+        "//conditions:default": "ai.intrinsic.ur5e_hardware_module_core",
     }),
     instance_name = "ur_module",
     service_config = select({
