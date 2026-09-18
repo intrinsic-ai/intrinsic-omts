@@ -13,9 +13,9 @@ module(name = "omts")
 # ioc-staging is currently private, and its binary assets are stored in Git LFS,
 # so fetching requires git credentials for the repository and a working
 # `git-lfs` installation. See README.md for setup.
-INTRINSIC_CORE_RELEASE = "20260918.0"  # buildifier: disable=unused-variable
+INTRINSIC_CORE_RELEASE = "20260918.1"  # buildifier: disable=unused-variable
 
-INTRINSIC_CORE_COMMIT = "785c8db4eea01b40ff053086491468b50257ec89"
+INTRINSIC_CORE_COMMIT = "2f5273b568d44a14c5d6978b14360324e54f2083"
 
 INTRINSIC_CORE_REMOTE = "https://github.com/intrinsic-ai/ioc-staging.git"
 
