@@ -79,7 +79,14 @@ single_version_override(
 )
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
-python.toolchain(python_version = "3.12")
+python.toolchain(
+    is_default = True,
+    python_version = "3.11",
+)
+python.toolchain(
+    is_default = False,
+    python_version = "3.12",
+)
 
 internal_configure = use_extension("@pybind11_bazel//:internal_configure.bzl", "internal_configure_extension")
 use_repo(internal_configure, "pybind11")
