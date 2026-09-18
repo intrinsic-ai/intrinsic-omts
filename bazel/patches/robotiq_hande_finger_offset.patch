@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
---- a/incode/intrinsic_control/intrinsic/models/assets/standard_tooling/robotiq_hande/robotiq_hande/robotiq_hande.sdf
-+++ b/incode/intrinsic_control/intrinsic/models/assets/standard_tooling/robotiq_hande/robotiq_hande/robotiq_hande.sdf
+--- a/intrinsic_control/intrinsic/models/assets/standard_tooling/robotiq_hande/robotiq_hande/robotiq_hande.sdf
++++ b/intrinsic_control/intrinsic/models/assets/standard_tooling/robotiq_hande/robotiq_hande/robotiq_hande.sdf
 @@ -104,6 +104,7 @@
  
      <!-- Fingers and their prismatic joints -->

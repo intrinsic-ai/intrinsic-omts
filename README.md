@@ -136,7 +136,7 @@ git_override(
   module_name="intrinsic_apis",
   commit=IOC_COMMIT,
   remote="https://github.com/intrinsic-ai/ioc-staging.git",
-  strip_prefix="incode/intrinsic_apis",
+  strip_prefix="intrinsic_apis",
 )
 ```
 

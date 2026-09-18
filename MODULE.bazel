@@ -15,7 +15,7 @@ module(name = "omts")
 # `git-lfs` installation. See README.md for setup.
 INTRINSIC_CORE_RELEASE = "20260918.0"  # buildifier: disable=unused-variable
 
-INTRINSIC_CORE_COMMIT = "88714614d154e8aafcbbe9f52f306e729c91ef20"
+INTRINSIC_CORE_COMMIT = "785c8db4eea01b40ff053086491468b50257ec89"
 
 INTRINSIC_CORE_REMOTE = "https://github.com/intrinsic-ai/ioc-staging.git"
 
@@ -33,7 +33,7 @@ git_override(
     module_name = "intrinsic_apis",
     commit = INTRINSIC_CORE_COMMIT,
     remote = INTRINSIC_CORE_REMOTE,
-    strip_prefix = "incode/intrinsic_apis",
+    strip_prefix = "intrinsic_apis",
 )
 
 archive_override(

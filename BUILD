@@ -1,6 +1,6 @@
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
-load("@intrinsic-core//incode/intrinsic_inference/assets/inference_service/bazel:intrinsic_mlmodel.bzl", "intrinsic_mlmodel")
+load("@intrinsic-core//intrinsic_inference/assets/inference_service/bazel:intrinsic_mlmodel.bzl", "intrinsic_mlmodel")
 load("@intrinsic-core//intrinsic/assets/build_defs:asset.bzl", "intrinsic_asset_instance")
 load("@intrinsic-core//intrinsic/assets/build_defs:solution.bzl", "intrinsic_solution")
 load("//bazel:imported_asset.bzl", "imported_asset_bundle")
@@ -34,27 +34,27 @@ intrinsic_solution(
     assets = [
         "@intrinsic-core//intrinsic/resources/catalog/resourcedata/gripper:robotiq_pinch_gripper_resource_type",
         "@intrinsic-core//intrinsic/simulation/gazebo/asset:gazebo_simulator_type",
-        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5",
-        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5_estimator",
-        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/calibration/services/v1:calibration_service",
-        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/skills:capture_images_skill",
-        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/skills/calibration:calibrate_camera_to_robot_skill",
-        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/skills/calibration:sample_calibration_poses_skill",
-        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/skills/calibration:collect_calibration_data_skill",
-        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/skills/calibration:initialize_calibration_skill",
-        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/cameras/hardware_devices:orbbec_gemini_335le_hardware_device",
-        "@intrinsic-core//incode/intrinsic_motion_planning/intrinsic/motion_planning/service:motion_planner_service_asset",
+        "@intrinsic-core//intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5",
+        "@intrinsic-core//intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5_estimator",
+        "@intrinsic-core//intrinsic_perception/intrinsic/perception/calibration/services/v1:calibration_service",
+        "@intrinsic-core//intrinsic_perception/intrinsic/perception/skills:capture_images_skill",
+        "@intrinsic-core//intrinsic_perception/intrinsic/perception/skills/calibration:calibrate_camera_to_robot_skill",
+        "@intrinsic-core//intrinsic_perception/intrinsic/perception/skills/calibration:sample_calibration_poses_skill",
+        "@intrinsic-core//intrinsic_perception/intrinsic/perception/skills/calibration:collect_calibration_data_skill",
+        "@intrinsic-core//intrinsic_perception/intrinsic/perception/skills/calibration:initialize_calibration_skill",
+        "@intrinsic-core//intrinsic_perception/intrinsic/perception/cameras/hardware_devices:orbbec_gemini_335le_hardware_device",
+        "@intrinsic-core//intrinsic_motion_planning/intrinsic/motion_planning/service:motion_planner_service_asset",
         "@intrinsic-core//incode/motion_planning/skills:clear_motion_planner_service_cache_skill",
         "@intrinsic-core//incode/motion_planning/skills:preplan_motion_skill",
         "@intrinsic-core//incode/motion_planning/skills:move_robot_skill",
-        "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/machines/common:generic_icon_mainloop_type",
+        "@intrinsic-core//intrinsic_control/intrinsic/icon/machines/common:generic_icon_mainloop_type",
         "@intrinsic-core//intrinsic/manipulation/skills/force:move_to_contact_skill",
-        "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/skills:dio_read_input_skill",
-        "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/skills:dio_set_output_skill",
-        "@intrinsic-core//incode/intrinsic_inference/assets/inference_service:inference_service_asset",
-        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/service/ioc_pose_estimator:ioc_pose_estimator_service_asset",
-        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/service/ioc_train_service:ioc_train_service_asset",
-        "@intrinsic-core//incode/intrinsic_perception/intrinsic/perception/skills/multi_view:estimate_pose_multi_view_skill",
+        "@intrinsic-core//intrinsic_control/intrinsic/icon/skills:dio_read_input_skill",
+        "@intrinsic-core//intrinsic_control/intrinsic/icon/skills:dio_set_output_skill",
+        "@intrinsic-core//intrinsic_inference/assets/inference_service:inference_service_asset",
+        "@intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_pose_estimator:ioc_pose_estimator_service_asset",
+        "@intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_train_service:ioc_train_service_asset",
+        "@intrinsic-core//intrinsic_perception/intrinsic/perception/skills/multi_view:estimate_pose_multi_view_skill",
         "@intrinsic-core//intrinsic/world/skills/create_object:create_object_skill",
         "@intrinsic-core//intrinsic/skills/apps:update_world_skill",
         "@intrinsic-core//intrinsic/skills/apps:attach_object_to_robot_skill",
@@ -69,10 +69,10 @@ intrinsic_solution(
     ] + select({
         ":is_lab_bb_01": [
             "@intrinsic-core//intrinsic/apps/bluebird_caw/resources:caw_enclosure",
-            "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_core",
+            "@intrinsic-core//intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_core",
         ],
         "//conditions:default": [
-            "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_core",
+            "@intrinsic-core//intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur5e_hardware_module_core",
             "//models/camera_mount",
             "//models/cnc_enclosure",
             "//models/omts_enclosure",

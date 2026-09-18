@@ -7,7 +7,7 @@ py_binary(
     srcs = ["inspect_world.py"],
     main = "inspect_world.py",
     deps = [
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
     ],
 )
 
@@ -16,8 +16,8 @@ py_binary(
     srcs = ["align_tool_frame.py"],
     main = "align_tool_frame.py",
     deps = [
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/math/python:data_types",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
     ],
 )
 
@@ -25,7 +25,7 @@ py_library(
     name = "apply_scene_updates_lib",
     srcs = ["apply_scene_updates.py"],
     deps = [
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
