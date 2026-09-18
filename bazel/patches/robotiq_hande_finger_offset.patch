@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
---- a/intrinsic/models/assets/standard_tooling/robotiq_hande/robotiq_hande/robotiq_hande.sdf
-+++ b/intrinsic/models/assets/standard_tooling/robotiq_hande/robotiq_hande/robotiq_hande.sdf
-@@ -57,6 +57,7 @@
+--- a/incode/intrinsic_control/intrinsic/models/assets/standard_tooling/robotiq_hande/robotiq_hande/robotiq_hande.sdf
++++ b/incode/intrinsic_control/intrinsic/models/assets/standard_tooling/robotiq_hande/robotiq_hande/robotiq_hande.sdf
+@@ -104,6 +104,7 @@
  
      <!-- Fingers and their prismatic joints -->
      <link name="gripper_finger1">
@@ -22,7 +22,7 @@
        <inertial>
          <mass>0.2</mass>
          <!-- Approximately set assuming a box of uniform density of size 0.015 0.04 0.07 -->
-@@ -95,6 +96,7 @@
+@@ -160,6 +161,7 @@
        </collision>
      </link>
      <link name="gripper_finger2">

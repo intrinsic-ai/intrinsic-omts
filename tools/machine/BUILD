@@ -1,4 +1,4 @@
-load("@ioc//bazel:python.bzl", "py_binary", "py_library")
+load("@intrinsic-core//bazel:python.bzl", "py_binary", "py_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -8,8 +8,8 @@ py_library(
     deps = [
         "//src/core:config",
         "//src/hardware:machine",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )
 

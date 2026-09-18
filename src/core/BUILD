@@ -1,4 +1,4 @@
-load("@ioc//bazel:python.bzl", "py_library")
+load("@intrinsic-core//bazel:python.bzl", "py_library")
 
 package(default_visibility = ["//visibility:public"])
 

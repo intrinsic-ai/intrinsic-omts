@@ -1,4 +1,4 @@
-load("@ioc//bazel:python.bzl", "py_binary")
+load("@intrinsic-core//bazel:python.bzl", "py_binary")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -15,6 +15,6 @@ py_binary(
         "@com_google_absl_py//absl:app",
         "@com_google_absl_py//absl/flags",
         "@com_google_absl_py//absl/logging",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:deployments",
     ],
 )

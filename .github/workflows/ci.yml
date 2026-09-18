@@ -257,10 +257,10 @@ jobs:
           restore-keys: |
             bazel-disk-${{ runner.os }}-
 
-      # Analysis catches the class of breakage this job exists for: stale @ioc
-      # labels, missing dependencies and malformed BUILD files. It covers all
-      # of //..., which a full compile cannot on a GitHub-hosted runner (ICON,
-      # OpenCV, CUDA and the FoundationPose models do not fit).
+      # Analysis catches the class of breakage this job exists for: stale
+      # @intrinsic-core labels, missing dependencies and malformed BUILD files.
+      # It covers all of //..., which a full compile cannot on a GitHub-hosted
+      # runner (ICON, OpenCV, CUDA and the FoundationPose models do not fit).
       #
       # --keep_going reports every broken label in one run instead of aborting
       # on the first one.

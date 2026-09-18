@@ -1,0 +1,36 @@
+diff --git a/isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/Util.inl b/isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/Util.inl
+--- a/isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/Util.inl
++++ b/isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/Util.inl
+@@ -20,10 +20,10 @@
+ __device__ __inline__ S32   getHi                   (S64 a)                 { return __double2hiint(__longlong_as_double(a)); }
+ __device__ __inline__ U64   combineLoHi             (U32 lo, U32 hi)        { return __double_as_longlong(__hiloint2double(hi, lo)); }
+ __device__ __inline__ S64   combineLoHi             (S32 lo, S32 hi)        { return __double_as_longlong(__hiloint2double(hi, lo)); }
+-__device__ __inline__ U32   getLaneMaskLt           (void)                  { U32 r; asm("mov.u32 %0, %lanemask_lt;" : "=r"(r)); return r; }
+-__device__ __inline__ U32   getLaneMaskLe           (void)                  { U32 r; asm("mov.u32 %0, %lanemask_le;" : "=r"(r)); return r; }
+-__device__ __inline__ U32   getLaneMaskGt           (void)                  { U32 r; asm("mov.u32 %0, %lanemask_gt;" : "=r"(r)); return r; }
+-__device__ __inline__ U32   getLaneMaskGe           (void)                  { U32 r; asm("mov.u32 %0, %lanemask_ge;" : "=r"(r)); return r; }
++__device__ __inline__ U32   getLaneMaskLt           (void)                  { U32 r; asm("mov.u32 %0, %%lanemask_lt;" : "=r"(r)); return r; }
++__device__ __inline__ U32   getLaneMaskLe           (void)                  { U32 r; asm("mov.u32 %0, %%lanemask_le;" : "=r"(r)); return r; }
++__device__ __inline__ U32   getLaneMaskGt           (void)                  { U32 r; asm("mov.u32 %0, %%lanemask_gt;" : "=r"(r)); return r; }
++__device__ __inline__ U32   getLaneMaskGe           (void)                  { U32 r; asm("mov.u32 %0, %%lanemask_ge;" : "=r"(r)); return r; }
+ __device__ __inline__ int   findLeadingOne          (U32 v)                 { U32 r; asm("bfind.u32 %0, %1;" : "=r"(r) : "r"(v)); return r; }
+ __device__ __inline__ bool  singleLane              (void)                  { return ((::__ballot_sync(~0u, true) & getLaneMaskLt()) == 0); }
+ 
+diff --git a/isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/RasterImpl.cpp b/isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/RasterImpl.cpp
+--- a/isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/RasterImpl.cpp
++++ b/isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common/cudaraster/impl/RasterImpl.cpp
+@@ -32,10 +32,10 @@
+ //------------------------------------------------------------------------
+ // Kernel prototypes and variables.
+ 
+-void triangleSetupKernel (const CRParams p);
+-void binRasterKernel     (const CRParams p);
+-void coarseRasterKernel  (const CRParams p);
+-void fineRasterKernel    (const CRParams p);
++__global__ void triangleSetupKernel (const CRParams p);
++__global__ void binRasterKernel     (const CRParams p);
++__global__ void coarseRasterKernel  (const CRParams p);
++__global__ void fineRasterKernel    (const CRParams p);
+ 
+ //------------------------------------------------------------------------
+ 

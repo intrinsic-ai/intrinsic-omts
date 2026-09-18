@@ -70,7 +70,7 @@ flowchart TD
 omts/
 ├── .bazelrc                             # Compiler flags, toolchains, and CUDA settings
 ├── .bazelversion                        # Pinned Bazel version (8.x)
-├── MODULE.bazel                         # Bzlmod dependencies (ioc, toolchains, Skylib)
+├── MODULE.bazel                         # Bzlmod deps (intrinsic-core, toolchains, Skylib)
 ├── BUILD                                # Defines intrinsic_solution(:omts_solution) & aliases
 │
 ├── configs/                             # Workcell Textproto / Pbtxt configurations
@@ -119,14 +119,14 @@ OMTS adheres to clean separation of concerns:
 
 ## 4. Prerequisites & Workspace Setup
 
-Bazel fetches Intrinsic Open Core itself, so no manual `ioc` checkout is
-required. The dependency is configured in [`MODULE.bazel`](MODULE.bazel) and
-pinned to an immutable commit:
+Bazel fetches Intrinsic Open Core itself, so no manual `intrinsic-core`
+checkout is required. The dependency is configured in
+[`MODULE.bazel`](MODULE.bazel) and pinned to an immutable commit:
 
 ```python
-bazel_dep(name="insrc", repo_name="ioc")
+bazel_dep(name="intrinsic-core")
 git_override(
-  module_name="insrc",
+  module_name="intrinsic-core",
   commit=IOC_COMMIT,
   remote="https://github.com/intrinsic-ai/ioc-staging.git",
 )
@@ -168,9 +168,9 @@ git ls-remote https://github.com/intrinsic-ai/ioc-staging.git 'refs/tags/<tag>^{
 ```
 
 > [!NOTE]
-> Once `ioc` is public, the read-access requirement disappears and the
-> `git_override` definitions can be replaced with an `archive_override` against
-> a published release archive, which is faster and checksum-pinned.
+> Once `intrinsic-core` is public, the read-access requirement disappears and
+> the `git_override` definitions can be replaced with an `archive_override`
+> against a published release archive, which is faster and checksum-pinned.
 
 ---
 
@@ -337,12 +337,12 @@ pre-commit install
 ## 8. Licensing information about NVIDIA FoundationPose
 
 OMTS uses the FoundationPose model by NVIDIA for RGB-D pose estimation.
-FoundationPose is packaged into an MlModelAsset in the [OMTS BUILD file](BUILD#L338-L339) at build time by the user.
+FoundationPose is packaged into an MlModelAsset in [`src/foundationpose/BUILD`](src/foundationpose/BUILD) and referenced in the [OMTS `BUILD` file](BUILD) at build time by the user.
 The integration of FoundationPose is comprised of two components:
 
-1. A library for orchestration that was derived from NVIDIA's [Isaac ROS Pose Estimation Repository](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_pose_estimation) and is licensed under the Apache 2.0 license. More information on how this library is packaged can be found in the [FoundationPose README](src/foundationpose/README.md). More information on Isaac ROS FoundationPose can be found in the [NVIDIA's Isaac ROS FoundationPose documentation](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/isaac_ros_foundationpose/index.html).
+1. A library for orchestration (`third_party/foundationpose/`) that was derived from NVIDIA's [Isaac ROS Pose Estimation Repository](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_pose_estimation) and is licensed under the Apache 2.0 license. More information on how this library is built and packaged with Bazel can be found in the [FoundationPose README](src/foundationpose/README.md). More information on Isaac ROS FoundationPose can be found in the [NVIDIA's Isaac ROS FoundationPose documentation](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/isaac_ros_foundationpose/index.html).
 
-2. The FoundationPose model weights (.onnx files) are not included in this repository and are not covered by the Apache 2.0 license. They are downloaded at build time directly from NVIDIA's NGC catalog by the user (configured in [`MODULE.bazel`](MODULE.bazel#L77-L93)).
+2. The FoundationPose model weights (.onnx files) are not included in this repository and are not covered by the Apache 2.0 license. They are downloaded at build time directly from NVIDIA's NGC catalog by the user (configured in [`third_party/foundationpose/deps.bzl`](third_party/foundationpose/deps.bzl)).
    - The models are hosted at:
      - [https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.0_onnx/files/refine_model.onnx](https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.0_onnx/files/refine_model.onnx)
      - [https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.0_onnx/files/score_model.onnx](https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.0_onnx/files/score_model.onnx)
