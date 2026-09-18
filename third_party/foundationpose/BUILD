@@ -18,8 +18,6 @@ load("@rules_license//rules:license.bzl", "license")
 load("@rules_license//rules:package_info.bzl", "package_info")
 load("@rules_python//python:defs.bzl", "py_binary")
 load("@rules_uv//uv:pip.bzl", "pip_compile")
-
-# load("@rules_python//python/pip_install:requirements.bzl", "compile_pip_requirements")
 load(":build_defs.bzl", "triton_python_env_tar")
 
 package(
@@ -50,18 +48,8 @@ exports_files([
     "requirements.txt",
 ])
 
-# compile_pip_requirements(
-#     name = "requirements",
-#     src = "requirements.in",
-#     requirements_txt = ":requirements.txt",
-# )
-
 pip_compile(
     name = "requirements",
-    # data = ["//:pyproject.toml"],
-    # extra_args = [
-    #     "pyproject.toml",
-    # ],
     requirements_in = ":requirements.in",
     requirements_txt = ":requirements.txt",
     # Disable the automatically generated test target as it is slow, requires
