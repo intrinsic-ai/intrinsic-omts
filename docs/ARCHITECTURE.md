@@ -25,8 +25,8 @@ flowchart TD
         MAIN[main.py] --> ADAPTERS[Hardware Adapters]
         ADAPTERS --> ROBOT_ADAPT[UrRobot]
         ADAPTERS --> VISION_ADAPT[OrbbecVision]
-        ADAPTERS --> GRIP_ADAPT[DioGripper / MockGripper]
-        ADAPTERS --> CNC_ADAPT[DioCncMachine / MockCncMachine]
+        ADAPTERS --> GRIP_ADAPT[RobotiqGripper / DioGripper]
+        ADAPTERS --> CNC_ADAPT[DioCncMachine]
         
         MAIN --> STRATEGY[Infeed Strategy]
         STRATEGY -.-> PERCEP[PerceptionInfeedStrategy]
@@ -47,16 +47,16 @@ flowchart TD
 
 ## 2. Hardware Abstraction Layer (HAL)
 
-All hardware interactions are mediated by abstract interfaces in [`src/hardware/`](../src/hardware/):
+All hardware interactions are mediated by stateless interfaces in [`src/hardware/`](../src/hardware/):
 
 | Interface | Implementations | Key Responsibilities |
 | :--- | :--- | :--- |
-| [`RobotInterface`](../src/hardware/robot.py) | `UrRobot`, `MockRobot` | Joint motions (`build_move_joint_task`), absolute Cartesian motions (`build_move_cartesian_task`), relative linear Cartesian motions (`build_move_relative_cartesian_task`), and compliant contact (`build_move_to_contact_task`). |
-| [`GripperInterface`](../src/hardware/gripper.py) | `DioGripper`, `RobotiqGripper`, `MockGripper` | Gripper open/close tasks and stroke position control. |
-| [`CncMachineInterface`](../src/hardware/machine.py) | `DioCncMachine`, `MockCncMachine` | Door actuation, pneumatic vise clamping, cycle start pulsing, and cycle complete waiting. |
-| [`VisionInterface`](../src/hardware/vision.py) | `OrbbecVision`, `MockVision` | RGB-D image acquisition, 6D pose estimation, and in-tree dynamic frame calculation via `bt.PythonScript`. |
+| [`RobotInterface`](../src/hardware/robot.py) | `UrRobot` | Joint motions (`build_move_joint_task`), absolute Cartesian motions (`build_move_cartesian_task`), blended trajectories (`build_move_blended_cartesian_task`), relative motions (`build_move_relative_cartesian_task`), compliant contact (`build_move_to_contact_task`), and native object attachment (`build_attach_object_task`, `build_detach_object_task`). |
+| [`GripperInterface`](../src/hardware/gripper.py) | `DioGripper`, `RobotiqGripper` | Gripper open/close tasks and stroke position control. |
+| [`CncMachineInterface`](../src/hardware/machine.py) | `DioCncMachine` | Door actuation, pneumatic vise clamping with belief-world joint synchronization (`update_world`), cycle start pulsing, and cycle complete waiting. |
+| [`VisionInterface`](../src/hardware/vision.py) | `OrbbecVision` | Atomic retryable RGB-D image acquisition, 6D pose estimation, and in-tree dynamic frame calculation via `bt.PythonScript`. |
 
-This abstraction ensures that high-level process behavior trees remain decoupled from the underlying hardware interfaces, facilitating offline unit testing without real hardware or simulators.
+This abstraction keeps process behavior trees decoupled from hardware details while leveraging Flowstate's native `SimulationMode` (`REALITY`, `PREVIEW`, `FAST_PREVIEW`) for simulation.
 
 ---
 

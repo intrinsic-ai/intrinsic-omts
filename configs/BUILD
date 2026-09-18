@@ -5,6 +5,7 @@ package(default_visibility = ["//visibility:public"])
 _CONFIG_GLOB = [
     "*/*.pbtxt",
     "*/*.textproto",
+    "*/*.yaml",
 ]
 
 exports_files(glob(_CONFIG_GLOB))

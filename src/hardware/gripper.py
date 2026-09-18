@@ -19,6 +19,9 @@ from typing import Any
 
 from intrinsic.solutions import behavior_tree as bt
 
+from src.core.config import GripperConfig
+from src.utils.math_utils import resolve_adio_resource
+
 
 class GripperInterface(abc.ABC):
   """Abstract interface for robotic end-effector gripping actions."""
@@ -40,35 +43,73 @@ class DioGripper(GripperInterface):
   def __init__(
     self,
     solution: Any,
-    open_pin: int = 0,
-    close_pin: int = 1,
-    output_block_name: str = "standard_out",
-    device_name: str | None = "ur_module",
+    config: GripperConfig,
   ) -> None:
+    if (
+      config.dio_open_pin is None
+      or config.dio_close_pin is None
+      or config.dio_output_block_name is None
+    ):
+      raise ValueError(
+        "DioGripper requires dio_open_pin, dio_close_pin, and "
+        "dio_output_block_name in GripperConfig."
+      )
     self._solution = solution
-    self._open_pin = open_pin
-    self._close_pin = close_pin
-    self._output_block_name = output_block_name
-    self._device_name = device_name or "ur_module"
+    self._open_pin: int = config.dio_open_pin
+    self._close_pin: int = config.dio_close_pin
+    self._output_block_name: str = config.dio_output_block_name
+    self._device_name: str | None = config.dio_device_name
     self._dio_set_skill = solution.skills.ai.intrinsic.dio_set_output
+
+  def _build_dio_task(
+    self, active_pin: int, inactive_pin: int, task_name: str
+  ) -> bt.Node:
+    block_cls = getattr(
+      getattr(
+        getattr(self._dio_set_skill, "intrinsic_proto", None), "skills", None
+      ),
+      "DioOutputBlock",
+      None,
+    ) or getattr(self._dio_set_skill, "DioOutputBlock", None)
+
+    kwargs: dict[str, Any] = {}
+    adio_resource = resolve_adio_resource(self._solution, self._device_name)
+    if adio_resource is not None:
+      kwargs["adio"] = adio_resource
+
+    if block_cls is not None:
+      kwargs["dio_output_blocks"] = [
+        block_cls(
+          block_name=self._output_block_name,
+          indices=[active_pin, inactive_pin],
+          values=[True, False],
+        )
+      ]
+    else:
+      kwargs["dio_output_blocks"] = [
+        {
+          "block_name": self._output_block_name,
+          "indices": [active_pin, inactive_pin],
+          "values": [True, False],
+        }
+      ]
+    return bt.Task(action=self._dio_set_skill(**kwargs), name=task_name)
 
   def build_open_task(self, name: str | None = None) -> bt.Node:
     task_name = name or "Open Gripper (DIO)"
-    action = self._dio_set_skill(
-      pin=self._open_pin,
-      state=True,
-      device_name=self._device_name,
+    return self._build_dio_task(
+      active_pin=self._open_pin,
+      inactive_pin=self._close_pin,
+      task_name=task_name,
     )
-    return bt.Task(action=action, name=task_name)
 
   def build_close_task(self, name: str | None = None) -> bt.Node:
     task_name = name or "Close Gripper (DIO)"
-    action = self._dio_set_skill(
-      pin=self._close_pin,
-      state=True,
-      device_name=self._device_name,
+    return self._build_dio_task(
+      active_pin=self._close_pin,
+      inactive_pin=self._open_pin,
+      task_name=task_name,
     )
-    return bt.Task(action=action, name=task_name)
 
 
 class RobotiqGripper(GripperInterface):
@@ -77,28 +118,23 @@ class RobotiqGripper(GripperInterface):
   def __init__(
     self,
     solution: Any,
-    joint_name: str = "robotiq_hande_left_finger_joint",
-    open_position: float = 0.025,
-    close_position: float = 0.0,
-    action_name: str | None = None,
+    config: GripperConfig,
   ) -> None:
-    """Initializes the Robotiq gripper adapter.
-
-    Args:
-        solution: Live SBL solution handle containing deployed skills.
-        joint_name: Name of the active finger joint (default:
-          "robotiq_hande_left_finger_joint").
-        open_position: Finger joint position in meters for open state (default:
-          0.025).
-        close_position: Finger joint position in meters for closed state
-          (default: 0.0).
-        action_name: Optional ROS action controller name for gripper_cmd_skill.
-    """
+    """Initializes the Robotiq gripper adapter from GripperConfig."""
+    if (
+      config.joint_name is None
+      or config.open_position is None
+      or config.close_position is None
+    ):
+      raise ValueError(
+        "RobotiqGripper requires joint_name, open_position, and "
+        "close_position in GripperConfig."
+      )
     self._solution = solution
-    self._joint_name = joint_name
-    self._open_position = open_position
-    self._close_position = close_position
-    self._action_name = action_name
+    self._joint_name: str = config.joint_name
+    self._open_position: float = config.open_position
+    self._close_position: float = config.close_position
+    self._action_name: str | None = config.action_name
     self._gripper_cmd_skill = solution.skills.ai.intrinsic.gripper_cmd_skill
 
   def build_open_task(self, name: str | None = None) -> bt.Node:
@@ -126,86 +162,3 @@ class RobotiqGripper(GripperInterface):
       kwargs["action_name"] = self._action_name
     action = self._gripper_cmd_skill(**kwargs)
     return bt.Task(action=action, name=task_name)
-
-
-class MockGripper(GripperInterface):
-  """Mock gripper for testing when gripper hardware service is not deployed."""
-
-  def __init__(self) -> None:
-    self.state: str = "open"
-    self.command_log: list[str] = []
-
-  def build_open_task(self, name: str | None = None) -> bt.Node:
-    task_name = name or "Mock Open Gripper"
-    self.state = "open"
-    self.command_log.append("open")
-    return bt.Task(
-      action=bt.PythonScript(
-        function_body='print("[MockGripper] Gripper Opened")'
-      ),
-      name=task_name,
-    )
-
-  def build_close_task(self, name: str | None = None) -> bt.Node:
-    task_name = name or "Mock Close Gripper"
-    self.state = "closed"
-    self.command_log.append("close")
-    return bt.Task(
-      action=bt.PythonScript(
-        function_body='print("[MockGripper] Gripper Closed (Part Grasped)")'
-      ),
-      name=task_name,
-    )
-
-
-class SideloadedGripperCmd(GripperInterface):
-  """Gripper adapter using sideloaded ai.intrinsic.gripper_cmd_skill."""
-
-  def __init__(
-    self,
-    solution: Any,
-    action_name: str = "/gripper/gripper_action_controller/gripper_cmd",
-    joint_name: str = "robotiq_hande_left_finger_joint",
-    open_position: float = 0.025,
-    close_position: float = 0.000,
-  ) -> None:
-    """Initializes the sideloaded gripper command adapter.
-
-    Args:
-      solution: Live SBL solution handle containing deployed skills.
-      action_name: Controller action name for gripper_cmd_skill.
-      joint_name: Name of the active finger joint.
-      open_position: Finger joint position in meters for open state.
-      close_position: Finger joint position in meters for closed state.
-    """
-    self._solution = solution
-    self._action_name = action_name
-    self._joint_name = joint_name
-    self.open_position = open_position
-    self.close_position = close_position
-
-  def _build_cmd_task(self, position: float, task_name: str) -> bt.Node:
-    cmd_skill = self._solution.skills.ai.intrinsic.gripper_cmd_skill
-    joint_state = cmd_skill.ai.intrinsic.JointState()
-    joint_state.name = [self._joint_name]
-    joint_state.position = [position]
-
-    action = cmd_skill(
-      action_name=self._action_name,
-      command=joint_state,
-    )
-    return bt.Task(action=action, name=task_name)
-
-  def build_open_task(self, name: str | None = None) -> bt.Node:
-    """Builds a behavior tree task to open the gripper."""
-    return self._build_cmd_task(
-      position=self.open_position,
-      task_name=name or "Open Gripper (gripper_cmd)",
-    )
-
-  def build_close_task(self, name: str | None = None) -> bt.Node:
-    """Builds a behavior tree task to close/grasp with the gripper."""
-    return self._build_cmd_task(
-      position=self.close_position,
-      task_name=name or "Close Gripper (gripper_cmd)",
-    )

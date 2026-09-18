@@ -14,29 +14,110 @@
 
 """Unit tests for Behavior Tree construction and structure."""
 
+from unittest import mock
+
 from absl.testing import absltest
+from intrinsic.solutions import behavior_tree as bt
 
 from src.behaviors.load_machine import build_load_machine_subtree
 from src.behaviors.machine_tending_bt import build_machine_tending_behavior_tree
 from src.behaviors.pick import build_pick_from_infeed_subtree
 from src.behaviors.return_infeed import build_return_to_infeed_subtree
 from src.behaviors.unload_machine import build_unload_machine_subtree
+from src.core.config import VisionConfig
 from src.core.infeed import PerceptionInfeedStrategy
 from src.core.workpiece import Workpiece
-from src.hardware.gripper import MockGripper
-from src.hardware.machine import MockCncMachine
-from src.hardware.robot import MockRobot
-from src.hardware.vision import MockVision
+from src.hardware.gripper import GripperInterface
+from src.hardware.machine import CncMachineInterface
+from src.hardware.robot import RobotInterface
+from src.hardware.vision import VisionInterface
+
+
+def _make_mock_node_builder(name_prefix: str):
+  def _builder(*args, **kwargs):
+    del args
+    node_name = kwargs.get("name", name_prefix)
+    return bt.Sequence(name=node_name, children=[])
+
+  return _builder
 
 
 class BehaviorsTest(absltest.TestCase):
   def setUp(self):
     super().setUp()
-    self.robot = MockRobot()
-    self.gripper = MockGripper()
-    self.machine = MockCncMachine()
-    self.vision = MockVision()
-    self.infeed_strategy = PerceptionInfeedStrategy()
+    self.robot = mock.MagicMock(spec=RobotInterface)
+    self.robot.build_move_joint_task.side_effect = _make_mock_node_builder(
+      "Move Joint"
+    )
+    self.robot.build_move_cartesian_task.side_effect = _make_mock_node_builder(
+      "Move Cartesian"
+    )
+    self.robot.build_move_blended_cartesian_task.side_effect = (
+      _make_mock_node_builder("Move Blended")
+    )
+    self.robot.build_move_relative_cartesian_task.side_effect = (
+      _make_mock_node_builder("Move Relative")
+    )
+    self.robot.build_move_to_contact_task.side_effect = _make_mock_node_builder(
+      "Move Contact"
+    )
+    self.robot.build_attach_object_task.side_effect = _make_mock_node_builder(
+      "Attach Object"
+    )
+    self.robot.build_detach_object_task.side_effect = _make_mock_node_builder(
+      "Detach Object"
+    )
+
+    self.gripper = mock.MagicMock(spec=GripperInterface)
+    self.gripper.build_open_task.side_effect = _make_mock_node_builder(
+      "Open Gripper"
+    )
+    self.gripper.build_close_task.side_effect = _make_mock_node_builder(
+      "Close Gripper"
+    )
+
+    self.machine = mock.MagicMock(spec=CncMachineInterface)
+    self.machine.build_open_door_task.side_effect = _make_mock_node_builder(
+      "Open Door"
+    )
+    self.machine.build_close_door_task.side_effect = _make_mock_node_builder(
+      "Close Door"
+    )
+    self.machine.build_open_vise_task.side_effect = _make_mock_node_builder(
+      "Open Vise"
+    )
+    self.machine.build_close_vise_task.side_effect = _make_mock_node_builder(
+      "Close Vise"
+    )
+    self.machine.build_trigger_cycle_task.side_effect = _make_mock_node_builder(
+      "Trigger Cycle"
+    )
+    self.machine.build_wait_cycle_complete_task.side_effect = (
+      _make_mock_node_builder("Wait Cycle")
+    )
+
+    self.vision = mock.MagicMock(spec=VisionInterface)
+    self.vision.build_capture_image_task.side_effect = _make_mock_node_builder(
+      "Capture Image"
+    )
+    self.vision.build_perception_and_spawn_task.side_effect = (
+      _make_mock_node_builder("Perception Pipeline")
+    )
+
+    vision_config = VisionConfig(
+      camera_name="orbbec_camera",
+      perception_service_name="pose_estimator_service",
+      pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator",
+      scene_object_id="ai.intrinsic.raw_stock_2x3x5",
+      sensor_ids=(1, 4),
+      min_num_instances=1,
+      infeed_mode="perception",
+      min_safe_z=0.95,
+    )
+    self.infeed_strategy = PerceptionInfeedStrategy(
+      config=vision_config,
+      view_frame_name="view",
+    )
     self.workpiece = Workpiece(id="test_part_01")
 
   def test_build_master_behavior_tree_hierarchy(self):
@@ -53,7 +134,6 @@ class BehaviorsTest(absltest.TestCase):
     self.assertIsNotNone(tree)
     self.assertEqual(tree.name, "Test Machine Tending Master Tree")
     self.assertIsNotNone(tree.root)
-    # Root should be a Sequence with 5 major subtrees
     self.assertEqual(len(tree.root.children), 5)
 
   def test_build_infeed_pick_subtree_steps(self):
@@ -70,15 +150,6 @@ class BehaviorsTest(absltest.TestCase):
     )
 
     self.assertIsNotNone(pick_subtree)
-    # Sequence of 8 steps:
-    # 1: Move to view (ANY)
-    # 2: Mock Perception
-    # 3: Mock Open Gripper
-    # 4: Move to pre_grasp (ANY)
-    # 5: Compliant Touchdown (+Z Tool)
-    # 6: Linear Retract 3cm (-Z Tool)
-    # 7: Mock Close Gripper
-    # 8: Linear Retract to pre_grasp (LINEAR)
     self.assertEqual(len(pick_subtree.children), 8)
 
   def test_build_load_machine_subtree_steps(self):
@@ -94,16 +165,6 @@ class BehaviorsTest(absltest.TestCase):
     )
 
     self.assertIsNotNone(load_subtree)
-    # Sequence of 9 steps:
-    # 1: Open CNC Door (Mock)
-    # 2: Open CNC Vise (Mock)
-    # 3: Move to machine_approach (ANY)
-    # 4: Move to pre_place_vise (ANY)
-    # 5: Compliant Touchdown into Vise (+Z Tool)
-    # 6: Clamp CNC Vise (Mock)
-    # 7: Release Part in Vise (Mock)
-    # 8: Retract Arm to pre_place_vise (LINEAR)
-    # 9: Retract Arm to machine_approach (LINEAR)
     self.assertEqual(len(load_subtree.children), 9)
 
   def test_build_unload_machine_subtree_steps(self):
@@ -119,16 +180,6 @@ class BehaviorsTest(absltest.TestCase):
     )
 
     self.assertIsNotNone(unload_subtree)
-    # Sequence of 9 steps:
-    # 1: Open CNC Door (Mock)
-    # 2: Open CNC Vise (Mock)
-    # 3: Move to machine_approach (ANY)
-    # 4: Move to pre_place_vise (ANY)
-    # 5: Compliant Touchdown to Machined Part (+Z Tool)
-    # 6: Linear Retract 3cm (-Z Tool)
-    # 7: Grasp Machined Part (Mock)
-    # 8: Retract Arm to pre_place_vise (LINEAR)
-    # 9: Retract Arm to machine_approach (LINEAR)
     self.assertEqual(len(unload_subtree.children), 9)
 
   def test_build_return_to_infeed_subtree_steps(self):
@@ -143,12 +194,6 @@ class BehaviorsTest(absltest.TestCase):
     )
 
     self.assertIsNotNone(return_subtree)
-    # Sequence of 5 steps:
-    # 1: Move to pre_grasp (ANY)
-    # 2: Compliant Touchdown to Table (-Z)
-    # 3: Release Finished Part (Mock)
-    # 4: Retract Arm to pre_grasp (LINEAR)
-    # 5: Return to view (ANY)
     self.assertEqual(len(return_subtree.children), 5)
 
 
