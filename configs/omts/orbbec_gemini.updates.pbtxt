@@ -1,0 +1,58 @@
+updates {
+  update_transform {
+    node_a {
+      by_name {
+        frame {
+          object_name: "ur_module"
+          frame_name: "flange"
+        }
+      }
+    }
+    node_b {
+      by_name {
+        object {
+          object_name: "orbbec_camera"
+        }
+      }
+    }
+    node_to_update {
+      by_name {
+        object {
+          object_name: "orbbec_camera"
+        }
+      }
+    }
+    a_t_b {
+      position {
+        x: 0.024961304473278594
+        y: 0.0929429065445942
+        z: 0.07803396017120641
+      }
+      orientation {
+        x: 0.005398826747310019
+        y: 0.1769245888368111
+        z: -0.984205816150709
+        w: -0.00273019958875099
+      }
+    }
+  }
+}
+updates {
+  reparent_object {
+    object {
+      by_name {
+        object_name: "orbbec_camera"
+      }
+    }
+    new_parent {
+      reference {
+        by_name {
+          object_name: "ur_module"
+        }
+      }
+      entity_filter {
+        include_final_entity: true
+      }
+    }
+  }
+}

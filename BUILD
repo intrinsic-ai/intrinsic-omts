@@ -7,7 +7,11 @@ load("//bazel:imported_asset.bzl", "imported_asset_bundle")
 
 package(default_visibility = ["//visibility:public"])
 
-# Flag to parameterize hardware setup (omts vs lab_bb_01)
+# Flag to parameterize hardware setup (omts vs lab_bb_01).
+#
+# configs/kr_10/ exists but is not a value here: the solution below is wired to
+# the UR hardware modules throughout, so selecting a KUKA cell would produce a
+# solution that cannot start. Add the value with the rest of the KUKA wiring.
 string_flag(
     name = "setup",
     build_setting_default = "omts",
@@ -30,7 +34,6 @@ intrinsic_solution(
     add_compose_world_test = False,
     assets = [
         "@ioc//intrinsic/resources/catalog/resourcedata/gripper:robotiq_pinch_gripper_resource_type",
-        "@ioc//intrinsic/resources/catalog/resourcedata/product/building_block",
         "@ioc//intrinsic/simulation/gazebo/asset:gazebo_simulator_type",
         "@ioc//incode/intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5",
         "@ioc//incode/intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5_estimator",
@@ -64,7 +67,6 @@ intrinsic_solution(
         ":foundationpose_mlmodel",
         ":rfdetr_mlmodel",
         "//models/raw_stock_2x3x5",
-        "//models/raw_stock_50x50x75",
     ] + select({
         ":is_lab_bb_01": [
             "@ioc//intrinsic/apps/bluebird_caw/resources:caw_enclosure",
@@ -82,9 +84,7 @@ intrinsic_solution(
     instances = [
         ":enclosure",
         ":robotiq_pinch_gripper",
-        ":building_block",
         ":raw_stock_2x3x5",
-        ":raw_stock_50x50x75",
         ":gazebo_simulator",
         ":charuco_9x14_20mm_15mm_dict_5x5",
         ":calibration_service_instance",
@@ -107,18 +107,21 @@ intrinsic_solution(
             ":schunk_egp_64nnb",
         ],
     }),
-    object_world_updates = [
-        "//configs:ur_module.attachments.updates.pbtxt",
-        "//configs:scene.updates.pbtxt",
-        "//configs:align_robot.updates.pbtxt",
-    ] + select({
+    object_world_updates = select({
         ":is_lab_bb_01": [
-            "//configs:lab_bb_01_orbbec_gemini.updates.pbtxt",
+            "//configs:lab_bb_01/ur_module.attachments.updates.pbtxt",
+            "//configs:lab_bb_01/scene.updates.pbtxt",
+            "//configs:lab_bb_01/align_robot.updates.pbtxt",
+            "//configs:lab_bb_01/orbbec_gemini.updates.pbtxt",
         ],
         "//conditions:default": [
-            "//configs:cnc_enclosure.updates.pbtxt",
-            "//configs:omts_camera_mount.updates.pbtxt",
-            "//configs:schunk.updates.pbtxt",
+            "//configs:omts/ur_module.attachments.updates.pbtxt",
+            "//configs:omts/scene.updates.pbtxt",
+            "//configs:omts/align_robot.updates.pbtxt",
+            "//configs:omts/cnc_enclosure.updates.pbtxt",
+            "//configs:omts/schunk.updates.pbtxt",
+            "//configs:omts/camera_mount.updates.pbtxt",
+            "//configs:omts/orbbec_gemini.updates.pbtxt",
         ],
     }),
 )
@@ -160,18 +163,8 @@ intrinsic_asset_instance(
 )
 
 intrinsic_asset_instance(
-    name = "building_block",
-    asset = "ai.intrinsic.building_block",
-)
-
-intrinsic_asset_instance(
     name = "raw_stock_2x3x5",
     asset = "ai.intrinsic.raw_stock_2x3x5",
-)
-
-intrinsic_asset_instance(
-    name = "raw_stock_50x50x75",
-    asset = "ai.intrinsic.raw_stock_50x50x75",
 )
 
 intrinsic_asset_instance(
@@ -194,7 +187,10 @@ intrinsic_asset_instance(
     name = "icon",
     asset = "ai.intrinsic.generic_realtime_control_service",
     instance_name = "icon",
-    service_config = "//configs:icon_config.textproto",
+    service_config = select({
+        ":is_lab_bb_01": "//configs:lab_bb_01/icon_config.textproto",
+        "//conditions:default": "//configs:omts/icon_config.textproto",
+    }),
 )
 
 intrinsic_asset_instance(
@@ -204,7 +200,10 @@ intrinsic_asset_instance(
         "//conditions:default": "ai.intrinsic.ur5e_hardware_module_ioc",
     }),
     instance_name = "ur_module",
-    service_config = "//configs:ur_module_config.textproto",
+    service_config = select({
+        ":is_lab_bb_01": "//configs:lab_bb_01/ur_module_config.textproto",
+        "//conditions:default": "//configs:omts/ur_module_config.textproto",
+    }),
 )
 
 intrinsic_asset_instance(
@@ -212,8 +211,8 @@ intrinsic_asset_instance(
     asset = "ai.intrinsic.orbbec_gemini_335le",
     instance_name = "orbbec_camera",
     service_config = select({
-        ":is_lab_bb_01": "//configs:lab_bb_01_gemini_device_config.textproto",
-        "//conditions:default": "//configs:omts_gemini_device_config.textproto",
+        ":is_lab_bb_01": "//configs:lab_bb_01/gemini_device_config.textproto",
+        "//conditions:default": "//configs:omts/gemini_device_config.textproto",
     }),
 )
 
@@ -233,7 +232,7 @@ intrinsic_asset_instance(
     name = "pose_estimator_service",
     asset = "ai.intrinsic.ioc_pose_estimator_service",
     instance_name = "pose_estimator_service",
-    service_config = "//configs:pose_estimator_config.textproto",
+    service_config = "//configs:common/pose_estimator_config.textproto",
 )
 
 intrinsic_asset_instance(
@@ -245,7 +244,7 @@ intrinsic_asset_instance(
 imported_asset_bundle(
     name = "flowstate_ros_bridge_asset",
     bundle = "@flowstate_ros_bridge_bundle//:flowstate_ros_bridge.bundle.tar",
-    manifest = "//configs:flowstate_ros_bridge_manifest.textproto",
+    manifest = "//configs:common/flowstate_ros_bridge_manifest.textproto",
 )
 
 intrinsic_asset_instance(
@@ -274,7 +273,7 @@ imported_asset_bundle(
 imported_asset_bundle(
     name = "hande_gripper_service_asset",
     bundle = "@hande_gripper_service_bundle//:hande_gripper_service.bundle.tar",
-    manifest = "//configs:hande_gripper_service_manifest.textproto",
+    manifest = "//configs:common/hande_gripper_service_manifest.textproto",
 )
 
 intrinsic_asset_instance(
@@ -286,7 +285,7 @@ intrinsic_asset_instance(
 imported_asset_bundle(
     name = "orbbec_gemini_driver_asset",
     bundle = "@orbbec_gemini_driver_bundle//:orbbec_gemini_driver.bundle.tar",
-    manifest = "//configs:orbbec_gemini_driver_manifest.textproto",
+    manifest = "//configs:common/orbbec_gemini_driver_manifest.textproto",
 )
 
 intrinsic_asset_instance(

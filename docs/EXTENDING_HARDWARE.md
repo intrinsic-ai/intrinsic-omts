@@ -80,7 +80,7 @@ class RobotiqGripper(GripperInterface):
 * **Pre-Grasp Open Sequence:** Fingers must always be commanded open (`gripper.build_open_task`) **before** descending into `pre_grasp` to prevent colliding with stock or fixtures.
 
 #### 3. Tool TCP Calibration Gotcha
-When attaching the gripper to the UR flange in [`configs/ur_module.attachments.updates.pbtxt`](../configs/ur_module.attachments.updates.pbtxt):
+When attaching the gripper to the UR flange in [`configs/common/ur_module.attachments.updates.pbtxt`](../configs/common/ur_module.attachments.updates.pbtxt):
 * **Z-Rotation Offset:** Setting `gripper -> tool_frame` orientation to `x: 0, y: 0, z: 0.70710678, w: -0.70710678` ($270^\circ$ / $-90^\circ$ Z-rotation) aligns the moving TCP frame with the standard downward frame convention `orientation { x: 1, y: 0, z: 0, w: 0 }` ($0.00^\circ$ offset).
 
 ---
@@ -135,7 +135,6 @@ machine = DioCncMachine(
   vise_open_pin=4,  # Digital output -> Pneumatic vise unclamp
   vise_close_pin=5,  # Digital output -> Pneumatic vise clamp
   cycle_start_pin=6,  # Digital output -> CNC cycle start pulse
-  cycle_done_input_pin=0,  # Digital input <- M-code / cycle complete relay
   device_name="ur_module",
 )
 ```
@@ -205,7 +204,7 @@ $$\mathbf{T}_{\text{root} \to \text{target}} = \mathbf{T}_{\text{root} \to \text
 
 > [!CRITICAL]
 > **Camera Parentage Requirement:**
-> On solution startup, `orbbec_camera` defaults to a child of `root` at $[0, 0, 0]$. You **must** apply [`configs/lab_bb_01_orbbec_gemini.updates.pbtxt`](../configs/lab_bb_01_orbbec_gemini.updates.pbtxt) via `bazel run //tools/world:apply_scene_updates`.
+> On solution startup, `orbbec_camera` defaults to a child of `root` at $[0, 0, 0]$. You **must** apply your cell's camera updates ([`configs/lab_bb_01/orbbec_gemini.updates.pbtxt`](../configs/lab_bb_01/orbbec_gemini.updates.pbtxt) or [`configs/omts/orbbec_gemini.updates.pbtxt`](../configs/omts/orbbec_gemini.updates.pbtxt)) via `bazel run //tools/world:apply_scene_updates`.
 > Without this, `world.get_transform(root, camera.sensor)` returns identity, placing target frames at raw optical coordinates behind the robot base column and causing `move_robot:10301` IK failures.
 
 ### Short-Side Grasp Alignment

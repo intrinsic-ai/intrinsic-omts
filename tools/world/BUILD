@@ -34,10 +34,7 @@ py_binary(
     name = "apply_scene_updates",
     srcs = ["apply_scene_updates.py"],
     data = [
-        "//configs:align_robot.updates.pbtxt",
-        "//configs:lab_bb_01_orbbec_gemini.updates.pbtxt",
-        "//configs:scene.updates.pbtxt",
-        "//configs:ur_module.attachments.updates.pbtxt",
+        "//configs:all_world_updates",
     ],
     main = "apply_scene_updates.py",
     deps = [

@@ -23,6 +23,8 @@ bazel_dep(name = "insrc", repo_name = "ioc")
 git_override(
     module_name = "insrc",
     commit = IOC_COMMIT,
+    patch_strip = 1,
+    patches = ["//bazel/patches:robotiq_hande_finger_offset.patch"],
     remote = IOC_REMOTE,
 )
 
