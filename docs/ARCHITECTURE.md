@@ -101,6 +101,7 @@ sequenceDiagram
     participant World as SBL ObjectWorld
 
     Note over Robot,World: 1. Infeed Pick Subtree
+    CNC->>CNC: Prep: Open CNC Door & Open CNC Vise (DIO)
     Robot->>Robot: Move to view frame (ANY)
     Vision->>Vision: Capture RGB-D & run FoundationPose
     Vision->>World: PythonScript dynamic frame update (root/pre_grasp, root/grasp)
@@ -109,15 +110,17 @@ sequenceDiagram
     Robot->>Robot: Compliant Touchdown (+Z tool contact, 15N)
     Robot->>Robot: Linear Retract 3 cm (-Z tool relative motion)
     Gripper->>Gripper: Close Gripper (Grasp Part)
+    Robot->>World: Attach workpiece to Gripper
     Robot->>Robot: Linear Retract to root/pre_grasp (LINEAR)
 
     Note over Robot,World: 2. Machine Loading Subtree
-    CNC->>CNC: Open Door & Open Vise (DIO)
-    Robot->>Robot: Move to machine_approach entry frame (ANY)
+    CNC->>CNC: Ensure CNC Door & Vise Open (DIO)
+    Robot->>Robot: Blended Transit to machine_approach entry frame (ANY)
     Robot->>Robot: Move to vise_pre_place insertion frame (ANY)
-    Robot->>Robot: Compliant Seating into Vise (+Z tool contact, 15N)
+    Robot->>Robot: Compliant Seating into Vise (+Z tool contact, 8.0N)
     CNC->>CNC: Clamp Vise (DIO)
     Gripper->>Gripper: Open Gripper (Release Part)
+    Robot->>World: Detach workpiece from Gripper
     Robot->>Robot: Linear Retract to vise_pre_place (LINEAR)
     Robot->>Robot: Retract to machine_approach (LINEAR)
 
@@ -133,13 +136,15 @@ sequenceDiagram
     Robot->>Robot: Compliant Touchdown to Machined Part (+Z tool contact, 15N)
     Robot->>Robot: Linear Retract 3 cm (-Z tool relative motion)
     Gripper->>Gripper: Close Gripper (Grasp Part)
+    Robot->>World: Attach workpiece to Gripper
     Robot->>Robot: Linear Retract to vise_pre_place (LINEAR)
     Robot->>Robot: Retract to machine_approach (LINEAR)
 
     Note over Robot,World: 5. Return / Outfeed Subtree
-    Robot->>Robot: Move to root/pre_grasp (ANY)
+    Robot->>Robot: Blended Transit to root/pre_grasp (ANY)
     Robot->>Robot: Compliant Touchdown to Table (+Z tool contact, 5N)
     Gripper->>Gripper: Open Gripper (Release Finished Part)
+    Robot->>World: Detach workpiece from Gripper
     Robot->>Robot: Linear Retract from Table (LINEAR)
     Robot->>Robot: Return to view frame (ANY)
 ```

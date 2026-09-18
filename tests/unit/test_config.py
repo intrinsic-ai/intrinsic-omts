@@ -50,6 +50,7 @@ class ConfigTest(absltest.TestCase):
     self.assertEqual(config.frames.preplace_vise_frame, "vise_pre_place")
     self.assertEqual(config.frames.place_vise_frame, "vise_place")
     self.assertEqual(config.vision.sensor_ids, (1, 4))
+    self.assertEqual(config.vision.min_safe_z, 0.95)
     self.assertEqual(config.cycle.workpiece_id, "raw_stock_2x3x5")
     self.assertEqual(config.cycle.pick_touchdown_force_newtons, 15.0)
     self.assertEqual(config.cycle.load_seat_force_newtons, 8.0)
@@ -63,9 +64,9 @@ class ConfigTest(absltest.TestCase):
     self.assertEqual(config.cell_name, "lab_bb_01")
     self.assertEqual(config.gripper.type, "robotiq")
     self.assertIsNone(config.gripper.dio_output_block_name)
-    self.assertIsNone(config.machine.enclosure_object_name)
-    self.assertIsNone(config.machine.vise_object_name)
-    self.assertEqual(config.frames.transit_frame, "transit")
+    self.assertIsNone(config.machine)
+    self.assertIsNone(config.frames.transit_frame)
+    self.assertEqual(config.vision.min_safe_z, 0.60)
     self.assertEqual(config.cycle.pick_touchdown_force_newtons, 15.0)
 
   def test_missing_required_section_fails_loudly(self):
