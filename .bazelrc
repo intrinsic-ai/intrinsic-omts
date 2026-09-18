@@ -74,3 +74,13 @@ common --@rules_cuda//cuda:copts="-D_ALLOW_UNSUPPORTED_LIBCPP"
 common --flag_alias=setup=//:setup
 common:omts --//:setup=omts
 common:lab_bb_01 --//:setup=lab_bb_01
+
+# Wire nvidia_foundationpose layers and libraries into @intrinsic-core pose estimator service
+common --repo_env=DOCKER_CONFIG=/tmp/empty_docker_config
+build --@intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:foundation_pose_nvidia_lib_flag=//src/nvidia_foundationpose:foundation_pose_nvidia_lib
+build --@intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:perception_pipeline_lib_flag=//src/nvidia_foundationpose:perception_pipeline_lib
+build --@intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:fp_library_layer_flag=//src/nvidia_foundationpose:fp_library_layer
+build --@intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:models_layer_flag=//src/nvidia_foundationpose:models_layer
+build --@intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:engine_cache_layer_flag=//src/nvidia_foundationpose:engine_cache_layer
+build --@intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:bindings_layer_flag=//src/nvidia_foundationpose:bindings_layer
+

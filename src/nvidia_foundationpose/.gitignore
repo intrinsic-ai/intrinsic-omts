@@ -1,0 +1,10 @@
+build/
+checkpoints/*.onnx
+checkpoints/*.pt
+checkpoints/*.plan*
+checkpoints/*.gz
+checkpoints/engine_cache/
+foundation-pose-inference-library/
+foundationpose_perception_pipeline/
+tools/
+__pycache__/

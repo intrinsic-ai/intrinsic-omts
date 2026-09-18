@@ -1,0 +1,39 @@
+# Dockerfile for exporting SAM 3 checkpoints (.pt) to ONNX using
+# foundationpose_perception_pipeline/tools/export_sam3_to_onnx.py
+# without requiring uv on the host.
+
+FROM nvcr.io/nvidia/pytorch:26.05-py3
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PIP_NO_CACHE_DIR=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Install pinned dependencies required by SAM 3 and export_sam3_to_onnx.py
+# Note: sam3 requires numpy<2 and setuptools<81 (for pkg_resources).
+RUN pip install --upgrade "setuptools<81" && \
+    pip install \
+      "numpy>=1.26,<2" \
+      "opencv-python-headless<5" \
+      "scipy<1.16" \
+      "pyyaml>=6" \
+      "pillow>=11" \
+      "tqdm>=4.66" \
+      "einops>=0.8" \
+      "pycocotools>=2.0.10" \
+      "psutil>=7" \
+      "regex" \
+      "ftfy>=6.1" \
+      "onnx>=1.16" \
+      "onnxscript" \
+      "timm" \
+      "iopath" \
+      "hydra-core" \
+      "omegaconf"
+
+# Clone and install facebookresearch/sam3 at the exact revision required by export_sam3_to_onnx.py
+RUN git clone https://github.com/facebookresearch/sam3.git /opt/sam3 && \
+    git -C /opt/sam3 checkout 96914d2425f90a64f45ca977c2b5165418099543 && \
+    pip install --no-deps -e /opt/sam3 && \
+    pip install "numpy>=1.26,<2" "setuptools<81"
+
+WORKDIR /workspace

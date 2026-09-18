@@ -63,6 +63,7 @@ intrinsic_solution(
         "@intrinsic-core//intrinsic_control/intrinsic/icon/machines/common:generic_icon_mainloop_type",
         "@intrinsic-core//intrinsic_inference/assets/inference_service:inference_service_asset",
         "@intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_pose_estimator:ioc_pose_estimator_service_asset",
+        "@intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:nvidia_pose_estimator_service_asset",
         "@intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_train_service:ioc_train_service_asset",
         ":flowstate_ros_bridge_asset",
         ":hand_e_gripper_service_asset",
