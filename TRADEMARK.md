@@ -4,7 +4,7 @@
 
 &nbsp;
 
-The source code in this repository is licensed under the [Apache 2.0 License](http://LICENSE). The Apache 2.0 license does not grant permission to use Intrinsic trademarks or logos.
+The source code in this repository is licensed under the [Apache 2.0 License](LICENSE). The Apache 2.0 license does not grant permission to use Intrinsic trademarks or logos.
 
 &nbsp;
 
