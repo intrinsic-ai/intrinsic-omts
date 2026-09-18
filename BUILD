@@ -1,8 +1,8 @@
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
-load("@intrinsic-core//intrinsic_inference/assets/inference_service/bazel:intrinsic_mlmodel.bzl", "intrinsic_mlmodel")
 load("@intrinsic-core//intrinsic/assets/build_defs:asset.bzl", "intrinsic_asset_instance")
 load("@intrinsic-core//intrinsic/assets/build_defs:solution.bzl", "intrinsic_solution")
+load("@intrinsic-core//intrinsic_inference/assets/inference_service/bazel:intrinsic_mlmodel.bzl", "intrinsic_mlmodel")
 load("//bazel:imported_asset.bzl", "imported_asset_bundle")
 
 package(default_visibility = ["//visibility:public"])
