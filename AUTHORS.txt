@@ -1,0 +1,9 @@
+# This is the official list of Intrinsic Core authors for copyright purposes.
+#
+# This file lists individuals and organizations who hold copyright in the
+# Intrinsic Core repositories.
+#
+# To see the full chronological list of contributors and commit-level
+# provenance, please refer to the revision history in source control.
+
+Intrinsic Innovation LLC
