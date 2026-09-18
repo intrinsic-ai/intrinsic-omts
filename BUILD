@@ -63,7 +63,7 @@ intrinsic_solution(
         ":hand_e_gripper_cmd_skill_asset",
         ":hand_e_gripper_service_asset",
         ":orbbec_gemini_driver_asset",
-        ":foundationpose_mlmodel",
+        "//src/foundationpose:foundationpose_mlmodel",
         ":rfdetr_mlmodel",
         "//models/raw_stock_2x3x5",
     ] + select({
@@ -322,63 +322,5 @@ intrinsic_mlmodel(
     id = "ai.intrinsic.ioc_pose_estimation.segmentor.rfdetr",
     model_files = {
         ":rfdetr_segmentation_onnx_file": "1/segmentation.onnx",
-    },
-)
-
-copy_file(
-    name = "foundationpose_refine_onnx_file",
-    src = "@foundationpose_refine_onnx//file",
-    out = "foundationpose_refine.onnx",
-    allow_symlink = True,
-)
-
-copy_file(
-    name = "foundationpose_score_onnx_file",
-    src = "@foundationpose_score_onnx//file",
-    out = "foundationpose_score.onnx",
-    allow_symlink = True,
-)
-
-copy_file(
-    name = "foundationpose_py312_model_py",
-    src = "@foundationpose_py312_bundle//:model.py",
-    out = "foundationpose_py312_model.py",
-    allow_symlink = True,
-)
-
-copy_file(
-    name = "foundationpose_py312_cpp_so",
-    src = "@foundationpose_py312_bundle//:foundationpose_cpp.so",
-    out = "foundationpose_py312_foundationpose_cpp.so",
-    allow_symlink = True,
-)
-
-copy_file(
-    name = "foundationpose_py312_env_tar_gz",
-    src = "@foundationpose_py312_bundle//:env.tar.gz",
-    out = "foundationpose_py312_env.tar.gz",
-    allow_symlink = True,
-)
-
-copy_file(
-    name = "foundationpose_py312_config_pbtxt",
-    src = "@foundationpose_py312_bundle//:config.pbtxt",
-    out = "foundationpose_py312_config.pbtxt",
-    allow_symlink = True,
-)
-
-intrinsic_mlmodel(
-    name = "foundationpose_mlmodel",
-    backend = "triton",
-    config = ":foundationpose_py312_config_pbtxt",
-    description = "FoundationPose 6D object pose estimation model.",
-    display_name = "FoundationPose model weights",
-    id = "ai.intrinsic.ioc_pose_estimation.pose_estimator.foundationpose",
-    model_files = {
-        ":foundationpose_refine_onnx_file": "1/foundationpose_refine.onnx",
-        ":foundationpose_score_onnx_file": "1/foundationpose_score.onnx",
-        ":foundationpose_py312_model_py": "1/model.py",
-        ":foundationpose_py312_cpp_so": "1/foundationpose_cpp.so",
-        ":foundationpose_py312_env_tar_gz": "env.tar.gz",
     },
 )

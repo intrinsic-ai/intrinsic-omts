@@ -1,48 +1,29 @@
-# FoundationPose Build Resources
+# FoundationPose Build & Packaging
 
-This directory contains standalone C++/CUDA sources and build scripts to build deployment artifacts for FoundationPose running on Triton Inference Server.
+This directory contains the Triton Inference Server model configuration (`config.pbtxt`) and `intrinsic_mlmodel` asset definition (`//src/foundationpose:foundationpose_mlmodel`) for FoundationPose (Python 3.12 / CUDA).
 
 ## Overview
 
-The build scripts compile the CUDA/C++ binding (`foundationpose_cpp.so`), construct a Python virtual environment archive (`env.tar.gz`), and package them alongside `config.pbtxt` and `model.py` into the target tarballs:
-- `foundationpose_py311.tar.gz` (for Triton 25.06 / Python 3.11 / CUDA 12)
-- `foundationpose_py312.tar.gz` (for Triton 26.07 / Python 3.12 / CUDA 13)
+The FoundationPose deployment asset (`//src/foundationpose:foundationpose_mlmodel`) is built hermetically from source using Bazel:
+1. **`//third_party/foundationpose:foundationpose_cpp.so`** *(internal target)*: Compiled via `@rules_cuda` and `@pybind11_bazel` from `//third_party/foundationpose/cpp` and `nvdiffrast` sources from `@isaac_ros_pose_estimation` (automatically transitioned to Python 3.12 when depended upon by `:env_tar_gz`).
+2. **`//third_party/foundationpose:env_tar_gz`**: Assembled hermetically from all Python 3.12 wheels locked in `@foundationpose_pip_deps` (`all_whl_requirements`) and `foundationpose_cpp.so` (installed in `site-packages/`).
+3. **`//src/foundationpose:foundationpose_mlmodel`**: Packages `config.pbtxt`, `//third_party/foundationpose:model.py`, `//third_party/foundationpose:env_tar_gz`, and the ONNX model weights (`@foundationpose_refine_onnx` and `@foundationpose_score_onnx`) into the Intrinsic MLModel asset.
 
-By default, the resulting tarballs are written to:
-`src/foundationpose/dist/`
+## Building with Bazel
 
-### Target Archive Structure
-
-Each generated tarball has the following root-level structure:
-```
-foundationpose_py31*.tar.gz
-├── config.pbtxt
-├── model.py
-├── foundationpose_cpp.so
-└── env.tar.gz
+To build the complete Intrinsic MLModel asset:
+```bash
+bazel build //src/foundationpose:foundationpose_mlmodel
 ```
 
-Note: ONNX model weights (`foundationpose_refine.onnx` and `foundationpose_score.onnx`) are deployed separately as data assets and are not bundled into these environment archives.
+## Updating Python Dependencies
 
-## Supported Triton Versions
+Python 3.12 dependencies are declared in `//third_party/foundationpose:requirements.in` and locked with SHA-256 hashes in `//third_party/foundationpose:requirements.txt`. To update the lockfile (no `BUILD` edits required):
+```bash
+bazel run //third_party/foundationpose:requirements
+```
 
-- **Version 25.06 (Python 3.11 / CUDA 12)**:
-  ```bash
-  bash src/foundationpose/scripts/build_triton_env_py311.sh
-  ```
+## Code Organization & Licensing
 
-- **Version 26.07 (Python 3.12 / CUDA 13)**:
-  ```bash
-  bash src/foundationpose/scripts/build_triton_env_py312.sh
-  ```
-
-### Optional Arguments
-
-Both scripts support:
-- `--output-dir <path>`: Custom destination directory for the generated `.tar.gz` (defaults to `src/foundationpose/dist/`).
-- `--image <docker-image>`: Custom Docker image for building.
-
-## Implementation Details
-
-The C++ library is directly derived from the [Isaac ROS FoundationPose implementation](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_pose_estimation), with dependencies like Nitros and GXF stripped away. This standalone build uses PyBind11, Eigen3, OpenCV, and CUDA Rasterization (`nvdiffrast`), and inference is executed via ONNX Runtime with a CUDA execution provider.
-The code in model.py is also derived from the Isaac ROS FoundationPose implementation and is used to orchestrate inference between the custom C++ library and the two ONNX models.
+- **`//src/foundationpose/`**: Contains Intrinsic-authored Triton configuration (`config.pbtxt`) and `intrinsic_mlmodel` packaging (`BUILD`).
+- **`//third_party/foundationpose/`**: Contains all NVIDIA-copyrighted C++/CUDA sources (`cpp/`), Python orchestration code (`model.py`), external dependency module extensions (`deps.bzl`), build overlays (`isaac_ros_pose_estimation.BUILD`, `nvdiffrast.patch`), and Python lockfiles (`requirements.in`, `requirements.txt`), licensed under Apache-2.0.
