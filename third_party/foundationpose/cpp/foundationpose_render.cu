@@ -21,9 +21,9 @@
 #include <vector>
 #include <Eigen/Dense>
 
-void RasterizeCudaFwdShaderKernel(const RasterizeCudaFwdShaderParams p);
-void InterpolateFwdKernel(const InterpolateKernelParams p);
-void TextureFwdKernelLinear1(const TextureKernelParams p);
+__global__ void RasterizeCudaFwdShaderKernel(const RasterizeCudaFwdShaderParams p);
+__global__ void InterpolateFwdKernel(const InterpolateKernelParams p);
+__global__ void TextureFwdKernelLinear1(const TextureKernelParams p);
 
 namespace nvidia {
 namespace isaac_ros {

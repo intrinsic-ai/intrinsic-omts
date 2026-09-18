@@ -14,6 +14,4 @@
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files([
-    "config.pbtxt",
-])
+exports_files(["bin/patchelf"])

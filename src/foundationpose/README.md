@@ -1,48 +1,28 @@
-# FoundationPose Build Resources
+# FoundationPose Build & Packaging
 
-This directory contains standalone C++/CUDA sources and build scripts to build deployment artifacts for FoundationPose running on Triton Inference Server.
+This directory contains the Triton Inference Server model configuration (`config.pbtxt`) for FoundationPose (Python 3.12 / CUDA).
 
 ## Overview
 
-The build scripts compile the CUDA/C++ binding (`foundationpose_cpp.so`), construct a Python virtual environment archive (`env.tar.gz`), and package them alongside `config.pbtxt` and `model.py` into the target tarballs:
-- `foundationpose_py311.tar.gz` (for Triton 25.06 / Python 3.11 / CUDA 12)
-- `foundationpose_py312.tar.gz` (for Triton 26.07 / Python 3.12 / CUDA 13)
+The FoundationPose deployment asset (`//:foundationpose_mlmodel`) is built hermetically from source using Bazel:
+1. **`//third_party/foundationpose:foundationpose_cpp_so`**: Compiled via `@rules_cuda` and `@pybind11_bazel` against Python 3.12 headers from `//third_party/foundationpose/cpp` and `nvdiffrast` sources from `@isaac_ros_pose_estimation`.
+2. **`//third_party/foundationpose:env_tar_gz`**: Assembled hermetically from pinned Python 3.12 manylinux wheels (`numpy`, `scipy`, `onnxruntime-gpu`, `opencv-python-headless`, `pillow`, `trimesh`, `flatbuffers`, `protobuf`) and `foundationpose_cpp.so`, with `$ORIGIN`-relative `RPATH` applied via `patchelf`.
+3. **`//:foundationpose_mlmodel`**: Directly packages `//src/foundationpose:config.pbtxt`, `//third_party/foundationpose:model.py`, `//third_party/foundationpose:foundationpose_cpp_so`, `//third_party/foundationpose:env_tar_gz`, and the ONNX model weights (`foundationpose_refine.onnx` and `foundationpose_score.onnx`) into the Intrinsic MLModel asset.
 
-By default, the resulting tarballs are written to:
-`src/foundationpose/dist/`
+## Building with Bazel
 
-### Target Archive Structure
-
-Each generated tarball has the following root-level structure:
-```
-foundationpose_py31*.tar.gz
-├── config.pbtxt
-├── model.py
-├── foundationpose_cpp.so
-└── env.tar.gz
+To build the Triton Python 3.12 environment tarball (`env.tar.gz`) or shared library (`foundationpose_cpp.so`):
+```bash
+bazel build //third_party/foundationpose:env_tar_gz //third_party/foundationpose:foundationpose_cpp_so
 ```
 
-Note: ONNX model weights (`foundationpose_refine.onnx` and `foundationpose_score.onnx`) are deployed separately as data assets and are not bundled into these environment archives.
+To build the complete Intrinsic MLModel asset (`//:foundationpose_mlmodel`):
+```bash
+bazel build //:foundationpose_mlmodel
+```
 
-## Supported Triton Versions
+## Code Organization & Licensing
 
-- **Version 25.06 (Python 3.11 / CUDA 12)**:
-  ```bash
-  bash src/foundationpose/scripts/build_triton_env_py311.sh
-  ```
-
-- **Version 26.07 (Python 3.12 / CUDA 13)**:
-  ```bash
-  bash src/foundationpose/scripts/build_triton_env_py312.sh
-  ```
-
-### Optional Arguments
-
-Both scripts support:
-- `--output-dir <path>`: Custom destination directory for the generated `.tar.gz` (defaults to `src/foundationpose/dist/`).
-- `--image <docker-image>`: Custom Docker image for building.
-
-## Implementation Details
-
-The C++ library is directly derived from the [Isaac ROS FoundationPose implementation](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_pose_estimation), with dependencies like Nitros and GXF stripped away. This standalone build uses PyBind11, Eigen3, OpenCV, and CUDA Rasterization (`nvdiffrast`), and inference is executed via ONNX Runtime with a CUDA execution provider.
-The code in model.py is also derived from the Isaac ROS FoundationPose implementation and is used to orchestrate inference between the custom C++ library and the two ONNX models.
+- **`//src/foundationpose/`**: Contains Intrinsic-authored Triton configuration (`config.pbtxt`).
+- **`//third_party/foundationpose/`**: Contains NVIDIA-copyrighted C++/CUDA sources (`cpp/`), Python orchestration code (`model.py`), and Bazel build rules, derived from [Isaac ROS FoundationPose](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_pose_estimation) and licensed under Apache-2.0.
+- **`//third_party/isaac_ros_pose_estimation/`**: Contains the Bazel `BUILD` overlay for upstream `isaac_ros_pose_estimation` (`release-3.2`).

@@ -64,8 +64,12 @@ single_version_override(
 bazel_dep(name = "bazel_skylib", version = "1.9.0")
 bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(name = "abseil-py", version = "2.1.0", repo_name = "com_google_absl_py")
+bazel_dep(name = "eigen", version = "5.0.1.bcr.2", repo_name = "com_gitlab_libeigen_eigen")
 bazel_dep(name = "grpc", version = "1.69.0", repo_name = "com_github_grpc_grpc")
+bazel_dep(name = "pybind11_bazel", version = "3.0.1")
+bazel_dep(name = "rules_cc", version = "0.2.22")
 bazel_dep(name = "rules_cuda", version = "0.3.0")
+bazel_dep(name = "rules_python", version = "1.9.2")
 bazel_dep(name = "toolchains_llvm", version = "1.6.0")
 bazel_dep(name = "googleapis", version = "0.0.0-20260728-b8486a2f", repo_name = "com_google_googleapis")
 bazel_dep(name = "protobuf", version = "32.1", repo_name = "com_google_protobuf")
@@ -74,10 +78,12 @@ single_version_override(
     version = "32.1",
 )
 
-bazel_dep(name = "rules_python", version = "1.9.2")
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(python_version = "3.12")
 
-pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
-use_repo(pip, "ai_intrinsic_sdks_pip_deps")
+internal_configure = use_extension("@pybind11_bazel//:internal_configure.bzl", "internal_configure_extension")
+use_repo(internal_configure, "pybind11")
+
 
 cuda = use_extension("@rules_cuda//cuda:extensions.bzl", "toolchain")
 cuda.redist_json(
@@ -197,20 +203,27 @@ gh.download(
     sha256 = "decfe9edb9ffd9778bce9e5b815410a1780f21a85662e1d601468117678f4034",
     tag = OMTS_ASSETS_RELEASE,
 )
-gh.download(
-    name = "foundationpose_py312_bundle",
-    archive = True,
-    pattern = "foundationpose_py312.tar.gz",
-    repo = "intrinsic-ai/intrinsic-omts",
-    sha256 = "e367c3dd6b98bbee3f603009ea670f38d604d2bbb8a5ef5f430cd3797833b17a",
-    tag = OMTS_ASSETS_RELEASE,
-)
 use_repo(
     gh,
     "flowstate_ros_bridge_bundle",
-    "foundationpose_py312_bundle",
     "gripper_cmd_skill_bundle",
     "hande_gripper_service_bundle",
     "orbbec_gemini_driver_bundle",
     "segmentation_weights_bundle",
 )
+
+foundationpose_deps = use_extension("//third_party/foundationpose:deps.bzl", "foundationpose_deps")
+use_repo(
+    foundationpose_deps,
+    "fp_py312_flatbuffers",
+    "fp_py312_numpy",
+    "fp_py312_onnxruntime_gpu",
+    "fp_py312_opencv_python_headless",
+    "fp_py312_pillow",
+    "fp_py312_protobuf",
+    "fp_py312_scipy",
+    "fp_py312_trimesh",
+    "isaac_ros_pose_estimation",
+    "patchelf",
+)
+
