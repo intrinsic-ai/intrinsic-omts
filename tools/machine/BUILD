@@ -8,8 +8,8 @@ py_library(
     deps = [
         "//src/core:config",
         "//src/hardware:machine",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:deployments",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:execution",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )
 

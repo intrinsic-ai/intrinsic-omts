@@ -137,7 +137,7 @@ git_override(
   module_name="intrinsic_apis",
   commit=INTRINSIC_CORE_COMMIT,
   remote=INTRINSIC_CORE_REMOTE,
-  strip_prefix="incode/intrinsic_apis",
+  strip_prefix="intrinsic_apis",
 )
 ```
 

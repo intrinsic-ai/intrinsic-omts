@@ -8,8 +8,8 @@ py_library(
     deps = [
         "//src/core:config",
         "//src/hardware:robot",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:deployments",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:execution",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )
 
@@ -29,8 +29,8 @@ py_library(
         "//src/core:config",
         "//src/core:types",
         "//src/hardware:robot",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:deployments",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:execution",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )
 
@@ -52,9 +52,9 @@ py_binary(
         "@com_google_absl_py//absl:app",
         "@com_google_absl_py//absl/flags",
         "@com_google_absl_py//absl/logging",
-        "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/actions:joint_jogging_py_pb2",
-        "@intrinsic-core//incode/intrinsic_control/intrinsic/icon/python:icon",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_control/intrinsic/icon/actions:joint_jogging_py_pb2",
+        "@intrinsic-core//intrinsic_control/intrinsic/icon/python:icon",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
         "@intrinsic-core//intrinsic/util/grpc:connection",
         "@intrinsic_apis//intrinsic/icon/proto:joint_space_py_pb2",
         "@intrinsic_apis//intrinsic/kinematics/types:joint_limits_py_pb2",
@@ -68,8 +68,8 @@ py_library(
         "//configs:all_world_updates",
     ],
     deps = [
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/math/python:data_types",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
@@ -92,8 +92,8 @@ py_binary(
     main = "store_joint_config.py",
     deps = [
         "//src/utils:math_utils",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:deployments",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:worlds",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:worlds",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )

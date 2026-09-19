@@ -15,7 +15,7 @@ py_library(
     name = "script_utils",
     srcs = ["script_utils.py"],
     deps = [
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -23,7 +23,7 @@ py_library(
     name = "dynamic_frame_calculator",
     srcs = ["dynamic_frame_calculator.py"],
     deps = [
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/math/python:data_types",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
     ],
 )
 
@@ -32,7 +32,7 @@ py_library(
     srcs = ["execution_utils.py"],
     deps = [
         "//src/core:types",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:execution",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )
 
