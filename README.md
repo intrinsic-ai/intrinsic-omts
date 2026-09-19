@@ -35,7 +35,7 @@ operation:
 ```mermaid
 flowchart TD
     subgraph INFEED["1. Infeed Pick (src/behaviors/pick.py)"]
-        A1["Prep: Open CNC Door & Vise (DIO + update_world)"] --> A2["Move to view frame (move_robot)"]
+        A1["Open CNC Door & Vise (DIO + update_world)"] --> A2["Move to view frame (move_robot)"]
         A2 --> A3["Capture RGB-D & Estimate 6D Pose (FoundationPose)"]
         A3 --> A4["Update root/pre_grasp & root/grasp (PythonScript)"]
         A4 --> A5["Open Gripper & Move to root/pre_grasp"]

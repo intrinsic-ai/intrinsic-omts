@@ -45,14 +45,14 @@ def build_pick_from_infeed_subtree(
   2. If `infeed_strategy.mode` is `PERCEPTION`, move to `view_frame` (`ANY`)
      and run the 3-step perception pipeline (capture RGB-D, estimate 6D pose
      via FoundationPose, and update dynamic `pre_grasp`/`grasp` frames).
-  3. Open gripper fingers (`Step 03`).
-  4. Move tool to dynamic `pre_grasp` frame (`Step 04`, `ANY`).
-  5. Perform compliant touchdown along tool +Z (`Step 05`).
+  3. Open gripper fingers.
+  4. Move tool to dynamic `pre_grasp` frame (`ANY`).
+  5. Perform compliant touchdown along tool +Z.
   6. Execute relative linear retract along tool -Z with segment-scoped
-     workpiece collision exclusion to align finger pads (`Step 06`).
-  7. Close gripper to grasp part (`Step 07a`) and attach workpiece entity to
-     gripper in the belief world (`Step 07b`).
-  8. Retract arm linearly back up to `pre_grasp` (`Step 08`, `LINEAR`).
+     workpiece collision exclusion to align finger pads.
+  7. Close gripper to grasp part and attach workpiece entity to gripper in the
+     belief world.
+  8. Retract arm linearly back up to `pre_grasp` (`LINEAR`).
 
   Args:
       robot: Robot controller adapter.
@@ -80,8 +80,8 @@ def build_pick_from_infeed_subtree(
   if machine is not None:
     tasks.extend(
       [
-        machine.build_open_door_task(name="Prep: Open CNC Door"),
-        machine.build_open_vise_task(name="Prep: Open CNC Vise"),
+        machine.build_open_door_task(name="Open CNC Door"),
+        machine.build_open_vise_task(name="Open CNC Vise"),
       ]
     )
 
@@ -98,7 +98,7 @@ def build_pick_from_infeed_subtree(
           frame_name=view_frame_name,
           parent_object=parent_object,
           motion_type="ANY",
-          task_name=f"Step 01: Move to View Frame ({parent_object}/{view_frame_name})",
+          task_name=f"Move to View Frame ({parent_object}/{view_frame_name})",
         ),
         vision.build_perception_and_spawn_task(
           approach_offset_z=approach_offset_z,
@@ -107,12 +107,12 @@ def build_pick_from_infeed_subtree(
           grasp_frame_name=grasp_frame_name,
           tool_object_name=config.robot.tool_object_name,
           tool_frame_name=config.robot.tool_frame_name,
-          name="Step 02: Perception & Dynamic Grasp Frame Update Pipeline",
+          name="Perception & Dynamic Grasp Frame Update Pipeline",
         ),
       ]
     )
 
-  tasks.append(gripper.build_open_task(name="Step 03: Open Gripper"))
+  tasks.append(gripper.build_open_task(name="Open Gripper"))
 
   tasks.extend(
     [
@@ -121,33 +121,39 @@ def build_pick_from_infeed_subtree(
         frame_name=pregrasp_frame_name,
         parent_object=parent_object,
         motion_type="ANY",
-        task_name=f"Step 04: Move to Dynamic Pre-Grasp ({parent_object}/{pregrasp_frame_name})",
+        task_name=(
+          f"Move to Dynamic Pre-Grasp ({parent_object}/{pregrasp_frame_name})"
+        ),
       ),
       create_compliant_touchdown_task(
         robot=robot,
         direction=(0.0, 0.0, 1.0),
         contact_force_newtons=pick_touchdown_force_newtons,
         timeout_seconds=touchdown_timeout_seconds,
-        task_name="Step 05: Compliant Touchdown to Part (+Z Tool)",
+        task_name="Compliant Touchdown to Part (+Z Tool)",
       ),
       create_relative_retract_task(
         robot=robot,
         distance_meters=retract_distance_meters,
         exclude_collision=True,
         excluded_collision_objects=(workpiece_object_name,),
-        task_name=f"Step 06: Linear Retract ({retract_distance_meters * 100:.1f} cm, -Z Tool)",
+        task_name=(
+          f"Linear Retract ({retract_distance_meters * 100:.1f} cm, -Z Tool)"
+        ),
       ),
-      gripper.build_close_task(name="Step 07a: Close Gripper (Grasp Part)"),
+      gripper.build_close_task(name="Close Gripper (Grasp Part)"),
       robot.build_attach_object_task(
         object_name=workpiece_object_name,
-        name=f"Step 07b: Attach {workpiece_object_name} to Gripper",
+        name=f"Attach {workpiece_object_name} to Gripper",
       ),
       create_move_to_frame_task(
         robot=robot,
         frame_name=pregrasp_frame_name,
         parent_object=parent_object,
         motion_type="LINEAR",
-        task_name=f"Step 08: Linear Retract to Pre-Grasp ({parent_object}/{pregrasp_frame_name})",
+        task_name=(
+          f"Linear Retract to Pre-Grasp ({parent_object}/{pregrasp_frame_name})"
+        ),
       ),
     ]
   )

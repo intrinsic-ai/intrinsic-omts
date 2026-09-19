@@ -126,53 +126,53 @@ sequenceDiagram
     participant World as SBL ObjectWorld
 
     Note over Robot,World: 1. Infeed Pick Subtree (src/behaviors/pick.py)
-    CNC->>World: Prep: Open CNC Door & Vise (DIO + update_world)
-    Robot->>Robot: Step 01: Move to view frame (ANY)
-    Vision->>Vision: Step 02a-b: Capture RGB-D & Estimate 6D Pose (FoundationPose)
-    Vision->>World: Step 02c: Update dynamic root/pre_grasp & root/grasp (PythonScript)
-    Gripper->>Gripper: Step 03: Open Gripper
-    Robot->>Robot: Step 04: Move to root/pre_grasp (ANY)
-    Robot->>Robot: Step 05: Compliant Touchdown to Part (+Z tool)
-    Robot->>Robot: Step 06: Relative Linear Retract (-Z tool, 3 cm)
-    Gripper->>Gripper: Step 07a: Close Gripper (Grasp Part)
-    Robot->>World: Step 07b: Attach workpiece to Gripper
-    Robot->>Robot: Step 08: Linear Retract to root/pre_grasp (LINEAR)
+    CNC->>World: Open CNC Door & Vise (DIO + update_world)
+    Robot->>Robot: Move to view frame (ANY)
+    Vision->>Vision: Capture RGB-D & Estimate 6D Pose (FoundationPose)
+    Vision->>World: Update dynamic root/pre_grasp & root/grasp (PythonScript)
+    Gripper->>Gripper: Open Gripper
+    Robot->>Robot: Move to root/pre_grasp (ANY)
+    Robot->>Robot: Compliant Touchdown to Part (+Z tool)
+    Robot->>Robot: Relative Linear Retract (-Z tool, 3 cm)
+    Gripper->>Gripper: Close Gripper (Grasp Part)
+    Robot->>World: Attach workpiece to Gripper
+    Robot->>Robot: Linear Retract to root/pre_grasp (LINEAR)
 
     Note over Robot,World: 2. Load Machine Subtree (src/behaviors/load_machine.py)
-    CNC->>World: Steps 03-04: Ensure CNC Door & Vise Open (DIO + update_world)
-    Robot->>Robot: Step 05a: Blended Transit / Move to machine_approach (ANY)
-    Robot->>Robot: Step 05b: Approach CNC Vise preplace_vise_frame (ANY)
-    Robot->>Robot: Step 05c: Compliant Seat Part into Vise (+Z tool)
-    CNC->>World: Step 06: Clamp CNC Vise (DIO + update_world)
-    Gripper->>Gripper: Step 07a: Release Part in Vise
-    Robot->>World: Step 07b: Detach workpiece from Gripper
-    Robot->>Robot: Step 07c: Linear Retract to preplace_vise_frame (LINEAR)
-    Robot->>Robot: Step 07d: Linear Retract to machine_approach (LINEAR)
+    CNC->>World: Ensure CNC Door & Vise Open (DIO + update_world)
+    Robot->>Robot: Blended Transit / Move to machine_approach (ANY)
+    Robot->>Robot: Approach CNC Vise preplace_vise_frame (ANY)
+    Robot->>Robot: Compliant Seat Part into Vise (+Z tool)
+    CNC->>World: Clamp CNC Vise (DIO + update_world)
+    Gripper->>Gripper: Release Part in Vise
+    Robot->>World: Detach workpiece from Gripper
+    Robot->>Robot: Linear Retract to preplace_vise_frame (LINEAR)
+    Robot->>Robot: Linear Retract to machine_approach (LINEAR)
 
     Note over Robot,World: 3. Machining Handshake Subtree (src/behaviors/machining.py)
-    Robot->>Robot: Step 08: Move to Safe Standby machine_approach (ANY)
-    CNC->>World: Step 09a: Close CNC Door (DIO + update_world)
-    CNC->>CNC: Step 09b: Pulse Cycle Start Output (0.5s high)
-    CNC->>CNC: Step 09c: Wait for Cycle Complete (DIO input / dwell)
+    Robot->>Robot: Move to Safe Standby machine_approach (ANY)
+    CNC->>World: Close CNC Door (DIO + update_world)
+    CNC->>CNC: Pulse Cycle Start Output (0.5s high)
+    CNC->>CNC: Wait for Cycle Complete (DIO input / dwell)
 
     Note over Robot,World: 4. Unload Machine Subtree (src/behaviors/unload_machine.py)
-    CNC->>World: Steps 10-11: Open CNC Door & Vise (DIO + update_world)
-    Robot->>Robot: Step 12a: Approach Machine Entry machine_approach (ANY)
-    Robot->>Robot: Step 12b: Approach Machined Part preplace_vise_frame (ANY)
-    Robot->>Robot: Step 12c: Compliant Touchdown to Machined Part (+Z tool)
-    Robot->>Robot: Step 12d: Relative Linear Retract (-Z tool, 3 cm)
-    Gripper->>Gripper: Step 12e: Grasp Machined Part
-    Robot->>World: Step 12f: Attach workpiece to Gripper
-    Robot->>Robot: Step 12g: Relative Linear Retract clear of Vise (-Z tool, 3 cm)
-    Robot->>Robot: Step 12h: Linear Retract to machine_approach (LINEAR)
+    CNC->>World: Open CNC Door & Vise (DIO + update_world)
+    Robot->>Robot: Approach Machine Entry machine_approach (ANY)
+    Robot->>Robot: Approach Machined Part preplace_vise_frame (ANY)
+    Robot->>Robot: Compliant Touchdown to Machined Part (+Z tool)
+    Robot->>Robot: Relative Linear Retract (-Z tool, 3 cm)
+    Gripper->>Gripper: Grasp Machined Part
+    Robot->>World: Attach workpiece to Gripper
+    Robot->>Robot: Relative Linear Retract clear of Vise (-Z tool, 3 cm)
+    Robot->>Robot: Linear Retract to machine_approach (LINEAR)
 
     Note over Robot,World: 5. Return to Infeed Subtree (src/behaviors/return_infeed.py)
-    Robot->>Robot: Step 13a: Blended Transit / Move to root/pre_grasp (ANY)
-    Robot->>Robot: Step 13b: Compliant Touchdown to Table Surface (+Z tool)
-    Gripper->>Gripper: Step 13c: Release Finished Part
-    Robot->>World: Step 13d: Detach workpiece from Gripper
-    Robot->>Robot: Step 13e: Linear Retract to root/pre_grasp (LINEAR)
-    Robot->>Robot: Step 13f: Return to view frame (ANY)
+    Robot->>Robot: Blended Transit / Move to root/pre_grasp (ANY)
+    Robot->>Robot: Compliant Touchdown to Table Surface (+Z tool)
+    Gripper->>Gripper: Release Finished Part
+    Robot->>World: Detach workpiece from Gripper
+    Robot->>Robot: Linear Retract to root/pre_grasp (LINEAR)
+    Robot->>Robot: Return to view frame (ANY)
 ```
 
 ---

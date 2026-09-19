@@ -36,22 +36,21 @@ def build_unload_machine_subtree(
   """Builds the Behavior Tree subtree for unloading a finished part from the CNC.
 
   Sequence:
-  1. If `machine` is provided, open CNC door (`Step 10`) and open CNC vise
-     (`Step 11`) prior to robot entry.
+  1. If `machine` is provided, open CNC door and open CNC vise prior to robot
+     entry.
   2. Move robot arm to machine entry approach position (`machine_approach_frame`,
-     `Step 12a`, `ANY`).
+     `ANY`).
   3. Move robot arm to vise pre-place approach position (`preplace_vise_frame`,
-     `Step 12b`, `ANY`) with segment-scoped vise collision exclusions.
-  4. Compliantly touch down to machined part along tool +Z (`Step 12c`).
+     `ANY`) with segment-scoped vise collision exclusions.
+  4. Compliantly touch down to machined part along tool +Z.
   5. Execute relative linear retract (`retract_distance_meters`, `-Z` tool)
-     with workpiece collision exclusion to align finger pads (`Step 12d`).
-  6. Close gripper to grasp machined part (`Step 12e`) and attach workpiece
-     entity to gripper in the belief world (`Step 12f`).
+     with workpiece collision exclusion to align finger pads.
+  6. Close gripper to grasp machined part and attach workpiece entity to
+     gripper in the belief world.
   7. Execute relative linear retract (`retract_distance_meters`, `-Z` tool)
-     with workpiece collision exclusion to lift part clear of vise jaws
-     (`Step 12g`).
+     with workpiece collision exclusion to lift part clear of vise jaws.
   8. Retract arm linearly out of enclosure to `machine_approach_frame`
-     (`Step 12h`, `LINEAR`).
+     (`LINEAR`).
 
   Args:
       robot: Robot controller adapter.
@@ -89,8 +88,8 @@ def build_unload_machine_subtree(
   if machine is not None:
     tasks.extend(
       [
-        machine.build_open_door_task(name="Step 10: Open CNC Door"),
-        machine.build_open_vise_task(name="Step 11: Open CNC Vise"),
+        machine.build_open_door_task(name="Open CNC Door"),
+        machine.build_open_vise_task(name="Open CNC Vise"),
       ]
     )
 
@@ -101,7 +100,7 @@ def build_unload_machine_subtree(
         frame_name=machine_approach_frame_name,
         parent_object=parent_object,
         motion_type="ANY",
-        task_name=f"Step 12a: Approach Machine Entry ({parent_object}/{machine_approach_frame_name})",
+        task_name=f"Approach Machine Entry ({parent_object}/{machine_approach_frame_name})",
       ),
       create_move_to_frame_task(
         robot=robot,
@@ -109,40 +108,40 @@ def build_unload_machine_subtree(
         parent_object=parent_object,
         motion_type="ANY",
         excluded_collision_pairs=vise_collision_pairs,
-        task_name=f"Step 12b: Approach Machined Part ({parent_object}/{preplace_vise_frame_name})",
+        task_name=f"Approach Machined Part ({parent_object}/{preplace_vise_frame_name})",
       ),
       create_compliant_touchdown_task(
         robot=robot,
         direction=(0.0, 0.0, 1.0),
         contact_force_newtons=unload_touchdown_force_newtons,
         timeout_seconds=touchdown_timeout_seconds,
-        task_name="Step 12c: Compliant Touchdown to Machined Part (+Z Tool)",
+        task_name="Compliant Touchdown to Machined Part (+Z Tool)",
       ),
       create_relative_retract_task(
         robot=robot,
         distance_meters=retract_distance_meters,
         exclude_collision=True,
         excluded_collision_objects=(workpiece_object_name,),
-        task_name=f"Step 12d: Linear Retract ({retract_distance_meters * 100:.1f} cm, -Z Tool)",
+        task_name=f"Linear Retract ({retract_distance_meters * 100:.1f} cm, -Z Tool)",
       ),
-      gripper.build_close_task(name="Step 12e: Grasp Machined Part"),
+      gripper.build_close_task(name="Grasp Machined Part"),
       robot.build_attach_object_task(
         object_name=workpiece_object_name,
-        name=f"Step 12f: Attach {workpiece_object_name} to Gripper",
+        name=f"Attach {workpiece_object_name} to Gripper",
       ),
       create_relative_retract_task(
         robot=robot,
         distance_meters=retract_distance_meters,
         exclude_collision=True,
         excluded_collision_objects=(workpiece_object_name,),
-        task_name=f"Step 12g: Linear Retract ({retract_distance_meters * 100:.1f} cm, -Z Tool)",
+        task_name=f"Linear Retract Clear of Vise ({retract_distance_meters * 100:.1f} cm, -Z Tool)",
       ),
       create_move_to_frame_task(
         robot=robot,
         frame_name=machine_approach_frame_name,
         parent_object=parent_object,
         motion_type="LINEAR",
-        task_name=f"Step 12h: Retract Machined Part from Machine ({parent_object}/{machine_approach_frame_name})",
+        task_name=f"Retract Machined Part from Machine ({parent_object}/{machine_approach_frame_name})",
       ),
     ]
   )
