@@ -11,7 +11,7 @@ manipulation) built on **Intrinsic Core** using the **Solution Building Library
 
 ## Documentation Index
 
-* [**System Architecture & Design (`docs/ARCHITECTURE.md`)**](docs/ARCHITECTURE.md): System boundaries, design invariants, perception & $\text{SO}(3)$ grasp geometry math, full 5-subtree sequence diagram, and SBL runtime troubleshooting.
+* [**System Architecture & Design (`docs/ARCHITECTURE.md`)**](docs/ARCHITECTURE.md): System boundaries, design invariants, perception & SO(3) grasp geometry math, full 5-subtree sequence diagram, and SBL runtime troubleshooting.
 * **Directory Guides**:
   * [`configs/README.md`](configs/README.md) — Per-cell YAML schemas (`omts`, `lab_bb_01`), `.pbtxt` world updates, and `.textproto` service configs.
   * [`models/README.md`](models/README.md) — SDF/GLB 3D scene assets (enclosures, camera mount, raw stock, Schunk vise).

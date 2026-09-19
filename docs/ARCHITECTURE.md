@@ -96,21 +96,34 @@ During vision-guided infeed (`OrbbecVision.build_perception_and_spawn_task`):
    wrist-mounted Orbbec camera (`sensor_ids: [1, 4]`).
 2. **`estimate_pose_multi_view`**: Runs FoundationPose inference via
    `pose_estimator_service`, returning the 6D part pose in the camera optical
-   frame ($\mathbf{T}_{\text{camera} \to \text{target}}$).
+   frame ($\mathbf{T}_{\mathrm{camera} \to \mathrm{target}}$).
 3. **Dynamic Frame Calculator (`bt.PythonScript`)**:
    Injected from [`src/utils/dynamic_frame_calculator.py`](../src/utils/dynamic_frame_calculator.py)
    via [`load_python_script()`](../src/utils/script_utils.py):
    * Queries live camera extrinsics in `root` and computes the world target pose:
-     $$\mathbf{T}_{\text{root} \to \text{target}} = \mathbf{T}_{\text{root} \to \text{camera}} \cdot \mathbf{T}_{\text{camera} \to \text{target}}$$
-   * Enforces safety bound $z_{\text{target}} \ge z_{\text{min\_safe}}$.
-   * Projects the workpiece horizontal axes onto the world $XY$ plane to find
-     the longest axis angle $\theta_{\text{longest}}$ and aligns the gripper
-     yaw $\psi = \theta_{\text{longest}}$ across the short side.
+
+     ```math
+     \mathbf{T}_{\mathrm{root} \to \mathrm{target}} = \mathbf{T}_{\mathrm{root} \to \mathrm{camera}} \cdot \mathbf{T}_{\mathrm{camera} \to \mathrm{target}}
+     ```
+
+   * Enforces minimum height safety bound (`z_target >= min_safe_z`):
+
+     ```math
+     z_{\mathrm{target}} \ge z_{\mathrm{min}}
+     ```
+
+   * Projects the workpiece horizontal axes onto the world XY plane to find
+     the longest axis angle $\theta_{\mathrm{longest}}$ and aligns the gripper
+     yaw $\psi$ with $\theta_{\mathrm{longest}}$ across the short side.
    * Evaluates all 4 symmetrically equivalent parallel-jaw grasp quaternions
-     ($\mathbf{q}_1, -\mathbf{q}_1, \mathbf{q}_2, -\mathbf{q}_2$) and selects
-     the candidate maximizing $|\mathbf{q}_i \cdot \mathbf{q}_{\text{tool}}|$ to
-     minimize wrist joint rotation in $\text{SO}(3)$.
-   * Updates `root/pre_grasp` (offset by $+z_{\text{approach}}$) and
+     (`q1`, `-q1`, `q2`, `-q2`) and selects the candidate maximizing quaternion
+     inner product to minimize wrist joint rotation in SO(3):
+
+     ```math
+     \mathbf{q}^{*} = \arg\max_{\mathbf{q}_i \in \{\pm\mathbf{q}_1, \pm\mathbf{q}_2\}} \left| \mathbf{q}_i \cdot \mathbf{q}_{\mathrm{tool}} \right|
+     ```
+
+   * Updates `root/pre_grasp` (offset vertically by $+z_{\mathrm{approach}}$) and
      `root/grasp` in the SBL `ObjectWorld`.
 
 ---

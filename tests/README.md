@@ -26,7 +26,7 @@ bazel test --test_output=errors //tests/unit:test_behaviors
 | `test_script_utils` | `src/utils/script_utils.py`, `dynamic_frame_calculator.py` | Source code extraction for `bt.PythonScript`, short-side grasp alignment, geodesic quaternion selection, and `min_safe_z` enforcement. |
 | `test_execution_utils` | `src/utils/execution_utils.py` | Mapping between `SimulationMode` and `Executive.SimulationMode`. |
 | `test_world_configs` | `configs/**/*.pbtxt` | Protobuf syntax and schema validation for all cell `.pbtxt` world update files. |
-| `test_apply_scene_updates` | `tools/world/apply_scene_updates.py` | Live `create_frame` $\to$ `update_transform` adaptation and simulator reset handling. |
+| `test_apply_scene_updates` | `tools/world/apply_scene_updates.py` | Live `create_frame` → `update_transform` adaptation and simulator reset handling. |
 | `test_control_gripper` | `tools/gripper/control_gripper.py` | CLI argument parsing and gripper open/close task dispatch. |
 | `test_control_machine` | `tools/machine/control_machine.py` | CLI argument parsing and CNC door/vise/cycle action execution. |
 | `test_move_to_frame` | `tools/jogging/move_to_frame.py` | Frame discovery and Cartesian move execution. |
