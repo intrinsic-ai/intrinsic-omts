@@ -61,18 +61,18 @@ single_version_override(
     patches = ["//bazel/patches:zenohc.patch"],
 )
 
-bazel_dep(name = "bazel_skylib", version = "1.9.0")
+bazel_dep(name = "bazel_skylib", version = "1.9.2")
 bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(name = "abseil-py", version = "2.1.0", repo_name = "com_google_absl_py")
 bazel_dep(name = "eigen", version = "5.0.1.bcr.2", repo_name = "com_gitlab_libeigen_eigen")
-bazel_dep(name = "grpc", version = "1.69.0", repo_name = "com_github_grpc_grpc")
+bazel_dep(name = "grpc", version = "1.74.1", repo_name = "com_github_grpc_grpc")
 bazel_dep(name = "pybind11_bazel", version = "3.0.1")
 bazel_dep(name = "rules_cc", version = "0.2.22")
 bazel_dep(name = "rules_cuda", version = "0.3.0")
 bazel_dep(name = "rules_python", version = "1.9.2")
 bazel_dep(name = "rules_uv", version = "0.89.2")
-bazel_dep(name = "toolchains_llvm", version = "1.6.0")
-bazel_dep(name = "googleapis", version = "0.0.0-20260728-b8486a2f", repo_name = "com_google_googleapis")
+bazel_dep(name = "toolchains_llvm", version = "1.7.0")
+bazel_dep(name = "googleapis", version = "0.0.0-20260825-d10ac924", repo_name = "com_google_googleapis")
 bazel_dep(name = "protobuf", version = "32.1", repo_name = "com_google_protobuf")
 single_version_override(
     module_name = "protobuf",
