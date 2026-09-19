@@ -10,14 +10,14 @@ module(name = "omts")
 #   git ls-remote https://github.com/intrinsic-ai/ioc-staging.git \
 #     refs/tags/<tag>^{}
 #
-# ioc-staging is currently private, and its binary assets are stored in Git LFS,
+# intrinsic-core is currently private, and its binary assets are stored in Git LFS,
 # so fetching requires git credentials for the repository and a working
 # `git-lfs` installation. See README.md for setup.
-INTRINSIC_CORE_RELEASE = "20260918.0"  # buildifier: disable=unused-variable
+INTRINSIC_CORE_RELEASE = "20260919.0"  # buildifier: disable=unused-variable
 
-INTRINSIC_CORE_COMMIT = "88714614d154e8aafcbbe9f52f306e729c91ef20"
+INTRINSIC_CORE_COMMIT = "972e98bd25e8d8052206890026898e465a12804c"
 
-INTRINSIC_CORE_REMOTE = "https://github.com/intrinsic-ai/ioc-staging.git"
+INTRINSIC_CORE_REMOTE = "https://github.com/intrinsic-ai/intrinsic-core.git"
 
 bazel_dep(name = "intrinsic-core")
 git_override(
