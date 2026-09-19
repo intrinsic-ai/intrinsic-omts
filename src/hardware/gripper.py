@@ -45,6 +45,15 @@ class DioGripper(GripperInterface):
     solution: Any,
     config: GripperConfig,
   ) -> None:
+    """Initializes the DIO gripper adapter from GripperConfig.
+
+    Args:
+        solution: Connected SBL deployment instance.
+        config: Scoped GripperConfig with DIO pin and output block settings.
+
+    Raises:
+        ValueError: If required DIO fields are missing from `config`.
+    """
     if (
       config.dio_open_pin is None
       or config.dio_close_pin is None
@@ -96,6 +105,7 @@ class DioGripper(GripperInterface):
     return bt.Task(action=self._dio_set_skill(**kwargs), name=task_name)
 
   def build_open_task(self, name: str | None = None) -> bt.Node:
+    """Builds a behavior tree task to open the DIO gripper."""
     task_name = name or "Open Gripper (DIO)"
     return self._build_dio_task(
       active_pin=self._open_pin,
@@ -104,6 +114,7 @@ class DioGripper(GripperInterface):
     )
 
   def build_close_task(self, name: str | None = None) -> bt.Node:
+    """Builds a behavior tree task to close the DIO gripper."""
     task_name = name or "Close Gripper (DIO)"
     return self._build_dio_task(
       active_pin=self._close_pin,
@@ -120,7 +131,15 @@ class RobotiqGripper(GripperInterface):
     solution: Any,
     config: GripperConfig,
   ) -> None:
-    """Initializes the Robotiq gripper adapter from GripperConfig."""
+    """Initializes the Robotiq gripper adapter from GripperConfig.
+
+    Args:
+        solution: Connected SBL deployment instance.
+        config: Scoped GripperConfig with finger joint and stroke positions.
+
+    Raises:
+        ValueError: If required Robotiq fields are missing from `config`.
+    """
     if (
       config.joint_name is None
       or config.open_position is None

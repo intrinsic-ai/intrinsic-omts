@@ -34,21 +34,24 @@ def build_load_machine_subtree(
 ) -> bt.Node:
   """Builds the Behavior Tree subtree for loading raw stock into the CNC machine.
 
-  Steps:
-  1. Ensure CNC door and vise are open (idempotent safety check).
-  2. Approach machine entry (via blended transit waypoint if `transit_frame` is set).
-  3. Move arm to CNC vise approach position.
-  4. Seat part into vise using move_to_contact (+Z compliant touchdown).
-  5. Clamp CNC vise.
-  6. Open gripper to release part in vise.
-  7. Detach workpiece entity from robot gripper in the belief world.
-  8. Retract arm linearly to vise approach and machine entry positions.
+  Sequence:
+  1. If `machine` is provided, ensure CNC door and vise are open prior to entry.
+  2. Transit to `machine_approach_frame` (`ANY`), blending through
+     `transit_frame` if configured.
+  3. Move arm to `preplace_vise_frame` (`ANY`) with segment-scoped collision
+     exclusions between tool, workpiece, and vise.
+  4. Seat part into vise via compliant touchdown along tool +Z.
+  5. If `machine` is provided, clamp CNC vise.
+  6. Open gripper to release part and detach workpiece entity from gripper in
+     the belief world.
+  7. Retract arm linearly to `preplace_vise_frame` with vise collision
+     exclusions (`LINEAR`) and then to `machine_approach_frame` (`LINEAR`).
 
   Args:
       robot: Robot controller adapter.
       gripper: End-effector gripper adapter.
-      machine: Optional CNC machine adapter.
-      config: Application configuration dataclass.
+      machine: Optional CNC machine adapter (`None` when cell has no CNC).
+      config: Validated application configuration dataclass.
 
   Returns:
       Behavior tree sequence executing machine loading and fixturing.
@@ -79,8 +82,8 @@ def build_load_machine_subtree(
   if machine is not None:
     tasks.extend(
       [
-        machine.build_open_door_task(name="Step 03: Ensure CNC Door Open"),
-        machine.build_open_vise_task(name="Step 04: Ensure CNC Vise Open"),
+        machine.build_open_door_task(name="Ensure CNC Door Open"),
+        machine.build_open_vise_task(name="Ensure CNC Vise Open"),
       ]
     )
 
@@ -92,7 +95,7 @@ def build_load_machine_subtree(
           (parent_object, machine_approach_frame_name),
         ],
         motion_type="ANY",
-        name=f"Step 05a: Blended Transit to Machine Entry ({parent_object}/{transit_frame_name} -> {parent_object}/{machine_approach_frame_name})",
+        name=f"Blended Transit to Machine Entry ({parent_object}/{transit_frame_name} -> {parent_object}/{machine_approach_frame_name})",
       )
     )
   else:
@@ -102,7 +105,7 @@ def build_load_machine_subtree(
         frame_name=machine_approach_frame_name,
         parent_object=parent_object,
         motion_type="ANY",
-        task_name=f"Step 05a: Approach Machine Entry ({parent_object}/{machine_approach_frame_name})",
+        task_name=f"Approach Machine Entry ({parent_object}/{machine_approach_frame_name})",
       )
     )
 
@@ -114,26 +117,26 @@ def build_load_machine_subtree(
         parent_object=parent_object,
         motion_type="ANY",
         excluded_collision_pairs=vise_collision_pairs,
-        task_name=f"Step 05b: Approach CNC Vise ({parent_object}/{preplace_vise_frame_name})",
+        task_name=f"Approach CNC Vise ({parent_object}/{preplace_vise_frame_name})",
       ),
       create_compliant_touchdown_task(
         robot=robot,
         direction=(0.0, 0.0, 1.0),
         contact_force_newtons=load_seat_force_newtons,
         timeout_seconds=touchdown_timeout_seconds,
-        task_name="Step 05c: Compliant Seat Part into Vise (+Z Tool)",
+        task_name="Compliant Seat Part into Vise (+Z Tool)",
       ),
     ]
   )
   if machine is not None:
-    tasks.append(machine.build_close_vise_task(name="Step 06: Clamp CNC Vise"))
+    tasks.append(machine.build_close_vise_task(name="Clamp CNC Vise"))
 
   tasks.extend(
     [
-      gripper.build_open_task(name="Step 07a: Release Part in Vise"),
+      gripper.build_open_task(name="Release Part in Vise"),
       robot.build_detach_object_task(
         object_name=workpiece_object_name,
-        name=f"Step 07b: Detach {workpiece_object_name} from Gripper",
+        name=f"Detach {workpiece_object_name} from Gripper",
       ),
       create_move_to_frame_task(
         robot=robot,
@@ -141,14 +144,14 @@ def build_load_machine_subtree(
         parent_object=parent_object,
         motion_type="LINEAR",
         excluded_collision_pairs=vise_collision_pairs,
-        task_name=f"Step 07c: Retract Arm to Vise Approach ({parent_object}/{preplace_vise_frame_name})",
+        task_name=f"Retract Arm to Vise Approach ({parent_object}/{preplace_vise_frame_name})",
       ),
       create_move_to_frame_task(
         robot=robot,
         frame_name=machine_approach_frame_name,
         parent_object=parent_object,
         motion_type="LINEAR",
-        task_name=f"Step 07d: Retract Arm to Machine Entry ({parent_object}/{machine_approach_frame_name})",
+        task_name=f"Retract Arm to Machine Entry ({parent_object}/{machine_approach_frame_name})",
       ),
     ]
   )

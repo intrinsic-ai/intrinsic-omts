@@ -41,25 +41,31 @@ def build_machine_tending_behavior_tree(
 ) -> bt.BehaviorTree:
   """Assembles the complete machine tending sequence into an SBL Behavior Tree.
 
-  Implements Pattern B (Pure Behavior Tree orchestration):
-  1. CNC machine prep (open door & vise), infeed perception, and part pick with
-     belief world object attachment.
-  2. Blended transit & loading into CNC vise with belief world detachment.
-  3. Standby & CNC machining cycle handshake.
-  4. CNC vise unloading & extraction with belief world attachment.
-  5. Blended transit & return to infeed table with belief world detachment.
-  6. Wraps the cycle in `bt.Loop` (`num_cycles > 1` or `num_cycles <= 0`)
-     for native executive-controlled multi-cycle or continuous execution.
+  Orchestrates the entire multi-step cycle within a single Behavior Tree:
+  1. Infeed pick: optional CNC door/vise prep, 6D vision pose estimation,
+     compliant touchdown, 3 cm linear retract, grasp, and world attachment.
+  2. Machine load: optional blended transit, compliant vise seating, clamping,
+     release, world detachment, and linear retract.
+  3. Machining handshake: standby outside enclosure, door close, cycle start
+     pulse, and cycle completion wait.
+  4. Machine unload: door/vise open, compliant touchdown to machined part,
+     3 cm linear retract, grasp, world attachment, 3 cm linear lift clear of
+     vise jaws, and linear extraction.
+  5. Infeed return: optional blended transit, compliant placement on table,
+     release, world detachment, linear retract, and return to view frame.
+  6. Wraps the cycle sequence in `bt.Loop` when `num_cycles > 1` (finite) or
+     `num_cycles <= 0` (continuous).
 
   Args:
       robot: Robot controller adapter.
       gripper: End-effector gripper adapter.
-      machine: CNC machine controller adapter.
-      vision: 3D camera adapter.
+      machine: Optional CNC machine controller adapter (`None` for cells without
+        a CNC enclosure/vise).
+      vision: 3D camera perception adapter.
       infeed_strategy: Infeed acquisition strategy (Perception vs. Grid).
-      config: Application configuration dataclass.
+      config: Validated application configuration dataclass.
       num_cycles_override: Optional override for number of cycles to execute
-        (1 = single, >1 = finite Loop, <=0 = infinite Loop).
+        (1 = single sequence, >1 = finite Loop, <=0 = continuous Loop).
       tree_name: Descriptive name for the Behavior Tree.
 
   Returns:

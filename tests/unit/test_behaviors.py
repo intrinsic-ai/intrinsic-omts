@@ -21,6 +21,7 @@ from intrinsic.solutions import behavior_tree as bt
 
 from src.behaviors.load_machine import build_load_machine_subtree
 from src.behaviors.machine_tending_bt import build_machine_tending_behavior_tree
+from src.behaviors.machining import build_machining_handshake_subtree
 from src.behaviors.pick import build_pick_from_infeed_subtree
 from src.behaviors.return_infeed import build_return_to_infeed_subtree
 from src.behaviors.unload_machine import build_unload_machine_subtree
@@ -154,10 +155,10 @@ class BehaviorsTest(absltest.TestCase):
     self.assertIsNotNone(pick_subtree)
     self.assertEqual(len(pick_subtree.children), 11)
     self.machine.build_open_door_task.assert_called_once_with(
-      name="Prep: Open CNC Door"
+      name="Open CNC Door"
     )
     self.machine.build_open_vise_task.assert_called_once_with(
-      name="Prep: Open CNC Vise"
+      name="Open CNC Vise"
     )
     self.vision.build_perception_and_spawn_task.assert_called_once_with(
       approach_offset_z=0.08,
@@ -166,18 +167,18 @@ class BehaviorsTest(absltest.TestCase):
       grasp_frame_name="grasp",
       tool_object_name="gripper",
       tool_frame_name="tool_frame",
-      name="Step 02: Perception & Dynamic Grasp Frame Update Pipeline",
+      name="Perception & Dynamic Grasp Frame Update Pipeline",
     )
     self.robot.build_attach_object_task.assert_called_once_with(
       object_name="raw_stock_2x3x5",
-      name="Step 07b: Attach raw_stock_2x3x5 to Gripper",
+      name="Attach raw_stock_2x3x5 to Gripper",
     )
     self.robot.build_move_relative_cartesian_task.assert_called_once_with(
       translation=(0.0, 0.0, -0.03),
       motion_type="LINEAR",
       exclude_collision=True,
       excluded_collision_objects=("raw_stock_2x3x5",),
-      name="Step 06: Linear Retract (3.0 cm, -Z Tool)",
+      name="Linear Retract (3.0 cm, -Z Tool)",
     )
 
   def test_build_load_machine_subtree_steps_and_detachment(self):
@@ -193,7 +194,7 @@ class BehaviorsTest(absltest.TestCase):
     self.robot.build_move_blended_cartesian_task.assert_called_once()
     self.robot.build_detach_object_task.assert_called_once_with(
       object_name="raw_stock_2x3x5",
-      name="Step 07b: Detach raw_stock_2x3x5 from Gripper",
+      name="Detach raw_stock_2x3x5 from Gripper",
     )
     expected_vise_pairs = [
       ("raw_stock_2x3x5", "schunk_egp_64nnb"),
@@ -211,7 +212,7 @@ class BehaviorsTest(absltest.TestCase):
           moving_frame_offset=None,
           target_frame_offset=None,
           excluded_collision_pairs=expected_vise_pairs,
-          name="Step 05b: Approach CNC Vise (root/vise_pre_place)",
+          name="Approach CNC Vise (root/vise_pre_place)",
         ),
         mock.call(
           target_frame_name="vise_pre_place",
@@ -222,10 +223,41 @@ class BehaviorsTest(absltest.TestCase):
           moving_frame_offset=None,
           target_frame_offset=None,
           excluded_collision_pairs=expected_vise_pairs,
-          name="Step 07c: Retract Arm to Vise Approach (root/vise_pre_place)",
+          name="Retract Arm to Vise Approach (root/vise_pre_place)",
         ),
       ],
       any_order=False,
+    )
+
+  def test_build_machining_handshake_subtree_steps(self):
+    machining_subtree = build_machining_handshake_subtree(
+      robot=self.robot,
+      machine=self.machine,
+      config=self.config,
+    )
+
+    self.assertIsNotNone(machining_subtree)
+    self.assertEqual(len(machining_subtree.children), 4)
+    self.robot.build_move_cartesian_task.assert_called_once_with(
+      target_frame_name="machine_approach",
+      target_object_name="root",
+      motion_type="ANY",
+      allow_tool_z_rotation=False,
+      cone_opening_half_angle=0.0,
+      moving_frame_offset=None,
+      target_frame_offset=None,
+      excluded_collision_pairs=None,
+      name="Move to Safe Standby (root/machine_approach)",
+    )
+    self.machine.build_close_door_task.assert_called_once_with(
+      name="Close CNC Door"
+    )
+    self.machine.build_trigger_cycle_task.assert_called_once_with(
+      name="Trigger CNC Cycle Start"
+    )
+    self.machine.build_wait_cycle_complete_task.assert_called_once_with(
+      timeout_seconds=self.config.cycle.machining_timeout_seconds,
+      name="Wait for CNC Cycle Complete",
     )
 
   def test_build_unload_machine_subtree_steps_and_attachment(self):
@@ -240,7 +272,7 @@ class BehaviorsTest(absltest.TestCase):
     self.assertEqual(len(unload_subtree.children), 10)
     self.robot.build_attach_object_task.assert_called_once_with(
       object_name="raw_stock_2x3x5",
-      name="Step 12f: Attach raw_stock_2x3x5 to Gripper",
+      name="Attach raw_stock_2x3x5 to Gripper",
     )
     self.robot.build_move_relative_cartesian_task.assert_has_calls(
       [
@@ -249,14 +281,14 @@ class BehaviorsTest(absltest.TestCase):
           motion_type="LINEAR",
           exclude_collision=True,
           excluded_collision_objects=("raw_stock_2x3x5",),
-          name="Step 12d: Linear Retract (3.0 cm, -Z Tool)",
+          name="Linear Retract (3.0 cm, -Z Tool)",
         ),
         mock.call(
           translation=(0.0, 0.0, -0.03),
           motion_type="LINEAR",
           exclude_collision=True,
           excluded_collision_objects=("raw_stock_2x3x5",),
-          name="Step 12g: Linear Retract (3.0 cm, -Z Tool)",
+          name="Linear Retract Clear of Vise (3.0 cm, -Z Tool)",
         ),
       ],
       any_order=False,
@@ -277,7 +309,7 @@ class BehaviorsTest(absltest.TestCase):
           moving_frame_offset=None,
           target_frame_offset=None,
           excluded_collision_pairs=expected_vise_pairs,
-          name="Step 12b: Approach Machined Part (root/vise_pre_place)",
+          name="Approach Machined Part (root/vise_pre_place)",
         ),
       ],
       any_order=False,
@@ -295,7 +327,7 @@ class BehaviorsTest(absltest.TestCase):
     self.robot.build_move_blended_cartesian_task.assert_called_once()
     self.robot.build_detach_object_task.assert_called_once_with(
       object_name="raw_stock_2x3x5",
-      name="Step 13d: Detach raw_stock_2x3x5 from Gripper",
+      name="Detach raw_stock_2x3x5 from Gripper",
     )
     self.robot.build_move_cartesian_task.assert_has_calls(
       [
@@ -308,7 +340,7 @@ class BehaviorsTest(absltest.TestCase):
           moving_frame_offset=None,
           target_frame_offset=None,
           excluded_collision_pairs=[("gripper", "raw_stock_2x3x5")],
-          name="Step 13e: Retract Arm from Table (root/pre_grasp)",
+          name="Retract Arm from Table (root/pre_grasp)",
         ),
       ],
       any_order=False,
@@ -335,7 +367,7 @@ class BehaviorsTest(absltest.TestCase):
       grasp_frame_name="grasp",
       tool_object_name="gripper",
       tool_frame_name="tool_frame",
-      name="Step 02: Perception & Dynamic Grasp Frame Update Pipeline",
+      name="Perception & Dynamic Grasp Frame Update Pipeline",
     )
     self.machine.build_open_door_task.assert_not_called()
     self.machine.build_close_door_task.assert_not_called()
@@ -343,6 +375,19 @@ class BehaviorsTest(absltest.TestCase):
     self.machine.build_close_vise_task.assert_not_called()
     self.machine.build_trigger_cycle_task.assert_not_called()
     self.machine.build_wait_cycle_complete_task.assert_not_called()
+
+  def test_all_subtrees_have_unique_child_names_and_no_legacy_prefixes(self):
+    tree = self._build_master_tree(num_cycles=1)
+    for subtree in tree.root.children:
+      child_names = [child.name for child in subtree.children]
+      self.assertEqual(
+        len(child_names),
+        len(set(child_names)),
+        f"Duplicate child task names in {subtree.name}: {child_names}",
+      )
+      for name in child_names:
+        self.assertNotIn("Step ", name)
+        self.assertNotIn("Prep:", name)
 
 
 if __name__ == "__main__":

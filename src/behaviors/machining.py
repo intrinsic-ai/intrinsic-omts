@@ -29,16 +29,19 @@ def build_machining_handshake_subtree(
 ) -> bt.Node:
   """Builds the Behavior Tree subtree for executing the CNC machining cycle.
 
-  Steps:
-  1. Move robot arm to safe standby position outside enclosure (ANY Cartesian motion).
-  2. Close CNC door.
-  3. Trigger CNC cycle start.
-  4. Wait for CNC cycle completion.
+  Sequence:
+  1. Move robot arm to safe standby position outside enclosure
+     (`machine_approach_frame`, `ANY`).
+  2. If `machine` is provided:
+     a. Close CNC enclosure door.
+     b. Pulse CNC cycle start digital output.
+     c. Wait for CNC cycle completion signal or timeout.
 
   Args:
       robot: Robot controller adapter.
-      machine: Optional CNC machine controller adapter.
-      config: Application configuration dataclass.
+      machine: Optional CNC machine controller adapter (`None` when cell has no
+        CNC enclosure/vise).
+      config: Validated application configuration dataclass.
 
   Returns:
       Behavior tree sequence node executing machining cycle handshake.
@@ -53,19 +56,17 @@ def build_machining_handshake_subtree(
       frame_name=standby_frame_name,
       parent_object=parent_object,
       motion_type="ANY",
-      task_name=f"Step 08: Move to Safe Standby ({parent_object}/{standby_frame_name})",
+      task_name=f"Move to Safe Standby ({parent_object}/{standby_frame_name})",
     ),
   ]
   if machine is not None:
     tasks.extend(
       [
-        machine.build_close_door_task(name="Step 09a: Close CNC Door"),
-        machine.build_trigger_cycle_task(
-          name="Step 09b: Trigger CNC Cycle Start"
-        ),
+        machine.build_close_door_task(name="Close CNC Door"),
+        machine.build_trigger_cycle_task(name="Trigger CNC Cycle Start"),
         machine.build_wait_cycle_complete_task(
           timeout_seconds=machining_timeout_seconds,
-          name="Step 09c: Wait for CNC Cycle Complete",
+          name="Wait for CNC Cycle Complete",
         ),
       ]
     )

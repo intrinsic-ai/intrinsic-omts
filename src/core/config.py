@@ -25,7 +25,13 @@ _T = TypeVar("_T")
 
 @dataclasses.dataclass(frozen=True)
 class RobotConfig:
-  """Configuration for the robot arm and moving tool frame."""
+  """Configuration for the robot arm and moving tool frame.
+
+  Attributes:
+      arm_part_name: Name of the robot arm part in `solution.world`.
+      tool_object_name: Name of the end-effector object in `solution.world`.
+      tool_frame_name: Name of the TCP frame on `tool_object_name`.
+  """
 
   arm_part_name: str
   tool_object_name: str
@@ -34,7 +40,19 @@ class RobotConfig:
 
 @dataclasses.dataclass(frozen=True)
 class GripperConfig:
-  """Configuration for the end-effector gripper adapter."""
+  """Configuration for the end-effector gripper adapter.
+
+  Attributes:
+      type: Gripper adapter type (`'robotiq'` or `'dio'`).
+      joint_name: Finger joint name for `RobotiqGripper`.
+      open_position: Open stroke position in meters for `RobotiqGripper`.
+      close_position: Closed stroke position in meters for `RobotiqGripper`.
+      action_name: Optional action resource name for `RobotiqGripper`.
+      dio_open_pin: Digital output index to open `DioGripper`.
+      dio_close_pin: Digital output index to close `DioGripper`.
+      dio_device_name: Optional ADIO device resource name for `DioGripper`.
+      dio_output_block_name: Digital output block name for `DioGripper`.
+  """
 
   type: str
   joint_name: str | None = None
@@ -63,7 +81,25 @@ class GripperConfig:
 
 @dataclasses.dataclass(frozen=True)
 class MachineConfig:
-  """Configuration for CNC enclosure door, vise, and cycle handshake DIO."""
+  """Configuration for CNC enclosure door, vise, and cycle handshake DIO.
+
+  Attributes:
+      door_open_pin: Digital output index to open the CNC door.
+      door_close_pin: Digital output index to close the CNC door.
+      vise_open_pin: Digital output index to open the pneumatic vise.
+      vise_close_pin: Digital output index to clamp the pneumatic vise.
+      cycle_start_pin: Digital output index pulsed to trigger cycle start.
+      cycle_complete_input_pin: Optional digital input index for cycle done.
+      device_name: ADIO device resource name (e.g. `'ur_module'`).
+      enclosure_object_name: Scene object name for the CNC enclosure door.
+      vise_object_name: Scene object name for the pneumatic vise.
+      door_open_joints: Joint position vector for open enclosure door.
+      door_closed_joints: Joint position vector for closed enclosure door.
+      vise_open_joints: Joint position vector for open vise jaws.
+      vise_closed_joints: Joint position vector for clamped vise jaws.
+      output_block_name: Digital output block name on the ADIO device.
+      input_block_name: Digital input block name on the ADIO device.
+  """
 
   door_open_pin: int
   door_close_pin: int
@@ -84,7 +120,18 @@ class MachineConfig:
 
 @dataclasses.dataclass(frozen=True)
 class VisionConfig:
-  """Configuration for 3D perception and pose estimation."""
+  """Configuration for 3D perception and pose estimation.
+
+  Attributes:
+      camera_name: Resource name of the RGB-D camera.
+      perception_service_name: Resource name of the pose estimation service.
+      pose_estimator_id: Asset ID of the registered pose estimator.
+      scene_object_id: Scene object ID updated upon pose detection.
+      sensor_ids: Camera sensor stream IDs (e.g. `(1, 4)` for RGB-D).
+      min_num_instances: Minimum detected part instances required per capture.
+      infeed_mode: Infeed localization strategy (`'perception'` or `'grid'`).
+      min_safe_z: Minimum allowable Z coordinate in `root` frame (meters).
+  """
 
   camera_name: str
   perception_service_name: str
@@ -98,7 +145,18 @@ class VisionConfig:
 
 @dataclasses.dataclass(frozen=True)
 class FramesConfig:
-  """World transform frame names used across machine tending motions."""
+  """World transform frame names used across machine tending motions.
+
+  Attributes:
+      parent_object: World object owning the scene frames (e.g. `'root'`).
+      view_frame: Camera observation pose frame name.
+      pregrasp_frame: Pre-grasp approach frame name above the workpiece.
+      grasp_frame: Target grasp frame name on the workpiece.
+      machine_approach_frame: Entry/standby frame outside the CNC enclosure.
+      preplace_vise_frame: Pre-placement approach frame above the CNC vise.
+      place_vise_frame: Seated part frame inside the CNC vise.
+      transit_frame: Optional intermediate waypoint frame for blended transits.
+  """
 
   parent_object: str
   view_frame: str
@@ -112,7 +170,21 @@ class FramesConfig:
 
 @dataclasses.dataclass(frozen=True)
 class CycleConfig:
-  """Execution, force, and motion parameters for the machine tending cycle."""
+  """Execution, force, and motion parameters for the machine tending cycle.
+
+  Attributes:
+      num_cycles: Number of cycles to run (`1` = single, `>1` = finite loop,
+        `<=0` = continuous loop).
+      workpiece_id: Name of the workpiece object in `solution.world`.
+      approach_offset_z: Vertical offset in meters from `grasp` to `pre_grasp`.
+      retract_distance_meters: Tool `-Z` linear retract distance in meters.
+      pick_touchdown_force_newtons: Force threshold for infeed pick contact (N).
+      load_seat_force_newtons: Force threshold for seating part in vise (N).
+      unload_touchdown_force_newtons: Force threshold for unload contact (N).
+      return_touchdown_force_newtons: Force threshold for table placement (N).
+      touchdown_timeout_seconds: Timeout for `move_to_contact` actions (s).
+      machining_timeout_seconds: Maximum duration to wait for CNC cycle (s).
+  """
 
   num_cycles: int
   workpiece_id: str
@@ -128,7 +200,17 @@ class CycleConfig:
 
 @dataclasses.dataclass(frozen=True)
 class AppConfig:
-  """Top-level configuration for a machine tending cell deployment."""
+  """Top-level configuration for a machine tending cell deployment.
+
+  Attributes:
+      cell_name: Identifier of the configured workcell (e.g. `'omts'`).
+      robot: Robot arm and tool frame configuration.
+      gripper: End-effector gripper configuration.
+      vision: 3D perception and pose estimation configuration.
+      frames: Named world transform frames for motion planning.
+      cycle: Cycle execution, force, and timeout parameters.
+      machine: Optional CNC enclosure, vise, and handshake configuration.
+  """
 
   cell_name: str
   robot: RobotConfig

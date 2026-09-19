@@ -51,7 +51,7 @@ _SIMULATION_MODE = flags.DEFINE_enum_class(
 _NUM_CYCLES = flags.DEFINE_integer(
   "num_cycles",
   None,
-  "Optional override for number of cycles (1 = single, >1 = Repeat, <=0 = Loop).",
+  "Optional override for number of cycles (1 = single, >1 = finite Loop, <=0 = continuous Loop).",
 )
 
 
@@ -61,7 +61,15 @@ def run_machine_tending_pipeline(
   simulation_mode: SimulationMode | None = None,
   num_cycles_override: int | None = None,
 ) -> None:
-  """Connects to the solution deployment and executes the machine tending BT."""
+  """Connects to the solution deployment and executes the machine tending BT.
+
+  Args:
+      solution_address: gRPC endpoint of the running SBL solution deployment.
+      config: Validated cell configuration dataclass.
+      simulation_mode: Optional executive execution mode override.
+      num_cycles_override: Optional cycle count override (1 = single cycle,
+        >1 = finite bt.Loop, <=0 = continuous bt.Loop).
+  """
   logging.info(
     "Connecting to Intrinsic solution at %s (cell: %s)...",
     solution_address,
@@ -132,6 +140,14 @@ def run_machine_tending_pipeline(
 
 
 def main(argv: Sequence[str]) -> None:
+  """Parses CLI flags and launches the OMTS machine tending pipeline.
+
+  Args:
+      argv: Non-flag command-line arguments passed by `absl.app`.
+
+  Raises:
+      app.UsageError: If unexpected positional arguments are provided.
+  """
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
   config = load_app_config(_CONFIG.value)

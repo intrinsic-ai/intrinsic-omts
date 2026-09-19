@@ -30,7 +30,7 @@ from tools.pose_estimation import register_using_train_service
 
 
 class RegisterUsingTrainServiceTest(absltest.TestCase):
-  """Tests for pose estimator registration using IOC Train Service."""
+  """Tests for pose estimator registration using Intrinsic Core Train Service."""
 
   def setUp(self) -> None:
     super().setUp()

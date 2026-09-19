@@ -24,6 +24,7 @@ from intrinsic.math.python import data_types
 from intrinsic.world.proto import object_world_updates_pb2
 
 from tools.jogging.store_frame import (
+  find_scene_updates_file,
   get_current_tool_pose,
   parse_args,
   save_frame_to_scene_updates,
@@ -201,6 +202,31 @@ updates: {
     self.assertEqual(args.parent_object, "root")
     self.assertEqual(args.tool_object, "gripper")
     self.assertEqual(args.tool_frame, "tool_frame")
+
+  def test_find_scene_updates_file_workspace_dir(self):
+    rel_path = "configs/omts/scene.updates.pbtxt"
+    expected = os.path.join(self.temp_dir.name, rel_path)
+    os.makedirs(os.path.dirname(expected), exist_ok=True)
+    with mock.patch.dict(
+      os.environ, {"BUILD_WORKSPACE_DIRECTORY": self.temp_dir.name}, clear=True
+    ):
+      self.assertEqual(find_scene_updates_file(rel_path), expected)
+
+  def test_find_scene_updates_file_runfiles(self):
+    rel_path = "configs/omts/scene.updates.pbtxt"
+    expected = os.path.join(self.temp_dir.name, "_main", rel_path)
+    os.makedirs(os.path.dirname(expected), exist_ok=True)
+    with open(expected, "w", encoding="utf-8") as f:
+      f.write("")
+    with mock.patch.dict(
+      os.environ, {"PYTHON_RUNFILES": self.temp_dir.name}, clear=True
+    ):
+      self.assertEqual(find_scene_updates_file(rel_path), expected)
+
+  def test_find_scene_updates_file_fallback(self):
+    rel_path = "nonexistent/scene.updates.pbtxt"
+    with mock.patch.dict(os.environ, {}, clear=True):
+      self.assertEqual(find_scene_updates_file(rel_path), rel_path)
 
 
 if __name__ == "__main__":

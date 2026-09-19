@@ -73,6 +73,13 @@ class DioCncMachine(CncMachineInterface):
     solution: Any,
     config: MachineConfig,
   ) -> None:
+    """Initializes the DIO CNC machine adapter.
+
+    Args:
+        solution: Connected SBL deployment instance.
+        config: Scoped MachineConfig defining DIO pins, block names, and
+          belief-world joint targets for the enclosure door and vise.
+    """
     self._solution = solution
     self._door_open_pin = config.door_open_pin
     self._door_close_pin = config.door_close_pin
@@ -199,6 +206,7 @@ class DioCncMachine(CncMachineInterface):
     )
 
   def build_open_door_task(self, name: str | None = None) -> bt.Node:
+    """Builds a task to open the CNC door via DIO and sync belief-world joints."""
     task_name = name or "Open CNC Door (DIO)"
     return self._build_actuation_task(
       active_pin=self._door_open_pin,
@@ -210,6 +218,7 @@ class DioCncMachine(CncMachineInterface):
     )
 
   def build_close_door_task(self, name: str | None = None) -> bt.Node:
+    """Builds a task to close the CNC door via DIO and sync belief-world joints."""
     task_name = name or "Close CNC Door (DIO)"
     return self._build_actuation_task(
       active_pin=self._door_close_pin,
@@ -221,6 +230,7 @@ class DioCncMachine(CncMachineInterface):
     )
 
   def build_open_vise_task(self, name: str | None = None) -> bt.Node:
+    """Builds a task to open the CNC vise via DIO and sync belief-world joints."""
     task_name = name or "Open CNC Vise (DIO)"
     return self._build_actuation_task(
       active_pin=self._vise_open_pin,
@@ -232,6 +242,7 @@ class DioCncMachine(CncMachineInterface):
     )
 
   def build_close_vise_task(self, name: str | None = None) -> bt.Node:
+    """Builds a task to clamp the CNC vise via DIO and sync belief-world joints."""
     task_name = name or "Clamp CNC Vise (DIO)"
     return self._build_actuation_task(
       active_pin=self._vise_close_pin,
@@ -243,6 +254,7 @@ class DioCncMachine(CncMachineInterface):
     )
 
   def build_trigger_cycle_task(self, name: str | None = None) -> bt.Node:
+    """Builds a sequence pulsing the CNC cycle start digital output (0.5s high)."""
     task_name = name or "Trigger CNC Machining Cycle (DIO)"
     pulse_high = self._build_dio_set_task(
       pins=self._cycle_start_pin,
@@ -276,6 +288,15 @@ class DioCncMachine(CncMachineInterface):
   def build_wait_cycle_complete_task(
     self, timeout_seconds: float, name: str | None = None
   ) -> bt.Node:
+    """Builds a task waiting for CNC cycle completion via DIO input or dwell.
+
+    Args:
+        timeout_seconds: Maximum wait duration in seconds.
+        name: Optional custom name for the Behavior Tree node.
+
+    Returns:
+        Configured SBL Task or Sequence node waiting for cycle completion.
+    """
     task_name = name or "Wait for CNC Cycle Complete"
     if self._cycle_done_input_pin is None:
       return create_dwell_task(
