@@ -15,8 +15,8 @@ py_library(
     name = "apply_scene_updates_lib",
     srcs = ["apply_scene_updates.py"],
     deps = [
-        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
     ],
 )
 
