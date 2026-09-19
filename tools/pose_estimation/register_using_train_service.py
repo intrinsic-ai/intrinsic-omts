@@ -20,10 +20,10 @@ from collections.abc import Sequence
 import grpc
 from absl import app, flags
 from google.longrunning import operations_pb2
-from incode.intrinsic_perception.intrinsic.perception.service.ioc_train_service.proto import (
+from intrinsic_perception.intrinsic.perception.service.ioc_train_service.proto import (
   ioc_pose_estimator_params_pb2,
 )
-from incode.intrinsic_perception.intrinsic.perception.service.ioc_train_service.service import (
+from intrinsic_perception.intrinsic.perception.service.ioc_train_service.service import (
   ioc_train_service,
 )
 from intrinsic.assets import id_utils
