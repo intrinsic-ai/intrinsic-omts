@@ -17,7 +17,7 @@ INTRINSIC_CORE_RELEASE = "20260919.0"  # buildifier: disable=unused-variable
 
 INTRINSIC_CORE_COMMIT = "972e98bd25e8d8052206890026898e465a12804c"
 
-INTRINSIC_CORE_REMOTE = "https://github.com/intrinsic-ai/ioc-staging.git"
+INTRINSIC_CORE_REMOTE = "https://github.com/intrinsic-ai/intrinsic-core.git"
 
 bazel_dep(name = "intrinsic-core")
 git_override(
