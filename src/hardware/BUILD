@@ -9,8 +9,8 @@ py_library(
         "//src/core:config",
         "//src/core:types",
         "//src/utils:math_utils",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
         "@intrinsic-core//intrinsic/manipulation/skills/force:move_to_contact_proto_py_pb2",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
         "@intrinsic_apis//intrinsic/math/proto:point_py_pb2",
         "@intrinsic_apis//intrinsic/math/proto:pose_py_pb2",
         "@intrinsic_apis//intrinsic/math/proto:quaternion_py_pb2",
@@ -28,7 +28,7 @@ py_library(
     deps = [
         "//src/core:config",
         "//src/utils:math_utils",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -39,8 +39,8 @@ py_library(
         "//src/core:config",
         "//src/utils:math_utils",
         "//src/utils:script_utils",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
         "@intrinsic_apis//intrinsic/world/proto:object_world_refs_py_pb2",
     ],
 )
@@ -52,11 +52,11 @@ py_library(
         "//src/core:config",
         "//src/utils:dynamic_frame_calculator",
         "//src/utils:script_utils",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:deployments",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:proto_building",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:provided",
         "@intrinsic-core//intrinsic/assets:id_utils_py",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:proto_building",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:provided",
         "@intrinsic_apis//intrinsic/perception/proto/v1:pose_estimator_id_py_pb2",
     ],
 )

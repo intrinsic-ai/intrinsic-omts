@@ -193,25 +193,25 @@ jobs:
           sudo chmod +x /usr/local/bin/bazel
           bazel --version
 
-      # intrinsic-ai/ioc-staging is private and the default GITHUB_TOKEN is
-      # scoped to this repository only. IOC_STAGING_DEPLOY_KEY is the private
-      # half of a read-only deploy key registered on ioc-staging, so the
-      # credential is scoped to that one repository. Once ioc-staging is public
+      # intrinsic-ai/intrinsic-core is private and the default GITHUB_TOKEN is
+      # scoped to this repository only. INTRINSIC_CORE_DEPLOY_KEY is the private
+      # half of a read-only deploy key registered on intrinsic-core, so the
+      # credential is scoped to that one repository. Once intrinsic-core is public
       # this step, the secret and the deploy key can all be deleted.
-      - name: Configure access to ioc-staging
+      - name: Configure access to intrinsic-core
         if: steps.force_submit.outputs.enabled != 'true'
         env:
-          IOC_STAGING_DEPLOY_KEY: ${{ secrets.IOC_STAGING_DEPLOY_KEY }}
+          INTRINSIC_CORE_DEPLOY_KEY: ${{ secrets.INTRINSIC_CORE_DEPLOY_KEY }}
         run: |
-          if [ -z "${IOC_STAGING_DEPLOY_KEY}" ]; then
-            echo "::error::IOC_STAGING_DEPLOY_KEY secret is not configured."
+          if [ -z "${INTRINSIC_CORE_DEPLOY_KEY}" ]; then
+            echo "::error::INTRINSIC_CORE_DEPLOY_KEY secret is not configured."
             echo "It is the private half of the read-only deploy key on" \
-              "intrinsic-ai/ioc-staging."
+              "intrinsic-ai/intrinsic-core."
             exit 1
           fi
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          printf '%s\n' "${IOC_STAGING_DEPLOY_KEY}" > ~/.ssh/ioc_staging
+          printf '%s\n' "${INTRINSIC_CORE_DEPLOY_KEY}" > ~/.ssh/ioc_staging
           chmod 600 ~/.ssh/ioc_staging
           ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
           # Configured in ~/.ssh/config rather than core.sshCommand so that
@@ -221,13 +221,13 @@ jobs:
             echo "  IdentityFile ~/.ssh/ioc_staging"
             echo "  IdentitiesOnly yes"
           } >> ~/.ssh/config
-          # MODULE.bazel clones ioc-staging over https, but a deploy key only
+          # MODULE.bazel clones intrinsic-core over https, but a deploy key only
           # authenticates over ssh. Rewrite just that one URL so the rest of
           # github.com, including actions/checkout's own credentials, is
           # untouched.
           git config --global \
-            url."git@github.com:intrinsic-ai/ioc-staging.git".insteadOf \
-            "https://github.com/intrinsic-ai/ioc-staging.git"
+            url."git@github.com:intrinsic-ai/intrinsic-core.git".insteadOf \
+            "https://github.com/intrinsic-ai/intrinsic-core.git"
           # IOC keeps its binary assets in Git LFS. Bazel checks the repository
           # out with plain `git`, so the LFS smudge filter has to be installed
           # globally or the working tree ends up full of pointer files.
