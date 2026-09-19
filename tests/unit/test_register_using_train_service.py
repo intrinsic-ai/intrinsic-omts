@@ -19,12 +19,12 @@ from unittest import mock
 from absl.testing import absltest
 from google.longrunning import operations_pb2
 from google.rpc import status_pb2
-from intrinsic_perception.intrinsic.perception.service.ioc_train_service.proto import (
-  ioc_pose_estimator_params_pb2,
-)
 from intrinsic.assets.proto import installed_assets_pb2, view_pb2
 from intrinsic.perception.proto.v1 import train_service_pb2
 from intrinsic.scene.proto.v1 import scene_object_pb2
+from intrinsic_perception.intrinsic.perception.service.ioc_train_service.proto import (
+  ioc_pose_estimator_params_pb2,
+)
 
 from tools.pose_estimation import register_using_train_service
 
