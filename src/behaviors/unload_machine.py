@@ -35,22 +35,30 @@ def build_unload_machine_subtree(
 ) -> bt.Node:
   """Builds the Behavior Tree subtree for unloading a finished part from the CNC.
 
-  Steps:
-  1. Open CNC door.
-  2. Open CNC vise.
-  3. Move robot arm to machine entry approach position.
-  4. Move robot arm to vise grasp approach position.
-  5. Compliantly align with part via move_to_contact (+Z compliant touchdown).
-  6. Linear retract along tool -Z to align finger pads with part.
-  7. Close gripper to grasp machined part.
-  8. Attach workpiece entity to robot gripper in the belief world.
-  9. Retract arm linearly to vise approach and machine entry positions.
+  Sequence:
+  1. If `machine` is provided, open CNC door (`Step 10`) and open CNC vise
+     (`Step 11`) prior to robot entry.
+  2. Move robot arm to machine entry approach position (`machine_approach_frame`,
+     `Step 12a`, `ANY`).
+  3. Move robot arm to vise pre-place approach position (`preplace_vise_frame`,
+     `Step 12b`, `ANY`) with segment-scoped vise collision exclusions.
+  4. Compliantly touch down to machined part along tool +Z (`Step 12c`).
+  5. Execute relative linear retract (`retract_distance_meters`, `-Z` tool)
+     with workpiece collision exclusion to align finger pads (`Step 12d`).
+  6. Close gripper to grasp machined part (`Step 12e`) and attach workpiece
+     entity to gripper in the belief world (`Step 12f`).
+  7. Execute relative linear retract (`retract_distance_meters`, `-Z` tool)
+     with workpiece collision exclusion to lift part clear of vise jaws
+     (`Step 12g`).
+  8. Retract arm linearly out of enclosure to `machine_approach_frame`
+     (`Step 12h`, `LINEAR`).
 
   Args:
       robot: Robot controller adapter.
       gripper: End-effector gripper adapter.
-      machine: Optional CNC machine controller adapter.
-      config: Application configuration dataclass.
+      machine: Optional CNC machine controller adapter (`None` when cell has no
+        CNC enclosure/vise).
+      config: Validated application configuration dataclass.
 
   Returns:
       Behavior tree sequence node executing machine unloading.

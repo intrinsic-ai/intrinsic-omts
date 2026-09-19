@@ -88,7 +88,7 @@ class VisionInterface(abc.ABC):
 
 
 class OrbbecVision(VisionInterface):
-  """Orbbec 3D camera perception adapter using IOC SBL perception skills."""
+  """Orbbec 3D camera perception adapter using Intrinsic Core SBL perception skills."""
 
   def __init__(
     self,
@@ -96,6 +96,13 @@ class OrbbecVision(VisionInterface):
     config: VisionConfig,
     log_debug_data: bool = True,
   ) -> None:
+    """Initializes the Orbbec 3D vision adapter.
+
+    Args:
+        solution: Connected SBL deployment instance.
+        config: Scoped VisionConfig defining camera, estimator, and sensor IDs.
+        log_debug_data: Whether to log debug point clouds and images in SBL.
+    """
     self._solution = solution
     self._camera_name = config.camera_name
     self._perception_service_name = config.perception_service_name

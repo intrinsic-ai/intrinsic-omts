@@ -6,7 +6,7 @@ module(name = "omts")
 # so no manual sibling checkout is required.
 #
 # INTRINSIC_CORE_COMMIT is pinned rather than the tag because git tags are mutable. It is
-# the commit that `v0.0.1-rc5` points at:
+# the commit that `INTRINSIC_CORE_RELEASE` points at:
 #   git ls-remote https://github.com/intrinsic-ai/ioc-staging.git \
 #     refs/tags/<tag>^{}
 #

@@ -30,20 +30,23 @@ def build_return_to_infeed_subtree(
   gripper: GripperInterface,
   config: AppConfig,
 ) -> bt.Node:
-  """Builds the Behavior Tree subtree for returning the finished part back to infeed.
+  """Builds the Behavior Tree subtree for returning the finished part to infeed.
 
-  Steps:
-  1. Approach infeed pre-grasp position (via blended transit waypoint if `transit_frame` is set).
-  2. Perform compliant touchdown via move_to_contact to place part on table surface.
-  3. Open gripper to release part.
-  4. Detach workpiece entity from robot gripper in the belief world.
-  5. Retract arm linearly to pre-grasp approach position.
-  6. Move arm to view position.
+  Sequence:
+  1. Approach infeed `pregrasp_frame` (`Step 13a`, `ANY`), blending through
+     `transit_frame` if configured.
+  2. Perform compliant touchdown along tool +Z to place finished part on table
+     surface (`Step 13b`).
+  3. Open gripper to release part (`Step 13c`) and detach workpiece entity from
+     gripper in the belief world (`Step 13d`).
+  4. Retract arm linearly to `pregrasp_frame` (`Step 13e`, `LINEAR`) with
+     segment-scoped `(tool, workpiece)` collision exclusion.
+  5. Return arm to `view_frame` (`Step 13f`, `ANY`).
 
   Args:
       robot: Robot controller adapter.
       gripper: End-effector gripper adapter.
-      config: Application configuration dataclass.
+      config: Validated application configuration dataclass.
 
   Returns:
       Behavior tree sequence node executing infeed return.

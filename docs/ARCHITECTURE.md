@@ -1,95 +1,121 @@
-# OMTS Architecture & System Design
+# OMTS System Architecture & Design
 
-The Open Machine Tending Solution (OMTS) is an open-source reference application for CNC machine tending, press braking, and fixture loading built on **Intrinsic Open Core (IOC)** using the **Solution Building Library (SBL)** Python SDK.
+The Open Machine Tending Solution (OMTS) is a reference implementation for
+automated CNC machine tending, fixture loading, and vision-guided manipulation
+built on **Intrinsic Core** and the **Solution Building Library (SBL)**
+Python SDK.
 
 ---
 
-## 1. System Overview & Lifecycle
+## 1. System Boundary & Lifecycle
 
-OMTS separates deployment packaging from application logic:
+OMTS strictly separates deployment packaging from application orchestration:
 
-* **Solution Package (`//:omts_solution`):** Declares hardware devices (Universal Robots arm, Robotiq gripper, Orbbec camera), resources, skills, and configuration files deployed as a microservice cluster or local container.
-* **Application Binary (`//src:omts_app`):** Connects to the solution deployment via gRPC (`deployments.connect(address=...)`), instantiates hardware adapters, configures infeed strategies, builds a composable Behavior Tree (BT), and executes the machine tending cycle.
+* **Solution Package (`//:omts_solution`)**: Declares hardware modules (Universal
+  Robots arm, Robotiq Hand-E / DIO gripper, Orbbec Gemini 335Le camera, ADIO),
+  scene models (`models/`), perception services (FoundationPose + RF-DETR), and
+  cell world updates (`configs/<cell>/*.updates.pbtxt`). Parameterized at build
+  time via `--//:setup=omts` or `--//:setup=lab_bb_01`.
+* **Application Binary (`//src:omts_app`)**: Connects to the running solution
+  over gRPC (`deployments.connect(address=...)`), validates a cell YAML
+  configuration (`configs/<cell>/app_config.yaml`), instantiates stateless
+  hardware adapters, builds a single master `bt.BehaviorTree`, and executes it
+  via `solution.executive.run(tree)`.
 
 ```mermaid
-flowchart TD
-    subgraph SolutionCluster["SBL Solution Deployment (:omts_solution)"]
-        W[World Model & Kinematics Tree]
-        R[Robot Service / ICON]
-        P[Perception / Pose Estimator]
-        IO[ADIO / Digital I/O]
-        G[Gripper Service]
+flowchart LR
+    subgraph App["Application Binary (//src:omts_app)"]
+        CFG["AppConfig (YAML)"] --> MAIN["src/main.py"]
+        MAIN --> HAL["Hardware Adapters (src/hardware/)"]
+        MAIN --> INF["Infeed Strategy (src/core/infeed.py)"]
+        HAL --> BT["Master Behavior Tree (src/behaviors/)"]
+        INF --> BT
     end
 
-    subgraph OMTSApplication["OMTS Application (//src:omts_app)"]
-        MAIN[main.py] --> ADAPTERS[Hardware Adapters]
-        ADAPTERS --> ROBOT_ADAPT[UrRobot]
-        ADAPTERS --> VISION_ADAPT[OrbbecVision]
-        ADAPTERS --> GRIP_ADAPT[RobotiqGripper / DioGripper]
-        ADAPTERS --> CNC_ADAPT[DioCncMachine]
-        
-        MAIN --> STRATEGY[Infeed Strategy]
-        STRATEGY -.-> PERCEP[PerceptionInfeedStrategy]
-        STRATEGY -.-> GRID[GridInfeedStrategy]
-        
-        MAIN --> BT_BUILDER[Behavior Tree Builder]
-        BT_BUILDER --> SUB_PICK[Pick Subtree]
-        BT_BUILDER --> SUB_LOAD[Machine Load Subtree]
-        BT_BUILDER --> SUB_MACHINE[Machining Subtree]
-        BT_BUILDER --> SUB_UNLOAD[Unload Subtree]
-        BT_BUILDER --> SUB_OUTFEED[Outfeed Return Subtree]
+    subgraph Cluster["Solution Deployment (//:omts_solution)"]
+        EXEC["Executive Service"]
+        WORLD["ObjectWorld & Kinematics"]
+        ICON["ICON Realtime Control"]
+        PERC["Pose Estimator Service"]
+        SIM["Gazebo Simulator (sim mode)"]
     end
 
-    OMTSApplication -- gRPC (port 17080) --> SolutionCluster
+    BT -- "gRPC (:17080)" --> EXEC
+    EXEC --> WORLD & ICON & PERC & SIM
 ```
 
 ---
 
-## 2. Hardware Abstraction Layer (HAL)
+## 2. Architectural Invariants
 
-All hardware interactions are mediated by stateless interfaces in [`src/hardware/`](../src/hardware/):
-
-| Interface | Implementations | Key Responsibilities |
-| :--- | :--- | :--- |
-| [`RobotInterface`](../src/hardware/robot.py) | `UrRobot` | Joint motions (`build_move_joint_task`), absolute Cartesian motions (`build_move_cartesian_task`), blended trajectories (`build_move_blended_cartesian_task`), relative motions (`build_move_relative_cartesian_task`), compliant contact (`build_move_to_contact_task`), and native object attachment (`build_attach_object_task`, `build_detach_object_task`). |
-| [`GripperInterface`](../src/hardware/gripper.py) | `DioGripper`, `RobotiqGripper` | Gripper open/close tasks and stroke position control. |
-| [`CncMachineInterface`](../src/hardware/machine.py) | `DioCncMachine` | Door actuation, pneumatic vise clamping with belief-world joint synchronization (`update_world`), cycle start pulsing, and cycle complete waiting. |
-| [`VisionInterface`](../src/hardware/vision.py) | `OrbbecVision` | Atomic retryable RGB-D image acquisition, 6D pose estimation, and in-tree dynamic frame calculation via `bt.PythonScript`. |
-
-This abstraction keeps process behavior trees decoupled from hardware details while leveraging Flowstate's native `SimulationMode` (`REALITY`, `PREVIEW`, `FAST_PREVIEW`) for simulation.
+1. **Single-Tree Behavior Tree Orchestration**:
+   The entire machine tending process executes inside one `bt.BehaviorTree`
+   submitted in a single `solution.executive.run(tree)` call. Multi-cycle or
+   continuous operation wraps the 5-subtree sequence in `bt.Loop(max_times=N,
+   do_child=...)` (`max_times > 1` for finite cycles, `max_times = 0` for
+   continuous operation).
+2. **Strict Typed YAML Configuration**:
+   Cell parameters live in `configs/<cell>/app_config.yaml` and parse into
+   frozen dataclasses (`AppConfig`, `RobotConfig`, `GripperConfig`,
+   `MachineConfig`, `VisionConfig`, `FramesConfig`, `CycleConfig`). Missing
+   required keys fail immediately with `KeyError`.
+3. **Optional Hardware Subsystems Across Cells**:
+   `AppConfig.machine` is `MachineConfig | None`. Cells with a CNC enclosure
+   and pneumatic vise (`omts`) define `machine:`; cells without CNC hardware
+   (`lab_bb_01`) omit it, and all behavior subtrees automatically omit door,
+   vise, and cycle handshake nodes.
+4. **Segment-Scoped Collision Safety**:
+   `disable_collision_checking` is never enabled globally. Contact and
+   close-proximity motions attach targeted `CollisionRule` exclusions (e.g.
+   excluding `[gripper, raw_stock_2x3x5]` during compliant retract, or
+   `[(gripper, schunk_egp_64nnb), (raw_stock_2x3x5, schunk_egp_64nnb)]` during
+   vise insertion/extraction) while preserving full arm collision checking.
+5. **Sequential World Updates (`lock_the_universe`)**:
+   The `ai.intrinsic.update_world` skill reserves the entire world state
+   (`lock_the_universe: true`). Door and vise actuation tasks (which sync belief
+   world joint states via `update_world`) always execute sequentially in a
+   `bt.Sequence` prior to `move_robot` tasks to avoid `StatusCode: 18201`
+   resource reservation conflicts.
+6. **Capability-Filtered ADIO Resolution**:
+   `resolve_adio_resource()` verifies `"Icon2AdioPart" in handle.types` before
+   binding an explicit ADIO resource slot, allowing the SDK to auto-select the
+   compatible ADIO provider when `ur_module` only exposes calibration services.
+7. **Belief World vs. Gazebo Simulation World**:
+   `//tools/world:apply_scene_updates` writes transforms to the Belief World
+   (`world`). When running in simulation, passing `--reset_sim` invokes
+   `solution.simulator.reset()` to clone the updated Belief World into Gazebo's
+   `sim_world`.
 
 ---
 
-## 3. Infeed Strategies (Strategy Pattern)
+## 3. Perception & Dynamic Grasp Synthesis
 
-Infeed handling is decoupled into interchangeable strategy classes in [`src/core/infeed.py`](../src/core/infeed.py):
+During vision-guided infeed (`OrbbecVision.build_perception_and_spawn_task`):
 
-### A. Vision-Guided Infeed (`PerceptionInfeedStrategy`)
-* Used for raw workpieces placed arbitrarily on the infeed table or tray.
-* Moves robot to a calibrated `view` frame.
-* Triggers a 3-step Behavior Tree perception pipeline:
-  1. `capture_images`: Captures synchronized RGB-D frames from the camera.
-  2. `estimate_pose_multi_view`: Runs FoundationPose inference connected to the `pose_estimator_service`.
-  3. `bt.PythonScript`: Dynamically calculates grasp geometry and updates ObjectWorld frames.
-* **In-Tree Frame Calculation & Clean Script Injection:**
-  * Logic is maintained as a standard typed module in [`src/utils/dynamic_frame_calculator.py`](../src/utils/dynamic_frame_calculator.py) and injected via [`src/utils/script_utils.py:load_python_script`](../src/utils/script_utils.py).
-  * Resolves live camera sensor transform in root (`world.get_transform(parent_obj, camera_sensor_node)`).
-  * Computes part pose in root: $\mathbf{T}_{\text{root} \to \text{target}} = \mathbf{T}_{\text{root} \to \text{camera}} \cdot \mathbf{T}_{\text{camera} \to \text{target}}$.
-  * **Short-Side Grasp Alignment:** Identifies the workpiece horizontal longest axis ($\theta_{\text{longest}}$) and sets tool yaw $\psi = \theta_{\text{longest}}$ to grasp along the short side.
-  * **Geodesic Orientation Optimization:** Evaluates the 4 symmetrically equivalent grasp quaternions for parallel-jaw grippers ($\mathbf{q}$, $-\mathbf{q}$, $\mathbf{q} \cdot \mathbf{R}_z(180^\circ)$, $-\mathbf{q} \cdot \mathbf{R}_z(180^\circ)$) and selects the candidate closest to current tool orientation to prevent wrist joint 6 wrapping and protective stops.
-  * Dynamically updates or creates `root/pre_grasp` (with standoff) and `root/grasp` in the SBL `ObjectWorld`.
-
-### B. Blind Grid Pallet Infeed (`GridInfeedStrategy`)
-* Used for structured part pallets, blister packs, or fixtures.
-* Computes deterministic slot coordinates:
-  $$\mathbf{p}_{\text{slot}}(i) = \mathbf{p}_{\text{origin}} + (\text{row} \cdot \Delta_y) + (\text{col} \cdot \Delta_x)$$
-* Iterates sequentially across available slots without requiring perception.
+1. **`capture_images`**: Captures synchronized RGB and Depth frames from the
+   wrist-mounted Orbbec camera (`sensor_ids: [1, 4]`).
+2. **`estimate_pose_multi_view`**: Runs FoundationPose inference via
+   `pose_estimator_service`, returning the 6D part pose in the camera optical
+   frame ($\mathbf{T}_{\text{camera} \to \text{target}}$).
+3. **Dynamic Frame Calculator (`bt.PythonScript`)**:
+   Injected from [`src/utils/dynamic_frame_calculator.py`](../src/utils/dynamic_frame_calculator.py)
+   via [`load_python_script()`](../src/utils/script_utils.py):
+   * Queries live camera extrinsics in `root` and computes the world target pose:
+     $$\mathbf{T}_{\text{root} \to \text{target}} = \mathbf{T}_{\text{root} \to \text{camera}} \cdot \mathbf{T}_{\text{camera} \to \text{target}}$$
+   * Enforces safety bound $z_{\text{target}} \ge z_{\text{min\_safe}}$.
+   * Projects the workpiece horizontal axes onto the world $XY$ plane to find
+     the longest axis angle $\theta_{\text{longest}}$ and aligns the gripper
+     yaw $\psi = \theta_{\text{longest}}$ across the short side.
+   * Evaluates all 4 symmetrically equivalent parallel-jaw grasp quaternions
+     ($\mathbf{q}_1, -\mathbf{q}_1, \mathbf{q}_2, -\mathbf{q}_2$) and selects
+     the candidate maximizing $|\mathbf{q}_i \cdot \mathbf{q}_{\text{tool}}|$ to
+     minimize wrist joint rotation in $\text{SO}(3)$.
+   * Updates `root/pre_grasp` (offset by $+z_{\text{approach}}$) and
+     `root/grasp` in the SBL `ObjectWorld`.
 
 ---
 
-## 4. Master Machine Tending Cycle
-
-The master Behavior Tree assembled in [`src/behaviors/machine_tending_bt.py`](../src/behaviors/machine_tending_bt.py) executes the complete machine tending cycle across 5 modular subtrees:
+## 4. Master Machine Tending Sequence
 
 ```mermaid
 sequenceDiagram
@@ -100,52 +126,64 @@ sequenceDiagram
     participant CNC as CNC Machine & Vise
     participant World as SBL ObjectWorld
 
-    Note over Robot,World: 1. Infeed Pick Subtree
-    CNC->>CNC: Prep: Open CNC Door & Open CNC Vise (DIO)
-    Robot->>Robot: Move to view frame (ANY)
-    Vision->>Vision: Capture RGB-D & run FoundationPose
-    Vision->>World: PythonScript dynamic frame update (root/pre_grasp, root/grasp)
-    Gripper->>Gripper: Open Gripper fingers
-    Robot->>Robot: Move to root/pre_grasp (ANY)
-    Robot->>Robot: Compliant Touchdown (+Z tool contact, 15N)
-    Robot->>Robot: Linear Retract 3 cm (-Z tool relative motion)
-    Gripper->>Gripper: Close Gripper (Grasp Part)
-    Robot->>World: Attach workpiece to Gripper
-    Robot->>Robot: Linear Retract to root/pre_grasp (LINEAR)
+    Note over Robot,World: 1. Infeed Pick Subtree (src/behaviors/pick.py)
+    CNC->>World: Prep: Open CNC Door & Vise (DIO + update_world)
+    Robot->>Robot: Step 01: Move to view frame (ANY)
+    Vision->>Vision: Step 02a-b: Capture RGB-D & Estimate 6D Pose (FoundationPose)
+    Vision->>World: Step 02c: Update dynamic root/pre_grasp & root/grasp (PythonScript)
+    Gripper->>Gripper: Step 03: Open Gripper
+    Robot->>Robot: Step 04: Move to root/pre_grasp (ANY)
+    Robot->>Robot: Step 05: Compliant Touchdown to Part (+Z tool)
+    Robot->>Robot: Step 06: Relative Linear Retract (-Z tool, 3 cm)
+    Gripper->>Gripper: Step 07a: Close Gripper (Grasp Part)
+    Robot->>World: Step 07b: Attach workpiece to Gripper
+    Robot->>Robot: Step 08: Linear Retract to root/pre_grasp (LINEAR)
 
-    Note over Robot,World: 2. Machine Loading Subtree
-    CNC->>CNC: Ensure CNC Door & Vise Open (DIO)
-    Robot->>Robot: Blended Transit to machine_approach entry frame (ANY)
-    Robot->>Robot: Move to vise_pre_place insertion frame (ANY)
-    Robot->>Robot: Compliant Seating into Vise (+Z tool contact, 8.0N)
-    CNC->>CNC: Clamp Vise (DIO)
-    Gripper->>Gripper: Open Gripper (Release Part)
-    Robot->>World: Detach workpiece from Gripper
-    Robot->>Robot: Linear Retract to vise_pre_place (LINEAR)
-    Robot->>Robot: Retract to machine_approach (LINEAR)
+    Note over Robot,World: 2. Load Machine Subtree (src/behaviors/load_machine.py)
+    CNC->>World: Steps 03-04: Ensure CNC Door & Vise Open (DIO + update_world)
+    Robot->>Robot: Step 05a: Blended Transit / Move to machine_approach (ANY)
+    Robot->>Robot: Step 05b: Approach CNC Vise preplace_vise_frame (ANY)
+    Robot->>Robot: Step 05c: Compliant Seat Part into Vise (+Z tool)
+    CNC->>World: Step 06: Clamp CNC Vise (DIO + update_world)
+    Gripper->>Gripper: Step 07a: Release Part in Vise
+    Robot->>World: Step 07b: Detach workpiece from Gripper
+    Robot->>Robot: Step 07c: Linear Retract to preplace_vise_frame (LINEAR)
+    Robot->>Robot: Step 07d: Linear Retract to machine_approach (LINEAR)
 
-    Note over Robot,World: 3. Machining Handshake Subtree
-    Robot->>Robot: Standby at machine_approach
-    CNC->>CNC: Close Door & Pulse Cycle Start (DIO)
-    CNC->>CNC: Wait for Machining Cycle Complete (DIO input / timeout)
+    Note over Robot,World: 3. Machining Handshake Subtree (src/behaviors/machining.py)
+    Robot->>Robot: Step 08: Move to Safe Standby machine_approach (ANY)
+    CNC->>World: Step 09a: Close CNC Door (DIO + update_world)
+    CNC->>CNC: Step 09b: Pulse Cycle Start Output (0.5s high)
+    CNC->>CNC: Step 09c: Wait for Cycle Complete (DIO input / dwell)
 
-    Note over Robot,World: 4. Machine Unload Subtree
-    CNC->>CNC: Open Door & Open Vise (DIO)
-    Robot->>Robot: Move to machine_approach (ANY)
-    Robot->>Robot: Move to vise_pre_place (ANY)
-    Robot->>Robot: Compliant Touchdown to Machined Part (+Z tool contact, 15N)
-    Robot->>Robot: Linear Retract 3 cm (-Z tool relative motion)
-    Gripper->>Gripper: Close Gripper (Grasp Part)
-    Robot->>World: Attach workpiece to Gripper
-    Robot->>Robot: Linear Retract to vise_pre_place (LINEAR)
-    Robot->>Robot: Retract to machine_approach (LINEAR)
+    Note over Robot,World: 4. Unload Machine Subtree (src/behaviors/unload_machine.py)
+    CNC->>World: Steps 10-11: Open CNC Door & Vise (DIO + update_world)
+    Robot->>Robot: Step 12a: Approach Machine Entry machine_approach (ANY)
+    Robot->>Robot: Step 12b: Approach Machined Part preplace_vise_frame (ANY)
+    Robot->>Robot: Step 12c: Compliant Touchdown to Machined Part (+Z tool)
+    Robot->>Robot: Step 12d: Relative Linear Retract (-Z tool, 3 cm)
+    Gripper->>Gripper: Step 12e: Grasp Machined Part
+    Robot->>World: Step 12f: Attach workpiece to Gripper
+    Robot->>Robot: Step 12g: Relative Linear Retract clear of Vise (-Z tool, 3 cm)
+    Robot->>Robot: Step 12h: Linear Retract to machine_approach (LINEAR)
 
-    Note over Robot,World: 5. Return / Outfeed Subtree
-    Robot->>Robot: Blended Transit to root/pre_grasp (ANY)
-    Robot->>Robot: Compliant Touchdown to Table (+Z tool contact, 5N)
-    Gripper->>Gripper: Open Gripper (Release Finished Part)
-    Robot->>World: Detach workpiece from Gripper
-    Robot->>Robot: Linear Retract from Table (LINEAR)
-    Robot->>Robot: Return to view frame (ANY)
+    Note over Robot,World: 5. Return to Infeed Subtree (src/behaviors/return_infeed.py)
+    Robot->>Robot: Step 13a: Blended Transit / Move to root/pre_grasp (ANY)
+    Robot->>Robot: Step 13b: Compliant Touchdown to Table Surface (+Z tool)
+    Gripper->>Gripper: Step 13c: Release Finished Part
+    Robot->>World: Step 13d: Detach workpiece from Gripper
+    Robot->>Robot: Step 13e: Linear Retract to root/pre_grasp (LINEAR)
+    Robot->>Robot: Step 13f: Return to view frame (ANY)
 ```
 
+---
+
+## 5. Runtime Diagnostics & Troubleshooting
+
+| Error Code / Symptom | Root Cause | Resolution |
+| :--- | :--- | :--- |
+| `ai.intrinsic.move_robot:10301` (`IK solver couldn't find any solutions`) | Camera unparented in world (`orbbec_camera` attached to `root` at `[0,0,0]`) or target frame outside reachable envelope. | Run `bazel run //tools/world:apply_scene_updates -- --address=localhost:17080` to attach `orbbec_camera` to `ur_module/flange`, then inspect with `//tools/world:inspect_world`. |
+| `ai.intrinsic.move_to_contact:10301` (`Stabilize action timed out`) | Contact threshold too high or search vector pointing away from surface. | Verify `direction=(0.0, 0.0, 1.0)` in tool frame and check force thresholds in `configs/<cell>/app_config.yaml`. |
+| `ai.intrinsic.executive:18201` (Resource reservation conflict) | `update_world` executed concurrently with `move_robot` inside a `bt.Parallel` node. | Keep door/vise actuation (`update_world`) in a sequential `bt.Sequence` before `move_robot`. |
+| `ai.intrinsic.executive:13001` (`PROTECTIVE_STOP`) | Robot exceeded wrench limits or wrist joint 6 wrapped during approach. | Clear protective stop on teach pendant; ensure compliant `move_to_contact` is used for surface seating and geodesic quaternion selection is active. |
+| `ai.intrinsic.move_robot:10601` (`Frame does not exist`) | Target frame missing from active `ObjectWorld`. | Run `bazel run //tools/world:apply_scene_updates -- --address=localhost:17080` to populate cell scene frames. |

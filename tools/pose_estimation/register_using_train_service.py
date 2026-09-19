@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""CLI tool to register and sideload IOC pose estimator models using the IOC Train Service."""
+"""CLI tool to register and sideload Intrinsic Core pose estimator models using the Intrinsic Core Train Service."""
 
 import time
 from collections.abc import Sequence
@@ -95,7 +95,7 @@ def get_create_training_job_request(
   min_distance: float = 0.5,
   max_distance: float = 1.5,
 ) -> train_service_pb2.CreateTrainingJobRequest:
-  """Returns a CreateTrainingJobRequest for a custom IOC pose estimator.
+  """Returns a CreateTrainingJobRequest for a custom Intrinsic Core pose estimator.
 
   Args:
     scene_object: SceneObject proto defining the target geometry.
@@ -263,7 +263,7 @@ def delete_training_job(
 
 
 def main(argv: Sequence[str]) -> None:
-  """Main CLI execution flow for registering a pose estimator using IOC train service.
+  """Main CLI execution flow for registering a pose estimator using Intrinsic Core train service.
 
   Args:
     argv: Command line arguments.
@@ -334,7 +334,10 @@ def main(argv: Sequence[str]) -> None:
     )
     print(f"Training Job started! Operation ID: {create_job_response.name}")
     if create_job_response.name.startswith("operations/ioc-train-"):
-      print("[SUCCESS] Verified intercepted by our running IOC TrainService!")
+      print(
+        "[SUCCESS] Verified intercepted by our running Intrinsic Core"
+        " TrainService!"
+      )
     else:
       print(
         "[WARNING] Training job operation name of unknown format (Operation:"

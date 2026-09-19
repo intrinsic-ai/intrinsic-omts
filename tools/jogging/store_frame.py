@@ -82,12 +82,6 @@ def find_scene_updates_file(filepath: str) -> str:
     if os.path.exists(ws_file) or os.path.exists(os.path.dirname(ws_file)):
       return ws_file
 
-  # Check direct workspace path
-  direct_ws = "/usr/local/google/home/mschweiger/workspaces/omts"
-  ws_file = os.path.join(direct_ws, filepath)
-  if os.path.exists(ws_file) or os.path.exists(os.path.dirname(ws_file)):
-    return ws_file
-
   # Check runfiles
   runfiles_dir = os.environ.get("PYTHON_RUNFILES") or os.environ.get(
     "TEST_SRCDIR"

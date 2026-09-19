@@ -34,21 +34,26 @@ def build_load_machine_subtree(
 ) -> bt.Node:
   """Builds the Behavior Tree subtree for loading raw stock into the CNC machine.
 
-  Steps:
-  1. Ensure CNC door and vise are open (idempotent safety check).
-  2. Approach machine entry (via blended transit waypoint if `transit_frame` is set).
-  3. Move arm to CNC vise approach position.
-  4. Seat part into vise using move_to_contact (+Z compliant touchdown).
-  5. Clamp CNC vise.
-  6. Open gripper to release part in vise.
-  7. Detach workpiece entity from robot gripper in the belief world.
-  8. Retract arm linearly to vise approach and machine entry positions.
+  Sequence:
+  1. If `machine` is provided, ensure CNC door (`Step 03`) and vise (`Step 04`)
+     are open prior to entry.
+  2. Transit to `machine_approach_frame` (`Step 05a`, `ANY`), blending through
+     `transit_frame` if configured.
+  3. Move arm to `preplace_vise_frame` (`Step 05b`, `ANY`) with segment-scoped
+     collision exclusions between tool, workpiece, and vise.
+  4. Seat part into vise via compliant touchdown along tool +Z (`Step 05c`).
+  5. If `machine` is provided, clamp CNC vise (`Step 06`).
+  6. Open gripper to release part (`Step 07a`) and detach workpiece entity from
+     gripper in the belief world (`Step 07b`).
+  7. Retract arm linearly to `preplace_vise_frame` with vise collision
+     exclusions (`Step 07c`, `LINEAR`) and then to `machine_approach_frame`
+     (`Step 07d`, `LINEAR`).
 
   Args:
       robot: Robot controller adapter.
       gripper: End-effector gripper adapter.
-      machine: Optional CNC machine adapter.
-      config: Application configuration dataclass.
+      machine: Optional CNC machine adapter (`None` when cell has no CNC).
+      config: Validated application configuration dataclass.
 
   Returns:
       Behavior tree sequence executing machine loading and fixturing.

@@ -54,8 +54,10 @@ cuda_library(
         "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/**/*.cuh",
         "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/**/*.inl",
     ]),
-    alwayslink = True,
-    copts = ["-x", "cuda"],
+    copts = [
+        "-x",
+        "cuda",
+    ],
     includes = [
         "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose",
         "isaac_ros_gxf_extensions/gxf_isaac_foundationpose/gxf/foundationpose/nvdiffrast/common",
@@ -63,4 +65,5 @@ cuda_library(
     deps = [
         "@cuda//:cuda_headers",
     ],
+    alwayslink = True,
 )

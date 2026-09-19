@@ -46,6 +46,13 @@ class PerceptionInfeedStrategy(InfeedStrategy):
     view_frame_name: str,
     refinement_iters: int = 3,
   ) -> None:
+    """Initializes the vision-guided perception infeed strategy.
+
+    Args:
+        config: Scoped VisionConfig defining camera and pose estimator settings.
+        view_frame_name: Name of the scene frame used for camera acquisition.
+        refinement_iters: Number of FoundationPose refinement iterations.
+    """
     self.camera_name = config.camera_name
     self.pose_estimator_id = config.pose_estimator_id
     self.scene_object_id = config.scene_object_id
@@ -69,6 +76,11 @@ class GridInfeedStrategy(InfeedStrategy):
   """Deterministic tray grid infeed strategy for blind acquisition."""
 
   def __init__(self, tray: Tray) -> None:
+    """Initializes the grid-based infeed strategy.
+
+    Args:
+        tray: Populated Tray model defining slot positions and workpieces.
+    """
     self.tray = tray
 
   @property

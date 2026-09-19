@@ -29,16 +29,19 @@ def build_machining_handshake_subtree(
 ) -> bt.Node:
   """Builds the Behavior Tree subtree for executing the CNC machining cycle.
 
-  Steps:
-  1. Move robot arm to safe standby position outside enclosure (ANY Cartesian motion).
-  2. Close CNC door.
-  3. Trigger CNC cycle start.
-  4. Wait for CNC cycle completion.
+  Sequence:
+  1. Move robot arm to safe standby position outside enclosure
+     (`machine_approach_frame`, `Step 08`, `ANY`).
+  2. If `machine` is provided:
+     a. Close CNC enclosure door (`Step 09a`).
+     b. Pulse CNC cycle start digital output (`Step 09b`).
+     c. Wait for CNC cycle completion signal or timeout (`Step 09c`).
 
   Args:
       robot: Robot controller adapter.
-      machine: Optional CNC machine controller adapter.
-      config: Application configuration dataclass.
+      machine: Optional CNC machine controller adapter (`None` when cell has no
+        CNC enclosure/vise).
+      config: Validated application configuration dataclass.
 
   Returns:
       Behavior tree sequence node executing machining cycle handshake.

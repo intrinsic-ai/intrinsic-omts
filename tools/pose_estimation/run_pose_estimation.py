@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Solution builder script to set up and run the IOC pose estimation pipeline.
+"""Solution builder script to set up and run the Intrinsic Core pose estimation pipeline.
 
 Connects to a running Intrinsic solution, sets up the `capture_images` and
 `estimate_pose_multi_view` skills connected to the `ioc_pose_estimator_service`,
@@ -65,7 +65,7 @@ _SERVICE_NAME = flags.DEFINE_string(
   "service_name",
   _DEFAULT_SERVICE_NAME,
   help=(
-    "Name of the IOC pose estimator service resource "
+    "Name of the Intrinsic Core pose estimator service resource "
     f"(defaults to '{_DEFAULT_SERVICE_NAME}')."
   ),
 )
@@ -184,7 +184,7 @@ def get_perception_service_resource(
   solution: deployments.Solution,
   service_name: str | None = None,
 ) -> provided.ResourceHandle:
-  """Retrieves the IOC pose estimator service resource handle from the solution.
+  """Retrieves the Intrinsic Core pose estimator service resource handle from the solution.
 
   Args:
     solution: The connected Solution instance.
@@ -247,7 +247,7 @@ def create_pose_estimation_pipeline(
   Args:
     solution: Connected Solution instance.
     camera_resource: ResourceHandle for the RGB-D camera.
-    perception_resource: ResourceHandle for the IOC Pose Estimator Service.
+    perception_resource: ResourceHandle for the Intrinsic Core Pose Estimator Service.
     pose_estimator_id: Full ID of the pose estimator asset (e.g.
       'ai.intrinsic.my_pose_estimator').
     sensor_ids: Optional list of sensor IDs to capture from the camera (e.g. [1, 4] for RGB-D).
@@ -289,7 +289,7 @@ def create_pose_estimation_pipeline(
     package=package_name,
   )
 
-  # 2. Set up estimate_pose_multi_view skill connected to IOC Pose Estimator Service
+  # 2. Set up estimate_pose_multi_view skill connected to Intrinsic Core Pose Estimator Service
   estimate_pose_kwargs: dict[str, Any] = {
     "camera_1": camera_resource,
     "camera_2": camera_resource,

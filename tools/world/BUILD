@@ -11,16 +11,6 @@ py_binary(
     ],
 )
 
-py_binary(
-    name = "align_tool_frame",
-    srcs = ["align_tool_frame.py"],
-    main = "align_tool_frame.py",
-    deps = [
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/math/python:data_types",
-        "@intrinsic-core//incode/intrinsic_sdk/intrinsic/solutions:deployments",
-    ],
-)
-
 py_library(
     name = "apply_scene_updates_lib",
     srcs = ["apply_scene_updates.py"],

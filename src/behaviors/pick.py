@@ -40,22 +40,26 @@ def build_pick_from_infeed_subtree(
   """Builds the Behavior Tree subtree for locating and grasping a raw workpiece.
 
   Sequence:
-  1. If `machine` is provided, execute CNC machine preparation (open door + open
-     vise) prior to robot motion to avoid `lock_the_universe` footprint conflicts.
-  2. Move robot to view frame, run 6D pose estimation, and open gripper.
-  3. Move to dynamic pre_grasp frame (ANY Cartesian motion).
-  4. Perform compliant touchdown (move_to_contact in +Z tool).
-  5. Linear retract along tool -Z to align finger pads with part.
-  6. Close gripper to grasp part.
-  7. Attach workpiece entity to robot gripper in the belief world.
-  8. Retract arm linearly back up to pre_grasp (LINEAR Cartesian motion).
+  1. If `machine` is provided, open CNC door and vise sequentially prior to
+     robot motion to avoid `lock_the_universe` resource conflicts.
+  2. If `infeed_strategy.mode` is `PERCEPTION`, move to `view_frame` (`ANY`)
+     and run the 3-step perception pipeline (capture RGB-D, estimate 6D pose
+     via FoundationPose, and update dynamic `pre_grasp`/`grasp` frames).
+  3. Open gripper fingers (`Step 03`).
+  4. Move tool to dynamic `pre_grasp` frame (`Step 04`, `ANY`).
+  5. Perform compliant touchdown along tool +Z (`Step 05`).
+  6. Execute relative linear retract along tool -Z with segment-scoped
+     workpiece collision exclusion to align finger pads (`Step 06`).
+  7. Close gripper to grasp part (`Step 07a`) and attach workpiece entity to
+     gripper in the belief world (`Step 07b`).
+  8. Retract arm linearly back up to `pre_grasp` (`Step 08`, `LINEAR`).
 
   Args:
       robot: Robot controller adapter.
       gripper: End-effector gripper adapter.
       vision: Vision/perception adapter.
-      infeed_strategy: Infeed strategy model.
-      config: Application configuration dataclass.
+      infeed_strategy: Infeed strategy model (`PerceptionInfeedStrategy`).
+      config: Validated application configuration dataclass.
       machine: Optional CNC machine adapter to prepare prior to pick.
 
   Returns:
