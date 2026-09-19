@@ -96,34 +96,20 @@ During vision-guided infeed (`OrbbecVision.build_perception_and_spawn_task`):
    wrist-mounted Orbbec camera (`sensor_ids: [1, 4]`).
 2. **`estimate_pose_multi_view`**: Runs FoundationPose inference via
    `pose_estimator_service`, returning the 6D part pose in the camera optical
-   frame ($\mathbf{T}_{\mathrm{camera} \to \mathrm{target}}$).
+   frame (`T_camera_target`).
 3. **Dynamic Frame Calculator (`bt.PythonScript`)**:
    Injected from [`src/utils/dynamic_frame_calculator.py`](../src/utils/dynamic_frame_calculator.py)
    via [`load_python_script()`](../src/utils/script_utils.py):
-   * Queries live camera extrinsics in `root` and computes the world target pose:
-
-     ```math
-     \mathbf{T}_{\mathrm{root} \to \mathrm{target}} = \mathbf{T}_{\mathrm{root} \to \mathrm{camera}} \cdot \mathbf{T}_{\mathrm{camera} \to \mathrm{target}}
-     ```
-
-   * Enforces minimum height safety bound (`z_target >= min_safe_z`):
-
-     ```math
-     z_{\mathrm{target}} \ge z_{\mathrm{min}}
-     ```
-
+   * Queries live camera extrinsics in `root` and computes the world target pose
+     (`T_root_target = T_root_camera @ T_camera_target`).
+   * Enforces the minimum height safety bound (`z_target >= min_safe_z`).
    * Projects the workpiece horizontal axes onto the world XY plane to find
-     the longest axis angle $\theta_{\mathrm{longest}}$ and aligns the gripper
-     yaw $\psi$ with $\theta_{\mathrm{longest}}$ across the short side.
+     the longest axis angle (`theta_longest`) and aligns the gripper yaw
+     (`psi = theta_longest`) across the short side.
    * Evaluates all 4 symmetrically equivalent parallel-jaw grasp quaternions
-     (`q1`, `-q1`, `q2`, `-q2`) and selects the candidate maximizing quaternion
-     inner product to minimize wrist joint rotation in SO(3):
-
-     ```math
-     \mathbf{q}^{*} = \arg\max_{\mathbf{q}_i \in \{\pm\mathbf{q}_1, \pm\mathbf{q}_2\}} \left| \mathbf{q}_i \cdot \mathbf{q}_{\mathrm{tool}} \right|
-     ```
-
-   * Updates `root/pre_grasp` (offset vertically by $+z_{\mathrm{approach}}$) and
+     (`+q1`, `-q1`, `+q2`, `-q2`) and selects the candidate maximizing
+     `|dot(q_i, q_tool)|` to minimize wrist joint rotation in SO(3).
+   * Updates `root/pre_grasp` (offset vertically by `+approach_z_offset`) and
      `root/grasp` in the SBL `ObjectWorld`.
 
 ---
