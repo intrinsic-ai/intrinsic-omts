@@ -40,6 +40,6 @@ Please include:
 1. **Acknowledgment**: Our security team will acknowledge receipt of your vulnerability report.  
 2. **Triage & Verification**: We will validate the issue, determine its severity, and coordinate with the respective squad maintainers.  
 3. **Remediation**: Maintainers will develop and test a security fix in a private temporary fork / advisory workspace.  
-4. **Coordinated Disclosure**: We follow standard coordinated disclosure process\*\*.\*\* Once a patch is verified and release packages are ready, we will publish a GitHub Security Advisory and release notes crediting the finder (unless anonymity is requested).&nbsp;
+4. **Coordinated Disclosure**: We follow standard coordinated disclosure process. Once a patch is verified and release packages are ready, we will publish a GitHub Security Advisory and release notes crediting the finder (unless anonymity is requested).&nbsp;
 
 &nbsp;
