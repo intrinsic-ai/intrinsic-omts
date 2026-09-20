@@ -8,7 +8,9 @@ built on **Intrinsic Core** using the **Solution Building Library (SBL)** Python
 SDK. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for system boundaries,
 grasp geometry math, and the 5-subtree sequence diagram.
 
-![OMTS in RViz](docs/omts.gif)
+<p align="center">
+  <img src="docs/omts.gif" alt="OMTS in RViz" />
+</p>
 
 ---
 
