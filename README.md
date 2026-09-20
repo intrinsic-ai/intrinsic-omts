@@ -8,6 +8,8 @@ built on **Intrinsic Core** using the **Solution Building Library (SBL)** Python
 SDK. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for system boundaries,
 grasp geometry math, and the 5-subtree sequence diagram.
 
+![OMTS Machine Tending Application in RViz](docs/omts.gif)
+
 ---
 
 ## 1. Execution Pipeline Overview
