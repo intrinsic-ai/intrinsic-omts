@@ -600,6 +600,160 @@ class HardwareAdaptersTest(absltest.TestCase):
     )
     self.assertIsNone(resolve_adio_resource(mock_solution, "missing_device"))
 
+  def test_ur_robot_rotation_cone_and_blended_validation(self):
+    mock_solution = mock.MagicMock()
+    mock_move_robot = mock.MagicMock()
+    mock_move_robot.return_value = bt.PythonScript(function_body="pass")
+    mock_solution.skills.ai.intrinsic.move_robot = mock_move_robot
+
+    robot = UrRobot(
+      solution=mock_solution,
+      config=RobotConfig(
+        arm_part_name="ur_module",
+        tool_object_name="gripper",
+        tool_frame_name="tool_frame",
+      ),
+    )
+
+    cone_task = robot.build_move_cartesian_task(
+      target_frame_name="grasp",
+      target_object_name="root",
+      motion_type="ANY",
+      allow_tool_z_rotation=True,
+      cone_opening_half_angle=0.15,
+      moving_frame_offset=(0.0, 0.0, 0.01),
+      target_frame_offset=((0.0, 0.0, 0.02), (0.0, 0.0, 0.0, 1.0)),
+    )
+    self.assertIsInstance(cone_task, bt.Task)
+    segment_kwargs = (
+      mock_move_robot.intrinsic_proto.skills.MotionSegment.call_args.kwargs
+    )
+    self.assertIn("constraint_intersection", segment_kwargs)
+    constraints = segment_kwargs["constraint_intersection"].constraints
+    self.assertLen(constraints, 2)
+    self.assertAlmostEqual(
+      constraints[0].position_equality.moving_frame_offset.z, 0.01
+    )
+    self.assertAlmostEqual(
+      constraints[0].position_equality.target_frame_offset.z, 0.02
+    )
+    self.assertAlmostEqual(
+      constraints[1].rotation_cone.cone_opening_half_angle, 0.15
+    )
+
+    with self.assertRaisesRegex(
+      ValueError, "target_frames must contain at least one target frame"
+    ):
+      robot.build_move_blended_cartesian_task(target_frames=[])
+
+    with self.assertRaisesRegex(ValueError, "motion_type has 1 entries"):
+      robot.build_move_blended_cartesian_task(
+        target_frames=[("root", "transit"), ("root", "view")],
+        motion_type=["ANY"],
+      )
+
+  def test_dio_cnc_machine_wait_for_input_skill_and_fallback(self):
+    mock_solution = mock.MagicMock()
+    mock_solution.skills.ai.intrinsic.dio_set_output.return_value = (
+      bt.PythonScript(function_body="pass")
+    )
+    mock_wait_input = mock.MagicMock()
+    mock_wait_input.return_value = bt.PythonScript(function_body="pass")
+    mock_solution.skills.ai.intrinsic.dio_wait_for_input = mock_wait_input
+
+    cfg = MachineConfig(
+      door_open_pin=2,
+      door_close_pin=3,
+      vise_open_pin=4,
+      vise_close_pin=5,
+      cycle_start_pin=6,
+      cycle_complete_input_pin=1,
+      device_name="ur_module",
+      enclosure_object_name=None,
+      vise_object_name=None,
+      door_open_joints=(0.4,),
+      door_closed_joints=(0.0,),
+      vise_open_joints=(0.01, 0.01),
+      vise_closed_joints=(0.0, 0.0),
+      output_block_name="standard_out",
+      input_block_name="standard_in",
+    )
+    machine = DioCncMachine(solution=mock_solution, config=cfg)
+    wait_task = machine.build_wait_cycle_complete_task(timeout_seconds=25.0)
+    self.assertIsInstance(wait_task, bt.Task)
+    mock_wait_input.assert_called_once()
+    self.assertEqual(mock_wait_input.call_args.kwargs["indices"], [1])
+    self.assertEqual(mock_wait_input.call_args.kwargs["timeout"], 25.0)
+
+    # Fallback dwell when both dio_wait_for_input and dio_read_input are None
+    mock_solution.skills.ai.intrinsic.dio_wait_for_input = None
+    mock_solution.skills.ai.intrinsic.dio_read_input = None
+    machine_fallback = DioCncMachine(solution=mock_solution, config=cfg)
+    fb_task = machine_fallback.build_wait_cycle_complete_task(
+      timeout_seconds=5.0
+    )
+    self.assertIsInstance(fb_task, bt.Task)
+    self.assertIn("Fallback Dwell 5.0s", fb_task.name)
+
+  def test_orbbec_vision_proto_builder_fields_and_missing_resources(self):
+    class _RealProtoBuilder:
+      def __init__(self) -> None:
+        self.last_parameters = None
+
+      def create_signature_with_args(self, parameters):
+        self.last_parameters = parameters
+        return None
+
+    mock_solution = mock.MagicMock()
+    real_pb = _RealProtoBuilder()
+    mock_solution.proto_builder = real_pb
+    mock_solution.resources = {
+      "orbbec_camera": mock.MagicMock(types=["CameraConfig"]),
+      "pose_estimator_service": mock.MagicMock(
+        types=["intrinsic_proto.perception.v1.PoseEstimationService"]
+      ),
+    }
+    mock_capture_action = mock.MagicMock(spec=bt.ActionBase)
+    mock_capture_action.proto = mock.MagicMock()
+    mock_solution.skills.ai.intrinsic.capture_images.return_value = (
+      mock_capture_action
+    )
+    mock_est_action = mock.MagicMock(spec=bt.ActionBase)
+    mock_est_action.proto = mock.MagicMock()
+    mock_solution.skills.ai.intrinsic.estimate_pose_multi_view.return_value = (
+      mock_est_action
+    )
+
+    vision_cfg = VisionConfig(
+      camera_name="orbbec_camera",
+      perception_service_name="pose_estimator_service",
+      pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator",
+      scene_object_id="ai.intrinsic.raw_stock_2x3x5",
+      sensor_ids=(1, 4),
+      min_num_instances=1,
+      infeed_mode="perception",
+      min_safe_z=0.95,
+    )
+    vision = OrbbecVision(solution=mock_solution, config=vision_cfg)
+    seq_task = vision.build_perception_and_spawn_task(
+      approach_offset_z=0.08,
+      parent_object="root",
+      pregrasp_frame_name="pre_grasp",
+      grasp_frame_name="grasp",
+      tool_object_name="gripper",
+      tool_frame_name="tool_frame",
+      max_tries=1,
+    )
+    # max_tries=1 returns bt.Sequence directly without bt.Retry wrapper
+    self.assertIsInstance(seq_task, bt.Sequence)
+    self.assertIsNotNone(real_pb.last_parameters)
+    self.assertLen(real_pb.last_parameters.fields, 16)
+
+    # Missing resources raise ValueError
+    mock_solution.resources = {}
+    with self.assertRaisesRegex(ValueError, "Camera resource 'orbbec_camera'"):
+      OrbbecVision(solution=mock_solution, config=vision_cfg)
+
 
 if __name__ == "__main__":
   absltest.main()

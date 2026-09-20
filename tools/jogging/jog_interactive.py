@@ -48,7 +48,6 @@ _INSTANCE = flags.DEFINE_string(
   "instance",
   None,
   "The instance of ICON if behind an ingress.",
-  required=True,
 )
 _PART_NAME = flags.DEFINE_string(
   "part_name",
@@ -109,7 +108,7 @@ class Key(enum.StrEnum):
 
 
 @contextlib.contextmanager
-def raw_terminal_mode(fd: int = sys.stdin.fileno()):
+def raw_terminal_mode(fd: int | None = None):
   """Sets terminal to cbreak mode and guarantees restoration upon exit.
 
   cbreak (rare) mode provides:
@@ -124,6 +123,8 @@ def raw_terminal_mode(fd: int = sys.stdin.fileno()):
   Registers an atexit fallback hook to guarantee terminal settings are restored
   even if the process exits unexpectedly.
   """
+  if fd is None:
+    fd = sys.stdin.fileno()
   old_settings = termios.tcgetattr(fd)
 
   def restore_terminal() -> None:
@@ -393,4 +394,5 @@ def main(argv: Sequence[str]) -> None:
 
 
 if __name__ == "__main__":
+  flags.mark_flag_as_required("instance")
   app.run(main)

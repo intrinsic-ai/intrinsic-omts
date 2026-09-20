@@ -298,8 +298,14 @@ def run_manual_waypoint_loop(
     )
     if user_input == "r":
       try:
-        kinematic_robot = world.get_kinematic_object(robot_ref.proto)
-        joints = kinematic_robot.joint_positions
+        try:
+          kinematic_robot = world.get_kinematic_object(robot_ref.proto)
+        except Exception:
+          try:
+            kinematic_robot = world.get_kinematic_object(_ROBOT_MODULE.value)
+          except Exception:
+            kinematic_robot = getattr(world, _ROBOT_MODULE.value)
+        joints = list(kinematic_robot.joint_positions)
         waypoint = geometric_constraints_pb2.GeometricConstraint(
           joint_position=joint_space_pb2.JointVec(joints=joints)
         )
@@ -458,6 +464,51 @@ def run_manual_waypoint_loop(
       print("Invalid input. Please enter 'r', 'j', or 's'.")
 
 
+def resolve_icon_arm_part(
+  icon_client: Any, requested_robot: str | None = None
+) -> tuple[str, int]:
+  """Resolves the controllable ICON arm part name and its degree of freedom count."""
+  parts = icon_client.list_parts()
+  if not parts:
+    raise ValueError("No parts found on the ICON server.")
+
+  controllable_parts = [p for p in parts if p != "icon"]
+  if not controllable_parts:
+    raise ValueError(
+      f"No controllable parts found on the ICON server (parts: {parts})."
+    )
+
+  part_configs = icon_client.get_config().part_configs
+  part_ndof: dict[str, int] = {}
+  for config in part_configs:
+    if config.HasField("generic_config"):
+      num_joints = config.generic_config.joint_position_config.num_joints
+      if num_joints and num_joints > 0:
+        part_ndof[config.name] = int(num_joints)
+
+  candidates: list[str] = []
+  if (
+    requested_robot
+    and requested_robot != "icon"
+    and requested_robot in controllable_parts
+  ):
+    candidates.append(requested_robot)
+  if "arm" in controllable_parts and "arm" not in candidates:
+    candidates.append("arm")
+  for p in controllable_parts:
+    if p not in candidates:
+      candidates.append(p)
+
+  for candidate in candidates:
+    if candidate in part_ndof:
+      print(f"Part '{candidate}' has {part_ndof[candidate]} DoFs.")
+      return candidate, part_ndof[candidate]
+
+  raise ValueError(
+    f"Could not retrieve joint_position_config for any part in {controllable_parts}."
+  )
+
+
 def main(argv) -> None:
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
@@ -535,33 +586,7 @@ def main(argv) -> None:
           connection.ConnectionParams(icon_address, "icon")
         )
 
-        parts = icon_client.list_parts()
-        if not parts:
-          raise ValueError("No parts found on the ICON server.")
-
-        for part in parts:
-          if part == _ROBOT.value:
-            part_name = part
-            break
-        if part_name is None:
-          part_name = parts[1] if len(parts) > 1 else parts[0]
-          print(
-            f"Warning: Could not find part matching '{_ROBOT.value}'."
-            f" Using fallback part '{part_name}'."
-          )
-
-        part_configs = icon_client.get_config().part_configs
-        for config in part_configs:
-          if config.name == part_name:
-            if config.HasField("generic_config"):
-              ndof = config.generic_config.joint_position_config.num_joints
-              print(f"Part '{part_name}' has {ndof} DoFs.")
-            break
-        if ndof is None:
-          raise ValueError(
-            f"Could not retrieve configuration for part '{part_name}'."
-          )
-
+        part_name, ndof = resolve_icon_arm_part(icon_client, _ROBOT.value)
         print(
           f"Connected! Controlling part '{part_name}' with {ndof} joints.\n"
         )

@@ -57,10 +57,9 @@ py_binary(
     ],
 )
 
-py_binary(
-    name = "sample_calibration_poses",
+py_library(
+    name = "sample_calibration_poses_lib",
     srcs = ["sample_calibration_poses.py"],
-    main = "sample_calibration_poses.py",
     deps = [
         "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
         "@com_google_absl_py//absl:app",
@@ -80,5 +79,14 @@ py_binary(
         "@intrinsic_apis//intrinsic/motion_planning/proto/v1:geometric_constraints_py_pb2",
         "@intrinsic_apis//intrinsic/perception/proto/v1:camera_to_robot_calibration_py_pb2",
         "@intrinsic_apis//intrinsic/skills/proto:skills_py_pb2",
+    ],
+)
+
+py_binary(
+    name = "sample_calibration_poses",
+    srcs = ["sample_calibration_poses.py"],
+    main = "sample_calibration_poses.py",
+    deps = [
+        ":sample_calibration_poses_lib",
     ],
 )

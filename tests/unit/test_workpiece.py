@@ -43,6 +43,28 @@ class WorkpieceTest(absltest.TestCase):
     part.mark_finished()
     self.assertEqual(part.state, PartState.INSPECTED_OK)
 
+    part.mark_rejected()
+    self.assertEqual(part.state, PartState.REJECTED)
+
+  def test_workcell_state_cycle_metrics(self):
+    from src.core.workcell import WorkcellState
+
+    state = WorkcellState()
+    part = Workpiece(id="part_01")
+    state.start_new_cycle(part)
+    self.assertIs(state.current_workpiece, part)
+    self.assertIsNotNone(state.cycle_start_timestamp)
+
+    duration = state.record_cycle_success()
+    self.assertGreaterEqual(duration, 0.0)
+    self.assertEqual(state.cycles_completed, 1)
+    self.assertIsNone(state.current_workpiece)
+
+    state.start_new_cycle(Workpiece(id="part_02"))
+    state.record_cycle_failure()
+    self.assertEqual(state.cycles_failed, 1)
+    self.assertIsNone(state.current_workpiece)
+
 
 if __name__ == "__main__":
   absltest.main()

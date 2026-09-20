@@ -189,6 +189,49 @@ class OrbbecVision(VisionInterface):
     )
 
     # 3. Dynamic Grasp and Pre-Grasp Frame Calculation and World Update via bt.PythonScript
+    calc_task = self._create_frame_calc_script_task(
+      estimate_action=estimate_action,
+      approach_offset_z=approach_offset_z,
+      parent_object=parent_object,
+      pregrasp_frame_name=pregrasp_frame_name,
+      grasp_frame_name=grasp_frame_name,
+      tool_object_name=tool_object_name,
+      tool_frame_name=tool_frame_name,
+    )
+
+    acquisition_and_calc_seq = bt.Sequence(
+      name="Perception Capture, Estimation & Frame Calculation",
+      children=[
+        capture_task,
+        estimate_task,
+        calc_task,
+      ],
+    )
+    if max_tries > 1:
+      recovery_task = create_dwell_task(
+        dwell_time_sec=retry_delay_sec,
+        solution=self._solution,
+        task_name=f"Perception Retry Dwell ({retry_delay_sec}s)",
+      )
+      return bt.Retry(
+        max_tries=max_tries,
+        child=acquisition_and_calc_seq,
+        recovery=recovery_task,
+        name=task_name,
+      )
+    return acquisition_and_calc_seq
+
+  def _create_frame_calc_script_task(
+    self,
+    estimate_action: bt.ActionBase,
+    approach_offset_z: float,
+    parent_object: str,
+    pregrasp_frame_name: str,
+    grasp_frame_name: str,
+    tool_object_name: str,
+    tool_frame_name: str,
+  ) -> bt.Task:
+    """Builds the bt.PythonScript task for dynamic frame calculation and world updates."""
     first_est = estimate_action.result.estimates[0].root_t_target
     if hasattr(self._solution, "proto_builder") and not isinstance(
       self._solution.proto_builder, mock.MagicMock
@@ -302,29 +345,7 @@ class OrbbecVision(VisionInterface):
       signature_with_args=signature,
       function_body=load_python_script(calculate_and_update_dynamic_frames),
     )
-    calc_task = bt.Task(
+    return bt.Task(
       action=calc_script,
       name="3. Calculate & Update Dynamic Grasp & Pre-Grasp Frames",
     )
-
-    acquisition_and_calc_seq = bt.Sequence(
-      name="Perception Capture, Estimation & Frame Calculation",
-      children=[
-        capture_task,
-        estimate_task,
-        calc_task,
-      ],
-    )
-    if max_tries > 1:
-      recovery_task = create_dwell_task(
-        dwell_time_sec=retry_delay_sec,
-        solution=self._solution,
-        task_name=f"Perception Retry Dwell ({retry_delay_sec}s)",
-      )
-      return bt.Retry(
-        max_tries=max_tries,
-        child=acquisition_and_calc_seq,
-        recovery=recovery_task,
-        name=task_name,
-      )
-    return acquisition_and_calc_seq

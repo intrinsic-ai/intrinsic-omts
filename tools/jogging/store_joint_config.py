@@ -85,8 +85,8 @@ def main(argv: Sequence[str] | None = None) -> None:
   )
   try:
     init_world = worlds.ObjectWorld.connect(
-      address=args.address,
-      world_id="init_world",
+      worlds.EditWorldId.INITIAL,
+      solution.grpc_channel,
     )
     init_robot = getattr(init_world, args.robot_name)
     init_world.update_kinematic_object_joint_configurations(
