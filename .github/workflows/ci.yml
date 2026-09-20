@@ -87,9 +87,9 @@ jobs:
     # little headroom for a slow runner, so allow 120.
     timeout-minutes: 120
     permissions:
-      # Read access to this repository's release assets, which
-      # //bazel:gh_release.bzl downloads with the `gh` CLI.
-      contents: read
+      # Read access to this repository's release assets (//bazel:gh_release.bzl)
+      # and write access on main to publish the dynamic tests badge to refs/heads/badges.
+      contents: write
       # Read the pull request description, for the FORCE_SUBMIT check below.
       pull-requests: read
     env:
@@ -293,6 +293,21 @@ jobs:
             --test_output=errors \
             //tests/...
           df -h /
+
+      - name: Generate test summary & badge
+        if: always() && steps.force_submit.outputs.enabled != 'true'
+        run: |
+          python3 tools/ci/generate_test_badge.py --output /tmp/tests.svg
+
+      - name: Publish test badge to badges branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.force_submit.outputs.enabled != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BLOB=$(git hash-object -w /tmp/tests.svg)
+          TREE=$(printf '100644 blob %s\ttests.svg\n' "${BLOB}" | git mktree)
+          COMMIT=$(git commit-tree "${TREE}" -m "ci: update tests badge")
+          git push -f origin "${COMMIT}:refs/heads/badges"
 
       # A full cold `bazel test //tests/...` produces about 350 MB of cached
       # outputs, so no pruning is needed to stay inside the 10 GB quota. This
