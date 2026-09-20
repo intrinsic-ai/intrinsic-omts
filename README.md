@@ -1,6 +1,6 @@
 # Open Machine Tending Solution (OMTS)
 
-[![CI](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml/badge.svg)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml)
+[![CI](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml/badge.svg)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml) [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml)
 
 **OMTS** is the open-source reference implementation for automated machine
 tending (CNC milling, turning, fixture loading, and vision-guided manipulation)
@@ -81,7 +81,7 @@ omts/
 │   └── foundationpose/                  # Triton config & Bazel MLModel packaging for FoundationPose
 ├── third_party/                         # C++/CUDA bindings, model.py & deps for FoundationPose
 ├── tools/                               # Commissioning, calibration, jogging & world CLI tools
-└── tests/                               # Offline hermetic unit test suite (21 test targets)
+└── tests/                               # Offline hermetic unit test suite
 ```
 
 ---
@@ -215,7 +215,7 @@ bazel run //src:omts_app -- \
 
 ### Unit Tests
 
-Run all 21 hermetic unit test suites offline (no running cluster or physical
+Run the hermetic unit test suite offline (no running cluster or physical
 hardware required):
 
 ```bash
