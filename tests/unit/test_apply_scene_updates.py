@@ -266,6 +266,59 @@ class ApplySceneUpdatesTest(absltest.TestCase):
     apply_pbtxt_file(world=mock_world, filepath=test_file)
     mock_world.batch_update.assert_called_once()
 
+  @mock.patch("tools.world.inspect_world.deployments.connect")
+  def test_inspect_world_lists_world_objects_and_strict_resources(
+    self, mock_connect
+  ):
+    import io
+    import sys
+
+    from tools.world import inspect_world
+
+    class _FakeKinematicObj:
+      def __init__(self, name: str) -> None:
+        self.name = name
+        cfg = mock.MagicMock()
+        cfg.joint_position = [0.0, -1.57, 1.57, 0.0, 0.0, 0.0]
+        self.joint_configurations = {"home": cfg}
+
+    class _StrictResourcesWithoutUpdate:
+      """Raises KeyError on unknown attributes (including .update) like Resources.__getattr__."""
+
+      def __init__(self) -> None:
+        self._h = mock.MagicMock()
+        self._h.name = "orbbec_camera"
+
+      def __getitem__(self, key: str):
+        if key == "orbbec_camera":
+          return self._h
+        raise KeyError(f"Resource {key} not registered")
+
+      def __getattr__(self, key: str):
+        if key == "orbbec_camera":
+          return self._h
+        raise KeyError(f"Resource {key} not registered")
+
+      def __dir__(self) -> list[str]:
+        return ["orbbec_camera"]
+
+    mock_solution = mock.MagicMock()
+    mock_solution.world.list_objects.return_value = [
+      _FakeKinematicObj("ur_module")
+    ]
+    mock_solution.resources = _StrictResourcesWithoutUpdate()
+    mock_connect.return_value = mock_solution
+
+    buf = io.StringIO()
+    with mock.patch.object(sys, "stdout", buf):
+      inspect_world.main(["--address", "localhost:17080"])
+
+    output = buf.getvalue()
+    self.assertIn("- ur_module", output)
+    self.assertIn("* home: [0.0, -1.57, 1.57, 0.0, 0.0, 0.0]", output)
+    self.assertIn("- orbbec_camera", output)
+    self.assertNotIn("Error listing resources", output)
+
 
 if __name__ == "__main__":
   absltest.main()

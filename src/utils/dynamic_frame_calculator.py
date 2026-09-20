@@ -151,8 +151,9 @@ def calculate_and_update_dynamic_frames(context: Any, params: Any) -> None:
     params.grasp_frame_name: (grasp_pos, grasp_ori),
   }
 
+  has_list_frames = hasattr(parent_obj, "list_frames")
   existing_frames = set()
-  if hasattr(parent_obj, "list_frames"):
+  if has_list_frames:
     existing_frames = set(parent_obj.list_frames())
   elif hasattr(parent_obj, "__dict__"):
     existing_frames = set(parent_obj.__dict__.keys())
@@ -164,7 +165,10 @@ def calculate_and_update_dynamic_frames(context: Any, params: Any) -> None:
       ),
       [pos[0], pos[1], pos[2]],
     )
-    if fname in existing_frames or hasattr(parent_obj, fname):
+    frame_exists = fname in existing_frames or (
+      not has_list_frames and hasattr(parent_obj, fname)
+    )
+    if frame_exists:
       frame_node = getattr(parent_obj, fname)
       world.update_transform(node_a=parent_obj, node_b=frame_node, a_t_b=pose)
     else:

@@ -2,8 +2,8 @@ load("@intrinsic-core//bazel:python.bzl", "py_binary", "py_library")
 
 package(default_visibility = ["//visibility:public"])
 
-py_binary(
-    name = "run_pose_estimation",
+py_library(
+    name = "run_pose_estimation_lib",
     srcs = ["run_pose_estimation.py"],
     deps = [
         "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
@@ -16,6 +16,15 @@ py_binary(
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:execution",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:provided",
         "@intrinsic_apis//intrinsic/perception/proto/v1:pose_estimator_id_py_pb2",
+    ],
+)
+
+py_binary(
+    name = "run_pose_estimation",
+    srcs = ["run_pose_estimation.py"],
+    main = "run_pose_estimation.py",
+    deps = [
+        ":run_pose_estimation_lib",
     ],
 )
 

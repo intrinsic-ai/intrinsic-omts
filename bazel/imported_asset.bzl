@@ -17,8 +17,16 @@ def _imported_asset_bundle_impl(ctx):
         asset_info_output,
     )
 
+    inputs = [ctx.file.manifest]
+    if ctx.file.file_descriptor_set:
+        local_info_args.add(
+            "--file_descriptor_set",
+            ctx.file.file_descriptor_set,
+        )
+        inputs.append(ctx.file.file_descriptor_set)
+
     ctx.actions.run(
-        inputs = [ctx.file.manifest],
+        inputs = inputs,
         outputs = [asset_info_output],
         executable = ctx.executable._assetlocalinfogen,
         arguments = [local_info_args],
@@ -43,10 +51,19 @@ def _imported_asset_bundle_impl(ctx):
 imported_asset_bundle = rule(
     implementation = _imported_asset_bundle_impl,
     attrs = {
+        "asset_type": attr.string(
+            default = "ASSET_TYPE_SERVICE",
+            doc = "Asset type string (e.g. ASSET_TYPE_SERVICE, ASSET_TYPE_HARDWARE_DEVICE, ASSET_TYPE_SKILL).",
+        ),
         "bundle": attr.label(
             allow_single_file = [".bundle.tar", ".tar"],
             mandatory = True,
             doc = "The pre-built bundle tarball file.",
+        ),
+        "file_descriptor_set": attr.label(
+            allow_single_file = [".binpb", ".pbbin", ".bin"],
+            mandatory = False,
+            doc = "Optional binary FileDescriptorSet proto for the asset.",
         ),
         "manifest": attr.label(
             allow_single_file = [".textproto", ".binpb"],
@@ -56,10 +73,6 @@ imported_asset_bundle = rule(
                   "as textproto, but Skill and Process manifests as binary proto, " +
                   "so the latter must be passed as a .binpb (for example extracted " +
                   "from the bundle itself).",
-        ),
-        "asset_type": attr.string(
-            default = "ASSET_TYPE_SERVICE",
-            doc = "Asset type string (e.g. ASSET_TYPE_SERVICE, ASSET_TYPE_HARDWARE_DEVICE, ASSET_TYPE_SKILL).",
         ),
         "_assetlocalinfogen": attr.label(
             default = Label("@intrinsic-core//intrinsic/assets/build_defs:assetlocalinfogen"),

@@ -2,27 +2,11 @@
 
 [![CI](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml/badge.svg)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml)
 
-**OMTS** is the canonical open-source reference implementation for automated
-machine tending (CNC milling, turning, fixture loading, and vision-guided
-manipulation) built on **Intrinsic Core** using the **Solution Building Library
-(SBL)** Python SDK.
-
----
-
-## Documentation Index
-
-* [**System Architecture & Design (`docs/ARCHITECTURE.md`)**](docs/ARCHITECTURE.md): System boundaries, design invariants, perception & SO(3) grasp geometry math, full 5-subtree sequence diagram, and SBL runtime troubleshooting.
-* **Directory Guides**:
-  * [`configs/README.md`](configs/README.md) — Per-cell YAML schemas (`omts`, `lab_bb_01`), `.pbtxt` world updates, and `.textproto` service configs.
-  * [`models/README.md`](models/README.md) — SDF/GLB 3D scene assets (enclosures, camera mount, raw stock, Schunk vise).
-  * [`src/README.md`](src/README.md) — Main Python application package (`//src:omts_app`) overview and CLI flags.
-  * [`src/core/README.md`](src/core/README.md) — SDK-independent domain models (`Workpiece`, `Tray`, `WorkcellState`), infeed strategies, and strict YAML configuration loader.
-  * [`src/behaviors/README.md`](src/behaviors/README.md) — Pure SBL Behavior Tree orchestration (`machine_tending_bt.py`), reusable motions, and the 5 cycle subtrees.
-  * [`src/hardware/README.md`](src/hardware/README.md) — Stateless hardware adapters (`UrRobot`, `RobotiqGripper`, `DioGripper`, `DioCncMachine`, `OrbbecVision`).
-  * [`src/utils/README.md`](src/utils/README.md) — Dynamic grasp frame calculation, AST script injection (`load_python_script`), and kinematics helpers.
-  * [`src/foundationpose/README.md`](src/foundationpose/README.md) — C++/CUDA Triton Inference Server build resources for NVIDIA FoundationPose.
-  * [`tools/README.md`](tools/README.md) — Commissioning, live world inspection, teleoperation, pose teaching, and hardware diagnostic CLI tools.
-  * [`tests/README.md`](tests/README.md) — Hermetic offline unit test suite (`//tests/unit:all`).
+**OMTS** is the open-source reference implementation for automated machine
+tending (CNC milling, turning, fixture loading, and vision-guided manipulation)
+built on **Intrinsic Core** using the **Solution Building Library (SBL)** Python
+SDK. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for system boundaries,
+grasp geometry math, and the 5-subtree sequence diagram.
 
 ---
 
@@ -80,20 +64,12 @@ omts/
 ├── .bazelversion                        # Pinned Bazel version (8.x)
 ├── MODULE.bazel                         # Bzlmod dependencies (@intrinsic-core, @intrinsic_apis)
 ├── BUILD                                # Defines intrinsic_solution(:omts_solution)
-│
 ├── configs/                             # Cell YAML configs, .pbtxt updates & service manifests
 │   ├── common/                          # Shared service configs & asset manifests
 │   ├── omts/                            # Production cell (UR5e, CNC enclosure, Schunk vise)
 │   ├── lab_bb_01/                       # Lab cell (UR3e, CAW enclosure, no CNC/vise)
 │   └── kr_10/                           # KUKA KR10 placeholder config
-│
 ├── models/                              # SDF/GLB 3D scene assets & manifests
-│   ├── camera_mount/                    # Wrist camera bracket
-│   ├── cnc_enclosure/                   # CNC enclosure with sliding door joint
-│   ├── omts_enclosure/                  # Cell safety enclosure & table
-│   ├── raw_stock_2x3x5/                 # 2"x3"x5" raw stock workpiece
-│   └── schunk_egp_64nnb/                # Schunk EGP 64 pneumatic vise
-│
 ├── src/                                 # Main OMTS Python package (//src:omts_app)
 │   ├── main.py                          # Application CLI entrypoint
 │   ├── core/                            # Domain models, infeed strategies & YAML config
@@ -101,20 +77,9 @@ omts/
 │   ├── hardware/                        # Robot, Gripper, Machine & Vision SBL adapters
 │   ├── utils/                           # Dynamic frame calculator & script/math helpers
 │   └── foundationpose/                  # Triton config & Bazel MLModel packaging for FoundationPose
-│
-├── third_party/                         # Third-party source & dependency definitions
-│   └── foundationpose/                  # C++/CUDA bindings, model.py & deps for FoundationPose
-│
-├── tools/                               # Developer & commissioning CLI tools
-│   ├── calibration/                     # Hand-eye camera calibration & kinematics updates
-│   ├── gripper/                         # Gripper actuation CLI (Robotiq & DIO)
-│   ├── jogging/                         # Interactive teleoperation & frame/joint teaching
-│   ├── machine/                         # CNC door, vise & cycle handshake control CLI
-│   ├── pose_estimation/                 # FoundationPose registration & inference CLI
-│   └── world/                           # Live scene update pusher & world inspector
-│
-└── tests/                               # Offline hermetic unit test suite
-    └── unit/                            # 18 unit test targets covering src/ and tools/
+├── third_party/                         # C++/CUDA bindings, model.py & deps for FoundationPose
+├── tools/                               # Commissioning, calibration, jogging & world CLI tools
+└── tests/                               # Offline hermetic unit test suite (21 test targets)
 ```
 
 ---
@@ -196,7 +161,30 @@ bazel run //tools/world:apply_scene_updates -- \
   --reset_sim
 ```
 
-### 3. Run the OMTS Machine Tending Application
+### 3. Register & Verify Pose Estimator (Required before running `omts_app`)
+
+Register the FoundationPose estimator for the raw stock workpiece before
+starting the machine tending application:
+
+```bash
+bazel run //tools/pose_estimation:register_using_train_service -- \
+  --address="localhost:17080" \
+  --scene_object_id="ai.intrinsic.raw_stock_2x3x5" \
+  --pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator" \
+  --refinement_iters=6 \
+  --confidence_threshold=0.6 \
+  --visibility_threshold=0.6
+```
+
+Optionally verify pose detection directly against the live camera feed:
+
+```bash
+bazel run //tools/pose_estimation:run_pose_estimation -- \
+  --address=localhost:17080 \
+  --pose_estimator_id=ai.intrinsic.raw_stock_2x3x5_estimator
+```
+
+### 4. Run the OMTS Machine Tending Application
 
 Connect to the running deployment and execute the machine tending Behavior Tree:
 
@@ -225,7 +213,7 @@ bazel run //src:omts_app -- \
 
 ### Unit Tests
 
-Run all 18 hermetic unit test suites offline (no running cluster or physical
+Run all 21 hermetic unit test suites offline (no running cluster or physical
 hardware required):
 
 ```bash

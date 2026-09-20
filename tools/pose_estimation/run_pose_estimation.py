@@ -42,7 +42,6 @@ _ADDRESS = flags.DEFINE_string(
   "address",
   None,
   help="Direct cluster/ingress address (e.g. 'localhost:17080').",
-  required=True,
 )
 _POSE_ESTIMATOR_ID = flags.DEFINE_string(
   "pose_estimator_id",
@@ -127,7 +126,19 @@ def _list_resource_handles(
   """Helper to list all ResourceHandle objects from solution resources."""
   if isinstance(solution.resources, dict):
     return list(solution.resources.values())
-  return list(solution.resources)
+  names = _list_resource_names(solution)
+  if names:
+    handles: list[provided.ResourceHandle] = []
+    for name in names:
+      try:
+        handles.append(solution.resources[name])
+      except (KeyError, AttributeError, TypeError):
+        continue
+    return handles
+  try:
+    return list(solution.resources)
+  except (KeyError, TypeError):
+    return []
 
 
 def get_camera_resource(
@@ -448,4 +459,5 @@ def main(argv: Sequence[str]) -> None:
 
 
 if __name__ == "__main__":
+  flags.mark_flag_as_required("address")
   app.run(main)

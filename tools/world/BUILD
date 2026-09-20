@@ -2,12 +2,20 @@ load("@intrinsic-core//bazel:python.bzl", "py_binary", "py_library")
 
 package(default_visibility = ["//visibility:public"])
 
+py_library(
+    name = "inspect_world_lib",
+    srcs = ["inspect_world.py"],
+    deps = [
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
+    ],
+)
+
 py_binary(
     name = "inspect_world",
     srcs = ["inspect_world.py"],
     main = "inspect_world.py",
     deps = [
-        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
+        ":inspect_world_lib",
     ],
 )
 

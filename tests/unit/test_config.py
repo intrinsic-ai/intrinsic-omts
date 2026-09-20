@@ -14,11 +14,21 @@
 
 """Unit tests for strict cell YAML configuration loading."""
 
+import dataclasses
 import tempfile
+from unittest import mock
 
+from absl import app
 from absl.testing import absltest
+from intrinsic.solutions import execution
 
-from src.core.config import AppConfig, load_app_config
+from src import main as omts_main
+from src.core.config import (
+  AppConfig,
+  GripperConfig,
+  load_app_config,
+)
+from src.core.types import SimulationMode
 
 
 class ConfigTest(absltest.TestCase):
@@ -122,6 +132,87 @@ gripper:
       KeyError, "Missing required configuration field.*close_position"
     ):
       load_app_config(tmp_path)
+
+  def test_missing_dio_gripper_fields_and_invalid_yaml_root(self):
+    with self.assertRaisesRegex(
+      KeyError, "Missing required configuration field.*dio_output_block_name"
+    ):
+      GripperConfig(type="dio", dio_open_pin=0, dio_close_pin=1)
+
+    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as tmp:
+      tmp.write("- not_a_mapping\n")
+      list_path = tmp.name
+    with self.assertRaisesRegex(ValueError, "must contain a top-level mapping"):
+      load_app_config(list_path)
+
+    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as tmp:
+      tmp.write("robot:\n  arm_part_name: ur_module\n")
+      no_cell_path = tmp.name
+    with self.assertRaisesRegex(KeyError, "Missing required field 'cell_name'"):
+      load_app_config(no_cell_path)
+
+  @mock.patch("src.main.deployments.connect")
+  @mock.patch("src.main.build_machine_tending_behavior_tree")
+  def test_run_machine_tending_pipeline_omts_and_dio_and_errors(
+    self, mock_build_bt: mock.MagicMock, mock_connect: mock.MagicMock
+  ):
+    mock_solution = mock.MagicMock()
+    mock_solution.resources = {
+      "orbbec_camera": mock.MagicMock(),
+      "pose_estimator_service": mock.MagicMock(),
+    }
+    mock_connect.return_value = mock_solution
+    mock_tree = mock.MagicMock()
+    mock_build_bt.return_value = mock_tree
+
+    omts_cfg = load_app_config("configs/omts/app_config.yaml")
+    omts_main.run_machine_tending_pipeline(
+      solution_address="localhost:17080",
+      config=omts_cfg,
+      simulation_mode=SimulationMode.PREVIEW,
+      num_cycles_override=2,
+    )
+    mock_solution.executive.run.assert_called_once_with(
+      mock_tree,
+      simulation_mode=execution.Executive.SimulationMode.PREVIEW,
+    )
+
+    # Test with DIO gripper and lab_bb_01 (no CNC machine)
+    lab_cfg = load_app_config("configs/lab_bb_01/app_config.yaml")
+    dio_cfg = dataclasses.replace(
+      lab_cfg,
+      gripper=GripperConfig(
+        type="dio",
+        dio_open_pin=0,
+        dio_close_pin=1,
+        dio_device_name="ur_module",
+        dio_output_block_name="standard_out",
+      ),
+    )
+    mock_solution.executive.run.reset_mock()
+    omts_main.run_machine_tending_pipeline(
+      solution_address="localhost:17080",
+      config=dio_cfg,
+    )
+    self.assertIsNone(mock_build_bt.call_args.kwargs["machine"])
+    mock_solution.executive.run.assert_called_once_with(
+      mock_tree, simulation_mode=None
+    )
+
+    # Unsupported infeed_mode raises ValueError
+    grid_cfg = dataclasses.replace(
+      lab_cfg,
+      vision=dataclasses.replace(lab_cfg.vision, infeed_mode="grid"),
+    )
+    with self.assertRaisesRegex(ValueError, "Unsupported infeed_mode 'grid'"):
+      omts_main.run_machine_tending_pipeline(
+        solution_address="localhost:17080",
+        config=grid_cfg,
+      )
+
+    # Extra CLI positional argument raises UsageError
+    with self.assertRaises(app.UsageError):
+      omts_main.main(["main.py", "unexpected_arg"])
 
 
 if __name__ == "__main__":

@@ -42,17 +42,23 @@ def main(argv: Sequence[str] | None = None) -> None:
 
   print("\n=== Objects in Active Belief World ===")
   objects = world.list_objects()
-  for obj_name in objects:
+  for item in objects:
+    obj_name = (
+      item if isinstance(item, str) else getattr(item, "name", str(item))
+    )
     print(f" - {obj_name}")
     try:
-      obj = getattr(world, obj_name)
+      obj = item if not isinstance(item, str) else getattr(world, obj_name)
+      if not hasattr(obj, "joint_configurations"):
+        obj = getattr(world, obj_name, obj)
       if hasattr(obj, "joint_configurations") and list(
         obj.joint_configurations.keys()
       ):
         print("   Joint Configurations:")
         for cfg_name in obj.joint_configurations.keys():
           cfg = obj.joint_configurations[cfg_name]
-          print(f"     * {cfg_name}: {list(cfg.joint_position)}")
+          joint_pos = getattr(cfg, "joint_position", cfg)
+          print(f"     * {cfg_name}: {list(joint_pos)}")
     except Exception:
       pass
 
@@ -69,10 +75,14 @@ def main(argv: Sequence[str] | None = None) -> None:
 
   print("\n=== Solution Resources ===")
   try:
-    solution.resources.update()
+    if callable(getattr(type(solution.resources), "update", None)):
+      solution.resources.update()
     for res_name in dir(solution.resources):
       if not res_name.startswith("_"):
-        res = getattr(solution.resources, res_name)
+        try:
+          res = solution.resources[res_name]
+        except (KeyError, TypeError):
+          res = getattr(solution.resources, res_name, None)
         if hasattr(res, "name"):
           print(f" - {res.name}")
   except Exception as e:
