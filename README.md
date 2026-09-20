@@ -1,6 +1,6 @@
 # Open Machine Tending Solution (OMTS)
 
-[![CI](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml/badge.svg)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml) [![Tests](https://github.com/intrinsic-ai/intrinsic-omts/blob/badges/tests.svg)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml)
+[![CI](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml/badge.svg)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml) [![Tests](https://github.com/intrinsic-ai/intrinsic-omts/blob/badges/tests.svg)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml) [![Python](https://img.shields.io/badge/python-3.11-blue.svg?logo=python&logoColor=white)](https://www.python.org/) [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE) [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md) [![Dependabot](https://img.shields.io/badge/dependabot-enabled-025e8c.svg?logo=dependabot&logoColor=white)](.github/workflows/dependabot.yml)
 
 **OMTS** is the open-source reference implementation for automated machine
 tending (CNC milling, turning, fixture loading, and vision-guided manipulation)
