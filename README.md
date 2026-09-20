@@ -8,7 +8,7 @@ built on **Intrinsic Core** using the **Solution Building Library (SBL)** Python
 SDK. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for system boundaries,
 grasp geometry math, and the 5-subtree sequence diagram.
 
-![OMTS Machine Tending Application in RViz](docs/omts.gif)
+![OMTS in RViz](docs/omts.gif)
 
 ---
 
@@ -186,7 +186,7 @@ bazel run //tools/pose_estimation:run_pose_estimation -- \
   --pose_estimator_id=ai.intrinsic.raw_stock_2x3x5_estimator
 ```
 
-### 4. Run the OMTS Machine Tending Application
+### 4. Run the OMTS Application
 
 Connect to the running deployment and execute the machine tending Behavior Tree:
 
