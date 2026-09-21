@@ -25,6 +25,7 @@ from src.core.config import (
   MachineConfig,
   RobotConfig,
   VisionConfig,
+  load_app_config,
 )
 from src.core.types import JointPosition
 from src.hardware.gripper import DioGripper, RobotiqGripper
@@ -134,8 +135,7 @@ class HardwareAdaptersTest(absltest.TestCase):
     rel_exclude_task = robot.build_move_relative_cartesian_task(
       translation=(0.0, 0.0, -0.05),
       motion_type="LINEAR",
-      exclude_collision=True,
-      excluded_collision_objects=["raw_stock_2x3x5"],
+      excluded_collision_pairs=[("gripper", "raw_stock_2x3x5")],
     )
     self.assertIsInstance(rel_exclude_task, bt.Task)
     segment_kwargs = (
@@ -148,9 +148,12 @@ class HardwareAdaptersTest(absltest.TestCase):
     self.assertTrue(rule.collision_action.is_excluded)
     self.assertEqual(
       [ref.object.by_name.object_name for ref in rule.left],
-      ["gripper", "raw_stock_2x3x5"],
+      ["gripper"],
     )
-    self.assertEmpty(rule.right)
+    self.assertEqual(
+      [ref.object.by_name.object_name for ref in rule.right],
+      ["raw_stock_2x3x5"],
+    )
 
     # Move to contact
     contact_task = robot.build_move_to_contact_task(
@@ -496,36 +499,24 @@ class HardwareAdaptersTest(absltest.TestCase):
       solution=mock_solution,
       config=vision_config,
     )
-    task = vision.build_perception_and_spawn_task(
-      approach_offset_z=0.08,
-      parent_object="root",
-      pregrasp_frame_name="pre_grasp",
-      grasp_frame_name="grasp",
-      tool_object_name="gripper",
-      tool_frame_name="tool_frame",
-      max_tries=3,
+    app_config = load_app_config("configs/omts/app_config.yaml")
+    cap_node, cap_data = vision.build_capture_image_task(max_tries=3)
+    self.assertIsInstance(cap_node, bt.Retry)
+    est_node, estimates = vision.build_estimate_pose_task(
+      capture_data=cap_data,
+      config=vision_config,
     )
-    self.assertIsInstance(task, bt.Retry)
-    inner_seq = task.child
-    self.assertIsInstance(inner_seq, bt.Sequence)
-    self.assertEqual(len(inner_seq.children), 3)
-    self.assertEqual(inner_seq.children[0].name, "1. Capture RGB-D Images")
-    self.assertEqual(
-      inner_seq.children[1].name, "2. Estimate 6D Workpiece Poses"
+    self.assertIsInstance(est_node, bt.Task)
+    update_node = vision.build_update_grasp_frames_task(
+      estimates=estimates,
+      config=app_config,
     )
-    self.assertEqual(
-      inner_seq.children[2].name,
-      "3. Calculate & Update Dynamic Grasp & Pre-Grasp Frames",
-    )
+    self.assertIsInstance(update_node, bt.Task)
 
   def test_orbbec_vision_signature_cleanups(self):
-    sig = inspect.signature(OrbbecVision.build_perception_and_spawn_task)
-    self.assertNotIn("target_scene_object_id", sig.parameters)
-    self.assertNotIn("pose_estimator_id", sig.parameters)
-    self.assertNotIn("min_num_instances", sig.parameters)
-    self.assertNotIn("min_safe_z", sig.parameters)
-    self.assertIn("tool_object_name", sig.parameters)
-    self.assertIn("tool_frame_name", sig.parameters)
+    sig = inspect.signature(OrbbecVision.build_update_grasp_frames_task)
+    self.assertIn("estimates", sig.parameters)
+    self.assertIn("config", sig.parameters)
 
   def test_dynamic_frame_calculator_min_safe_z_and_camera_validation(self):
     from intrinsic.math.python import data_types
@@ -755,17 +746,18 @@ class HardwareAdaptersTest(absltest.TestCase):
       min_safe_z=0.95,
     )
     vision = OrbbecVision(solution=mock_solution, config=vision_cfg)
-    seq_task = vision.build_perception_and_spawn_task(
-      approach_offset_z=0.08,
-      parent_object="root",
-      pregrasp_frame_name="pre_grasp",
-      grasp_frame_name="grasp",
-      tool_object_name="gripper",
-      tool_frame_name="tool_frame",
-      max_tries=1,
+    cap_node, cap_data = vision.build_capture_image_task(max_tries=1)
+    self.assertIsInstance(cap_node, bt.Task)
+    est_node, estimates = vision.build_estimate_pose_task(
+      capture_data=cap_data,
+      config=vision_cfg,
     )
-    # max_tries=1 returns bt.Sequence directly without bt.Retry wrapper
-    self.assertIsInstance(seq_task, bt.Sequence)
+    self.assertIsInstance(est_node, bt.Task)
+    update_node = vision.build_update_grasp_frames_task(
+      estimates=estimates,
+      config=load_app_config("configs/omts/app_config.yaml"),
+    )
+    self.assertIsInstance(update_node, bt.Task)
     self.assertIsNotNone(real_pb.last_parameters)
     self.assertLen(real_pb.last_parameters.fields, 16)
 
