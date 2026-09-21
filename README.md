@@ -116,7 +116,9 @@ omts/
 │   ├── hardware/                        # Robot, Gripper, Machine & Vision SBL adapters
 │   ├── utils/                           # Dynamic frame calculator & script/math helpers
 │   └── foundationpose/                  # Triton config & Bazel MLModel packaging for FoundationPose
-├── third_party/                         # C++/CUDA bindings, model.py & deps for FoundationPose
+├── third_party/                         # Third party integrations
+│   └── foundationpose/                  # C++/CUDA bindings, model.py & deps for FoundationPose
+│   └── intrinsic_moveit/                # Opt-in MoveIt grasp planning (requires the intrinsic-moveit integration)
 ├── tools/                               # Commissioning, calibration, jogging & world CLI tools
 └── tests/                               # Offline hermetic unit test suite
 ```
@@ -355,6 +357,14 @@ By building this project, you download the model weights directly from NVIDIA
 and accept the NVIDIA Open Model License for those weights. Intrinsic does not
 distribute these weights.
 
+---
+
+## 8. Optional integrations
+
+Grasp planning with MoveIt — driven by the `moveit_plan_grasp_and_move` CLI tool — is a third-party integration rather than part of OMTS, and lives under [`third_party/intrinsic_moveit/`](third_party/intrinsic_moveit/README.md).
+
+> [!NOTE]
+> `//:omts_solution` does not deploy the MoveIt planning service or grasp skill, and the tools do nothing until you have completed the [intrinsic-moveit](https://github.com/intrinsic-ai/intrinsic-moveit) integration against your solution. See [`third_party/intrinsic_moveit/README.md`](third_party/intrinsic_moveit/README.md) for the prerequisites and the tool reference.
 
 ---
 
@@ -368,7 +378,7 @@ distribute these weights.
 
 Contributions are welcome! Please review:
 
-* [CONTRIBUTING.md](CONTRIBUTING.md): Details on signing the Google Contributor License Agreement (CLA), community guidelines, C++20 coding standards, and pull request workflows.  
+* [CONTRIBUTING.md](CONTRIBUTING.md): Details on signing the Google Contributor License Agreement (CLA), community guidelines, C++20 coding standards, and pull request workflows.
 * [SECURITY.md](SECURITY.md): Instructions for reporting security vulnerabilities.
 
 ---
