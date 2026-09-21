@@ -28,6 +28,7 @@ from typing import Any
 from intrinsic.solutions import deployments, execution
 from intrinsic.world.proto import object_world_refs_pb2
 
+from src.core.config import RobotConfig
 from src.hardware.robot import UrRobot
 from third_party.intrinsic_moveit.moveit_grasp_planner import (
   DEFAULT_TOOL_FRAME,
@@ -274,6 +275,7 @@ def moveit_plan_grasp_and_move(
   tool_frame_name: str = DEFAULT_TOOL_FRAME,
   arm_part_name: str = "ur_module",
   tool_object_name: str = "gripper",
+  robot_tool_frame_name: str = "tool_frame",
   motion_type: str = "ANY",
   allow_tool_z_rotation: bool = False,
   plan_only: bool = False,
@@ -298,6 +300,8 @@ def moveit_plan_grasp_and_move(
     tool_frame_name: MoveIt robot model link used as the grasp TCP.
     arm_part_name: Robot arm part name in solution.world.
     tool_object_name: End-effector tool object name in solution.world.
+    robot_tool_frame_name: Moving tool frame name under tool_object_name in
+      solution.world (default: 'tool_frame').
     motion_type: Motion segment type for the approach.
     allow_tool_z_rotation: Whether to free wrist rotation during the approach.
     plan_only: Whether to skip the approach motion.
@@ -327,8 +331,11 @@ def moveit_plan_grasp_and_move(
   if not plan_only:
     robot = UrRobot(
       solution=solution,
-      arm_part_name=arm_part_name,
-      tool_object_name=tool_object_name,
+      config=RobotConfig(
+        arm_part_name=arm_part_name,
+        tool_object_name=tool_object_name,
+        tool_frame_name=robot_tool_frame_name,
+      ),
     )
 
   subtree = build_moveit_grasp_planning_subtree(
@@ -553,6 +560,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     help="End-effector tool object name (default: 'gripper').",
   )
   parser.add_argument(
+    "--robot_tool_frame_name",
+    type=str,
+    default="tool_frame",
+    help=(
+      "Moving tool frame name under tool_object_name in solution.world"
+      " (default: 'tool_frame')."
+    ),
+  )
+  parser.add_argument(
     "--settle_sec",
     type=float,
     default=0.3,
@@ -621,6 +637,7 @@ def main(argv: Sequence[str] | None = None) -> int:
       tool_frame_name=args.tool_frame_name,
       arm_part_name=args.arm_part_name,
       tool_object_name=args.tool_object_name,
+      robot_tool_frame_name=args.robot_tool_frame_name,
       motion_type=args.motion_type,
       allow_tool_z_rotation=args.allow_tool_z_rotation,
       plan_only=args.plan_only,

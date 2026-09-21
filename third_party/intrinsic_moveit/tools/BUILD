@@ -6,6 +6,7 @@ py_library(
     name = "moveit_plan_grasp_and_move_lib",
     srcs = ["moveit_plan_grasp_and_move.py"],
     deps = [
+        "//src/core:config",
         "//src/hardware:robot",
         "//third_party/intrinsic_moveit:moveit_grasp_planner",
         "//third_party/intrinsic_moveit:moveit_grasp_planning",
