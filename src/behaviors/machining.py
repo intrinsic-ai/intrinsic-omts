@@ -26,49 +26,47 @@ def build_machining_handshake_subtree(
   robot: RobotInterface,
   machine: CncMachineInterface | None,
   config: AppConfig,
+  include_entry_guard: bool = False,
 ) -> bt.Node:
-  """Builds the Behavior Tree subtree for executing the CNC machining cycle.
+  """Builds the Behavior Tree subtree for the CNC machining handshake.
 
   Sequence:
-  1. Move robot arm to safe standby position outside enclosure
-     (`machine_approach_frame`, `ANY`).
-  2. If `machine` is provided:
-     a. Close CNC enclosure door.
-     b. Pulse CNC cycle start digital output.
-     c. Wait for CNC cycle completion signal or timeout.
+      1. Optional mid-cycle entry guard (`include_entry_guard=True`): move arm
+         to `machine_approach_frame` if entering directly at `Phase.MACHINING`.
+      2. Close CNC enclosure door (arm is already at `machine_approach_frame`
+         after `load_machine`).
+      3. Trigger CNC cycle start signal (`pulse_high -> 0.5s dwell ->
+         pulse_low`).
+      4. Wait for CNC machining cycle completion (`machining_timeout_seconds`).
 
   Args:
-      robot: Robot controller adapter.
-      machine: Optional CNC machine controller adapter (`None` when cell has no
-        CNC enclosure/vise).
-      config: Validated application configuration dataclass.
+      robot: Robot hardware interface.
+      machine: Optional CNC machine hardware interface.
+      config: Application configuration.
+      include_entry_guard: Whether to prepend a safety move to
+        `machine_approach_frame` for mid-cycle entry.
 
   Returns:
-      Behavior tree sequence node executing machining cycle handshake.
+      A `bt.Sequence` node executing the machining handshake phase.
   """
-  parent_object = config.frames.parent_object
-  standby_frame_name = config.frames.machine_approach_frame
-  machining_timeout_seconds = config.cycle.machining_timeout_seconds
-
-  tasks: list[bt.Node] = [
-    create_move_to_frame_task(
-      robot=robot,
-      frame_name=standby_frame_name,
-      parent_object=parent_object,
-      motion_type="ANY",
-      task_name=f"Move to Safe Standby ({parent_object}/{standby_frame_name})",
-    ),
-  ]
-  if machine is not None:
-    tasks.extend(
-      [
-        machine.build_close_door_task(name="Close CNC Door"),
-        machine.build_trigger_cycle_task(name="Trigger CNC Cycle Start"),
-        machine.build_wait_cycle_complete_task(
-          timeout_seconds=machining_timeout_seconds,
-          name="Wait for CNC Cycle Complete",
-        ),
-      ]
+  steps: list[bt.Node] = []
+  if include_entry_guard:
+    steps.append(
+      create_move_to_frame_task(
+        robot=robot,
+        frame_name=config.frames.machine_approach_frame,
+        config=config,
+        motion_type="ANY",
+        task_name="Step 09a: Move to Machine Approach (Entry Guard)",
+      )
     )
-
-  return bt.Sequence(name="3. Machining Handshake Subtree", children=tasks)
+  if machine is not None:
+    steps.extend([
+      machine.build_close_door_task(name="Step 09a: Close CNC Door"),
+      machine.build_trigger_cycle_task(name="Step 09b: Trigger CNC Cycle"),
+      machine.build_wait_cycle_complete_task(
+        timeout_seconds=config.cycle.machining_timeout_seconds,
+        name="Step 09c: Wait for Machining Complete",
+      ),
+    ])
+  return bt.Sequence(name="3. Machining Handshake Subtree", children=steps)

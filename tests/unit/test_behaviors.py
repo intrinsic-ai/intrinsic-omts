@@ -115,11 +115,26 @@ class BehaviorsTest(absltest.TestCase):
     )
 
     self.vision = mock.MagicMock(spec=VisionInterface)
-    self.vision.build_capture_image_task.side_effect = _make_mock_node_builder(
-      "Capture Image"
+    self.vision.build_capture_image_task.side_effect = (
+      lambda **kwargs: (
+        bt.Sequence(
+          name=kwargs.get("task_name") or "Capture Image", children=[]
+        ),
+        "fake_capture_data",
+      )
     )
-    self.vision.build_perception_and_spawn_task.side_effect = (
-      _make_mock_node_builder("Perception Pipeline")
+    self.vision.build_estimate_pose_task.side_effect = (
+      lambda **kwargs: (
+        bt.Sequence(
+          name=kwargs.get("task_name") or "Estimate Pose", children=[]
+        ),
+        ["fake_estimates"],
+      )
+    )
+    self.vision.build_update_grasp_frames_task.side_effect = (
+      lambda **kwargs: bt.Sequence(
+        name=kwargs.get("task_name") or "Update Grasp Frames", children=[]
+      )
     )
 
     self.infeed_strategy = PerceptionInfeedStrategy(
@@ -127,7 +142,12 @@ class BehaviorsTest(absltest.TestCase):
       view_frame_name=self.config.frames.view_frame,
     )
 
-  def _build_master_tree(self, num_cycles: int, tree_name: str = "Test Tree"):
+  def _build_master_tree(
+    self,
+    num_cycles: int,
+    tree_name: str = "Test Tree",
+    start_phase: str = "pick",
+  ):
     return build_machine_tending_behavior_tree(
       robot=self.robot,
       gripper=self.gripper,
@@ -136,6 +156,7 @@ class BehaviorsTest(absltest.TestCase):
       infeed_strategy=self.infeed_strategy,
       config=self.config,
       num_cycles_override=num_cycles,
+      start_phase=start_phase,
       tree_name=tree_name,
     )
 
@@ -169,45 +190,47 @@ class BehaviorsTest(absltest.TestCase):
     )
 
     self.assertIsNotNone(pick_subtree)
-    self.assertEqual(len(pick_subtree.children), 11)
+    self.assertEqual(len(pick_subtree.children), 10)
+    self.assertIsInstance(pick_subtree.children[2], bt.Branch)
+    self.assertEqual(
+      pick_subtree.children[2].if_condition.cel_expression,
+      "cycle_index == 0",
+    )
+    self.assertIsInstance(pick_subtree.children[2].then_child, bt.Sequence)
+    self.assertIsInstance(pick_subtree.children[3], bt.Retry)
     self.machine.build_open_door_task.assert_called_once_with(
-      name="Open CNC Door"
+      name="Prep: Open CNC Door"
     )
     self.machine.build_open_vise_task.assert_called_once_with(
-      name="Open CNC Vise"
+      name="Prep: Open CNC Vise"
     )
-    self.vision.build_perception_and_spawn_task.assert_called_once_with(
-      approach_offset_z=0.05,
-      parent_object="root",
-      pregrasp_frame_name="pre_grasp",
-      grasp_frame_name="grasp",
-      tool_object_name="gripper",
-      tool_frame_name="tool_frame",
-      name="Perception & Dynamic Grasp Frame Update Pipeline",
+    self.vision.build_capture_image_task.assert_called_once()
+    self.vision.build_estimate_pose_task.assert_called_once()
+    self.vision.build_update_grasp_frames_task.assert_called_once_with(
+      estimates=["fake_estimates"],
+      config=self.config,
     )
     self.robot.build_attach_object_task.assert_called_once_with(
       object_name="raw_stock_2x3x5",
-      name="Attach raw_stock_2x3x5 to Gripper",
+      name="Step 05b: Attach Workpiece in World",
     )
-    self.robot.build_move_relative_cartesian_task.assert_has_calls(
-      [
-        mock.call(
-          translation=(0.0, 0.0, -0.01),
-          motion_type="LINEAR",
-          exclude_collision=True,
-          excluded_collision_objects=("raw_stock_2x3x5",),
-          name="Linear Retract (1.0 cm, -Z Tool)",
-        ),
-        mock.call(
-          translation=(0.0, 0.0, -0.01),
-          motion_type="LINEAR",
-          exclude_collision=True,
-          excluded_collision_objects=("raw_stock_2x3x5",),
-          name="Linear Retract after Attach (1.0 cm, -Z Tool)",
-        ),
-      ],
-      any_order=False,
+    self.robot.build_move_relative_cartesian_task.assert_called_once_with(
+      translation=(0.0, 0.0, -0.01),
+      motion_type="LINEAR",
+      excluded_collision_pairs=self.config.pick_collision_pairs,
+      name="Step 04: Linear Retract (1.0 cm, -Z Tool)",
     )
+
+    single_cycle_pick = build_pick_from_infeed_subtree(
+      robot=self.robot,
+      gripper=self.gripper,
+      vision=self.vision,
+      infeed_strategy=self.infeed_strategy,
+      config=self.config,
+      machine=self.machine,
+      loop_counter_key=None,
+    )
+    self.assertIsInstance(single_cycle_pick.children[2], bt.Sequence)
 
   def test_build_load_machine_subtree_steps_and_detachment(self):
     load_subtree = build_load_machine_subtree(
@@ -218,43 +241,11 @@ class BehaviorsTest(absltest.TestCase):
     )
 
     self.assertIsNotNone(load_subtree)
-    self.assertEqual(len(load_subtree.children), 10)
-    self.robot.build_move_blended_cartesian_task.assert_called_once()
+    self.assertEqual(len(load_subtree.children), 7)
+    self.assertEqual(self.robot.build_move_blended_cartesian_task.call_count, 2)
     self.robot.build_detach_object_task.assert_called_once_with(
       object_name="raw_stock_2x3x5",
-      name="Detach raw_stock_2x3x5 from Gripper",
-    )
-    expected_vise_pairs = [
-      ("raw_stock_2x3x5", "schunk_egp_64nnb"),
-      ("gripper", "schunk_egp_64nnb"),
-      ("gripper", "raw_stock_2x3x5"),
-    ]
-    self.robot.build_move_cartesian_task.assert_has_calls(
-      [
-        mock.call(
-          target_frame_name="vise_pre_place",
-          target_object_name="root",
-          motion_type="ANY",
-          allow_tool_z_rotation=False,
-          cone_opening_half_angle=0.0,
-          moving_frame_offset=None,
-          target_frame_offset=None,
-          excluded_collision_pairs=expected_vise_pairs,
-          name="Approach CNC Vise (root/vise_pre_place)",
-        ),
-        mock.call(
-          target_frame_name="vise_pre_place",
-          target_object_name="root",
-          motion_type="LINEAR",
-          allow_tool_z_rotation=False,
-          cone_opening_half_angle=0.0,
-          moving_frame_offset=None,
-          target_frame_offset=None,
-          excluded_collision_pairs=expected_vise_pairs,
-          name="Retract Arm to Vise Approach (root/vise_pre_place)",
-        ),
-      ],
-      any_order=False,
+      name="Step 07e: Detach Workpiece in World",
     )
 
   def test_build_machining_handshake_subtree_steps(self):
@@ -265,28 +256,27 @@ class BehaviorsTest(absltest.TestCase):
     )
 
     self.assertIsNotNone(machining_subtree)
-    self.assertEqual(len(machining_subtree.children), 4)
-    self.robot.build_move_cartesian_task.assert_called_once_with(
-      target_frame_name="machine_approach",
-      target_object_name="root",
-      motion_type="ANY",
-      allow_tool_z_rotation=False,
-      cone_opening_half_angle=0.0,
-      moving_frame_offset=None,
-      target_frame_offset=None,
-      excluded_collision_pairs=None,
-      name="Move to Safe Standby (root/machine_approach)",
-    )
+    self.assertEqual(len(machining_subtree.children), 3)
+    self.robot.build_move_cartesian_task.assert_not_called()
     self.machine.build_close_door_task.assert_called_once_with(
-      name="Close CNC Door"
+      name="Step 09a: Close CNC Door"
     )
     self.machine.build_trigger_cycle_task.assert_called_once_with(
-      name="Trigger CNC Cycle Start"
+      name="Step 09b: Trigger CNC Cycle"
     )
     self.machine.build_wait_cycle_complete_task.assert_called_once_with(
       timeout_seconds=self.config.cycle.machining_timeout_seconds,
-      name="Wait for CNC Cycle Complete",
+      name="Step 09c: Wait for Machining Complete",
     )
+
+    guarded_machining = build_machining_handshake_subtree(
+      robot=self.robot,
+      machine=self.machine,
+      config=self.config,
+      include_entry_guard=True,
+    )
+    self.assertEqual(len(guarded_machining.children), 4)
+    self.robot.build_move_cartesian_task.assert_called_once()
 
   def test_build_unload_machine_subtree_steps_and_attachment(self):
     unload_subtree = build_unload_machine_subtree(
@@ -297,50 +287,20 @@ class BehaviorsTest(absltest.TestCase):
     )
 
     self.assertIsNotNone(unload_subtree)
-    self.assertEqual(len(unload_subtree.children), 10)
-    self.robot.build_attach_object_task.assert_called_once_with(
-      object_name="raw_stock_2x3x5",
-      name="Attach raw_stock_2x3x5 to Gripper",
-    )
-    self.robot.build_move_relative_cartesian_task.assert_has_calls(
+    child_names = [child.name for child in unload_subtree.children]
+    self.assertEqual(
+      child_names,
       [
-        mock.call(
-          translation=(0.0, 0.0, -0.01),
-          motion_type="LINEAR",
-          exclude_collision=True,
-          excluded_collision_objects=("raw_stock_2x3x5",),
-          name="Linear Retract (1.0 cm, -Z Tool)",
-        ),
-        mock.call(
-          translation=(0.0, 0.0, -0.01),
-          motion_type="LINEAR",
-          exclude_collision=True,
-          excluded_collision_objects=("raw_stock_2x3x5",),
-          name="Linear Retract Clear of Vise (1.0 cm, -Z Tool)",
-        ),
+        "Step 10: Open CNC Door",
+        "Step 11a: Linear Move to vise_pre_place",
+        "Step 11b: Linear Approach to Standoff (root/vise_place)",
+        "Step 11b: Compliant Touchdown (+Z Tool)",
+        "Step 11b: Linear Retract (1.0 cm, -Z Tool)",
+        "Step 11c: Grasp Machined Part",
+        "Step 11d: Attach Machined Part in World",
+        "Step 11e: Open CNC Vise (Unclamp Part)",
+        "Step 12: Blended Retract from Vise (vise_pre_place -> machine_approach)",
       ],
-      any_order=False,
-    )
-    expected_vise_pairs = [
-      ("raw_stock_2x3x5", "schunk_egp_64nnb"),
-      ("gripper", "schunk_egp_64nnb"),
-      ("gripper", "raw_stock_2x3x5"),
-    ]
-    self.robot.build_move_cartesian_task.assert_has_calls(
-      [
-        mock.call(
-          target_frame_name="vise_pre_place",
-          target_object_name="root",
-          motion_type="ANY",
-          allow_tool_z_rotation=False,
-          cone_opening_half_angle=0.0,
-          moving_frame_offset=None,
-          target_frame_offset=None,
-          excluded_collision_pairs=expected_vise_pairs,
-          name="Approach Machined Part (root/vise_pre_place)",
-        ),
-      ],
-      any_order=False,
     )
 
   def test_build_return_to_infeed_subtree_steps_and_detachment(self):
@@ -351,27 +311,15 @@ class BehaviorsTest(absltest.TestCase):
     )
 
     self.assertIsNotNone(return_subtree)
-    self.assertEqual(len(return_subtree.children), 6)
-    self.robot.build_move_blended_cartesian_task.assert_called_once()
+    self.assertEqual(len(return_subtree.children), 7)
+    self.assertEqual(
+      return_subtree.children[-1].name,
+      "Step 13f: Close Gripper for Next Cycle",
+    )
+    self.assertEqual(self.robot.build_move_blended_cartesian_task.call_count, 2)
     self.robot.build_detach_object_task.assert_called_once_with(
       object_name="raw_stock_2x3x5",
-      name="Detach raw_stock_2x3x5 from Gripper",
-    )
-    self.robot.build_move_cartesian_task.assert_has_calls(
-      [
-        mock.call(
-          target_frame_name="pre_grasp",
-          target_object_name="root",
-          motion_type="LINEAR",
-          allow_tool_z_rotation=False,
-          cone_opening_half_angle=0.0,
-          moving_frame_offset=None,
-          target_frame_offset=None,
-          excluded_collision_pairs=[("gripper", "raw_stock_2x3x5")],
-          name="Retract Arm from Table (root/pre_grasp)",
-        ),
-      ],
-      any_order=False,
+      name="Step 13d: Detach Finished Part in World",
     )
 
   def test_build_master_behavior_tree_without_cnc_machine(self):
@@ -388,15 +336,9 @@ class BehaviorsTest(absltest.TestCase):
     self.assertIsNotNone(tree)
     self.assertIsInstance(tree.root, bt.Sequence)
     self.assertEqual(len(tree.root.children), 5)
-    self.vision.build_perception_and_spawn_task.assert_called_once_with(
-      approach_offset_z=0.08,
-      parent_object="root",
-      pregrasp_frame_name="pre_grasp",
-      grasp_frame_name="grasp",
-      tool_object_name="gripper",
-      tool_frame_name="tool_frame",
-      name="Perception & Dynamic Grasp Frame Update Pipeline",
-    )
+    self.vision.build_capture_image_task.assert_called_once()
+    self.vision.build_estimate_pose_task.assert_called_once()
+    self.vision.build_update_grasp_frames_task.assert_called_once()
     self.machine.build_open_door_task.assert_not_called()
     self.machine.build_close_door_task.assert_not_called()
     self.machine.build_open_vise_task.assert_not_called()
@@ -404,7 +346,7 @@ class BehaviorsTest(absltest.TestCase):
     self.machine.build_trigger_cycle_task.assert_not_called()
     self.machine.build_wait_cycle_complete_task.assert_not_called()
 
-  def test_all_subtrees_have_unique_child_names_and_no_legacy_prefixes(self):
+  def test_all_subtrees_have_unique_child_names(self):
     tree = self._build_master_tree(num_cycles=1)
     for subtree in tree.root.children:
       child_names = [child.name for child in subtree.children]
@@ -413,9 +355,6 @@ class BehaviorsTest(absltest.TestCase):
         len(set(child_names)),
         f"Duplicate child task names in {subtree.name}: {child_names}",
       )
-      for name in child_names:
-        self.assertNotIn("Step ", name)
-        self.assertNotIn("Prep:", name)
 
 
 # ---------------------------------------------------------------------------
@@ -1059,9 +998,11 @@ def _assert_platform_feature_flags_support_tree(
 def _assert_no_parallel_universe_lock_conflicts(
   bt_proto: behavior_tree_pb2.BehaviorTree,
 ) -> None:
-  """Verifies no bt.Parallel node pairs lock_the_universe skills with robot motion."""
-  universe_locking_skills = {"ai.intrinsic.update_world"}
-  motion_skills = {"ai.intrinsic.move_robot", "ai.intrinsic.move_to_contact"}
+  """Verifies no bt.Parallel pairs lock_the_universe skills with others."""
+  universe_locking_skills = {
+    "ai.intrinsic.update_world",
+    "ai.intrinsic.gripper_cmd_skill",
+  }
 
   for node in _iter_tree_nodes(bt_proto.root):
     if not node.HasField("parallel"):
@@ -1080,13 +1021,118 @@ def _assert_no_parallel_universe_lock_conflicts(
       for j, skills_b in enumerate(branch_skill_sets):
         if i == j:
           continue
-        if (skills_a & universe_locking_skills) and (skills_b & motion_skills):
+        if (skills_a & universe_locking_skills) and skills_b:
           raise AssertionError(
-            f"Executive StatusCode 18201 conflict in Parallel node '{node.name}': "
-            f"branch {i} executes {skills_a & universe_locking_skills} "
-            "(lock_the_universe: true) concurrently with branch "
-            f"{j} executing {skills_b & motion_skills}."
+            f"Executive StatusCode 18201 conflict in Parallel node "
+            f"'{node.name}': branch {i} executes "
+            f"{skills_a & universe_locking_skills} (lock_the_universe: true) "
+            f"concurrently with branch {j} executing {skills_b}."
           )
+
+
+def _assert_valid_executive_cel_expressions(
+  bt_proto: behavior_tree_pb2.BehaviorTree,
+) -> None:
+  """Verifies CEL expressions satisfy Executive parser and blackboard rules."""
+  defined_keys: set[str] = set()
+  unboxed_int64_keys: set[str] = set()
+
+  for node in _iter_tree_nodes(bt_proto.root):
+    if node.HasField("loop"):
+      if node.loop.loop_counter_blackboard_key:
+        defined_keys.add(node.loop.loop_counter_blackboard_key)
+        unboxed_int64_keys.add(node.loop.loop_counter_blackboard_key)
+      if (
+        node.loop.HasField("for_each")
+        and node.loop.for_each.value_blackboard_key
+      ):
+        defined_keys.add(node.loop.for_each.value_blackboard_key)
+    if node.HasField("retry") and node.retry.retry_counter_blackboard_key:
+      defined_keys.add(node.retry.retry_counter_blackboard_key)
+      unboxed_int64_keys.add(node.retry.retry_counter_blackboard_key)
+    if node.HasField("data") and node.data.HasField("create_or_update"):
+      if node.data.create_or_update.blackboard_key:
+        defined_keys.add(node.data.create_or_update.blackboard_key)
+    if node.HasField("task"):
+      if (
+        node.task.HasField("call_behavior")
+        and node.task.call_behavior.return_value_name
+      ):
+        defined_keys.add(node.task.call_behavior.return_value_name)
+      if (
+        node.task.HasField("execute_code")
+        and node.task.execute_code.return_value_key
+      ):
+        defined_keys.add(node.task.execute_code.return_value_key)
+
+  def _iter_conditions(
+    cond: behavior_tree_pb2.BehaviorTree.Condition,
+  ) -> list[behavior_tree_pb2.BehaviorTree.Condition]:
+    out = [cond]
+    if cond.HasField("all_of"):
+      for c in cond.all_of.conditions:
+        out.extend(_iter_conditions(c))
+    if cond.HasField("any_of"):
+      for c in cond.any_of.conditions:
+        out.extend(_iter_conditions(c))
+    if cond.HasField("not"):
+      out.extend(_iter_conditions(getattr(cond, "not")))
+    return out
+
+  cel_expressions: list[str] = []
+  for node in _iter_tree_nodes(bt_proto.root):
+    if node.HasField("decorators") and node.decorators.HasField("condition"):
+      for cond in _iter_conditions(node.decorators.condition):
+        if cond.HasField("blackboard") and cond.blackboard.cel_expression:
+          cel_expressions.append(cond.blackboard.cel_expression)
+    if node.HasField("branch") and node.branch.HasField("if"):
+      for cond in _iter_conditions(getattr(node.branch, "if")):
+        if cond.HasField("blackboard") and cond.blackboard.cel_expression:
+          cel_expressions.append(cond.blackboard.cel_expression)
+    if node.HasField("loop") and node.loop.HasField("while"):
+      for cond in _iter_conditions(getattr(node.loop, "while")):
+        if cond.HasField("blackboard") and cond.blackboard.cel_expression:
+          cel_expressions.append(cond.blackboard.cel_expression)
+
+  cel_keywords = {
+    "true",
+    "false",
+    "null",
+    "has",
+    "int",
+    "uint",
+    "double",
+    "string",
+    "bytes",
+    "bool",
+    "size",
+  }
+  for expr in cel_expressions:
+    # 1. CEL has() macro requires a field selection has(e.f), not has(ident).
+    bare_has = re.search(r"\bhas\(\s*([a-zA-Z_]\w*)\s*\)", expr)
+    if bare_has:
+      raise AssertionError(
+        f"Cannot import cel_expression '{expr}': CEL has() macro requires a "
+        f"field selection (has(msg.field)), not '{bare_has.group(1)}'."
+      )
+    # 2. Int64Value counters are unboxed to int64 by CelProtoWrapper.
+    for int_key in unboxed_int64_keys:
+      if re.search(rf"\b{re.escape(int_key)}\.value\b", expr):
+        raise AssertionError(
+          f"Invalid CEL expression '{expr}': blackboard counter '{int_key}' "
+          "is unboxed by CelProtoWrapper::CreateMessage to primitive int64 "
+          "and has no '.value' field."
+        )
+    # 3. Top-level identifiers in CEL must exist on blackboard (code 15101).
+    for match in re.finditer(r"(?<![.\w])([a-zA-Z_]\w*)\b", expr):
+      ident = match.group(1)
+      if ident in cel_keywords:
+        continue
+      if ident not in defined_keys:
+        raise AssertionError(
+          f"Executive StatusCode 15101 in CEL expression '{expr}': blackboard "
+          f"variable '{ident}' does not exist in '{bt_proto.name}'."
+        )
 
 
 class HermeticSolutionAndBehaviorTreeContractTest(absltest.TestCase):
@@ -1203,10 +1249,12 @@ class HermeticSolutionAndBehaviorTreeContractTest(absltest.TestCase):
           exec_code.file_descriptor_set,
           exec_code.parameter_message_full_name,
         )
+        expected_cfg = load_app_config(config_path)
         self.assertTrue(exec_code.parameters.proto.Unpack(params_msg))
-        expected_offset = 0.05 if "omts" in config_path else 0.08
         self.assertAlmostEqual(
-          params_msg.approach_offset_z, expected_offset, places=5
+          params_msg.approach_offset_z,
+          expected_cfg.cycle.approach_offset_z,
+          places=5,
         )
         self.assertEqual(params_msg.parent_object, "root")
         self.assertEqual(params_msg.pregrasp_frame_name, "pre_grasp")
@@ -1296,6 +1344,11 @@ class HermeticSolutionAndBehaviorTreeContractTest(absltest.TestCase):
     self.assertIn("schunk_egp_64nnb", omts_instances)
     self.assertNotIn("cnc_enclosure", lab_instances)
     self.assertNotIn("schunk_egp_64nnb", lab_instances)
+    self.assertIn("charuco_9x12_30mm_22mm_dict_5x5", omts_instances)
+    self.assertIn("charuco_9x12_30mm_22mm_dict_5x5", lab_instances)
+    self.assertIn(
+      "charuco_9x12_30mm_22mm_dict_5x5_estimator", self.build_content
+    )
 
     registered_skill_ids = set(self.skill_infos.keys())
 
@@ -1342,8 +1395,11 @@ class HermeticSolutionAndBehaviorTreeContractTest(absltest.TestCase):
       "configs/omts/app_config.yaml",
       "configs/lab_bb_01/app_config.yaml",
     ):
-      _, bt_proto = self._build_real_tree_for_config(config_path)
-      _assert_no_parallel_universe_lock_conflicts(bt_proto)
+      for num_cycles in (1, 2):
+        _, bt_proto = self._build_real_tree_for_config(
+          config_path, num_cycles_override=num_cycles
+        )
+        _assert_no_parallel_universe_lock_conflicts(bt_proto)
 
     config = load_app_config("configs/omts/app_config.yaml")
     solution = FakeSolution(
@@ -1351,6 +1407,7 @@ class HermeticSolutionAndBehaviorTreeContractTest(absltest.TestCase):
       world_objects=self.cell_world_objects["omts"],
     )
     robot = UrRobot(solution=solution, config=config.robot)
+    gripper = RobotiqGripper(solution=solution, config=config.gripper)
     assert config.machine is not None
     machine = DioCncMachine(solution=solution, config=config.machine)
     illegal_parallel_tree = bt.BehaviorTree(
@@ -1367,6 +1424,80 @@ class HermeticSolutionAndBehaviorTreeContractTest(absltest.TestCase):
       AssertionError, "Executive StatusCode 18201 conflict"
     ):
       _assert_no_parallel_universe_lock_conflicts(illegal_parallel_tree.proto)
+
+    illegal_gripper_parallel_tree = bt.BehaviorTree(
+      name="Illegal Gripper Parallel Tree",
+      root=bt.Parallel(
+        name="Concurrent Gripper & Motion",
+        children=[
+          gripper.build_close_task(),
+          robot.build_move_joint_task("home"),
+        ],
+      ),
+    )
+    with self.assertRaisesRegex(
+      AssertionError, "Executive StatusCode 18201 conflict"
+    ):
+      _assert_no_parallel_universe_lock_conflicts(
+        illegal_gripper_parallel_tree.proto
+      )
+
+  def test_tier2_executive_cel_expression_and_blackboard_contract(
+    self,
+  ) -> None:
+    for config_path, num_cycles in (
+      ("configs/omts/app_config.yaml", 1),
+      ("configs/omts/app_config.yaml", 2),
+      ("configs/lab_bb_01/app_config.yaml", 0),
+    ):
+      _, bt_proto = self._build_real_tree_for_config(
+        config_path, num_cycles_override=num_cycles
+      )
+      _assert_valid_executive_cel_expressions(bt_proto)
+
+    bad_has_tree = bt.BehaviorTree(
+      name="Bad Has Tree",
+      root=bt.Loop(
+        max_times=2,
+        loop_counter_key="cycle_index",
+        do_child=bt.Branch(
+          if_condition=bt.Blackboard("!has(cycle_index) || cycle_index == 0"),
+          then_child=bt.Sequence(children=[]),
+        ),
+      ),
+    )
+    with self.assertRaisesRegex(
+      AssertionError, "Cannot import cel_expression.*CEL has\\(\\) macro"
+    ):
+      _assert_valid_executive_cel_expressions(bad_has_tree.proto)
+
+    bad_unboxed_tree = bt.BehaviorTree(
+      name="Bad Unboxed Tree",
+      root=bt.Loop(
+        max_times=2,
+        loop_counter_key="cycle_index",
+        do_child=bt.Branch(
+          if_condition=bt.Blackboard("cycle_index.value == 0"),
+          then_child=bt.Sequence(children=[]),
+        ),
+      ),
+    )
+    with self.assertRaisesRegex(
+      AssertionError, "unboxed by CelProtoWrapper::CreateMessage"
+    ):
+      _assert_valid_executive_cel_expressions(bad_unboxed_tree.proto)
+
+    missing_bb_tree = bt.BehaviorTree(
+      name="Missing Blackboard Key Tree",
+      root=bt.Branch(
+        if_condition=bt.Blackboard("cycle_index == 0"),
+        then_child=bt.Sequence(children=[]),
+      ),
+    )
+    with self.assertRaisesRegex(
+      AssertionError, "Executive StatusCode 15101.*does not exist"
+    ):
+      _assert_valid_executive_cel_expressions(missing_bb_tree.proto)
 
 
 if __name__ == "__main__":

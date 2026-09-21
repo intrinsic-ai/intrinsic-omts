@@ -17,12 +17,11 @@
 from intrinsic.solutions import behavior_tree as bt
 
 from src.behaviors.motions import (
-  create_compliant_touchdown_task,
+  build_interaction_tasks,
   create_move_to_frame_task,
-  create_relative_retract_task,
 )
 from src.core.config import AppConfig
-from src.core.infeed import InfeedMode, InfeedStrategy, PerceptionInfeedStrategy
+from src.core.infeed import InfeedMode, InfeedStrategy
 from src.hardware.gripper import GripperInterface
 from src.hardware.machine import CncMachineInterface
 from src.hardware.robot import RobotInterface
@@ -36,124 +35,145 @@ def build_pick_from_infeed_subtree(
   infeed_strategy: InfeedStrategy,
   config: AppConfig,
   machine: CncMachineInterface | None = None,
+  loop_counter_key: str | None = "cycle_index",
 ) -> bt.Node:
-  """Builds the Behavior Tree subtree for locating and grasping a raw workpiece.
+  """Builds the Behavior Tree subtree for locating and grasping a workpiece.
 
   Sequence:
-  1. If `machine` is provided, open CNC door and vise sequentially prior to
-     robot motion to avoid `lock_the_universe` resource conflicts.
-  2. If `infeed_strategy.mode` is `PERCEPTION`, move to `view_frame` (`ANY`)
-     and run the 3-step perception pipeline (capture RGB-D, estimate 6D pose
-     via FoundationPose, and update dynamic `pre_grasp`/`grasp` frames).
-  3. Open gripper fingers.
-  4. Move tool to dynamic `pre_grasp` frame (`ANY`).
-  5. Perform compliant touchdown along tool +Z.
-  6. Execute relative linear retract along tool -Z with segment-scoped
-     workpiece collision exclusion to align finger pads.
-  7. Close gripper to grasp part and attach workpiece entity to gripper in the
-     belief world.
-  8. Retract arm linearly back up to `pre_grasp` (`LINEAR`).
+      1. Parallel prep: Move robot arm to `view_frame`, close gripper to clear
+         camera field of view, and open CNC door + vise.
+      2. Capture RGB-D images via `vision.build_capture_image_task`.
+      3. Parallel estimation & open gripper: Estimate 6D workpiece poses +
+         update dynamic `grasp` and `pre_grasp` frames in `ObjectWorld` while
+         opening the gripper fingers.
+      4. Approach `pre_grasp` (`LINEAR`), descend to standoff above `grasp`,
+         execute compliant touchdown (`config.pick_touchdown`), retract by
+         `grasp_offset_z`, close gripper, and attach workpiece in `ObjectWorld`.
+      5. Linearly retract to `pre_grasp`.
 
   Args:
-      robot: Robot controller adapter.
-      gripper: End-effector gripper adapter.
-      vision: Vision/perception adapter.
-      infeed_strategy: Infeed strategy model (`PerceptionInfeedStrategy`).
-      config: Validated application configuration dataclass.
-      machine: Optional CNC machine adapter to prepare prior to pick.
+      robot: Robot hardware interface.
+      gripper: Gripper hardware interface.
+      vision: Vision hardware interface.
+      infeed_strategy: Strategy for locating parts at the infeed station.
+      config: Application configuration containing frame, cycle, and vision
+        settings.
+      machine: Optional CNC machine hardware interface for prep actions.
+      loop_counter_key: Optional blackboard key of the enclosing `bt.Loop`
+        counter (`google.protobuf.Int64Value`, unboxed to `int64` in CEL). When
+        provided, guards Step 01 with `<loop_counter_key> == 0` so cycles after
+        the first skip the redundant move-to-view and gripper-close (already
+        performed by Step 13e/13f of `return_infeed`). When `None` (single-cycle
+        execution without a `bt.Loop`), executes Step 01 directly without
+        referencing an undefined blackboard key.
 
   Returns:
-      Behavior tree sequence executing the infeed pick pipeline.
+      A `bt.Sequence` node executing the infeed pick phase.
   """
-  parent_object = config.frames.parent_object
-  view_frame_name = config.frames.view_frame
-  pregrasp_frame_name = config.frames.pregrasp_frame
-  grasp_frame_name = config.frames.grasp_frame
-  approach_offset_z = config.cycle.approach_offset_z
-  pick_touchdown_force_newtons = config.cycle.pick_touchdown_force_newtons
-  touchdown_timeout_seconds = config.cycle.touchdown_timeout_seconds
-  retract_distance_meters = config.cycle.retract_distance_meters
-  workpiece_object_name = config.cycle.workpiece_id
-
   tasks: list[bt.Node] = []
-
-  if machine is not None:
-    tasks.extend(
-      [
-        machine.build_open_door_task(name="Open CNC Door"),
-        machine.build_open_vise_task(name="Open CNC Vise"),
-      ]
-    )
+  parent = config.frames.parent_object
 
   if infeed_strategy.mode == InfeedMode.PERCEPTION:
-    if not isinstance(infeed_strategy, PerceptionInfeedStrategy):
-      raise TypeError(
-        "InfeedMode.PERCEPTION requires a PerceptionInfeedStrategy instance."
+    if machine is not None:
+      tasks.append(machine.build_open_door_task(name="Prep: Open CNC Door"))
+      tasks.append(machine.build_open_vise_task(name="Prep: Open CNC Vise"))
+    move_to_view = create_move_to_frame_task(
+      robot=robot,
+      frame_name=config.frames.view_frame,
+      config=config,
+      motion_type="ANY",
+      task_name=(
+        f"Step 01a: Move to View Frame ({parent}/{config.frames.view_frame})"
+      ),
+    )
+    step_01_seq = bt.Sequence(
+      name="Step 01: Move to View & Close Gripper",
+      children=[
+        gripper.build_close_task(
+          name="Step 01b: Close Gripper (Clear Camera FOV)"
+        ),
+        move_to_view,
+      ],
+    )
+    if loop_counter_key:
+      tasks.append(
+        bt.Branch(
+          if_condition=bt.Blackboard(f"{loop_counter_key} == 0"),
+          then_child=step_01_seq,
+          name="Step 01: First-Cycle Move to View & Close Gripper Guard",
+        )
       )
+    else:
+      tasks.append(step_01_seq)
 
-    tasks.extend(
-      [
-        create_move_to_frame_task(
-          robot=robot,
-          frame_name=view_frame_name,
-          parent_object=parent_object,
-          motion_type="ANY",
-          task_name=f"Move to View Frame ({parent_object}/{view_frame_name})",
-        ),
-        vision.build_perception_and_spawn_task(
-          approach_offset_z=approach_offset_z,
-          parent_object=parent_object,
-          pregrasp_frame_name=pregrasp_frame_name,
-          grasp_frame_name=grasp_frame_name,
-          tool_object_name=config.robot.tool_object_name,
-          tool_frame_name=config.robot.tool_frame_name,
-          name="Perception & Dynamic Grasp Frame Update Pipeline",
-        ),
-      ]
+    capture_node, capture_data = vision.build_capture_image_task(
+      max_tries=1,
+      task_name="Step 02a: Capture RGB-D Images",
     )
 
-  tasks.append(gripper.build_open_task(name="Open Gripper"))
+    estimate_node, estimates = vision.build_estimate_pose_task(
+      capture_data=capture_data,
+      config=config.vision,
+      task_name="Estimate 6D Workpiece Poses",
+    )
+    update_frames_node = vision.build_update_grasp_frames_task(
+      estimates=estimates,
+      config=config,
+    )
+    perception_cycle_seq = bt.Sequence(
+      name="Step 02: Capture, Estimate Poses & Open Gripper",
+      children=[
+        capture_node,
+        estimate_node,
+        update_frames_node,
+        gripper.build_open_task(name="Step 03: Open Gripper"),
+      ],
+    )
+    tasks.append(
+      bt.Retry(
+        max_tries=3,
+        child=perception_cycle_seq,
+        recovery=gripper.build_close_task(
+          name="Recovery: Re-Close Gripper (Clear Camera FOV)"
+        ),
+        name="Step 02: Retryable Perception & Gripper Open (max 3 tries)",
+      )
+    )
+  else:
+    if machine is not None:
+      tasks.append(machine.build_open_door_task(name="Prep: Open CNC Door"))
+      tasks.append(machine.build_open_vise_task(name="Prep: Open CNC Vise"))
+    tasks.append(gripper.build_open_task(name="Step 03: Open Gripper"))
 
   tasks.extend(
-    [
-      create_move_to_frame_task(
-        robot=robot,
-        frame_name=pregrasp_frame_name,
-        parent_object=parent_object,
-        motion_type="ANY",
-        task_name=(
-          f"Move to Dynamic Pre-Grasp ({parent_object}/{pregrasp_frame_name})"
-        ),
+    build_interaction_tasks(
+      robot=robot,
+      config=config,
+      frame_name=config.frames.grasp_frame,
+      touchdown=config.pick_touchdown,
+      label="Step 04",
+      approach_frames=[config.frames.pregrasp_frame],
+      approach_motion_types="LINEAR",
+      excluded_collision_pairs=config.pick_collision_pairs,
+      pre_reparent_tasks=[
+        gripper.build_close_task(name="Step 05a: Grasp Workpiece")
+      ],
+      reparent_task=robot.build_attach_object_task(
+        object_name=config.workpiece.object_name,
+        name="Step 05b: Attach Workpiece in World",
       ),
-      create_compliant_touchdown_task(
-        robot=robot,
-        direction=(0.0, 0.0, 1.0),
-        contact_force_newtons=pick_touchdown_force_newtons,
-        timeout_seconds=touchdown_timeout_seconds,
-        task_name="Compliant Touchdown to Part (+Z Tool)",
-      ),
-      create_relative_retract_task(
-        robot=robot,
-        distance_meters=retract_distance_meters,
-        exclude_collision=True,
-        excluded_collision_objects=(workpiece_object_name,),
-        task_name=(
-          f"Linear Retract ({retract_distance_meters * 100:.1f} cm, -Z Tool)"
-        ),
-      ),
-      gripper.build_close_task(name="Close Gripper (Grasp Part)"),
-      robot.build_attach_object_task(
-        object_name=workpiece_object_name,
-        name=f"Attach {workpiece_object_name} to Gripper",
-      ),
-      create_relative_retract_task(
-        robot=robot,
-        distance_meters=retract_distance_meters,
-        exclude_collision=True,
-        excluded_collision_objects=(workpiece_object_name,),
-        task_name=f"Linear Retract after Attach ({retract_distance_meters * 100:.1f} cm, -Z Tool)",
-      ),
-    ]
+    )
+  )
+
+  tasks.append(
+    create_move_to_frame_task(
+      robot=robot,
+      frame_name=config.frames.pregrasp_frame,
+      config=config,
+      motion_type="LINEAR",
+      excluded_collision_pairs=config.pick_collision_pairs,
+      task_name="Step 06: Retract to Dynamic Pre-Grasp",
+    )
   )
 
   return bt.Sequence(name="1. Infeed Pick Subtree", children=tasks)

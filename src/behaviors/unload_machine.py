@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""CNC machine unloading and extraction subtree."""
+"""CNC machine unloading and part extraction subtree."""
 
 from intrinsic.solutions import behavior_tree as bt
 
 from src.behaviors.motions import (
-  create_compliant_touchdown_task,
+  build_interaction_tasks,
+  create_move_through_frames_task,
   create_move_to_frame_task,
-  create_relative_retract_task,
 )
 from src.core.config import AppConfig
 from src.hardware.gripper import GripperInterface
@@ -32,118 +32,103 @@ def build_unload_machine_subtree(
   gripper: GripperInterface,
   machine: CncMachineInterface | None,
   config: AppConfig,
+  include_entry_guard: bool = False,
 ) -> bt.Node:
-  """Builds the Behavior Tree subtree for unloading a finished part from the CNC.
+  """Builds the Behavior Tree subtree for unloading a machined part.
 
   Sequence:
-  1. If `machine` is provided, open CNC door and open CNC vise prior to robot
-     entry.
-  2. Move robot arm to machine entry approach position (`machine_approach_frame`,
-     `ANY`).
-  3. Move robot arm to vise pre-place approach position (`preplace_vise_frame`,
-     `ANY`) with segment-scoped vise collision exclusions.
-  4. Compliantly touch down to machined part along tool +Z.
-  5. Execute relative linear retract (`retract_distance_meters`, `-Z` tool)
-     with workpiece collision exclusion to align finger pads.
-  6. Close gripper to grasp machined part and attach workpiece entity to
-     gripper in the belief world.
-  7. Execute relative linear retract (`retract_distance_meters`, `-Z` tool)
-     with workpiece collision exclusion to lift part clear of vise jaws.
-  8. Retract arm linearly out of enclosure to `machine_approach_frame`
-     (`LINEAR`).
+      1. Optional mid-cycle entry guard (`include_entry_guard=True`): move arm
+         to `machine_approach_frame` if entering directly at `Phase.UNLOAD`.
+      2. Open CNC enclosure door (keeping the CNC vise clamped so the part is
+         securely held during compliant touchdown).
+      3. Linearly enter through the door from `machine_approach_frame` to
+         `preplace_vise_frame`.
+      4. Approach `place_vise_frame` (`standoff_m = 0.010 + grasp_offset_z`),
+         compliantly touch down (`config.unload_touchdown`), retract by
+         `grasp_offset_z`, close gripper (`pre_reparent_tasks`), attach part in
+         `ObjectWorld` (`reparent_task`), and **then** open the CNC vise
+         (`post_reparent_tasks`) to unclamp the grasped part.
+      5. Blended retract (`[preplace_vise_frame, machine_approach_frame]`) out
+         of the enclosure.
 
   Args:
-      robot: Robot controller adapter.
-      gripper: End-effector gripper adapter.
-      machine: Optional CNC machine controller adapter (`None` when cell has no
-        CNC enclosure/vise).
-      config: Validated application configuration dataclass.
+      robot: Robot hardware interface.
+      gripper: Gripper hardware interface.
+      machine: Optional CNC machine hardware interface.
+      config: Application configuration.
+      include_entry_guard: Whether to prepend a safety move to
+        `machine_approach_frame` for mid-cycle entry.
 
   Returns:
-      Behavior tree sequence node executing machine unloading.
+      A `bt.Sequence` node executing the machine unloading phase.
   """
-  parent_object = config.frames.parent_object
-  machine_approach_frame_name = config.frames.machine_approach_frame
-  preplace_vise_frame_name = config.frames.preplace_vise_frame
-  unload_touchdown_force_newtons = config.cycle.unload_touchdown_force_newtons
-  touchdown_timeout_seconds = config.cycle.touchdown_timeout_seconds
-  retract_distance_meters = config.cycle.retract_distance_meters
-  workpiece_object_name = config.cycle.workpiece_id
-  vise_object_name = (
-    config.machine.vise_object_name if config.machine is not None else None
-  )
-  vise_collision_pairs = (
-    [
-      (workpiece_object_name, vise_object_name),
-      (config.robot.tool_object_name, vise_object_name),
-      (config.robot.tool_object_name, workpiece_object_name),
-    ]
-    if vise_object_name
-    else [
-      (config.robot.tool_object_name, workpiece_object_name),
-    ]
+  tasks: list[bt.Node] = []
+  if include_entry_guard:
+    tasks.append(
+      create_move_to_frame_task(
+        robot=robot,
+        frame_name=config.frames.machine_approach_frame,
+        config=config,
+        motion_type="ANY",
+        task_name="Step 10a: Move to Machine Approach (Entry Guard)",
+      )
+    )
+  if machine is not None:
+    tasks.append(machine.build_open_door_task(name="Step 10: Open CNC Door"))
+
+  tasks.append(
+    create_move_to_frame_task(
+      robot=robot,
+      frame_name=config.frames.preplace_vise_frame,
+      config=config,
+      motion_type="LINEAR",
+      excluded_collision_pairs=config.vise_collision_pairs,
+      task_name=f"Step 11a: Linear Move to {config.frames.preplace_vise_frame}",
+    )
   )
 
-  tasks: list[bt.Node] = []
+  post_reparent: list[bt.Node] = []
   if machine is not None:
-    tasks.extend(
-      [
-        machine.build_open_door_task(name="Open CNC Door"),
-        machine.build_open_vise_task(name="Open CNC Vise"),
-      ]
+    post_reparent.append(
+      machine.build_open_vise_task(
+        name="Step 11e: Open CNC Vise (Unclamp Part)"
+      )
     )
 
   tasks.extend(
-    [
-      create_move_to_frame_task(
-        robot=robot,
-        frame_name=machine_approach_frame_name,
-        parent_object=parent_object,
-        motion_type="ANY",
-        task_name=f"Approach Machine Entry ({parent_object}/{machine_approach_frame_name})",
+    build_interaction_tasks(
+      robot=robot,
+      config=config,
+      frame_name=config.frames.place_vise_frame,
+      touchdown=config.unload_touchdown,
+      label="Step 11b",
+      excluded_collision_pairs=config.vise_collision_pairs,
+      pre_reparent_tasks=[
+        gripper.build_close_task(name="Step 11c: Grasp Machined Part")
+      ],
+      reparent_task=robot.build_attach_object_task(
+        object_name=config.workpiece.object_name,
+        name="Step 11d: Attach Machined Part in World",
       ),
-      create_move_to_frame_task(
-        robot=robot,
-        frame_name=preplace_vise_frame_name,
-        parent_object=parent_object,
-        motion_type="ANY",
-        excluded_collision_pairs=vise_collision_pairs,
-        task_name=f"Approach Machined Part ({parent_object}/{preplace_vise_frame_name})",
+      post_reparent_tasks=post_reparent,
+    )
+  )
+
+  exit_frames = [
+    config.frames.preplace_vise_frame,
+    config.frames.machine_approach_frame,
+  ]
+  tasks.append(
+    create_move_through_frames_task(
+      robot=robot,
+      frame_names=exit_frames,
+      config=config,
+      motion_type=["LINEAR", "ANY"],
+      excluded_collision_pairs=config.vise_collision_pairs,
+      task_name=(
+        f"Step 12: Blended Retract from Vise ({' -> '.join(exit_frames)})"
       ),
-      create_compliant_touchdown_task(
-        robot=robot,
-        direction=(0.0, 0.0, 1.0),
-        contact_force_newtons=unload_touchdown_force_newtons,
-        timeout_seconds=touchdown_timeout_seconds,
-        task_name="Compliant Touchdown to Machined Part (+Z Tool)",
-      ),
-      create_relative_retract_task(
-        robot=robot,
-        distance_meters=retract_distance_meters,
-        exclude_collision=True,
-        excluded_collision_objects=(workpiece_object_name,),
-        task_name=f"Linear Retract ({retract_distance_meters * 100:.1f} cm, -Z Tool)",
-      ),
-      gripper.build_close_task(name="Grasp Machined Part"),
-      robot.build_attach_object_task(
-        object_name=workpiece_object_name,
-        name=f"Attach {workpiece_object_name} to Gripper",
-      ),
-      create_relative_retract_task(
-        robot=robot,
-        distance_meters=retract_distance_meters,
-        exclude_collision=True,
-        excluded_collision_objects=(workpiece_object_name,),
-        task_name=f"Linear Retract Clear of Vise ({retract_distance_meters * 100:.1f} cm, -Z Tool)",
-      ),
-      create_move_to_frame_task(
-        robot=robot,
-        frame_name=machine_approach_frame_name,
-        parent_object=parent_object,
-        motion_type="LINEAR",
-        task_name=f"Retract Machined Part from Machine ({parent_object}/{machine_approach_frame_name})",
-      ),
-    ]
+    )
   )
 
   return bt.Sequence(name="4. Unload Machine Subtree", children=tasks)
