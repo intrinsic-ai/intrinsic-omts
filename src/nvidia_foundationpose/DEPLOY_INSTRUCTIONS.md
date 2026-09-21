@@ -38,26 +38,30 @@ inctl_external service delete inference_service --address=localhost:17080
 
 ## Step 2. Build the asset bundle and transfer it to the OMTS machine
 
-Follow the setup in the [README.md](README.md), sections **1.1 through 1.6**:
+Follow the setup in the [README.md](README.md):
 
-* 1.1 Clone submodules
-* 1.2 Build FoundationPose C++ inference library
-* 1.3 Extract runtime shared libraries from NGC
-* 1.4 Extract Python TensorRT & CUDA bindings
-* 1.5 Download model weights (from internal Google Drive) into `models/`
-* 1.6 Manually patch `tokenizer.py`
+1. Manually download SAM3 (sam3.pt) and FoundationStereo (deployable_foundation_stereo_s_dynamic_v2.0.onnx)
+   models to `src/nvidia_foundationpose/checkpoints/`.
+2. Run `./src/nvidia_foundationpose/scripts/build.sh` to build external libraries and bindings
+3. Build the bazel bundle
 
-Then build the asset bundle (README section **2.1**):
+  * Assuming [insrc PR](https://github.com/intrinsic-ai/insrc/pull/55558) has been merged,
 
-```bash
-bazel build --config=intrinsic //incode/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:nvidia_pose_estimator_service_asset
-```
+    ```bash
+    bazel build @intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:nvidia_pose_estimator_service_asset
+    ```
+  * If PR has not been merged,
 
-Transfer the built asset to the OMTS machine, e.g. using rsync:
+    First manually export the IOC build using the `run_ioc.sh` script, e.g. to ~/ioc_export, then run
+    
+    ```bash
+    bazel build \
+          --override_module=intrinsic-core=~/ioc_export \
+          --override_module=intrinsic_apis=~/ioc_export/intrinsic_apis \
+          @intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:nvidia_pose_estimator_service_asset
+    ```
 
-```text
-bazel-bin/incode/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/nvidia_pose_estimator_service_asset.bundle.tar
-```
+Transfer the built asset (bazel-bin/external/intrinsic-core+/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/nvidia_pose_estimator_service_asset.bundle.tar) to the OMTS machine, e.g. using rsync:
 
 ## Step 3. Register the pose estimator for the target scene object
 
