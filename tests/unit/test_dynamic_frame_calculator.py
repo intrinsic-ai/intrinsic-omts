@@ -24,13 +24,15 @@ from intrinsic.math.python import data_types
 from src.utils.dynamic_frame_calculator import (
   calculate_and_update_dynamic_frames,
 )
-from src.utils.math_utils import (
+from src.utils.execution_utils import (
   create_transform_node_ref,
   describe_motion_types,
-  normalize_angle,
-  normalize_joint_angles,
   normalize_motion_types,
   object_exists_in_world,
+)
+from src.utils.math_utils import (
+  normalize_angle,
+  normalize_joint_angles,
 )
 from src.utils.script_utils import load_python_script
 
@@ -50,7 +52,7 @@ def _make_params(**overrides: Any) -> Any:
     "approach_offset_z": 0.08,
     "pregrasp_frame_name": "pre_grasp",
     "grasp_frame_name": "grasp",
-    "target_scene_object_id": "ai.intrinsic.raw_stock_2x3x5",
+    "target_scene_object_id": "raw_stock_2x3x5",
     "min_safe_z": 0.95,
     "tool_object_name": "gripper",
     "tool_frame_name": "tool_frame",
@@ -67,7 +69,11 @@ class DynamicFrameCalculatorTest(absltest.TestCase):
 
   def test_exec_via_load_python_script_in_isolated_namespace(self) -> None:
     """Verifies the script executes hermetically via exec() like bt.PythonScript."""
-    script_code = load_python_script(calculate_and_update_dynamic_frames)
+    from src.utils import math_utils
+
+    script_code = load_python_script(
+      calculate_and_update_dynamic_frames, preludes=(math_utils,)
+    )
     mock_world = mock.MagicMock()
     mock_root = mock.MagicMock()
     mock_root.list_frames.return_value = []
@@ -153,13 +159,12 @@ class DynamicFrameCalculatorTest(absltest.TestCase):
 
     mock_stock = mock.MagicMock()
     mock_stock.parent = mock_root
-    setattr(mock_world, "ai.intrinsic.raw_stock_2x3x5", None)
     mock_world.raw_stock_2x3x5 = mock_stock
 
     context = mock.MagicMock()
     context.object_world = mock_world
     params = _make_params(
-      target_scene_object_id="ai.intrinsic.raw_stock_2x3x5",
+      target_scene_object_id="raw_stock_2x3x5",
       pos_z=1.00,
     )
 

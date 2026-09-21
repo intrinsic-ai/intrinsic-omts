@@ -24,6 +24,7 @@ from intrinsic.solutions import deployments, provided
 from intrinsic.solutions import proto_building as pb
 
 from src.core.config import VisionConfig
+from src.utils import math_utils
 from src.utils.dynamic_frame_calculator import (
   calculate_and_update_dynamic_frames,
 )
@@ -343,7 +344,10 @@ class OrbbecVision(VisionInterface):
 
     calc_script = bt.PythonScript(
       signature_with_args=signature,
-      function_body=load_python_script(calculate_and_update_dynamic_frames),
+      function_body=load_python_script(
+        calculate_and_update_dynamic_frames,
+        preludes=(math_utils,),
+      ),
     )
     return bt.Task(
       action=calc_script,
