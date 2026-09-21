@@ -34,9 +34,6 @@ The top-level task orchestration engine. Built using the Solution Building Libra
 - **`estimate_pose`**: Executes GPU-accelerated 6-DoF pose estimation via NVIDIA FoundationPose® to determine accurate workpiece position and orientation directly from camera feeds, enabling robust grasp planning without rigid physical fixturing.
 - **`dio_set_output`**: Toggles digital outputs on the I/O controller to automate external hardware signals, such as commanding the CNC machine door to open/close and actuating the vise clamp.
 
-#### Physical workcell
-- The components required to deploy the OMTS reference workcell on physical hardware.
-
 ---
 
 ## Installation and setup
