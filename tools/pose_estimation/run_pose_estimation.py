@@ -94,6 +94,11 @@ _TIMEOUT_SEC = flags.DEFINE_integer(
   None,
   help="Optional inference timeout in seconds.",
 )
+_CAPTURE_ONLY = flags.DEFINE_bool(
+  "capture_only",
+  False,
+  help="Only execute capture_images skill and inspect image buffers.",
+)
 
 FLAGS = flags.FLAGS
 
@@ -440,6 +445,11 @@ def main(argv: Sequence[str]) -> None:
     )
   except ValueError as e:
     print(f"Failed to create pose estimation pipeline: {e}")
+    return
+
+  if _CAPTURE_ONLY.value:
+    solution.executive.run(capture_skill)
+    print("capture_images executed successfully.")
     return
 
   try:

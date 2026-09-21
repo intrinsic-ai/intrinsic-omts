@@ -1,5 +1,6 @@
 load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 load("@intrinsic-core//bazel:python.bzl", "py_test")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -323,5 +324,14 @@ py_test(
         "//src/utils:math_utils",
         "@com_google_absl_py//absl/testing:absltest",
         "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
+    ],
+)
+
+sh_test(
+    name = "test_omts_ctl",
+    srcs = ["test_omts_ctl.sh"],
+    data = [
+        "//tools:omts_ctl.sh",
+        "//tools/ctl:ctl_libs",
     ],
 )
