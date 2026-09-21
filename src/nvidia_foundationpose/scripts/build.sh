@@ -370,23 +370,23 @@ if [[ "${BUILD_ASSET}" -eq 1 || "${VERIFY_DOCKER_LOAD}" -eq 1 ]]; then
   echo "Building Bazel asset bundle in ${OMTS_ROOT}..."
   mkdir -p /tmp/empty_docker_config && echo '{}' > /tmp/empty_docker_config/config.json
   cd "${OMTS_ROOT}"
-  bazel build @ioc//incode/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:nvidia_pose_estimator_service_asset
+  bazel build @intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:nvidia_pose_estimator_service_asset
 fi
 
 if [[ "${VERIFY_DOCKER_LOAD}" -eq 1 ]]; then
   echo ""
   echo "Verifying asset bundle image with 'docker load'..."
-  BUNDLE_TAR="${OMTS_ROOT}/bazel-bin/external/insrc+/incode/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/nvidia_pose_estimator_service_asset.bundle.tar"
+  BUNDLE_TAR="${OMTS_ROOT}/bazel-bin/external/intrinsic-core+/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/nvidia_pose_estimator_service_asset.bundle.tar"
   LOAD_OUT="$(tar -xOf "${BUNDLE_TAR}" nvidia_pose_estimator_image.tar | docker load)"
   echo "${LOAD_OUT}"
   IMAGE_ID="$(echo "${LOAD_OUT}" | awk '/Loaded image/ {print $NF}')"
   echo "Testing container startup and module imports (ftfy, tensorrt, foundationpose_perception_pipeline)..."
-  HERMETIC_PY="/incode/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/nvidia_service_main.runfiles/rules_python++python+python_3_11_x86_64-unknown-linux-gnu/bin/python3"
+  HERMETIC_PY="/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/nvidia_service_main.runfiles/rules_python++python+python_3_11_x86_64-unknown-linux-gnu/bin/python3"
   docker run ${DOCKER_RUNTIME} --rm \
     -e LD_LIBRARY_PATH="/usr/local/lib/foundation_pose:/usr/local/lib/foundation_pose/lib" \
     --entrypoint "${HERMETIC_PY}" "${IMAGE_ID}" -c "
 import sys, glob
-runfiles = '/incode/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/nvidia_service_main.runfiles'
+runfiles = '/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/nvidia_service_main.runfiles'
 sys.path[:0] = ['/bindings'] + glob.glob(runfiles + '/*/site-packages') + [runfiles + '/_main/src/nvidia_foundationpose/foundationpose_perception_pipeline/src']
 import ftfy
 import tensorrt
@@ -396,7 +396,7 @@ print('SUCCESS: Imported tensorrt version:', tensorrt.__version__)
 print('SUCCESS: SAM3 tokenizer basic_clean test:', tok._basic_clean('test &amp;amp; string'))
 "
   echo "Testing service binary entrypoint (--help)..."
-  SERVICE_HELP="$(docker run ${DOCKER_RUNTIME} --rm "${IMAGE_ID}" /incode/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/nvidia_service_main --help 2>&1 || true)"
+  SERVICE_HELP="$(docker run ${DOCKER_RUNTIME} --rm "${IMAGE_ID}" /intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/nvidia_service_main --help 2>&1 || true)"
   echo "${SERVICE_HELP}" | head -n 12
   if ! echo "${SERVICE_HELP}" | grep -q "Main entrypoint for the Nvidia Pose Estimator Service"; then
     echo "ERROR: Service entrypoint verification failed!" >&2

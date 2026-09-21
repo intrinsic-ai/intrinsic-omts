@@ -83,5 +83,5 @@ container_layer(
 
 alias(
     name = "nvidia_pose_estimator_service_asset",
-    actual = "@ioc//incode/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:nvidia_pose_estimator_service_asset",
+    actual = "@intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:nvidia_pose_estimator_service_asset",
 )
