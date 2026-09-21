@@ -102,8 +102,7 @@ def create_compliant_touchdown_task(
 def create_relative_retract_task(
   robot: RobotInterface,
   distance_meters: float,
-  exclude_collision: bool = True,
-  excluded_collision_objects: Sequence[str] | None = None,
+  excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
   task_name: str | None = None,
 ) -> bt.Node:
   """Builds a relative Cartesian linear retract task along the tool -Z axis.
@@ -111,10 +110,8 @@ def create_relative_retract_task(
   Args:
       robot: Robot controller adapter.
       distance_meters: Magnitude in meters to retract along tool -Z.
-      exclude_collision: If True, adds a segment-scoped collision exclusion rule
-        for the moving gripper object.
-      excluded_collision_objects: Additional world object names to include in
-        the segment-scoped collision exclusion rule.
+      excluded_collision_pairs: Optional pairs of object names to exclude from
+        collision checking during this motion segment.
       task_name: Optional custom name for the Behavior Tree task node.
 
   Returns:
@@ -124,8 +121,7 @@ def create_relative_retract_task(
   return robot.build_move_relative_cartesian_task(
     translation=(0.0, 0.0, retract_distance),
     motion_type="LINEAR",
-    exclude_collision=exclude_collision,
-    excluded_collision_objects=excluded_collision_objects,
+    excluded_collision_pairs=excluded_collision_pairs,
     name=task_name
     or f"Relative Retract ({abs(distance_meters) * 100:.1f} cm, -Z Tool)",
   )
