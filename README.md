@@ -18,7 +18,7 @@ The Open Machine Tending Solution (OMTS) is an open-source reference application
 ## High Level OMTS Architecture
 
 <p align="center">
-  <img src="docs/omts_architecture.png" alt="High Level OMTS Architecture" />
+  <img src="docs/IntrinsicOMTSArchitecture.png" alt="High Level OMTS Architecture" />
 </p>
 
 See [Architecture.md](docs/ARCHITECTURE.md) for more details.
@@ -41,19 +41,26 @@ The top-level task orchestration engine. Built using the Solution Building Libra
 
 ---
 
-## Documentation Guides
+## Installation and setup
 
-- [Architecture & System Design](docs/ARCHITECTURE.md): SBL abstractions, behavior tree lifecycle, infeed strategy pattern, and domain models.
-- [Hardware Abstraction & Real I/O](src/hardware/README.md): Guide for hardware adapters (`UrRobot`, `RobotiqGripper`, `DioGripper`, `DioCncMachine`, `OrbbecVision`), ADIO binding, and belief-world joint synchronization.
-- [Developer & Operational CLI Tools](tools/README.md): Standalone Bazel CLI utilities for commissioning, world inspection (`inspect_world`, `apply_scene_updates`), teleoperation (`move_to_frame`, `jog_interactive`), calibration, and pose estimation.
+See the [Getting Started guide](https://github.com/intrinsic-ai/intrinsic-core/tree/main/developer_resources/learn/tutorials/getting_started.md) for full installation and setup instructions.
 
 ---
 
-## 1. Execution Pipeline Overview
+## Documentation and resources
 
-OMTS executes the complete perception-to-manipulation cycle inside a single SBL
-`BehaviorTree` wrapped in `bt.Loop` for single-cycle, multi-cycle, or continuous
-operation:
+- [Architecture & System Design](https://github.com/intrinsic-ai/intrinsic-omts/blob/main/docs/ARCHITECTURE.md): SBL abstractions, behavior tree lifecycle, infeed strategy pattern, and domain models.
+- [Extending Hardware & Real I/O](src/hardware/README.md): Guide for connecting real Robotiq grippers, pneumatic vises, CNC machine door interlocks, and 3D perception tracking.
+- [Developer Playbook & Operations](tools/README.md): Bazel execution, unit tests, diagnostic tools (`inspect_world`, `apply_scene_updates`, `move_to_frame`), and troubleshooting gotchas.
+- [Tutorials](https://github.com/intrinsic-ai/intrinsic-core/tree/main/developer_resources/learn/tutorials): Step-by-step guides to get started, customize physical layouts, visualize the robot, and more.
+- [Glossary](https://github.com/intrinsic-ai/intrinsic-core/blob/main/developer_resources/learn/glossary/general_terms.md): Technical definitions of Intrinsic Core and OMTS.
+- [Intrinsic developer community](https://developer.intrinsic.ai/): Guides, tutorials, a community forum to ask questions, share projects, and get support, and be the first to hear about new tools and features.
+
+---
+
+## 1. Solution architecture and execution pipeline
+
+OMTS orchestrates a complete perception-to-manipulation machine tending cycle inside a single SBL `BehaviorTree` wrapped in `bt.Loop` for single-cycle, multi-cycle, or continuous operation. It features a dual-infeed strategy supporting either Vision-Guided Pick (random part placement via 3D camera pose estimation) or Blind Grid Pick (deterministic pallet slot math):
 
 ```mermaid
 flowchart TD
@@ -95,7 +102,7 @@ flowchart TD
 
 ---
 
-## 2. Repository Layout
+## 2. Repository layout
 
 ```text
 omts/
@@ -123,7 +130,20 @@ omts/
 
 ---
 
-## 3. Prerequisites & Workspace Setup
+## 3. Object-oriented design and SBL abstractions
+
+OMTS adheres to clean separation of concerns:
+
+- **Domain Models ([`src/core/`](src/core/))**: Represents manufacturing state (`Workpiece`, `PartState`, `TraySlot`, `WorkcellState`) independently from robot kinematics.
+- **Hardware Adapters ([`src/hardware/`](src/hardware/))**: Unified interfaces (`Robot`, `Gripper`, `Machine`, `VisionSensor`) wrapping low-level SBL gRPC stubs and allowing seamless substitution with mock objects during unit testing.
+- **Infeed Strategy Pattern ([`src/core/infeed.py`](src/core/infeed.py))**: Encapsulates part acquisition logic:
+  - `PerceptionInfeed`: Uses camera + pose estimation for unstructured / random part placement.
+  - `GridInfeed`: Uses mathematical row/column indexing for structured tray pallets.
+- **Composable Behavior Trees ([`src/behaviors/`](src/behaviors/))**: Modular factory functions returning standard `bt.Node` / `bt.SubTree` building blocks.
+
+---
+
+## 4. Prerequisites & Workspace setup
 
 ### Hardware Requirements
 
@@ -203,9 +223,9 @@ and model weights from this repository's GitHub Releases (configured in
 
 ---
 
-## 4. Build & Run Instructions
+## 5. Build & Run Instructions
 
-### 1. Deploy the Workcell Solution
+### 5.1. Deploy the Workcell Solution
 
 Build and launch the ICON controller, hardware modules, perception services, and
 simulator:
@@ -218,7 +238,7 @@ bazel run //:omts_solution -c opt -- --address=localhost:17080
 bazel run //:omts_solution -c opt --//:setup=lab_bb_01 -- --address=localhost:17080
 ```
 
-### 2. Apply Scene Updates (Simulation / Fresh Deployment)
+### 5.2. Apply Scene Updates (Simulation / Fresh Deployment)
 
 Push kinematic attachments, robot base alignment, and scene frames to the live
 `ObjectWorld` (pass `--reset_sim` to synchronize Gazebo's `sim_world`):
@@ -229,7 +249,7 @@ bazel run //tools/world:apply_scene_updates -- \
   --reset_sim
 ```
 
-### 3. Register & Verify Pose Estimator (Required before running `omts_app`)
+### 5.3. Register & Verify Pose Estimator (Required before running `omts_app`)
 
 Register the FoundationPose estimator for the raw stock workpiece before
 starting the machine tending application:
@@ -252,7 +272,7 @@ bazel run //tools/pose_estimation:run_pose_estimation -- \
   --pose_estimator_id=ai.intrinsic.raw_stock_2x3x5_estimator
 ```
 
-### 4. Run the OMTS Application
+### 5.4. Run the OMTS Application
 
 Connect to the running deployment and execute the machine tending Behavior Tree:
 
@@ -277,7 +297,7 @@ bazel run //src:omts_app -- \
 
 ---
 
-## 5. Testing & Developer Tools
+## 6. Testing and developer tools
 
 ### Unit Tests
 
@@ -314,7 +334,7 @@ bazel run //tools/machine:control_machine -- --address=localhost:17080 --action=
 
 ---
 
-## 6. Code Quality & Formatting
+## 7. Code Quality & Formatting
 
 OMTS enforces formatting and linting checks on all pull requests via GitHub
 Actions CI (`line-length = 80`, `indent-width = 2`):
@@ -329,7 +349,7 @@ Actions CI (`line-length = 80`, `indent-width = 2`):
 
 ---
 
-## 7. Licensing Information for NVIDIA FoundationPose
+## 8. Licensing Information for NVIDIA FoundationPose®
 
 OMTS uses the FoundationPose model by NVIDIA for RGB-D pose estimation.
 FoundationPose is packaged into an `MlModelAsset` in
@@ -354,13 +374,6 @@ components:
 By building this project, you download the model weights directly from NVIDIA
 and accept the NVIDIA Open Model License for those weights. Intrinsic does not
 distribute these weights.
-
-
----
-
-## Documentation and related repositories
-
-* [**Intrinsic Developer Community**](https://developer.intrinsic.ai): Complete guides, interactive tutorials, and API references.
 
 ---
 
