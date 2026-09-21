@@ -1,16 +1,17 @@
 # Open Machine Tending Solution (OMTS)
 
-[![CI](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml/badge.svg)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml) [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml) [![Python](https://img.shields.io/badge/python-3.11-blue.svg?logo=python&logoColor=white)](https://www.python.org/) [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE) [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md) [![Dependabot](https://img.shields.io/badge/dependabot-enabled-025e8c.svg?logo=dependabot&logoColor=white)](.github/workflows/dependabot.yml)
+[![CI](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml/badge.svg)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml) [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml) [![Python](https://img.shields.io/badge/python-3.11-blue.svg?logo=python&logoColor=white)](https://www.python.org/) [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE) [![Documentation](https://img.shields.io/badge/Intrinsic%20developer%20community-Join%20us-blue.svg)](https://developer.intrinsic.ai) [![ROS2 Compatibility](https://img.shields.io/badge/ROS2_Compatible-brightgreen.svg)](https://www.ros.org/) [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md) [![Dependabot](https://img.shields.io/badge/dependabot-enabled-025e8c.svg?logo=dependabot&logoColor=white)](.github/workflows/dependabot.yml)
 
-**OMTS** is the open-source reference implementation for automated machine
-tending (CNC milling, turning, fixture loading, and vision-guided manipulation)
-built on **Intrinsic Core** using the **Solution Building Library (SBL)** Python
-SDK. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for system boundaries,
-grasp geometry math, and the sequence diagram.
+The Open Machine Tending Solution (OMTS) is an open-source reference application for automated CNC machine tending built on [Intrinsic Core™](https://github.com/intrinsic-ai/intrinsic-core) and compatible with ROS to jump-start the development of industrial applications.
 
 <p align="center">
   <img src="docs/omts.gif" alt="OMTS in RViz" />
 </p>
+
+- A functional baseline for a real-world machine shop use case that delivers pre-configured assets, skills, a native digital twin ready to use out of the box.
+- Easily customize solutions with hardware-agnostic robot control, making it easy to swap arms, grippers, and sensors without rewriting application code.
+- Built-in compatibility with NVIDIA FoundationPose®, providing accurate 6-DoF pose estimation of parts without custom vision pipeline wrappers.
+- An open, modular template built for seamless customization across adjacent manufacturing tasks and collaborative open-source contribution.
 
 ---
 
