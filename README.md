@@ -1,6 +1,6 @@
 # Open Machine Tending Solution (OMTS)
 
-[![CI](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml/badge.svg)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml) [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml) [![Python](https://img.shields.io/badge/python-3.11-blue.svg?logo=python&logoColor=white)](https://www.python.org/) [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE) [![Documentation](https://img.shields.io/badge/Intrinsic%20developer%20community-Join%20us-blue.svg)](https://developer.intrinsic.ai) [![ROS2 Compatibility](https://img.shields.io/badge/ROS2_Compatible-brightgreen.svg)](https://www.ros.org/) [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md) [![Dependabot](https://img.shields.io/badge/dependabot-enabled-025e8c.svg?logo=dependabot&logoColor=white)](.github/workflows/dependabot.yml)
+[![CI](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml/badge.svg)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml) [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](https://github.com/intrinsic-ai/intrinsic-omts/actions/workflows/ci.yml) [![Python](https://img.shields.io/badge/python-3.11-blue.svg?logo=python&logoColor=white)](https://www.python.org/) [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE) [![Documentation](https://img.shields.io/badge/Intrinsic%20developer%20community-Join%20us-blue.svg)](https://developer.intrinsic.ai) [![ROS2 Compatibility](https://img.shields.io/badge/ROS2_Compatible-brightgreen.svg)](https://www.ros.org/) [![Dependabot](https://img.shields.io/badge/dependabot-enabled-025e8c.svg?logo=dependabot&logoColor=white)](.github/workflows/dependabot.yml)
 
 The Open Machine Tending Solution (OMTS) is an open-source reference application for automated machine tending built on [Intrinsic Core™](https://github.com/intrinsic-ai/intrinsic-core) and compatible with ROS to jump-start the development of industrial applications.
 
@@ -12,6 +12,40 @@ The Open Machine Tending Solution (OMTS) is an open-source reference application
 - Easily customize solutions with hardware-agnostic robot control, making it easy to swap arms, grippers, and sensors without rewriting application code.
 - Built-in compatibility with NVIDIA FoundationPose®, providing accurate 6-DoF pose estimation of parts without custom vision pipeline wrappers.
 - An open, modular template built for seamless customization across adjacent manufacturing tasks and collaborative open-source contribution.
+
+---
+
+## High Level OMTS Architecture
+
+<p align="center">
+  <img src="docs/omts_architecture.png" alt="High Level OMTS Architecture" />
+</p>
+
+See [Architecture.md](docs/ARCHITECTURE.md) for more details.
+
+### Components represented in the architecture
+
+#### Behavior Tree
+The top-level task orchestration engine. Built using the Solution Building Library (SBL), it executes modular behavior trees to coordinate skills, logic branching, and error handling. By decoupling high-level sequence coordination from underlying motion and perception algorithms, it allows developers to modify process logic and recovery routines without touching low-level driver or controller code.
+
+#### Skills & Services
+- **`move_robot`**: Encapsulates constraint-aware motion planning and real-time control to automatically generate collision-free paths and stream optimized trajectories directly to the robot controller, ensuring smooth, deterministic execution without manual waypoint engineering.
+- **`move_to_contact`**: Leverages real-time force/torque feedback to drive compliant, guarded approach motions, automatically arresting or adapting trajectory upon physical contact to ensure safe, damage-free part localization and seating.
+- **`estimate_pose`**: Executes GPU-accelerated 6-DoF pose estimation via NVIDIA FoundationPose® to determine accurate workpiece position and orientation directly from camera feeds, enabling robust grasp planning without rigid physical fixturing.
+- **`plan_grasp`**: Consumes 6-DoF pose estimates and gripper kinematics to autonomously compute collision-free, kinematically feasible grasp poses and approach vectors, ensuring stable workpiece acquisition without hard-coded grasp waypoints.
+- **`control_pinch_gripper`**: Opens and closes parallel-jaw grippers with built-in grip verification to ensure parts are securely held or released during pick-and-place operations.
+- **`dio_set_output`**: Toggles digital outputs on the I/O controller to automate external hardware signals, such as commanding the CNC machine door to open/close and actuating the vise clamp.
+
+#### Physical workcell
+- The components required to deploy the OMTS reference workcell on physical hardware.
+
+---
+
+## Documentation Guides
+
+- [Architecture & System Design](docs/ARCHITECTURE.md): SBL abstractions, behavior tree lifecycle, infeed strategy pattern, and domain models.
+- [Hardware Abstraction & Real I/O](src/hardware/README.md): Guide for hardware adapters (`UrRobot`, `RobotiqGripper`, `DioGripper`, `DioCncMachine`, `OrbbecVision`), ADIO binding, and belief-world joint synchronization.
+- [Developer & Operational CLI Tools](tools/README.md): Standalone Bazel CLI utilities for commissioning, world inspection (`inspect_world`, `apply_scene_updates`), teleoperation (`move_to_frame`, `jog_interactive`), calibration, and pose estimation.
 
 ---
 
