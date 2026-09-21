@@ -136,7 +136,7 @@ def build_pick_from_infeed_subtree(
         robot=robot,
         distance_meters=retract_distance_meters,
         excluded_collision_pairs=[
-            (config.robot.tool_object_name, workpiece_object_name),
+          (config.robot.tool_object_name, workpiece_object_name),
         ],
         task_name=(
           f"Linear Retract ({retract_distance_meters * 100:.1f} cm, -Z Tool)"
