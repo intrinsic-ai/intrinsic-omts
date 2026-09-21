@@ -15,7 +15,7 @@ The Open Machine Tending Solution (OMTS) is an open-source reference application
 
 ---
 
-## High Level OMTS Architecture
+## High level OMTS architecture
 
 <p align="center">
   <img src="docs/IntrinsicOMTSArchitecture.png" alt="High Level OMTS Architecture" />
@@ -25,19 +25,14 @@ See [Architecture.md](docs/ARCHITECTURE.md) for more details.
 
 ### Components represented in the architecture
 
-#### Behavior Tree
+#### Behavior tree
 The top-level task orchestration engine. Built using the Solution Building Library (SBL), it executes modular behavior trees to coordinate skills, logic branching, and error handling. By decoupling high-level sequence coordination from underlying motion and perception algorithms, it allows developers to modify process logic and recovery routines without touching low-level driver or controller code.
 
-#### Skills & Services
+#### Skills and services
 - **`move_robot`**: Encapsulates constraint-aware motion planning and real-time control to automatically generate collision-free paths and stream optimized trajectories directly to the robot controller, ensuring smooth, deterministic execution without manual waypoint engineering.
 - **`move_to_contact`**: Leverages real-time force/torque feedback to drive compliant, guarded approach motions, automatically arresting or adapting trajectory upon physical contact to ensure safe, damage-free part localization and seating.
 - **`estimate_pose`**: Executes GPU-accelerated 6-DoF pose estimation via NVIDIA FoundationPose® to determine accurate workpiece position and orientation directly from camera feeds, enabling robust grasp planning without rigid physical fixturing.
-- **`plan_grasp`**: Consumes 6-DoF pose estimates and gripper kinematics to autonomously compute collision-free, kinematically feasible grasp poses and approach vectors, ensuring stable workpiece acquisition without hard-coded grasp waypoints.
-- **`control_pinch_gripper`**: Opens and closes parallel-jaw grippers with built-in grip verification to ensure parts are securely held or released during pick-and-place operations.
 - **`dio_set_output`**: Toggles digital outputs on the I/O controller to automate external hardware signals, such as commanding the CNC machine door to open/close and actuating the vise clamp.
-
-#### Physical workcell
-- The components required to deploy the OMTS reference workcell on physical hardware.
 
 ---
 
@@ -58,7 +53,9 @@ See the [Getting Started guide](https://github.com/intrinsic-ai/intrinsic-core/t
 
 ---
 
-## 1. Solution architecture and execution pipeline
+## Implementation details
+
+### 1. Solution architecture and execution pipeline
 
 OMTS orchestrates a complete perception-to-manipulation machine tending cycle inside a single SBL `BehaviorTree` wrapped in `bt.Loop` for single-cycle, multi-cycle, or continuous operation. It features a dual-infeed strategy supporting either Vision-Guided Pick (random part placement via 3D camera pose estimation) or Blind Grid Pick (deterministic pallet slot math):
 
@@ -100,9 +97,7 @@ flowchart TD
     INFEED --> CNC_LOAD --> MACHINING --> CNC_UNLOAD --> OUTFEED
 ```
 
----
-
-## 2. Repository layout
+### 2. Repository layout
 
 ```text
 omts/
@@ -128,9 +123,7 @@ omts/
 └── tests/                               # Offline hermetic unit test suite
 ```
 
----
-
-## 3. Object-oriented design and SBL abstractions
+### 3. Object-oriented design and SBL abstractions
 
 OMTS adheres to clean separation of concerns:
 
@@ -141,11 +134,9 @@ OMTS adheres to clean separation of concerns:
   - `GridInfeed`: Uses mathematical row/column indexing for structured tray pallets.
 - **Composable Behavior Trees ([`src/behaviors/`](src/behaviors/))**: Modular factory functions returning standard `bt.Node` / `bt.SubTree` building blocks.
 
----
+### 4. Prerequisites and workspace setup
 
-## 4. Prerequisites & Workspace setup
-
-### Hardware Requirements
+#### Hardware requirements
 
 - **CPU**: x86-64 architecture (ARM architectures are currently unsupported).
 - **GPU**: Integrated graphics minimum (dedicated NVIDIA RTX 3060/4060+ strongly
@@ -157,7 +148,7 @@ OMTS adheres to clean separation of concerns:
 - **Networking**: 2–3 Gigabit Ethernet ports (Port 1: LAN/Internet; Port 2:
   Real-time Robot Controller; Optional Port 3: PoE Camera switch).
 
-### Workspace & Dependencies
+#### Workspace and dependencies
 
 Bazel fetches **Intrinsic Core** automatically via [`MODULE.bazel`](MODULE.bazel),
 so no manual `intrinsic-core` checkout is required:
@@ -179,34 +170,23 @@ git_override(
 )
 ```
 
-Two host prerequisites are required:
+**Git LFS** is required on the host machine because Intrinsic Core stores 3D
+meshes, textures, and model weights in Git LFS. Install and enable the smudge
+filter globally before building:
 
-1. **Git LFS**: Intrinsic Core stores meshes, textures, and model weights in Git
-   LFS. Install the smudge filter globally before building:
-   ```bash
-   sudo apt-get install git-lfs
-   git lfs install
-   ```
-2. **GitHub Authentication**: Authenticate with `gh` if accessing private staging
-   repositories:
-   ```bash
-   gh auth login
-   gh auth setup-git
-   ```
+```bash
+sudo apt-get install git-lfs
+git lfs install
+```
 
 To move to a different Intrinsic Core revision, update `INTRINSIC_CORE_COMMIT`
 in `MODULE.bazel`. The commit behind a release tag can be resolved with:
 
 ```bash
-git ls-remote https://github.com/intrinsic-ai/ioc-staging.git 'refs/tags/<tag>^{}'
+git ls-remote https://github.com/intrinsic-ai/intrinsic-core.git 'refs/tags/<tag>^{}'
 ```
 
-> [!NOTE]
-> Once `intrinsic-core` is public, the read-access requirement disappears and
-> the `git_override` definitions can be replaced with an `archive_override`
-> against a published release archive, which is faster and checksum-pinned.
-
-### GitHub Release Artifacts
+#### GitHub release artifacts
 
 During the build, Bazel automatically downloads the following prebuilt bundles
 and model weights from this repository's GitHub Releases (configured in
@@ -221,11 +201,9 @@ and model weights from this repository's GitHub Releases (configured in
   [`flowstate_orbbec`](https://github.com/intrinsic-ai/intrinsic-ros-camera-drivers/tree/main/flowstate_orbbec).
 - `segmentation.tar.gz`: Pretrained RF-DETR segmentation model.
 
----
+### 5. Build and run instructions
 
-## 5. Build & Run Instructions
-
-### 5.1. Deploy the Workcell Solution
+#### 5.1. Deploy the workcell solution
 
 Build and launch the ICON controller, hardware modules, perception services, and
 simulator:
@@ -238,7 +216,7 @@ bazel run //:omts_solution -c opt -- --address=localhost:17080
 bazel run //:omts_solution -c opt --//:setup=lab_bb_01 -- --address=localhost:17080
 ```
 
-### 5.2. Apply Scene Updates (Simulation / Fresh Deployment)
+#### 5.2. Apply scene updates (simulation / fresh deployment)
 
 Push kinematic attachments, robot base alignment, and scene frames to the live
 `ObjectWorld` (pass `--reset_sim` to synchronize Gazebo's `sim_world`):
@@ -249,7 +227,7 @@ bazel run //tools/world:apply_scene_updates -- \
   --reset_sim
 ```
 
-### 5.3. Register & Verify Pose Estimator (Required before running `omts_app`)
+#### 5.3. Register and verify pose estimator (required before running `omts_app`)
 
 Register the FoundationPose estimator for the raw stock workpiece before
 starting the machine tending application:
@@ -272,7 +250,7 @@ bazel run //tools/pose_estimation:run_pose_estimation -- \
   --pose_estimator_id=ai.intrinsic.raw_stock_2x3x5_estimator
 ```
 
-### 5.4. Run the OMTS Application
+#### 5.4. Run the OMTS application
 
 Connect to the running deployment and execute the machine tending Behavior Tree:
 
@@ -295,11 +273,9 @@ bazel run //src:omts_app -- \
   --simulation_mode=fast_preview
 ```
 
----
+### 6. Testing and developer tools
 
-## 6. Testing and developer tools
-
-### Unit Tests
+#### Unit tests
 
 Run the hermetic unit test suite offline (no running cluster or physical
 hardware required):
@@ -308,7 +284,7 @@ hardware required):
 bazel test //tests/...
 ```
 
-### Operational & Diagnostic CLI Tools
+#### Operational and diagnostic CLI tools
 
 See [`tools/README.md`](tools/README.md) for the full reference. Common commands:
 
@@ -332,9 +308,7 @@ bazel run //tools/gripper:control_gripper -- --address=localhost:17080 --action=
 bazel run //tools/machine:control_machine -- --address=localhost:17080 --action=open_door
 ```
 
----
-
-## 7. Code Quality & Formatting
+### 7. Code quality and formatting
 
 OMTS enforces formatting and linting checks on all pull requests via GitHub
 Actions CI (`line-length = 80`, `indent-width = 2`):
@@ -347,9 +321,7 @@ Actions CI (`line-length = 80`, `indent-width = 2`):
 ./tools/lint.sh
 ```
 
----
-
-## 8. Licensing Information for NVIDIA FoundationPose®
+### 8. Licensing information for NVIDIA FoundationPose®
 
 OMTS uses the FoundationPose model by NVIDIA for RGB-D pose estimation.
 FoundationPose is packaged into an `MlModelAsset` in
