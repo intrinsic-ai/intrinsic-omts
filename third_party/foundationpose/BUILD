@@ -17,7 +17,6 @@ load("@rules_cuda//cuda:defs.bzl", "cuda_library")
 load("@rules_license//rules:license.bzl", "license")
 load("@rules_license//rules:package_info.bzl", "package_info")
 load("@rules_python//python:defs.bzl", "py_binary")
-load("@rules_uv//uv:pip.bzl", "pip_compile")
 load(":build_defs.bzl", "triton_python_env_tar")
 
 package(
@@ -48,20 +47,6 @@ exports_files([
     "requirements.in",
     "requirements.txt",
 ])
-
-pip_compile(
-    name = "requirements",
-    extra_args = [
-        "--python-version=3.12",
-    ],
-    python_platform = "x86_64-unknown-linux-gnu",
-    requirements_in = ":requirements.in",
-    requirements_txt = ":requirements.txt",
-    # Disable the automatically generated test target as it is slow, requires
-    # network access and adds unnecessary dependencies on external services we
-    # do not control.
-    tags = ["manual"],
-)
 
 py_binary(
     name = "build_triton_env",
