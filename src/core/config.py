@@ -196,6 +196,7 @@ class CycleConfig:
   return_touchdown_force_newtons: float
   touchdown_timeout_seconds: float
   machining_timeout_seconds: float
+  grasp_offset_z: float = 0.01
 
 
 @dataclasses.dataclass(frozen=True)
