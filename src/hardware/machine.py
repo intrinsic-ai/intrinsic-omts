@@ -233,7 +233,7 @@ class DioCncMachine(CncMachineInterface):
     )
 
   def build_close_door_task(self, name: str | None = None) -> bt.Node:
-    """Builds a task to close the CNC door via DIO and sync belief-world joints."""
+    """Builds a task to close the CNC door via DIO, wait 10s, and sync belief-world joints."""
     task_name = name or "Close CNC Door (DIO)"
     return self._build_actuation_task(
       active_pin=self._door_close_pin,
@@ -242,6 +242,8 @@ class DioCncMachine(CncMachineInterface):
       object_name=self._enclosure_object_name,
       joints=self._door_closed_joints,
       update_name="Update CNC Door Joint (Closed)",
+      dwell_time_sec=10.0,
+      dwell_name="Wait for CNC Door Closed (10.0s)",
     )
 
   def build_open_vise_task(self, name: str | None = None) -> bt.Node:

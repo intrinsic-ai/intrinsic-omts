@@ -316,6 +316,13 @@ class HardwareAdaptersTest(absltest.TestCase):
     )
     mock_update_world.assert_called()
 
+    close_door_task = machine.build_close_door_task()
+    self.assertIsInstance(close_door_task, bt.Sequence)
+    self.assertEqual(len(close_door_task.children), 3)
+    self.assertEqual(
+      close_door_task.children[1].name, "Wait for CNC Door Closed (10.0s)"
+    )
+
     close_vise_task = machine.build_close_vise_task()
     self.assertIsInstance(close_vise_task, bt.Sequence)
     self.assertEqual(len(close_vise_task.children), 2)

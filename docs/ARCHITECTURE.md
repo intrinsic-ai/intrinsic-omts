@@ -151,7 +151,7 @@ sequenceDiagram
 
     Note over Robot,World: 3. Machining Handshake Subtree (src/behaviors/machining.py)
     Robot->>Robot: Move to Safe Standby machine_approach (ANY)
-    CNC->>World: Close CNC Door (DIO + update_world)
+    CNC->>World: Close CNC Door (DIO + 10s dwell + update_world)
     CNC->>CNC: Pulse Cycle Start Output (0.5s high)
     CNC->>CNC: Wait for Cycle Complete (DIO input / dwell)
 
