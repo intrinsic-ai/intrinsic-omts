@@ -35,7 +35,7 @@ from intrinsic.world.proto import (
 
 from src.core.config import RobotConfig
 from src.core.types import JointPosition
-from src.utils.math_utils import (
+from src.utils.execution_utils import (
   create_transform_node_ref,
   describe_motion_types,
   normalize_motion_types,

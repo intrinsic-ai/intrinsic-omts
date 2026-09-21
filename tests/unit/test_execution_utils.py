@@ -18,7 +18,11 @@ from absl.testing import absltest
 from intrinsic.solutions import execution
 
 from src.core.types import SimulationMode
-from src.utils.execution_utils import to_executive_simulation_mode
+from src.utils.execution_utils import (
+  build_pose_estimator_proto,
+  resolve_resource,
+  to_executive_simulation_mode,
+)
 
 
 class ToExecutiveSimulationModeTest(absltest.TestCase):
@@ -50,6 +54,38 @@ class ToExecutiveSimulationModeTest(absltest.TestCase):
   def test_unsupported_mode_raises(self):
     with self.assertRaises(ValueError):
       to_executive_simulation_mode("reality")
+
+  def test_resolve_resource_direct_lookup(self):
+    class MockHandle:
+      types = ("CameraConfig",)
+
+    class MockSolution:
+      resources = {"orbbec_camera": MockHandle()}
+
+    handle = resolve_resource(MockSolution(), "orbbec_camera", "CameraConfig")
+    self.assertIsInstance(handle, MockHandle)
+
+  def test_resolve_resource_capability_lookup(self):
+    class MockHandle:
+      types = ("CameraConfig",)
+
+    class MockSolution:
+      resources = {"other_camera": MockHandle()}
+
+    handle = resolve_resource(MockSolution(), "missing", "CameraConfig")
+    self.assertIsInstance(handle, MockHandle)
+
+  def test_resolve_resource_not_found(self):
+    class MockSolution:
+      resources = {}
+
+    with self.assertRaises(ValueError):
+      resolve_resource(MockSolution(), "missing", "CameraConfig")
+
+  def test_build_pose_estimator_proto(self):
+    proto = build_pose_estimator_proto("ai.intrinsic.test_estimator")
+    self.assertEqual(proto.package, "ai.intrinsic")
+    self.assertEqual(proto.id, "test_estimator")
 
 
 if __name__ == "__main__":

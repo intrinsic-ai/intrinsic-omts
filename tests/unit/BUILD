@@ -298,6 +298,7 @@ py_test(
     srcs = ["test_dynamic_frame_calculator.py"],
     deps = [
         "//src/utils:dynamic_frame_calculator",
+        "//src/utils:execution_utils",
         "//src/utils:math_utils",
         "//src/utils:script_utils",
         "@com_google_absl_py//absl/testing:absltest",
@@ -311,5 +312,15 @@ py_test(
     deps = [
         "//tools/pose_estimation:run_pose_estimation_lib",
         "@com_google_absl_py//absl/testing:absltest",
+    ],
+)
+
+py_test(
+    name = "test_script_math",
+    srcs = ["test_script_math.py"],
+    deps = [
+        "//src/utils:math_utils",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
     ],
 )

@@ -5,10 +5,6 @@ package(default_visibility = ["//visibility:public"])
 py_library(
     name = "math_utils",
     srcs = ["math_utils.py"],
-    deps = [
-        "//src/core:types",
-        "@intrinsic_apis//intrinsic/world/proto:object_world_refs_py_pb2",
-    ],
 )
 
 py_library(
@@ -23,6 +19,7 @@ py_library(
     name = "dynamic_frame_calculator",
     srcs = ["dynamic_frame_calculator.py"],
     deps = [
+        ":math_utils",
         "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
     ],
 )
@@ -32,7 +29,10 @@ py_library(
     srcs = ["execution_utils.py"],
     deps = [
         "//src/core:types",
+        "@intrinsic-core//intrinsic/assets:id_utils_py",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:execution",
+        "@intrinsic_apis//intrinsic/perception/proto/v1:pose_estimator_id_py_pb2",
+        "@intrinsic_apis//intrinsic/world/proto:object_world_refs_py_pb2",
     ],
 )
 
