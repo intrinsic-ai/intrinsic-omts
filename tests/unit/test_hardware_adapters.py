@@ -40,7 +40,11 @@ class HardwareAdaptersTest(absltest.TestCase):
 
   def test_ur_robot_motion_and_object_attachment(self):
     mock_solution = mock.MagicMock()
-    mock_solution.world.list_object_names.return_value = ["gripper", "raw_stock_2x3x5", "schunk_egp_64nnb"]
+    mock_solution.world.list_object_names.return_value = [
+      "gripper",
+      "raw_stock_2x3x5",
+      "schunk_egp_64nnb",
+    ]
     mock_move_robot = mock.MagicMock()
     mock_move_robot.return_value = bt.PythonScript(function_body="pass")
     mock_solution.skills.ai.intrinsic.move_robot = mock_move_robot
