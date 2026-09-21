@@ -13,9 +13,9 @@ module(name = "omts")
 # intrinsic-core is currently private, and its binary assets are stored in Git LFS,
 # so fetching requires git credentials for the repository and a working
 # `git-lfs` installation. See README.md for setup.
-INTRINSIC_CORE_RELEASE = "20260919.1"  # buildifier: disable=unused-variable
+INTRINSIC_CORE_RELEASE = "20260921.0"  # buildifier: disable=unused-variable
 
-INTRINSIC_CORE_COMMIT = "d24a9b78983adf91fb9c4221d24dde890ab91ce8"
+INTRINSIC_CORE_COMMIT = "6e9edb947161bc437bd874944ed06c9fa9787ed6"
 
 INTRINSIC_CORE_REMOTE = "https://github.com/intrinsic-ai/intrinsic-core.git"
 
