@@ -90,6 +90,20 @@ omts/
 
 ## 3. Prerequisites & Workspace Setup
 
+### Hardware Requirements
+
+- **CPU**: x86-64 architecture (ARM architectures are currently unsupported).
+- **GPU**: Integrated graphics minimum (dedicated NVIDIA RTX 3060/4060+ strongly
+  recommended for ML/vision workloads).
+- **RAM**: 32 GiB DDR4/DDR5 minimum (64 GiB recommended). Note: Build times may
+  be impacted if attempting to compile changes at minimum specs while having a
+  solution actively running.
+- **Storage**: 1 TB NVMe SSD (minimum 100 GB dedicated free space).
+- **Networking**: 2–3 Gigabit Ethernet ports (Port 1: LAN/Internet; Port 2:
+  Real-time Robot Controller; Optional Port 3: PoE Camera switch).
+
+### Workspace & Dependencies
+
 Bazel fetches **Intrinsic Core** automatically via [`MODULE.bazel`](MODULE.bazel),
 so no manual `intrinsic-core` checkout is required:
 
@@ -136,6 +150,22 @@ git ls-remote https://github.com/intrinsic-ai/ioc-staging.git 'refs/tags/<tag>^{
 > Once `intrinsic-core` is public, the read-access requirement disappears and
 > the `git_override` definitions can be replaced with an `archive_override`
 > against a published release archive, which is faster and checksum-pinned.
+
+### GitHub Release Artifacts
+
+During the build, Bazel automatically downloads the following prebuilt bundles
+and model weights from this repository's GitHub Releases (configured in
+[`MODULE.bazel`](MODULE.bazel)):
+
+- `flowstate_ros_bridge.bundle.tar`: Prebuilt service of
+  [`flowstate_ros_bridge`](https://github.com/intrinsic-ai/sdk-ros/tree/main/flowstate_ros_bridge).
+- `hand_e_gripper_service.bundle.tar`: Prebuilt Robotiq Hand-E ROS driver
+  service (based on an internal tool to be open-sourced soon).
+- `hand_e_gripper_cmd_skill.bundle.tar`: Prebuilt Robotiq Hand-E control skill
+  (based on the same internal tool to be open-sourced soon).
+- `orbbec_gemini_driver.bundle.tar`: Prebuilt driver service of
+  [`flowstate_orbbec`](https://github.com/intrinsic-ai/intrinsic-ros-camera-drivers/tree/main/flowstate_orbbec).
+- `segmentation.tar.gz`: Pretrained RF-DETR segmentation model.
 
 ---
 
