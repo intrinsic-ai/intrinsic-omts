@@ -151,7 +151,7 @@ def build_pick_from_infeed_subtree(
         distance_meters=retract_distance_meters,
         exclude_collision=True,
         excluded_collision_objects=(workpiece_object_name,),
-        task_name=f"Linear Retract ({retract_distance_meters * 100:.1f} cm, -Z Tool)",
+        task_name=f"Linear Retract after Attach ({retract_distance_meters * 100:.1f} cm, -Z Tool)",
       ),
     ]
   )
