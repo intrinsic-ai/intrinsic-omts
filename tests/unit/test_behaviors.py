@@ -189,12 +189,24 @@ class BehaviorsTest(absltest.TestCase):
       object_name="raw_stock_2x3x5",
       name="Attach raw_stock_2x3x5 to Gripper",
     )
-    self.robot.build_move_relative_cartesian_task.assert_called_once_with(
-      translation=(0.0, 0.0, -0.03),
-      motion_type="LINEAR",
-      exclude_collision=True,
-      excluded_collision_objects=("raw_stock_2x3x5",),
-      name="Linear Retract (3.0 cm, -Z Tool)",
+    self.robot.build_move_relative_cartesian_task.assert_has_calls(
+      [
+        mock.call(
+          translation=(0.0, 0.0, -0.015),
+          motion_type="LINEAR",
+          exclude_collision=True,
+          excluded_collision_objects=("raw_stock_2x3x5",),
+          name="Linear Retract (1.5 cm, -Z Tool)",
+        ),
+        mock.call(
+          translation=(0.0, 0.0, -0.015),
+          motion_type="LINEAR",
+          exclude_collision=True,
+          excluded_collision_objects=("raw_stock_2x3x5",),
+          name="Linear Retract after Attach (1.5 cm, -Z Tool)",
+        ),
+      ],
+      any_order=False,
     )
 
   def test_build_load_machine_subtree_steps_and_detachment(self):
@@ -293,18 +305,18 @@ class BehaviorsTest(absltest.TestCase):
     self.robot.build_move_relative_cartesian_task.assert_has_calls(
       [
         mock.call(
-          translation=(0.0, 0.0, -0.03),
+          translation=(0.0, 0.0, -0.015),
           motion_type="LINEAR",
           exclude_collision=True,
           excluded_collision_objects=("raw_stock_2x3x5",),
-          name="Linear Retract (3.0 cm, -Z Tool)",
+          name="Linear Retract (1.5 cm, -Z Tool)",
         ),
         mock.call(
-          translation=(0.0, 0.0, -0.03),
+          translation=(0.0, 0.0, -0.015),
           motion_type="LINEAR",
           exclude_collision=True,
           excluded_collision_objects=("raw_stock_2x3x5",),
-          name="Linear Retract Clear of Vise (3.0 cm, -Z Tool)",
+          name="Linear Retract Clear of Vise (1.5 cm, -Z Tool)",
         ),
       ],
       any_order=False,
