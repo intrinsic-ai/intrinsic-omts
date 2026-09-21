@@ -14,9 +14,13 @@
 
 """Unit tests for the grasp planning subtree and grasp planner adapters."""
 
-from absl.testing import absltest
+from collections.abc import Sequence
+from typing import Any
 
-from src.hardware.robot import MockRobot
+from absl.testing import absltest
+from intrinsic.solutions import behavior_tree as bt
+
+from src.hardware.robot import RobotInterface
 from third_party.intrinsic_moveit.moveit_grasp_planner import (
   SURFACE_Z_NEG,
   SURFACE_Z_POS,
@@ -28,6 +32,103 @@ from third_party.intrinsic_moveit.moveit_grasp_planning import (
 from third_party.intrinsic_moveit.tools.moveit_plan_grasp_and_move import (
   resolve_target_objects,
 )
+
+
+class MockRobot(RobotInterface):
+  """Mock robot adapter for offline testing."""
+
+  def __init__(self) -> None:
+    self.executed_commands: list[str] = []
+
+  def build_move_joint_task(
+    self,
+    joint_target: str | Any,
+    name: str | None = None,
+  ) -> bt.Node:
+    task_name = name or f"Mock Move to {joint_target}"
+    self.executed_commands.append(f"move_joint:{joint_target}")
+    return bt.Sequence(name=task_name, children=[])
+
+  def build_move_cartesian_task(
+    self,
+    target_frame_name: str | None,
+    target_object_name: str,
+    motion_type: str,
+    allow_tool_z_rotation: bool = False,
+    cone_opening_half_angle: float = 0.0,
+    moving_frame_offset: tuple[float, float, float] | None = None,
+    target_frame_offset: (
+      tuple[tuple[float, float, float], tuple[float, float, float, float]]
+      | None
+    ) = None,
+    excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
+    name: str | None = None,
+  ) -> bt.Node:
+    target_desc = (
+      f"{target_object_name}/{target_frame_name}"
+      if target_frame_name
+      else target_object_name
+    )
+    task_name = name or f"Mock Move to {target_desc} ({motion_type})"
+    self.executed_commands.append(
+      f"move_cartesian:{target_desc}:{motion_type}:z_rot={allow_tool_z_rotation}"
+    )
+    return bt.Sequence(name=task_name, children=[])
+
+  def build_move_blended_cartesian_task(
+    self,
+    target_frames: Sequence[tuple[str, str]],
+    motion_type: str | Sequence[str] = "ANY",
+    name: str | None = None,
+  ) -> bt.Node:
+    task_name = name or f"Mock Blended Move ({len(target_frames)} frames)"
+    self.executed_commands.append(f"move_blended:{len(target_frames)}")
+    return bt.Sequence(name=task_name, children=[])
+
+  def build_move_relative_cartesian_task(
+    self,
+    translation: tuple[float, float, float],
+    motion_type: str = "LINEAR",
+    exclude_collision: bool = False,
+    excluded_collision_objects: Sequence[str] | None = None,
+    name: str | None = None,
+  ) -> bt.Node:
+    task_name = name or f"Mock Move Relative ({translation}) [{motion_type}]"
+    self.executed_commands.append(
+      f"move_relative_cartesian:{translation}:{motion_type}"
+    )
+    return bt.Sequence(name=task_name, children=[])
+
+  def build_move_to_contact_task(
+    self,
+    direction: tuple[float, float, float],
+    contact_force_newtons: float,
+    timeout_seconds: float,
+    name: str | None = None,
+  ) -> bt.Node:
+    task_name = name or "Mock Move to Contact"
+    self.executed_commands.append(
+      f"move_to_contact:dir={direction},force={contact_force_newtons}"
+    )
+    return bt.Sequence(name=task_name, children=[])
+
+  def build_attach_object_task(
+    self,
+    object_name: str,
+    name: str | None = None,
+  ) -> bt.Node:
+    task_name = name or f"Mock Attach {object_name}"
+    self.executed_commands.append(f"attach:{object_name}")
+    return bt.Sequence(name=task_name, children=[])
+
+  def build_detach_object_task(
+    self,
+    object_name: str,
+    name: str | None = None,
+  ) -> bt.Node:
+    task_name = name or f"Mock Detach {object_name}"
+    self.executed_commands.append(f"detach:{object_name}")
+    return bt.Sequence(name=task_name, children=[])
 
 
 class GraspPlanningTest(absltest.TestCase):
@@ -46,9 +147,7 @@ class GraspPlanningTest(absltest.TestCase):
     self.assertIsNotNone(subtree)
     self.assertEqual(subtree.name, "Plan Grasp and Approach")
     self.assertLen(subtree.children, 2)
-    self.assertEqual(
-      self.grasp_planner.planned_objects, [("raw_stock_2x3x5",)]
-    )
+    self.assertEqual(self.grasp_planner.planned_objects, [("raw_stock_2x3x5",)])
 
   def test_missing_candidate_objects_raises(self):
     with self.assertRaises(ValueError):

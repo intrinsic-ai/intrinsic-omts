@@ -150,7 +150,7 @@ inctl asset install --address localhost:17080 \
 
 ### 3. Ensure Output Frames Exist in the World
 
-The grasp skill only updates pre-existing frames; it never creates them. Make sure `root/grasp` and `root/pre_grasp` are declared in your world (from [`configs/scene.updates.pbtxt`](../../configs/scene.updates.pbtxt)):
+The grasp skill only updates pre-existing frames; it never creates them. Make sure `root/grasp` and `root/pre_grasp` are declared in your world (from [`configs/omts/scene.updates.pbtxt`](../../configs/omts/scene.updates.pbtxt)):
 
 ```bash
 bazel run //tools/world:apply_scene_updates -- --address=localhost:17080
@@ -189,7 +189,7 @@ bazel run //tools/jogging:jog_interactive -- \
 # Updating the scene, see tutorial "Cell customization"
 bazel run //tools/world:apply_scene_updates -- \
   --address localhost:17080 \
-  --files configs/raw_stock_in_vice.updates.pbtxt
+  --files configs/omts/raw_stock_in_vice.updates.pbtxt
 
 # Resetting the scene, see tutorial "Cell customization"
 inctl world reset --address localhost:17080
@@ -226,7 +226,7 @@ bazel run //third_party/intrinsic_moveit/tools:moveit_plan_grasp_and_move -- \
 # Relocate Workpiece to the CNC Vice
 bazel run //tools/world:apply_scene_updates -- \
   --address=localhost:17080 \
-  --files configs/raw_stock_in_vice.updates.pbtxt
+  --files configs/omts/raw_stock_in_vice.updates.pbtxt
 
 # Plan again to grasp the workpiece that is in the vice now
 # This planning step may take longer due to the length of the trajectory if the

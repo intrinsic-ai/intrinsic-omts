@@ -1,4 +1,4 @@
-load("@ioc//bazel:python.bzl", "py_binary", "py_library")
+load("@intrinsic-core//bazel:python.bzl", "py_binary", "py_library")
 
 package(default_visibility = ["//third_party/intrinsic_moveit:__subpackages__"])
 
@@ -9,9 +9,9 @@ py_library(
         "//src/hardware:robot",
         "//third_party/intrinsic_moveit:moveit_grasp_planner",
         "//third_party/intrinsic_moveit:moveit_grasp_planning",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:execution",
         "@intrinsic_apis//intrinsic/world/proto:object_world_refs_py_pb2",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:deployments",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:execution",
     ],
 )
 

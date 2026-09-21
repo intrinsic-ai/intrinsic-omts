@@ -49,7 +49,7 @@ examples (run through Bazel as `bazel run
   moveit_plan_grasp_and_move --target_object=raw_stock_2x3x5 --surfaces=0,1,4,5
 
   # Move raw_stock_2x3x5 into the vice via scene updates and plan again:
-  # bazel run //tools/world:apply_scene_updates -- --files configs/raw_stock_in_vice.updates.pbtxt
+  # bazel run //tools/world:apply_scene_updates -- --files configs/omts/raw_stock_in_vice.updates.pbtxt
   moveit_plan_grasp_and_move --target_object=raw_stock_2x3x5 --surfaces=0,1,4,5
 
   # Narrow further to force a strictly vertical approach.
@@ -62,7 +62,7 @@ prerequisites:
   * moveit_planning_service is running and reachable over Zenoh.
   * ai.intrinsic.moveit_plan_grasp_skill is installed in the target solution.
   * The output frames already exist in the world
-    (see configs/scene.updates.pbtxt).
+    (see configs/omts/scene.updates.pbtxt).
 
 See third_party/intrinsic_moveit/README.md for the setup walkthrough.
 """
@@ -208,7 +208,7 @@ def print_frame_transform(
     print(
       f"{label} could not read '{parent_object}/{frame_name}'.\n"
       "  Ensure the frame exists in the world. Frames are declared in"
-      " configs/scene.updates.pbtxt and applied by"
+      " configs/omts/scene.updates.pbtxt and applied by"
       " tools/world:apply_scene_updates.",
       file=sys.stderr,
     )

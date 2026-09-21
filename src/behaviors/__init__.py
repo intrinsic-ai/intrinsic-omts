@@ -34,6 +34,6 @@ __all__ = [
   "build_return_to_infeed_subtree",
   "build_unload_machine_subtree",
   "create_compliant_touchdown_task",
-  "create_move_to_frame_task",,
+  "create_move_to_frame_task",
   "create_relative_retract_task",
 ]

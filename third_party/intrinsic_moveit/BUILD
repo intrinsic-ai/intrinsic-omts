@@ -1,4 +1,4 @@
-load("@ioc//bazel:python.bzl", "py_library")
+load("@intrinsic-core//bazel:python.bzl", "py_library")
 
 # Deliberately NOT //visibility:public. Nothing in src/ or tools/ may depend on
 # this integration: OMTS must keep building and running with intrinsic-moveit
@@ -9,8 +9,8 @@ py_library(
     name = "moveit_grasp_planner",
     srcs = ["moveit_grasp_planner.py"],
     deps = [
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
         "@intrinsic_apis//intrinsic/world/proto:object_world_refs_py_pb2",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
 
@@ -21,6 +21,6 @@ py_library(
         ":moveit_grasp_planner",
         "//src/behaviors:motions",
         "//src/hardware:robot",
-        "@ioc//incode/intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )
