@@ -32,8 +32,6 @@ The top-level task orchestration engine. Built using the Solution Building Libra
 - **`move_robot`**: Encapsulates constraint-aware motion planning and real-time control to automatically generate collision-free paths and stream optimized trajectories directly to the robot controller, ensuring smooth, deterministic execution without manual waypoint engineering.
 - **`move_to_contact`**: Leverages real-time force/torque feedback to drive compliant, guarded approach motions, automatically arresting or adapting trajectory upon physical contact to ensure safe, damage-free part localization and seating.
 - **`estimate_pose`**: Executes GPU-accelerated 6-DoF pose estimation via NVIDIA FoundationPose® to determine accurate workpiece position and orientation directly from camera feeds, enabling robust grasp planning without rigid physical fixturing.
-- **`plan_grasp`**: Consumes 6-DoF pose estimates and gripper kinematics to autonomously compute collision-free, kinematically feasible grasp poses and approach vectors, ensuring stable workpiece acquisition without hard-coded grasp waypoints.
-- **`control_pinch_gripper`**: Opens and closes parallel-jaw grippers with built-in grip verification to ensure parts are securely held or released during pick-and-place operations.
 - **`dio_set_output`**: Toggles digital outputs on the I/O controller to automate external hardware signals, such as commanding the CNC machine door to open/close and actuating the vise clamp.
 
 #### Physical workcell
