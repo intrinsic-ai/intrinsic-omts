@@ -31,8 +31,8 @@ if [[ -z "${DOCKER_RUNTIME:-}" ]]; then
   fi
 fi
 
-# Detect GPU device flags for Docker containers that need CUDA (e.g. SAM3 ONNX export)
-GPU_DEVICE_FLAGS=""
+# Detect GPU device flags for Docker containers that need CUDA
+GPU_DEVICE_FLAGS="--privileged --ipc=host --ulimit memlock=-1 --ulimit stack=67108864"
 if [[ -e /dev/nvidia0 ]]; then
   for dev in /dev/nvidia0 /dev/nvidiactl /dev/nvidia-uvm /dev/nvidia-uvm-tools; do
     [[ -e "$dev" ]] && GPU_DEVICE_FLAGS="${GPU_DEVICE_FLAGS} --device $dev"
@@ -244,7 +244,7 @@ build_foundationpose_so_in_docker() {
   # Remove any existing build symlink inside foundation-pose-inference-library before mounting
   rm -rf "${FP_LIB_DIR}/build"
 
-  docker run ${DOCKER_RUNTIME} --rm \
+  docker run ${DOCKER_RUNTIME} ${GPU_DEVICE_FLAGS} --rm \
     -v "${FP_LIB_DIR}:/workspace" \
     -v "${FP_BUILD_DIR}:/out_build" \
     -w /workspace \
@@ -266,7 +266,7 @@ copy_tensorrt_and_bindings_via_docker() {
   echo "[4/4] Extracting TensorRT/CUDA .so libraries and Python 3.11 bindings (including ftfy) via Docker..."
 
   # 4a. Copy shared libraries (TensorRT 10.16 + CUDA 13.0 runtime from PyPI) and create standard symlinks
-  docker run ${DOCKER_RUNTIME} --rm \
+  docker run ${DOCKER_RUNTIME} ${GPU_DEVICE_FLAGS} --rm \
     -v "${FP_BUILD_DIR}:/out_build" \
     "${NGC_IMAGE}" \
     bash -c "
@@ -305,7 +305,7 @@ copy_tensorrt_and_bindings_via_docker() {
   # 4b. Download and extract Python 3.11 wheels (TensorRT, CUDA, ftfy, wcwidth)
   mkdir -p "${BINDINGS_DIR}/.wheels"
 
-  docker run ${DOCKER_RUNTIME} --rm \
+  docker run ${DOCKER_RUNTIME} ${GPU_DEVICE_FLAGS} --rm \
     --user "${HOST_UID}:${HOST_GID}" \
     -v "${BINDINGS_DIR}:/bindings" \
     "${NGC_IMAGE}" \
@@ -382,7 +382,7 @@ if [[ "${VERIFY_DOCKER_LOAD}" -eq 1 ]]; then
   IMAGE_ID="$(echo "${LOAD_OUT}" | awk '/Loaded image/ {print $NF}')"
   echo "Testing container startup and module imports (ftfy, tensorrt, foundationpose_perception_pipeline)..."
   HERMETIC_PY="/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/nvidia_service_main.runfiles/rules_python++python+python_3_11_x86_64-unknown-linux-gnu/bin/python3"
-  docker run ${DOCKER_RUNTIME} --rm \
+  docker run ${DOCKER_RUNTIME} ${GPU_DEVICE_FLAGS} --rm \
     -e LD_LIBRARY_PATH="/usr/local/lib/foundation_pose:/usr/local/lib/foundation_pose/lib" \
     --entrypoint "${HERMETIC_PY}" "${IMAGE_ID}" -c "
 import sys, glob
