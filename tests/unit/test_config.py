@@ -66,7 +66,7 @@ class ConfigTest(absltest.TestCase):
     self.assertEqual(config.cycle.load_seat_force_newtons, 8.0)
     self.assertEqual(config.cycle.unload_touchdown_force_newtons, 15.0)
     self.assertEqual(config.cycle.return_touchdown_force_newtons, 5.0)
-    self.assertEqual(config.cycle.retract_distance_meters, 0.03)
+    self.assertEqual(config.cycle.retract_distance_meters, 0.015)
 
   def test_load_lab_bb_01_app_config(self):
     config = load_app_config("configs/lab_bb_01/app_config.yaml")
