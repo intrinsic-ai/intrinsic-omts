@@ -33,6 +33,6 @@ Use of the "Intrinsic" and "Intrinsic Core" names, wordmarks, and logos is gover
 
 ## Inquiries
 
-For brand, trademark, or licensing inquiries, please contact: **`asset-submissions@intrinsic.ai`**
+For brand, trademark, or licensing inquiries, please contact: **[asset-submission@intrinsic.ai](mailto:asset-submission@intrinsic.ai)**
 
 &nbsp;
