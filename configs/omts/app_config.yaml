@@ -59,4 +59,4 @@ cycle:
   unload_touchdown_force_newtons: 15.0
   return_touchdown_force_newtons: 5.0
   touchdown_timeout_seconds: 40.0
-  machining_timeout_seconds: 40.0
+  machining_timeout_seconds: 1

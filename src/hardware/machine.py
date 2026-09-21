@@ -187,26 +187,39 @@ class DioCncMachine(CncMachineInterface):
     object_name: str | None,
     joints: Sequence[float],
     update_name: str,
+    dwell_time_sec: float = 0.0,
+    dwell_name: str | None = None,
   ) -> bt.Node:
     dio_task = self._build_dio_set_task(
       pins=[active_pin, inactive_pin],
       states=[True, False],
       task_name=task_name,
     )
+    children: list[bt.Node] = [dio_task]
+    if dwell_time_sec > 0.0:
+      children.append(
+        create_dwell_task(
+          dwell_time_sec=dwell_time_sec,
+          solution=self._solution,
+          task_name=dwell_name or f"{task_name} Dwell ({dwell_time_sec}s)",
+        )
+      )
     world_task = self._build_world_joint_update_task(
       object_name=object_name,
       joints=joints,
       task_name=update_name,
     )
-    if world_task is None:
-      return dio_task
+    if world_task is not None:
+      children.append(world_task)
+    if len(children) == 1:
+      return children[0]
     return bt.Sequence(
       name=task_name,
-      children=[dio_task, world_task],
+      children=children,
     )
 
   def build_open_door_task(self, name: str | None = None) -> bt.Node:
-    """Builds a task to open the CNC door via DIO and sync belief-world joints."""
+    """Builds a task to open the CNC door via DIO, wait 10s, and sync belief-world joints."""
     task_name = name or "Open CNC Door (DIO)"
     return self._build_actuation_task(
       active_pin=self._door_open_pin,
@@ -215,6 +228,8 @@ class DioCncMachine(CncMachineInterface):
       object_name=self._enclosure_object_name,
       joints=self._door_open_joints,
       update_name="Update CNC Door Joint (Open)",
+      dwell_time_sec=10.0,
+      dwell_name="Wait for CNC Door Open (10.0s)",
     )
 
   def build_close_door_task(self, name: str | None = None) -> bt.Node:

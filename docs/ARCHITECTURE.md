@@ -126,7 +126,7 @@ sequenceDiagram
     participant World as SBL ObjectWorld
 
     Note over Robot,World: 1. Infeed Pick Subtree (src/behaviors/pick.py)
-    CNC->>World: Open CNC Door & Vise (DIO + update_world)
+    CNC->>World: Open CNC Door (DIO + 10s dwell + update_world) & Vise (DIO + update_world)
     Robot->>Robot: Move to view frame (ANY)
     Vision->>Vision: Capture RGB-D & Estimate 6D Pose (FoundationPose)
     Vision->>World: Update dynamic root/pre_grasp & root/grasp (PythonScript)
@@ -139,7 +139,7 @@ sequenceDiagram
     Robot->>Robot: Linear Retract to root/pre_grasp (LINEAR)
 
     Note over Robot,World: 2. Load Machine Subtree (src/behaviors/load_machine.py)
-    CNC->>World: Ensure CNC Door & Vise Open (DIO + update_world)
+    CNC->>World: Ensure CNC Door (DIO + 10s dwell + update_world) & Vise Open (DIO + update_world)
     Robot->>Robot: Blended Transit / Move to machine_approach (ANY)
     Robot->>Robot: Approach CNC Vise preplace_vise_frame (ANY)
     Robot->>Robot: Compliant Seat Part into Vise (+Z tool)
@@ -156,7 +156,7 @@ sequenceDiagram
     CNC->>CNC: Wait for Cycle Complete (DIO input / dwell)
 
     Note over Robot,World: 4. Unload Machine Subtree (src/behaviors/unload_machine.py)
-    CNC->>World: Open CNC Door & Vise (DIO + update_world)
+    CNC->>World: Open CNC Door (DIO + 10s dwell + update_world) & Vise (DIO + update_world)
     Robot->>Robot: Approach Machine Entry machine_approach (ANY)
     Robot->>Robot: Approach Machined Part preplace_vise_frame (ANY)
     Robot->>Robot: Compliant Touchdown to Machined Part (+Z tool)
