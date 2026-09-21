@@ -160,9 +160,8 @@ and model weights from this repository's GitHub Releases (configured in
 - `flowstate_ros_bridge.bundle.tar`: Prebuilt service of
   [`flowstate_ros_bridge`](https://github.com/intrinsic-ai/sdk-ros/tree/main/flowstate_ros_bridge).
 - `hand_e_gripper_service.bundle.tar`: Prebuilt Robotiq Hand-E ROS driver
-  service (based on an internal tool to be open-sourced soon).
-- `hand_e_gripper_cmd_skill.bundle.tar`: Prebuilt Robotiq Hand-E control skill
-  (based on the same internal tool to be open-sourced soon).
+  service.
+- `hand_e_gripper_cmd_skill.bundle.tar`: Prebuilt Robotiq Hand-E control skill.
 - `orbbec_gemini_driver.bundle.tar`: Prebuilt driver service of
   [`flowstate_orbbec`](https://github.com/intrinsic-ai/intrinsic-ros-camera-drivers/tree/main/flowstate_orbbec).
 - `segmentation.tar.gz`: Pretrained RF-DETR segmentation model.
