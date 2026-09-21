@@ -75,6 +75,8 @@ _TEXTPROTO_GLOB = "configs/*/*.textproto"
 # vise, so it declares no vise_* frames.
 _EXPECTED_SCENE_FRAMES = {
   "configs/omts/scene.updates.pbtxt": [
+    "grasp",
+    "pre_grasp",
     "vise_pre_place",
     "vise_place",
     "machine_approach",

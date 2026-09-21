@@ -3,6 +3,52 @@
 
 updates {
   create_frame {
+    new_frame_name: "grasp"
+    parent_t_new_frame {
+      position {
+        x: 0.17
+        y: 0.035
+        z: 1.07
+      }
+      orientation {
+        x: 0.9665
+        y: -0.2565
+      }
+    }
+    parent_object_with_filter {
+      reference {
+        by_name {
+          object_name: "root"
+        }
+      }
+    }
+  }
+}
+updates {
+  create_frame {
+    new_frame_name: "pre_grasp"
+    parent_t_new_frame {
+      position {
+        x: 0.17
+        y: 0.035
+        z: 1.17
+      }
+      orientation {
+        x: 0.9665
+        y: -0.2565
+      }
+    }
+    parent_object_with_filter {
+      reference {
+        by_name {
+          object_name: "root"
+        }
+      }
+    }
+  }
+}
+updates {
+  create_frame {
     new_frame_name: "vise_pre_place"
     parent_t_new_frame {
       position {

@@ -41,9 +41,12 @@ class ConfigTest(absltest.TestCase):
     self.assertEqual(
       config.gripper.joint_name, "robotiq_hande_left_finger_joint"
     )
-    self.assertEqual(config.gripper.open_position, 0.025)
-    self.assertEqual(config.gripper.close_position, 0.0)
-    self.assertIsNone(config.gripper.action_name)
+    self.assertEqual(config.gripper.open_position, 0.024)
+    self.assertEqual(config.gripper.close_position, 0.01)
+    self.assertEqual(
+      config.gripper.action_name,
+      "/gripper/gripper_action_controller/gripper_cmd",
+    )
     self.assertIsNone(config.gripper.dio_open_pin)
     self.assertIsNone(config.gripper.dio_close_pin)
     self.assertIsNone(config.gripper.dio_device_name)
@@ -62,11 +65,11 @@ class ConfigTest(absltest.TestCase):
     self.assertEqual(config.vision.sensor_ids, (1, 4))
     self.assertEqual(config.vision.min_safe_z, 0.95)
     self.assertEqual(config.cycle.workpiece_id, "raw_stock_2x3x5")
-    self.assertEqual(config.cycle.pick_touchdown_force_newtons, 15.0)
+    self.assertEqual(config.cycle.pick_touchdown_force_newtons, 8.0)
     self.assertEqual(config.cycle.load_seat_force_newtons, 8.0)
     self.assertEqual(config.cycle.unload_touchdown_force_newtons, 15.0)
-    self.assertEqual(config.cycle.return_touchdown_force_newtons, 5.0)
-    self.assertEqual(config.cycle.retract_distance_meters, 0.015)
+    self.assertEqual(config.cycle.return_touchdown_force_newtons, 8.0)
+    self.assertEqual(config.cycle.retract_distance_meters, 0.01)
 
   def test_load_lab_bb_01_app_config(self):
     config = load_app_config("configs/lab_bb_01/app_config.yaml")
