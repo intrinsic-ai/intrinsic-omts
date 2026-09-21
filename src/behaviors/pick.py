@@ -146,14 +146,12 @@ def build_pick_from_infeed_subtree(
         object_name=workpiece_object_name,
         name=f"Attach {workpiece_object_name} to Gripper",
       ),
-      create_move_to_frame_task(
+      create_relative_retract_task(
         robot=robot,
-        frame_name=pregrasp_frame_name,
-        parent_object=parent_object,
-        motion_type="LINEAR",
-        task_name=(
-          f"Linear Retract to Pre-Grasp ({parent_object}/{pregrasp_frame_name})"
-        ),
+        distance_meters=retract_distance_meters,
+        exclude_collision=True,
+        excluded_collision_objects=(workpiece_object_name,),
+        task_name=f"Linear Retract ({retract_distance_meters * 100:.1f} cm, -Z Tool)",
       ),
     ]
   )
