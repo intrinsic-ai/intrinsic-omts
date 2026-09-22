@@ -90,26 +90,30 @@ flowchart LR
 
 ## 3. Perception & Dynamic Grasp Synthesis
 
-During vision-guided infeed (`OrbbecVision.build_perception_and_spawn_task`):
+During vision-guided infeed (`OrbbecVision.build_capture_image_task`,
+`build_estimate_pose_task`, and `build_update_grasp_frames_task`):
 
 1. **`capture_images`**: Captures synchronized RGB and Depth frames from the
-   wrist-mounted Orbbec camera (`sensor_ids: [1, 4]`).
+   wrist-mounted Orbbec camera (`sensor_ids: [1, 4]`) wrapped in `bt.Retry`.
 2. **`estimate_pose_multi_view`**: Runs FoundationPose inference via
    `pose_estimator_service`, returning the 6D part pose in the camera optical
-   frame (`T_camera_target`).
+   frame (`T_camera_target`) while the gripper opens in parallel.
 3. **Dynamic Frame Calculator (`bt.PythonScript`)**:
    Injected from [`src/utils/dynamic_frame_calculator.py`](../src/utils/dynamic_frame_calculator.py)
-   via [`load_python_script()`](../src/utils/script_utils.py):
+   via [`load_python_script()`](../src/utils/script_utils.py) with pure-stdlib
+   `preludes=(math_utils,)`:
    * Queries live camera extrinsics in `root` and computes the world target pose
      (`T_root_target = T_root_camera @ T_camera_target`).
    * Enforces the minimum height safety bound (`z_target >= min_safe_z`).
+   * Updates the active workpiece object pose (`raw_stock_2x3x5`) in
+     `ObjectWorld` via `world.update_transform`.
    * Projects the workpiece horizontal axes onto the world XY plane to find
      the longest axis angle (`theta_longest`) and aligns the gripper yaw
      (`psi = theta_longest`) across the short side.
    * Evaluates all 4 symmetrically equivalent parallel-jaw grasp quaternions
      (`+q1`, `-q1`, `+q2`, `-q2`) and selects the candidate maximizing
      `|dot(q_i, q_tool)|` to minimize wrist joint rotation in SO(3).
-   * Updates `root/pre_grasp` (offset vertically by `+approach_z_offset`) and
+   * Updates `root/pre_grasp` (offset vertically by `+approach_offset_z`) and
      `root/grasp` in the SBL `ObjectWorld`.
 
 ---
@@ -126,53 +130,59 @@ sequenceDiagram
     participant World as SBL ObjectWorld
 
     Note over Robot,World: 1. Infeed Pick Subtree (src/behaviors/pick.py)
-    CNC->>World: Open CNC Door (DIO + 10s dwell + update_world) & Vise (DIO + update_world)
-    Robot->>Robot: Move to view frame (ANY)
-    Vision->>Vision: Capture RGB-D & Estimate 6D Pose (FoundationPose)
-    Vision->>World: Update dynamic root/pre_grasp & root/grasp (PythonScript)
-    Gripper->>Gripper: Open Gripper
-    Robot->>Robot: Move to root/pre_grasp (ANY)
-    Robot->>Robot: Compliant Touchdown to Part (+Z tool)
-    Robot->>Robot: Relative Linear Retract (-Z tool, 3 cm)
+    par Sequential Machine & Gripper Prep vs Move to View
+        CNC->>World: Open CNC Door (DIO + 10s dwell + update_world) -> Open CNC Vise (DIO + update_world)
+        Gripper->>Gripper: Close Gripper (Clear Camera FOV)
+    and
+        Robot->>Robot: Move to view frame (ANY)
+    end
+    Vision->>Vision: Capture RGB-D Images (bt.Retry, max 3 tries)
+    par Pose Estimation & Frame Update vs Open Gripper
+        Vision->>Vision: Estimate 6D Workpiece Poses (FoundationPose)
+        Vision->>World: Update workpiece pose, root/pre_grasp & root/grasp (PythonScript)
+    and
+        Gripper->>Gripper: Open Gripper
+    end
+    Robot->>Robot: Blended Approach to Standoff (pre_grasp -> grasp, LINEAR)
+    Robot->>Robot: Compliant Touchdown to Part (+Z tool, 8N)
+    Robot->>Robot: Relative Linear Retract (-Z tool, 1 cm)
     Gripper->>Gripper: Close Gripper (Grasp Part)
     Robot->>World: Attach workpiece to Gripper
     Robot->>Robot: Linear Retract to root/pre_grasp (LINEAR)
 
     Note over Robot,World: 2. Load Machine Subtree (src/behaviors/load_machine.py)
-    CNC->>World: Ensure CNC Door (DIO + 10s dwell + update_world) & Vise Open (DIO + update_world)
-    Robot->>Robot: Blended Transit / Move to machine_approach (ANY)
-    Robot->>Robot: Approach CNC Vise preplace_vise_frame (ANY)
-    Robot->>Robot: Compliant Seat Part into Vise (+Z tool)
+    Robot->>Robot: Blended Transit (transit -> machine_approach -> vise_pre_place)
+    Robot->>Robot: Linear Approach to Standoff & Compliant Seat into Vise (+Z tool, 8N)
     CNC->>World: Clamp CNC Vise (DIO + update_world)
     Gripper->>Gripper: Release Part in Vise
     Robot->>World: Detach workpiece from Gripper
-    Robot->>Robot: Linear Retract to preplace_vise_frame (LINEAR)
-    Robot->>Robot: Linear Retract to machine_approach (LINEAR)
+    Robot->>Robot: Blended Exit (vise_pre_place -> machine_approach)
 
     Note over Robot,World: 3. Machining Handshake Subtree (src/behaviors/machining.py)
-    Robot->>Robot: Move to Safe Standby machine_approach (ANY)
     CNC->>World: Close CNC Door (DIO + 10s dwell + update_world)
-    CNC->>CNC: Pulse Cycle Start Output (0.5s high)
-    CNC->>CNC: Wait for Cycle Complete (DIO input / dwell)
+    CNC->>CNC: Pulse Cycle Start Output (High -> 0.5s Dwell -> Low)
+    CNC->>CNC: Wait for Cycle Complete (Dwell + dio_read_input)
 
     Note over Robot,World: 4. Unload Machine Subtree (src/behaviors/unload_machine.py)
-    CNC->>World: Open CNC Door (DIO + 10s dwell + update_world) & Vise (DIO + update_world)
-    Robot->>Robot: Approach Machine Entry machine_approach (ANY)
-    Robot->>Robot: Approach Machined Part preplace_vise_frame (ANY)
-    Robot->>Robot: Compliant Touchdown to Machined Part (+Z tool)
-    Robot->>Robot: Relative Linear Retract (-Z tool, 3 cm)
+    CNC->>World: Open CNC Door (Vise remains clamped, DIO + 10s dwell + update_world)
+    Robot->>Robot: Linear Move to vise_pre_place (LINEAR)
+    Robot->>Robot: Linear Approach to Standoff & Compliant Touchdown (+Z tool, 15N)
+    Robot->>Robot: Relative Linear Retract (-Z tool, 1 cm)
     Gripper->>Gripper: Grasp Machined Part
     Robot->>World: Attach workpiece to Gripper
-    Robot->>Robot: Relative Linear Retract clear of Vise (-Z tool, 3 cm)
-    Robot->>Robot: Linear Retract to machine_approach (LINEAR)
+    CNC->>World: Open CNC Vise to Unclamp Part (DIO + update_world)
+    Robot->>Robot: Blended Retract (vise_pre_place -> machine_approach)
 
     Note over Robot,World: 5. Return to Infeed Subtree (src/behaviors/return_infeed.py)
-    Robot->>Robot: Blended Transit / Move to root/pre_grasp (ANY)
-    Robot->>Robot: Compliant Touchdown to Table Surface (+Z tool)
+    Robot->>Robot: Blended Move to Infeed (transit -> pre_grasp)
+    Robot->>Robot: Linear Approach to Standoff & Compliant Touchdown (+Z tool, 8N)
     Gripper->>Gripper: Release Finished Part
     Robot->>World: Detach workpiece from Gripper
-    Robot->>Robot: Linear Retract to root/pre_grasp (LINEAR)
-    Robot->>Robot: Return to view frame (ANY)
+    par Blended Retract to View & Close Gripper
+        Robot->>Robot: Blended Retract (pre_grasp -> view)
+    and
+        Gripper->>Gripper: Close Gripper for Next Cycle
+    end
 ```
 
 ---
