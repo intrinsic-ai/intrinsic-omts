@@ -21,7 +21,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from google.protobuf import text_format
-from intrinsic.solutions import deployments
+from intrinsic.solutions import deployments, worlds
 from intrinsic.world.proto import (
   object_world_updates_pb2,
 )
@@ -187,14 +187,51 @@ def adapt_updates_for_live_world(
   return adapted
 
 
-def apply_pbtxt_file(world: Any, filepath: str) -> None:
-  """Loads a .pbtxt file and pushes its updates to the active ObjectWorld."""
+def extract_joint_updates(
+  updates: object_world_updates_pb2.ObjectWorldUpdates,
+) -> object_world_updates_pb2.ObjectWorldUpdates:
+  """Extracts only joint update rules (`update_object_joints` / `update_object_joint`).
+
+  Because `WorldUpdater` continuously streams `position_sensed` from ICON/Gazebo
+  into the Belief World (`"world"`) at ~50 Hz while the solution is running,
+  any joint position updates applied to `"world"` early in a multi-file batch
+  will be overwritten by `WorldUpdater` before `solution.simulator.reset()`
+  is reached. Re-applying these joint updates immediately before
+  `solution.simulator.reset()` ensures `"world"` holds the target joint
+  configuration at the exact instant `SimulatorWorldManager` pauses
+  `WorldUpdater` and clones `"world"` into `"sim_world"`.
+  """
+  joint_updates = object_world_updates_pb2.ObjectWorldUpdates()
+  for update in updates.updates:
+    if update.HasField("update_object_joints") or update.HasField(
+      "update_object_joint"
+    ):
+      joint_updates.updates.add().CopyFrom(update)
+  return joint_updates
+
+
+def _connect_initial_world(solution: Any) -> Any | None:
+  """Connects to `init_world` (`EditWorldId.INITIAL`) if available."""
+  grpc_channel = getattr(solution, "grpc_channel", None)
+  if grpc_channel is None:
+    return None
+  try:
+    return worlds.ObjectWorld.connect(worlds.EditWorldId.INITIAL, grpc_channel)
+  except Exception as e:  # pylint: disable=broad-exception-caught
+    logging.warning("Could not connect to initial world ('init_world'): %s", e)
+    return None
+
+
+def apply_pbtxt_file(
+  world: Any, filepath: str, init_world: Any | None = None
+) -> object_world_updates_pb2.ObjectWorldUpdates:
+  """Loads a .pbtxt file and pushes its updates to the active and initial worlds."""
   resolved_path = find_file(filepath)
   if not os.path.exists(resolved_path):
     print(
       f"[-] Warning: File not found: {filepath} (resolved: {resolved_path})"
     )
-    return
+    return object_world_updates_pb2.ObjectWorldUpdates()
 
   print(f"[+] Reading update file: {filepath}")
   with open(resolved_path, encoding="utf-8") as f:
@@ -212,7 +249,20 @@ def apply_pbtxt_file(world: Any, filepath: str) -> None:
     " world..."
   )
   world.batch_update(adapted_updates)
+
+  if init_world is not None:
+    try:
+      adapted_init_updates = adapt_updates_for_live_world(
+        world=init_world, updates=raw_updates
+      )
+      init_world.batch_update(adapted_init_updates)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+      logging.warning(
+        "Failed to apply %s to initial world ('init_world'): %s", filepath, e
+      )
+
   print(f"[✓] Successfully applied: {filepath}")
+  return adapted_updates
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -220,10 +270,32 @@ def main(argv: Sequence[str] | None = None) -> None:
   print(f"Connecting to solution at {args.address}...")
   solution = deployments.connect(address=args.address)
   world = solution.world
+  init_world = _connect_initial_world(solution)
 
   print(f"\n=== Applying {len(args.files)} World Update File(s) Live ===")
+  joint_updates = object_world_updates_pb2.ObjectWorldUpdates()
   for fpath in args.files:
-    apply_pbtxt_file(world=world, filepath=fpath)
+    applied = apply_pbtxt_file(
+      world=world, filepath=fpath, init_world=init_world
+    )
+    if isinstance(applied, object_world_updates_pb2.ObjectWorldUpdates):
+      extracted = extract_joint_updates(applied)
+      joint_updates.updates.extend(extracted.updates)
+
+  if (
+    args.reset_sim and solution.is_simulated and solution.simulator is not None
+  ):
+    print(
+      "\n[+] Solution is simulated. Resetting simulation to synchronize"
+      " Gazebo with updated Belief World..."
+    )
+    try:
+      if joint_updates.updates:
+        world.batch_update(joint_updates)
+      solution.simulator.reset()
+      print("[✓] Simulation reset successfully executed.")
+    except Exception as e:
+      print(f"[-] Warning: Failed to reset simulation: {e}")
 
   print("\n=== Current Active World State Verification ===")
   try:
@@ -248,19 +320,6 @@ def main(argv: Sequence[str] | None = None) -> None:
       )
   except Exception as e:
     print(f"Transform query error: {e}")
-
-  if (
-    args.reset_sim and solution.is_simulated and solution.simulator is not None
-  ):
-    print(
-      "\n[+] Solution is simulated. Resetting simulation to synchronize"
-      " Gazebo with updated Belief World..."
-    )
-    try:
-      solution.simulator.reset()
-      print("[✓] Simulation reset successfully executed.")
-    except Exception as e:
-      print(f"[-] Warning: Failed to reset simulation: {e}")
 
   print("\n[✓] Live world updates complete.")
 

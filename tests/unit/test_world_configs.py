@@ -149,10 +149,11 @@ class WorldUpdateConfigsTest(absltest.TestCase):
         self.assertCountEqual(created, expected)
 
   def test_ur_module_initial_joint_positions(self):
-    for path in (
-      "configs/omts/ur_module.attachments.updates.pbtxt",
-      "configs/lab_bb_01/ur_module.attachments.updates.pbtxt",
-    ):
+    expected_joint0 = {
+      "configs/omts/ur_module.attachments.updates.pbtxt": 3.140,
+      "configs/lab_bb_01/ur_module.attachments.updates.pbtxt": 1.5707,
+    }
+    for path, expected_j0 in expected_joint0.items():
       with self.subTest(path=path):
         updates = _load_updates_proto(path)
         self.assertIsNotNone(updates, f"{path} is missing from {os.getcwd()}.")
@@ -164,7 +165,7 @@ class WorldUpdateConfigsTest(absltest.TestCase):
           == "ur_module"
         ]
         self.assertLen(joint_updates, 1)
-        self.assertAlmostEqual(joint_updates[0].joint_positions[0], 1.5707)
+        self.assertAlmostEqual(joint_updates[0].joint_positions[0], expected_j0)
 
   def test_app_config_frames_exist_in_cell_scene_updates(self):
     """Every static frame referenced by app_config.yaml must exist in scene.updates.pbtxt."""

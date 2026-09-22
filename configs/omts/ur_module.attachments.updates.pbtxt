@@ -8,7 +8,7 @@ updates {
         object_name: "ur_module"
       }
     }
-    joint_positions: 1.5707
+    joint_positions: 3.140
     joint_positions: -1.5707
     joint_positions: 1.5707
     joint_positions: -1.5707

@@ -26,6 +26,7 @@ from tools.world.apply_scene_updates import (
   DEFAULT_UPDATE_FILES,
   adapt_updates_for_live_world,
   apply_pbtxt_file,
+  extract_joint_updates,
   find_file,
   main,
   parse_args,
@@ -52,57 +53,90 @@ class ApplySceneUpdatesTest(absltest.TestCase):
     args = parse_args(["--reset_sim"])
     self.assertTrue(args.reset_sim)
 
+  @mock.patch("tools.world.apply_scene_updates._connect_initial_world")
   @mock.patch("tools.world.apply_scene_updates.deployments.connect")
   @mock.patch("tools.world.apply_scene_updates.apply_pbtxt_file")
   def test_main_triggers_sim_reset_when_simulated(
-    self, mock_apply_file: mock.MagicMock, mock_connect: mock.MagicMock
+    self,
+    mock_apply_file: mock.MagicMock,
+    mock_connect: mock.MagicMock,
+    mock_connect_init: mock.MagicMock,
   ) -> None:
     """Tests that simulation reset is called when running in simulation mode."""
     mock_solution = mock.MagicMock()
     mock_solution.is_simulated = True
     mock_solution.simulator = mock.MagicMock()
+    mock_init_world = mock.MagicMock()
     mock_connect.return_value = mock_solution
+    mock_connect_init.return_value = mock_init_world
+
+    updates = object_world_updates_pb2.ObjectWorldUpdates()
+    joint_up = updates.updates.add().update_object_joints
+    joint_up.object.by_name.object_name = "ur_module"
+    joint_up.joint_positions.extend(
+      [3.14, -1.5707, 1.5707, -1.5707, -1.5707, 3.14]
+    )
+    mock_apply_file.return_value = updates
 
     main(["--files", "test.pbtxt"])
 
     mock_apply_file.assert_called_once_with(
-      world=mock_solution.world, filepath="test.pbtxt"
+      world=mock_solution.world,
+      filepath="test.pbtxt",
+      init_world=mock_init_world,
     )
+    mock_solution.world.batch_update.assert_called_once_with(updates)
     mock_solution.simulator.reset.assert_called_once()
 
+  @mock.patch("tools.world.apply_scene_updates._connect_initial_world")
   @mock.patch("tools.world.apply_scene_updates.deployments.connect")
   @mock.patch("tools.world.apply_scene_updates.apply_pbtxt_file")
   def test_main_skips_sim_reset_when_disabled(
-    self, mock_apply_file: mock.MagicMock, mock_connect: mock.MagicMock
+    self,
+    mock_apply_file: mock.MagicMock,
+    mock_connect: mock.MagicMock,
+    mock_connect_init: mock.MagicMock,
   ) -> None:
     """Tests that simulation reset is skipped when --no-reset_sim is provided."""
     mock_solution = mock.MagicMock()
     mock_solution.is_simulated = True
     mock_solution.simulator = mock.MagicMock()
+    mock_init_world = mock.MagicMock()
     mock_connect.return_value = mock_solution
+    mock_connect_init.return_value = mock_init_world
 
     main(["--no-reset_sim", "--files", "test.pbtxt"])
 
     mock_apply_file.assert_called_once_with(
-      world=mock_solution.world, filepath="test.pbtxt"
+      world=mock_solution.world,
+      filepath="test.pbtxt",
+      init_world=mock_init_world,
     )
     mock_solution.simulator.reset.assert_not_called()
 
+  @mock.patch("tools.world.apply_scene_updates._connect_initial_world")
   @mock.patch("tools.world.apply_scene_updates.deployments.connect")
   @mock.patch("tools.world.apply_scene_updates.apply_pbtxt_file")
   def test_main_skips_sim_reset_on_real_hardware(
-    self, mock_apply_file: mock.MagicMock, mock_connect: mock.MagicMock
+    self,
+    mock_apply_file: mock.MagicMock,
+    mock_connect: mock.MagicMock,
+    mock_connect_init: mock.MagicMock,
   ) -> None:
     """Tests that simulation reset is not triggered on real hardware."""
     mock_solution = mock.MagicMock()
     mock_solution.is_simulated = False
     mock_solution.simulator = None
+    mock_init_world = mock.MagicMock()
     mock_connect.return_value = mock_solution
+    mock_connect_init.return_value = mock_init_world
 
     main(["--files", "test.pbtxt"])
 
     mock_apply_file.assert_called_once_with(
-      world=mock_solution.world, filepath="test.pbtxt"
+      world=mock_solution.world,
+      filepath="test.pbtxt",
+      init_world=mock_init_world,
     )
 
   def setUp(self):
@@ -263,8 +297,39 @@ class ApplySceneUpdatesTest(absltest.TestCase):
     mock_root.list_frames.return_value = []
     mock_world.root = mock_root
 
-    apply_pbtxt_file(world=mock_world, filepath=test_file)
+    mock_init_world = mock.MagicMock()
+    mock_init_world.root = mock_root
+
+    applied = apply_pbtxt_file(
+      world=mock_world, filepath=test_file, init_world=mock_init_world
+    )
     mock_world.batch_update.assert_called_once()
+    mock_init_world.batch_update.assert_called_once()
+    self.assertLen(applied.updates, 1)
+
+  def test_extract_joint_updates_filters_only_joint_rules(self):
+    pbtxt = """
+    updates {
+      update_object_joints {
+        object { by_name { object_name: "ur_module" } }
+        joint_positions: 3.140
+      }
+    }
+    updates {
+      create_frame {
+        parent_object_with_filter {
+          reference { by_name { object_name: "root" } }
+        }
+        new_frame_name: "test_frame"
+      }
+    }
+    """
+    raw_updates = object_world_updates_pb2.ObjectWorldUpdates()
+    text_format.Parse(pbtxt, raw_updates)
+
+    joint_only = extract_joint_updates(raw_updates)
+    self.assertLen(joint_only.updates, 1)
+    self.assertTrue(joint_only.updates[0].HasField("update_object_joints"))
 
   @mock.patch("tools.world.inspect_world.deployments.connect")
   def test_inspect_world_lists_world_objects_and_strict_resources(
