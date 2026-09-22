@@ -299,6 +299,7 @@ py_test(
     deps = [
         "//src/utils:dynamic_frame_calculator",
         "//src/utils:math_utils",
+        "//src/utils:random_placement",
         "//src/utils:script_utils",
         "@com_google_absl_py//absl/testing:absltest",
         "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",

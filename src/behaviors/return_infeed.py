@@ -76,7 +76,8 @@ def build_return_to_infeed_subtree(
       f"{config.cycle.return_shift.center_y}, "
       f"{config.cycle.return_shift.bounds_x}, "
       f"{config.cycle.return_shift.bounds_y}, "
-      f"{config.cycle.return_shift.bounds_rz_degrees}"
+      f"{config.cycle.return_shift.bounds_rz_degrees}, "
+      f"{grasp_frame_name!r}"
     )
     script_body = load_python_script(
       "src.utils.random_placement",

@@ -25,19 +25,22 @@ def randomize_placement_frame(
   return_center_y: float,
   return_bounds_x: float,
   return_bounds_y: float,
-  return_bounds_rz_degrees: float,
+  return_bounds_rz_degrees: float = 0.0,
+  grasp_frame_name: str | None = None,
 ) -> None:
-  """Shifts the return frame to a random position within a bounding box centered at a fixed position.
+  """Shifts return placement frame(s) to a random pose within a bounding box.
 
   Args:
       context: SBL BT PythonScript execution context providing `object_world`.
       parent_object: Name of the parent object owning the frame.
-      frame_name: Name of the return frame to shift.
+      frame_name: Name of the primary return frame (e.g. `pre_grasp`) to shift.
       return_center_x: Fixed X position center.
       return_center_y: Fixed Y position center.
       return_bounds_x: Random shift bounding box width in X.
       return_bounds_y: Random shift bounding box width in Y.
       return_bounds_rz_degrees: Random shift angular bounds around Z in degrees.
+      grasp_frame_name: Optional secondary contact frame (e.g. `grasp`) shifted
+        to the same XY and Z-rotation while preserving its own Z height.
   """
   import math
   import random
@@ -87,3 +90,13 @@ def randomize_placement_frame(
 
   new_pose = data_types.Pose3(new_rot, [new_x, new_y, new_z])
   world.update_transform(node_a=parent_obj, node_b=frame_node, a_t_b=new_pose)
+
+  if grasp_frame_name and grasp_frame_name != frame_name:
+    grasp_node = getattr(parent_obj, grasp_frame_name, None)
+    if grasp_node is not None:
+      parent_t_grasp = world.get_transform(parent_obj, grasp_node)
+      grasp_z = float(parent_t_grasp.translation[2])
+      grasp_pose = data_types.Pose3(new_rot, [new_x, new_y, grasp_z])
+      world.update_transform(
+        node_a=parent_obj, node_b=grasp_node, a_t_b=grasp_pose
+      )
