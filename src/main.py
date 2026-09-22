@@ -25,12 +25,15 @@ from src.core.infeed import (
   InfeedMode,
   PerceptionInfeedStrategy,
 )
-from src.core.types import SimulationMode
+from src.core.types import Phase, SimulationMode
 from src.hardware.gripper import DioGripper, GripperInterface, RobotiqGripper
 from src.hardware.machine import DioCncMachine
 from src.hardware.robot import UrRobot
 from src.hardware.vision import OrbbecVision
-from src.utils.execution_utils import to_executive_simulation_mode
+from src.utils.execution_utils import (
+  export_behavior_tree_dot,
+  to_executive_simulation_mode,
+)
 
 _CONFIG = flags.DEFINE_string(
   "config",
@@ -46,12 +49,23 @@ _SIMULATION_MODE = flags.DEFINE_enum_class(
   "simulation_mode",
   None,
   SimulationMode,
-  "Executive execution mode override: 'reality', 'preview', or 'fast_preview'.",
+  "Executive mode override: 'reality', 'preview', or 'fast_preview'.",
 )
 _NUM_CYCLES = flags.DEFINE_integer(
   "num_cycles",
   None,
-  "Optional override for number of cycles (1 = single, >1 = finite Loop, <=0 = continuous Loop).",
+  "Optional override for number of cycles (1=single, >1=repeat, <=0=loop).",
+)
+_START_PHASE = flags.DEFINE_enum_class(
+  "start_phase",
+  Phase.PICK,
+  Phase,
+  "Cycle phase to start or resume from.",
+)
+_EXPORT_DOT = flags.DEFINE_string(
+  "export_dot",
+  None,
+  "Optional file path to export Graphviz DOT graph of the Behavior Tree.",
 )
 
 
@@ -60,6 +74,8 @@ def run_machine_tending_pipeline(
   config: AppConfig,
   simulation_mode: SimulationMode | None = None,
   num_cycles_override: int | None = None,
+  start_phase: Phase = Phase.PICK,
+  export_dot: str | None = None,
 ) -> None:
   """Connects to the solution deployment and executes the machine tending BT.
 
@@ -69,6 +85,8 @@ def run_machine_tending_pipeline(
       simulation_mode: Optional executive execution mode override.
       num_cycles_override: Optional cycle count override (1 = single cycle,
         >1 = finite bt.Loop, <=0 = continuous bt.Loop).
+      start_phase: Starting phase of the tending cycle for mid-cycle recovery.
+      export_dot: Optional path to export Graphviz DOT graph of the tree.
   """
   logging.info(
     "Connecting to Intrinsic solution at %s (cell: %s)...",
@@ -125,7 +143,11 @@ def run_machine_tending_pipeline(
     infeed_strategy=infeed_strategy,
     config=config,
     num_cycles_override=num_cycles_override,
+    start_phase=start_phase,
   )
+
+  if export_dot:
+    export_behavior_tree_dot(tree, export_dot)
 
   exec_sim_mode = to_executive_simulation_mode(simulation_mode)
   num_cycles = (
@@ -156,6 +178,8 @@ def main(argv: Sequence[str]) -> None:
     config=config,
     simulation_mode=_SIMULATION_MODE.value,
     num_cycles_override=_NUM_CYCLES.value,
+    start_phase=_START_PHASE.value,
+    export_dot=_EXPORT_DOT.value,
   )
 
 

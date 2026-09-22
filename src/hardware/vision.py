@@ -172,21 +172,6 @@ class VisionInterface(abc.ABC):
     """Builds a task updating grasp frames and workpiece pose in ObjectWorld."""
     raise NotImplementedError
 
-  def build_perception_and_spawn_task(
-    self,
-    approach_offset_z: float,
-    parent_object: str,
-    pregrasp_frame_name: str,
-    grasp_frame_name: str,
-    tool_object_name: str = "gripper",
-    tool_frame_name: str = "tool_frame",
-    max_tries: int = 3,
-    retry_delay_sec: float = 1.0,
-    name: str | None = None,
-  ) -> bt.Node:
-    """Transitional composite task delegating to modular capture, estimate, and frame update."""
-    raise NotImplementedError
-
 
 class OrbbecVision(VisionInterface):
   """Stateless Orbbec 3D camera perception adapter using IOC SBL skills."""
@@ -306,83 +291,3 @@ class OrbbecVision(VisionInterface):
       action=calc_script,
       name=task_name or "Calculate & Update Dynamic Grasp & Pre-Grasp Frames",
     )
-
-  def build_perception_and_spawn_task(
-    self,
-    approach_offset_z: float,
-    parent_object: str,
-    pregrasp_frame_name: str,
-    grasp_frame_name: str,
-    tool_object_name: str = "gripper",
-    tool_frame_name: str = "tool_frame",
-    max_tries: int = 3,
-    retry_delay_sec: float = 1.0,
-    name: str | None = None,
-  ) -> bt.Node:
-    """Transitional composite task delegating to modular capture, estimate, and frame update."""
-    from src.core.config import (
-      CycleConfig,
-      FramesConfig,
-      GripperConfig,
-      RobotConfig,
-    )
-
-    cap_node, cap_data = self.build_capture_image_task(max_tries=1)
-    est_node, estimates = self.build_estimate_pose_task(capture_data=cap_data)
-    shim_cfg = AppConfig(
-      cell_name="omts",
-      robot=RobotConfig(
-        arm_part_name="arm",
-        tool_object_name=tool_object_name,
-        tool_frame_name=tool_frame_name,
-      ),
-      gripper=GripperConfig(
-        type="robotiq",
-        joint_name="j",
-        open_position=0.024,
-        close_position=0.01,
-      ),
-      vision=self._config,
-      frames=FramesConfig(
-        parent_object=parent_object,
-        view_frame="view",
-        pregrasp_frame=pregrasp_frame_name,
-        grasp_frame=grasp_frame_name,
-        machine_approach_frame="machine_approach",
-        preplace_vise_frame="pre_place_vise",
-        place_vise_frame="place_vise",
-      ),
-      cycle=CycleConfig(
-        num_cycles=1,
-        workpiece_id=self._scene_object_id,
-        approach_offset_z=approach_offset_z,
-        retract_distance_meters=0.01,
-        pick_touchdown_force_newtons=8.0,
-        load_seat_force_newtons=8.0,
-        unload_touchdown_force_newtons=15.0,
-        return_touchdown_force_newtons=8.0,
-        touchdown_timeout_seconds=40.0,
-        machining_timeout_seconds=30.0,
-      ),
-    )
-    update_node = self.build_update_grasp_frames_task(
-      estimates=estimates,
-      config=shim_cfg,
-    )
-    seq = bt.Sequence(
-      name="Perception Capture, Estimation & Frame Calculation",
-      children=[cap_node, est_node, update_node],
-    )
-    if max_tries > 1:
-      recovery_task = create_dwell_task(
-        dwell_time_sec=retry_delay_sec,
-        solution=self._solution,
-        task_name=f"Perception Retry Dwell ({retry_delay_sec}s)",
-      )
-      return bt.Retry(
-        max_tries=max_tries,
-        child=seq,
-        recovery=recovery_task,
-        name=name or "Perception & Dynamic Grasp Frame Update Pipeline",
-      )
-    return seq

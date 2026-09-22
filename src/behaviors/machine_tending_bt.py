@@ -23,6 +23,7 @@ from src.behaviors.return_infeed import build_return_to_infeed_subtree
 from src.behaviors.unload_machine import build_unload_machine_subtree
 from src.core.config import AppConfig
 from src.core.infeed import InfeedStrategy
+from src.core.types import Phase
 from src.hardware.gripper import GripperInterface
 from src.hardware.machine import CncMachineInterface
 from src.hardware.robot import RobotInterface
@@ -30,111 +31,119 @@ from src.hardware.vision import VisionInterface
 
 
 def build_machine_tending_behavior_tree(
-  robot: RobotInterface,
-  gripper: GripperInterface,
-  machine: CncMachineInterface | None,
-  vision: VisionInterface,
-  infeed_strategy: InfeedStrategy,
-  config: AppConfig,
-  num_cycles_override: int | None = None,
-  tree_name: str = "OMTS Machine Tending Master Cycle",
+    robot: RobotInterface,
+    gripper: GripperInterface,
+    machine: CncMachineInterface | None,
+    vision: VisionInterface,
+    infeed_strategy: InfeedStrategy,
+    config: AppConfig,
+    num_cycles_override: int | None = None,
+    start_phase: Phase = Phase.PICK,
+    tree_name: str = "OMTS Machine Tending Master Cycle",
 ) -> bt.BehaviorTree:
   """Assembles the complete machine tending sequence into an SBL Behavior Tree.
 
-  Orchestrates the entire multi-step cycle within a single Behavior Tree:
-  1. Infeed pick: optional CNC door/vise prep, 6D vision pose estimation,
-     compliant touchdown, 3 cm linear retract, grasp, and world attachment.
-  2. Machine load: optional blended transit, compliant vise seating, clamping,
-     release, world detachment, and linear retract.
-  3. Machining handshake: standby outside enclosure, door close, cycle start
-     pulse, and cycle completion wait.
-  4. Machine unload: door/vise open, compliant touchdown to machined part,
-     3 cm linear retract, grasp, world attachment, 3 cm linear lift clear of
-     vise jaws, and linear extraction.
-  5. Infeed return: optional blended transit, compliant placement on table,
-     release, world detachment, linear retract, and return to view frame.
-  6. Wraps the cycle sequence in `bt.Loop` when `num_cycles > 1` (finite) or
-     `num_cycles <= 0` (continuous).
+  Implements Pattern B (Pure Behavior Tree orchestration):
+  1. CNC machine prep (open door & vise), infeed perception, and part pick with
+     belief world object attachment.
+  2. Blended transit & loading into CNC vise with belief world detachment.
+  3. Standby & CNC machining cycle handshake.
+  4. CNC vise unloading & extraction with belief world attachment.
+  5. Blended transit & return to infeed table with belief world detachment.
+  6. Wraps the cycle in `bt.Loop` (`num_cycles > 1` or `num_cycles <= 0`)
+     for native executive-controlled multi-cycle or continuous execution.
 
   Args:
       robot: Robot controller adapter.
       gripper: End-effector gripper adapter.
-      machine: Optional CNC machine controller adapter (`None` for cells without
-        a CNC enclosure/vise).
-      vision: 3D camera perception adapter.
+      machine: CNC machine controller adapter.
+      vision: 3D camera adapter.
       infeed_strategy: Infeed acquisition strategy (Perception vs. Grid).
-      config: Validated application configuration dataclass.
-      num_cycles_override: Optional override for number of cycles to execute
-        (1 = single sequence, >1 = finite Loop, <=0 = continuous Loop).
+      config: Application configuration dataclass.
+      num_cycles_override: Optional override for number of cycles to execute (1
+        = single, >1 = finite Loop, <=0 = infinite Loop).
+      start_phase: Starting phase of the tending cycle for mid-cycle recovery.
       tree_name: Descriptive name for the Behavior Tree.
 
   Returns:
       Executable SBL BehaviorTree instance.
   """
+  if isinstance(start_phase, str):
+    start_phase = Phase(start_phase)
+
+  num_cycles = (
+      num_cycles_override
+      if num_cycles_override is not None
+      else config.cycle.num_cycles
+  )
+  loop_counter_key = "cycle_index" if num_cycles != 1 else None
+
   pick_subtree = build_pick_from_infeed_subtree(
-    robot=robot,
-    gripper=gripper,
-    vision=vision,
-    infeed_strategy=infeed_strategy,
-    config=config,
-    machine=machine,
+      robot=robot,
+      gripper=gripper,
+      vision=vision,
+      infeed_strategy=infeed_strategy,
+      config=config,
+      machine=machine,
+      loop_counter_key=loop_counter_key,
   )
 
   load_subtree = build_load_machine_subtree(
-    robot=robot,
-    gripper=gripper,
-    machine=machine,
-    config=config,
+      robot=robot,
+      gripper=gripper,
+      machine=machine,
+      config=config,
+      include_entry_guard=(start_phase == Phase.LOAD),
   )
 
   machining_subtree = build_machining_handshake_subtree(
-    robot=robot,
-    machine=machine,
-    config=config,
+      robot=robot,
+      machine=machine,
+      config=config,
+      include_entry_guard=(start_phase == Phase.MACHINING),
   )
 
   unload_subtree = build_unload_machine_subtree(
-    robot=robot,
-    gripper=gripper,
-    machine=machine,
-    config=config,
+      robot=robot,
+      gripper=gripper,
+      machine=machine,
+      config=config,
+      include_entry_guard=(start_phase == Phase.UNLOAD),
   )
 
   return_subtree = build_return_to_infeed_subtree(
-    robot=robot,
-    gripper=gripper,
-    config=config,
+      robot=robot,
+      gripper=gripper,
+      config=config,
   )
+
+  phase_subtrees = {
+      Phase.PICK: pick_subtree,
+      Phase.LOAD: load_subtree,
+      Phase.MACHINING: machining_subtree,
+      Phase.UNLOAD: unload_subtree,
+      Phase.RETURN: return_subtree,
+  }
 
   cycle_sequence = bt.Sequence(
-    name="Single Machine Tending Cycle",
-    children=[
-      pick_subtree,
-      load_subtree,
-      machining_subtree,
-      unload_subtree,
-      return_subtree,
-    ],
-  )
-
-  num_cycles = (
-    num_cycles_override
-    if num_cycles_override is not None
-    else config.cycle.num_cycles
+      name="Single Machine Tending Cycle",
+      children=[phase_subtrees[p] for p in start_phase.remaining],
   )
 
   root_node: bt.Node
   if num_cycles > 1:
     root_node = bt.Loop(
-      max_times=num_cycles,
-      do_child=cycle_sequence,
-      name=f"Machine Tending Loop ({num_cycles} cycles)",
+        max_times=num_cycles,
+        do_child=cycle_sequence,
+        loop_counter_key=loop_counter_key,
+        name=f"Machine Tending Loop ({num_cycles} cycles)",
     )
   elif num_cycles <= 0:
     root_node = bt.Loop(
-      max_times=0,
-      do_child=cycle_sequence,
-      name="Continuous Machine Tending Loop",
+        max_times=0,
+        do_child=cycle_sequence,
+        loop_counter_key=loop_counter_key,
+        name="Continuous Machine Tending Loop",
     )
   else:
     root_node = cycle_sequence

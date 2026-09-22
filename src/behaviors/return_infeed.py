@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Infeed return / outfeed placement subtree."""
+"""Infeed return placement subtree."""
 
 from intrinsic.solutions import behavior_tree as bt
 
 from src.behaviors.motions import (
-  create_compliant_touchdown_task,
-  create_move_to_frame_task,
+  build_interaction_tasks,
+  create_move_through_frames_task,
 )
 from src.core.config import AppConfig
 from src.hardware.gripper import GripperInterface
@@ -30,91 +30,74 @@ def build_return_to_infeed_subtree(
   gripper: GripperInterface,
   config: AppConfig,
 ) -> bt.Node:
-  """Builds the Behavior Tree subtree for returning the finished part to infeed.
+  """Builds the Behavior Tree subtree for returning the part to the infeed.
 
   Sequence:
-  1. Approach infeed `pregrasp_frame` (`ANY`), blending through `transit_frame`
-     if configured.
-  2. Perform compliant touchdown along tool +Z to place finished part on table
-     surface.
-  3. Open gripper to release part and detach workpiece entity from gripper in
-     the belief world.
-  4. Retract arm linearly to `pregrasp_frame` (`LINEAR`) with segment-scoped
-     `(tool, workpiece)` collision exclusion.
-  5. Return arm to `view_frame` (`ANY`).
+      1. Blended transit (`[transit_frame, pregrasp_frame]`) back to the infeed.
+      2. Linear standoff approach + compliant touchdown (`config.return_touchdown`)
+         onto `grasp_frame`, open gripper to release part, and detach workpiece
+         in `ObjectWorld`.
+      3. Blended retract (`[pregrasp_frame, view_frame]`) to return the arm to
+         the viewing pose for the next cycle.
 
   Args:
-      robot: Robot controller adapter.
-      gripper: End-effector gripper adapter.
-      config: Validated application configuration dataclass.
+      robot: Robot hardware interface.
+      gripper: Gripper hardware interface.
+      config: Application configuration.
 
   Returns:
-      Behavior tree sequence node executing infeed return.
+      A `bt.Sequence` node executing the return-to-infeed phase.
   """
-  parent_object = config.frames.parent_object
-  pregrasp_frame_name = config.frames.pregrasp_frame
-  view_frame_name = config.frames.view_frame
-  transit_frame_name = config.frames.transit_frame
-  return_touchdown_force_newtons = config.cycle.return_touchdown_force_newtons
-  touchdown_timeout_seconds = config.cycle.touchdown_timeout_seconds
-  workpiece_object_name = config.cycle.workpiece_id
-
-  tasks: list[bt.Node] = []
-
-  if transit_frame_name:
-    tasks.append(
-      robot.build_move_blended_cartesian_task(
-        target_frames=[
-          (parent_object, transit_frame_name),
-          (parent_object, pregrasp_frame_name),
-        ],
-        motion_type="ANY",
-        name=f"Blended Transit to Infeed Placement ({parent_object}/{transit_frame_name} -> {parent_object}/{pregrasp_frame_name})",
-      )
+  entry_frames = [
+    f for f in (config.frames.transit_frame, config.frames.pregrasp_frame) if f
+  ]
+  tasks: list[bt.Node] = [
+    create_move_through_frames_task(
+      robot=robot,
+      frame_names=entry_frames,
+      config=config,
+      motion_type="ANY",
+      task_name=(
+        f"Step 13a: Blended Move to Infeed ({' -> '.join(entry_frames)})"
+      ),
     )
-  else:
-    tasks.append(
-      create_move_to_frame_task(
-        robot=robot,
-        frame_name=pregrasp_frame_name,
-        parent_object=parent_object,
-        motion_type="ANY",
-        task_name=f"Approach Infeed Placement ({parent_object}/{pregrasp_frame_name})",
-      )
-    )
+  ]
 
   tasks.extend(
-    [
-      create_compliant_touchdown_task(
-        robot=robot,
-        direction=(0.0, 0.0, 1.0),
-        contact_force_newtons=return_touchdown_force_newtons,
-        timeout_seconds=touchdown_timeout_seconds,
-        task_name="Compliant Touchdown to Table Surface (+Z Tool)",
+    build_interaction_tasks(
+      robot=robot,
+      config=config,
+      frame_name=config.frames.grasp_frame,
+      touchdown=config.return_touchdown,
+      label="Step 13b",
+      pre_reparent_tasks=[
+        gripper.build_open_task(
+          name="Step 13c: Release Finished Part at Infeed"
+        )
+      ],
+      reparent_task=robot.build_detach_object_task(
+        object_name=config.workpiece.object_name,
+        name="Step 13d: Detach Finished Part in World",
       ),
-      gripper.build_open_task(name="Release Finished Part"),
-      robot.build_detach_object_task(
-        object_name=workpiece_object_name,
-        name=f"Detach {workpiece_object_name} from Gripper",
-      ),
-      create_move_to_frame_task(
-        robot=robot,
-        frame_name=pregrasp_frame_name,
-        parent_object=parent_object,
-        motion_type="LINEAR",
-        excluded_collision_pairs=[
-          (config.robot.tool_object_name, workpiece_object_name),
-        ],
-        task_name=f"Retract Arm from Table ({parent_object}/{pregrasp_frame_name})",
-      ),
-      create_move_to_frame_task(
-        robot=robot,
-        frame_name=view_frame_name,
-        parent_object=parent_object,
-        motion_type="ANY",
-        task_name=f"Return to View Pose ({parent_object}/{view_frame_name})",
-      ),
-    ]
+    )
+  )
+
+  exit_frames = [
+    config.frames.pregrasp_frame,
+    config.frames.view_frame,
+  ]
+  retract_to_view = create_move_through_frames_task(
+    robot=robot,
+    frame_names=exit_frames,
+    config=config,
+    motion_type=["LINEAR", "ANY"],
+    task_name=(
+      f"Step 13e: Blended Retract to View ({' -> '.join(exit_frames)})"
+    ),
+  )
+  tasks.append(retract_to_view)
+  tasks.append(
+    gripper.build_close_task(name="Step 13f: Close Gripper for Next Cycle")
   )
 
   return bt.Sequence(name="5. Return to Infeed Subtree", children=tasks)

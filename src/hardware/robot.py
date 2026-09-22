@@ -105,8 +105,6 @@ class RobotInterface(abc.ABC):
     translation: tuple[float, float, float],
     motion_type: str = "LINEAR",
     excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
-    exclude_collision: bool = False,
-    excluded_collision_objects: Sequence[str] | None = None,
     name: str | None = None,
   ) -> bt.Node:
     """Builds a behavior tree task to move the robot tool relative to its current pose."""
@@ -395,12 +393,9 @@ class UrRobot(RobotInterface):
     translation: tuple[float, float, float],
     motion_type: str = "LINEAR",
     excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
-    exclude_collision: bool = False,
-    excluded_collision_objects: Sequence[str] | None = None,
     name: str | None = None,
   ) -> bt.Node:
     """Builds a relative Cartesian motion task along tool frames using RelativePoseEquality."""
-    del exclude_collision
     task_name = (
       name
       or f"Move relative ({translation[0]:.3f}, {translation[1]:.3f}, {translation[2]:.3f}) [{motion_type}]"
@@ -419,13 +414,9 @@ class UrRobot(RobotInterface):
       "relative_cartesian_pose": relative_cartesian_pose,
       "motion_type": self._motion_type_enum(motion_type),
     }
-    pairs = list(excluded_collision_pairs or ())
-    if not pairs and excluded_collision_objects:
-      pairs = [
-        (self._tool_object_name, obj_name)
-        for obj_name in excluded_collision_objects
-      ]
-    collision_settings = self._build_collision_settings(pairs or None)
+    collision_settings = self._build_collision_settings(
+      excluded_collision_pairs
+    )
     if collision_settings is not None:
       segment_kwargs["collision_settings"] = collision_settings
 

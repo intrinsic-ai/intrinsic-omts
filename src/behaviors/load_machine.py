@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""CNC machine loading and fixturing subtree."""
+"""CNC machine loading and vise seating subtree."""
 
 from intrinsic.solutions import behavior_tree as bt
 
 from src.behaviors.motions import (
-  create_compliant_touchdown_task,
-  create_move_to_frame_task,
+  build_interaction_tasks,
+  create_move_through_frames_task,
 )
 from src.core.config import AppConfig
 from src.hardware.gripper import GripperInterface
@@ -31,129 +31,105 @@ def build_load_machine_subtree(
   gripper: GripperInterface,
   machine: CncMachineInterface | None,
   config: AppConfig,
+  include_entry_guard: bool = False,
 ) -> bt.Node:
-  """Builds the Behavior Tree subtree for loading raw stock into the CNC machine.
+  """Builds the Behavior Tree subtree for loading raw stock into the CNC vise.
 
   Sequence:
-  1. If `machine` is provided, ensure CNC door and vise are open prior to entry.
-  2. Transit to `machine_approach_frame` (`ANY`), blending through
-     `transit_frame` if configured.
-  3. Move arm to `preplace_vise_frame` (`ANY`) with segment-scoped collision
-     exclusions between tool, workpiece, and vise.
-  4. Seat part into vise via compliant touchdown along tool +Z.
-  5. If `machine` is provided, clamp CNC vise.
-  6. Open gripper to release part and detach workpiece entity from gripper in
-     the belief world.
-  7. Retract arm linearly to `preplace_vise_frame` with vise collision
-     exclusions (`LINEAR`) and then to `machine_approach_frame` (`LINEAR`).
+      1. Optional mid-cycle entry guard (`include_entry_guard=True`): open CNC
+         door and vise if entering directly at `Phase.LOAD`.
+      2. Blended transit (`[transit_frame, machine_approach_frame,
+         preplace_vise_frame]`).
+      3. Linear standoff approach + compliant touchdown (`config.load_touchdown`)
+         into `place_vise_frame`.
+      4. Clamp CNC vise, open gripper to release part, and detach workpiece in
+         `ObjectWorld`.
+      5. Blended exit (`[preplace_vise_frame, machine_approach_frame]`) leaving
+         the arm outside the enclosure at `machine_approach_frame`.
 
   Args:
-      robot: Robot controller adapter.
-      gripper: End-effector gripper adapter.
-      machine: Optional CNC machine adapter (`None` when cell has no CNC).
-      config: Validated application configuration dataclass.
+      robot: Robot hardware interface.
+      gripper: Gripper hardware interface.
+      machine: Optional CNC machine hardware interface.
+      config: Application configuration.
+      include_entry_guard: Whether to prepend door/vise open guards for
+        mid-cycle entry.
 
   Returns:
-      Behavior tree sequence executing machine loading and fixturing.
+      A `bt.Sequence` node executing the machine loading phase.
   """
-  parent_object = config.frames.parent_object
-  machine_approach_frame_name = config.frames.machine_approach_frame
-  preplace_vise_frame_name = config.frames.preplace_vise_frame
-  transit_frame_name = config.frames.transit_frame
-  load_seat_force_newtons = config.cycle.load_seat_force_newtons
-  touchdown_timeout_seconds = config.cycle.touchdown_timeout_seconds
-  workpiece_object_name = config.cycle.workpiece_id
-  vise_object_name = (
-    config.machine.vise_object_name if config.machine is not None else None
-  )
-  vise_collision_pairs = (
-    [
-      (workpiece_object_name, vise_object_name),
-      (config.robot.tool_object_name, vise_object_name),
-      (config.robot.tool_object_name, workpiece_object_name),
-    ]
-    if vise_object_name
-    else [
-      (config.robot.tool_object_name, workpiece_object_name),
-    ]
-  )
+  entry_frames = [
+    f
+    for f in (
+      config.frames.transit_frame,
+      config.frames.machine_approach_frame,
+      config.frames.preplace_vise_frame,
+    )
+    if f
+  ]
+  entry_motions = ["ANY"] * (len(entry_frames) - 1) + ["LINEAR"]
 
   tasks: list[bt.Node] = []
-  if machine is not None:
-    tasks.extend(
-      [
-        machine.build_open_door_task(name="Ensure CNC Door Open"),
-        machine.build_open_vise_task(name="Ensure CNC Vise Open"),
-      ]
-    )
-
-  if transit_frame_name:
+  if include_entry_guard and machine is not None:
     tasks.append(
-      robot.build_move_blended_cartesian_task(
-        target_frames=[
-          (parent_object, transit_frame_name),
-          (parent_object, machine_approach_frame_name),
-        ],
-        motion_type="ANY",
-        name=f"Blended Transit to Machine Entry ({parent_object}/{transit_frame_name} -> {parent_object}/{machine_approach_frame_name})",
-      )
+      machine.build_open_door_task(name="Prep: Open CNC Door (Entry Guard)")
     )
-  else:
     tasks.append(
-      create_move_to_frame_task(
-        robot=robot,
-        frame_name=machine_approach_frame_name,
-        parent_object=parent_object,
-        motion_type="ANY",
-        task_name=f"Approach Machine Entry ({parent_object}/{machine_approach_frame_name})",
-      )
+      machine.build_open_vise_task(name="Prep: Open CNC Vise (Entry Guard)")
     )
-
-  tasks.extend(
-    [
-      create_move_to_frame_task(
-        robot=robot,
-        frame_name=preplace_vise_frame_name,
-        parent_object=parent_object,
-        motion_type="ANY",
-        excluded_collision_pairs=vise_collision_pairs,
-        task_name=f"Approach CNC Vise ({parent_object}/{preplace_vise_frame_name})",
+  tasks.append(
+    create_move_through_frames_task(
+      robot=robot,
+      frame_names=entry_frames,
+      config=config,
+      motion_type=entry_motions,
+      excluded_collision_pairs=config.vise_collision_pairs,
+      task_name=(
+        f"Step 07a: Blended Transit to Vise ({' -> '.join(entry_frames)})"
       ),
-      create_compliant_touchdown_task(
-        robot=robot,
-        direction=(0.0, 0.0, 1.0),
-        contact_force_newtons=load_seat_force_newtons,
-        timeout_seconds=touchdown_timeout_seconds,
-        task_name="Compliant Seat Part into Vise (+Z Tool)",
-      ),
-    ]
+    )
   )
+
+  pre_reparent: list[bt.Node] = []
   if machine is not None:
-    tasks.append(machine.build_close_vise_task(name="Clamp CNC Vise"))
+    pre_reparent.append(
+      machine.build_close_vise_task(name="Step 07c: Clamp CNC Vise")
+    )
+  pre_reparent.append(
+    gripper.build_open_task(name="Step 07d: Release Workpiece in Vise")
+  )
 
   tasks.extend(
-    [
-      gripper.build_open_task(name="Release Part in Vise"),
-      robot.build_detach_object_task(
-        object_name=workpiece_object_name,
-        name=f"Detach {workpiece_object_name} from Gripper",
+    build_interaction_tasks(
+      robot=robot,
+      config=config,
+      frame_name=config.frames.place_vise_frame,
+      touchdown=config.load_touchdown,
+      label="Step 07b",
+      excluded_collision_pairs=config.vise_collision_pairs,
+      pre_reparent_tasks=pre_reparent,
+      reparent_task=robot.build_detach_object_task(
+        object_name=config.workpiece.object_name,
+        name="Step 07e: Detach Workpiece in World",
       ),
-      create_move_to_frame_task(
-        robot=robot,
-        frame_name=preplace_vise_frame_name,
-        parent_object=parent_object,
-        motion_type="LINEAR",
-        excluded_collision_pairs=vise_collision_pairs,
-        task_name=f"Retract Arm to Vise Approach ({parent_object}/{preplace_vise_frame_name})",
+    )
+  )
+
+  exit_frames = [
+    config.frames.preplace_vise_frame,
+    config.frames.machine_approach_frame,
+  ]
+  tasks.append(
+    create_move_through_frames_task(
+      robot=robot,
+      frame_names=exit_frames,
+      config=config,
+      motion_type=["LINEAR", "ANY"],
+      excluded_collision_pairs=config.vise_collision_pairs,
+      task_name=(
+        f"Step 08: Blended Exit from Vise ({' -> '.join(exit_frames)})"
       ),
-      create_move_to_frame_task(
-        robot=robot,
-        frame_name=machine_approach_frame_name,
-        parent_object=parent_object,
-        motion_type="LINEAR",
-        task_name=f"Retract Arm to Machine Entry ({parent_object}/{machine_approach_frame_name})",
-      ),
-    ]
+    )
   )
 
   return bt.Sequence(name="2. Load Machine Subtree", children=tasks)
