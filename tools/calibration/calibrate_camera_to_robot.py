@@ -49,6 +49,7 @@ _CALIBRATION_OBJECT = flags.DEFINE_string(
   "calibration_object",
   "charuco_9x14_20mm_15mm_dict_5x5",
   "Calibration pattern / object name (e.g."
+  " charuco_9x12_30mm_22mm_dict_5x5,"
   " charuco_9x14_20mm_15mm_dict_5x5,"
   " charuco_22x30_25mm_18mm_dict_5x5, or"
   " charuco_11x15_35mm_26mm_dict_4x4).",
@@ -57,6 +58,7 @@ _POSE_ESTIMATOR = flags.DEFINE_string(
   "pose_estimator",
   "charuco_9x14_20mm_15mm_dict_5x5_estimator",
   "Pose estimator name (e.g."
+  " charuco_9x12_30mm_22mm_dict_5x5_estimator,"
   " charuco_9x14_20mm_15mm_dict_5x5_estimator,"
   " charuco_22x30_25mm_18mm_dict_5x5_estimator, or"
   " charuco_11x15_35mm_26mm_dict_4x4_estimator).",
