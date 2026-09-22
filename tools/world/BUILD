@@ -25,6 +25,7 @@ py_library(
     deps = [
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:worlds",
     ],
 )
 
