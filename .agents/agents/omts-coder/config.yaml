@@ -1,0 +1,3 @@
+prompt_section_customization:
+  remove_prompt_sections:
+    - "google3_infrastructure"

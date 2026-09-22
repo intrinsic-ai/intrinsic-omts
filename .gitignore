@@ -3,3 +3,16 @@ bazel-*
 venv*
 MODULE.bazel.lock
 logs/
+__pycache__/
+*.pyc
+uv.lock
+
+# AI tooling
+.gemini/
+.jetskicli/
+
+# Ignore everything in .agents/ except for the omts-coder agent
+.agents/*
+!.agents/agents/
+.agents/agents/*
+!.agents/agents/omts-coder/
