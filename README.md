@@ -15,10 +15,16 @@ The Open Machine Tending Solution (OMTS) is an open-source reference application
 
 ---
 
+## Installation and setup
+
+See the [Getting Started guide](https://github.com/intrinsic-ai/intrinsic-core/tree/main/developer_resources/learn/tutorials/getting_started.md) for full installation and setup instructions.
+
+---
+
 ## High level OMTS architecture
 
 <p align="center">
-  <img src="docs/IntrinsicOMTSArchitecture.png" alt="High Level OMTS Architecture" />
+  <img src="docs/OMTS_Architecture.png" alt="High Level OMTS Architecture" />
 </p>
 
 See [Architecture.md](docs/ARCHITECTURE.md) for more details.
@@ -32,13 +38,8 @@ The top-level task orchestration engine. Built using the Solution Building Libra
 - **`move_robot`**: Encapsulates constraint-aware motion planning and real-time control to automatically generate collision-free paths and stream optimized trajectories directly to the robot controller, ensuring smooth, deterministic execution without manual waypoint engineering.
 - **`move_to_contact`**: Leverages real-time force/torque feedback to drive compliant, guarded approach motions, automatically arresting or adapting trajectory upon physical contact to ensure safe, damage-free part localization and seating.
 - **`estimate_pose`**: Executes GPU-accelerated 6-DoF pose estimation via NVIDIA FoundationPose® to determine accurate workpiece position and orientation directly from camera feeds, enabling robust grasp planning without rigid physical fixturing.
+- **`hand_e_gripper_cmd_skill`**: Skill to control the Robotiq Hand-E gripper.
 - **`dio_set_output`**: Toggles digital outputs on the I/O controller to automate external hardware signals, such as commanding the CNC machine door to open/close and actuating the vise clamp.
-
----
-
-## Installation and setup
-
-See the [Getting Started guide](https://github.com/intrinsic-ai/intrinsic-core/tree/main/developer_resources/learn/tutorials/getting_started.md) for full installation and setup instructions.
 
 ---
 
