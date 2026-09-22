@@ -55,9 +55,9 @@ cycle:
   workpiece_id: "raw_stock_2x3x5"
   approach_offset_z: 0.08
   retract_distance_meters: 0.015
-  pick_touchdown_force_newtons: 15.0
-  load_seat_force_newtons: 8.0
-  unload_touchdown_force_newtons: 15.0
-  return_touchdown_force_newtons: 5.0
-  touchdown_timeout_seconds: 40.0
-  machining_timeout_seconds: 2
+  pick_touchdown_force_newtons: 10.0
+  load_seat_force_newtons: 10.0
+  unload_touchdown_force_newtons: 10.0
+  return_touchdown_force_newtons: 10.0
+  touchdown_timeout_seconds: 30.0
+  machining_timeout_seconds: 2.0

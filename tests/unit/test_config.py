@@ -28,7 +28,7 @@ from src.core.config import (
   GripperConfig,
   load_app_config,
 )
-from src.core.types import SimulationMode
+from src.core.types import SimulationMode, Touchdown
 
 
 class ConfigTest(absltest.TestCase):
@@ -63,11 +63,36 @@ class ConfigTest(absltest.TestCase):
     self.assertEqual(config.vision.sensor_ids, (1, 4))
     self.assertEqual(config.vision.min_safe_z, 0.95)
     self.assertEqual(config.cycle.workpiece_id, "raw_stock_2x3x5")
-    self.assertEqual(config.cycle.pick_touchdown_force_newtons, 15.0)
-    self.assertEqual(config.cycle.load_seat_force_newtons, 8.0)
-    self.assertEqual(config.cycle.unload_touchdown_force_newtons, 15.0)
-    self.assertEqual(config.cycle.return_touchdown_force_newtons, 5.0)
+    self.assertEqual(config.cycle.pick_touchdown_force_newtons, 10.0)
+    self.assertEqual(config.cycle.load_seat_force_newtons, 10.0)
+    self.assertEqual(config.cycle.unload_touchdown_force_newtons, 10.0)
+    self.assertEqual(config.cycle.return_touchdown_force_newtons, 10.0)
     self.assertEqual(config.cycle.retract_distance_meters, 0.015)
+    self.assertEqual(
+      config.pick_touchdown,
+      Touchdown(
+        force_n=10.0, standoff_m=0.02, timeout_s=30.0, retract_after_m=0.015
+      ),
+    )
+    self.assertEqual(
+      config.load_touchdown,
+      Touchdown(
+        force_n=10.0, standoff_m=0.02, timeout_s=30.0, retract_after_m=0.0
+      ),
+    )
+    self.assertEqual(
+      config.unload_touchdown,
+      Touchdown(
+        force_n=10.0, standoff_m=0.035, timeout_s=30.0, retract_after_m=0.015
+      ),
+    )
+    self.assertEqual(
+      config.return_touchdown,
+      Touchdown(
+        force_n=10.0, standoff_m=0.02, timeout_s=30.0, retract_after_m=0.0
+      ),
+    )
+    self.assertEqual(config.robot.enclosure_object_name, "enclosure")
 
   def test_load_lab_bb_01_app_config(self):
     config = load_app_config("configs/lab_bb_01/app_config.yaml")
@@ -79,6 +104,7 @@ class ConfigTest(absltest.TestCase):
     self.assertIsNone(config.frames.transit_frame)
     self.assertEqual(config.vision.min_safe_z, 0.60)
     self.assertEqual(config.cycle.pick_touchdown_force_newtons, 15.0)
+    self.assertIsNone(config.robot.enclosure_object_name)
 
   def test_missing_required_section_fails_loudly(self):
     yaml_content = """

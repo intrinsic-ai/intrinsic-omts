@@ -241,9 +241,9 @@ bazel run //tools/pose_estimation:register_using_train_service -- \
   --address="localhost:17080" \
   --scene_object_id="ai.intrinsic.raw_stock_2x3x5" \
   --pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator" \
-  --refinement_iters=6 \
-  --confidence_threshold=0.6 \
-  --visibility_threshold=0.6
+  --refinement_iters=3 \
+  --confidence_threshold=0.9 \
+  --visibility_threshold=0.85
 ```
 
 Optionally verify pose detection directly against the live camera feed:

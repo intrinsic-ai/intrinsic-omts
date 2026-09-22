@@ -20,6 +20,8 @@ from typing import Any, TypeVar
 
 import yaml
 
+from src.core.types import Touchdown
+
 _T = TypeVar("_T")
 
 
@@ -221,6 +223,43 @@ class AppConfig:
   frames: FramesConfig
   cycle: CycleConfig
   machine: MachineConfig | None = None
+
+  @property
+  def pick_touchdown(self) -> Touchdown:
+    """Returns compliant touchdown parameters for picking from the infeed."""
+    return Touchdown(
+      force_n=self.cycle.pick_touchdown_force_newtons,
+      timeout_s=self.cycle.touchdown_timeout_seconds,
+      retract_after_m=self.cycle.retract_distance_meters,
+    )
+
+  @property
+  def load_touchdown(self) -> Touchdown:
+    """Returns compliant touchdown parameters for seating into the CNC vise."""
+    return Touchdown(
+      force_n=self.cycle.load_seat_force_newtons,
+      timeout_s=self.cycle.touchdown_timeout_seconds,
+      retract_after_m=0.0,
+    )
+
+  @property
+  def unload_touchdown(self) -> Touchdown:
+    """Returns compliant touchdown parameters for grasping from the CNC vise."""
+    return Touchdown(
+      force_n=self.cycle.unload_touchdown_force_newtons,
+      standoff_m=0.020 + self.cycle.retract_distance_meters,
+      timeout_s=self.cycle.touchdown_timeout_seconds,
+      retract_after_m=self.cycle.retract_distance_meters,
+    )
+
+  @property
+  def return_touchdown(self) -> Touchdown:
+    """Returns compliant touchdown parameters for returning to the infeed."""
+    return Touchdown(
+      force_n=self.cycle.return_touchdown_force_newtons,
+      timeout_s=self.cycle.touchdown_timeout_seconds,
+      retract_after_m=0.0,
+    )
 
 
 def _construct_section(

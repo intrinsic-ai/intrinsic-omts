@@ -6,6 +6,8 @@ py_library(
     name = "motions",
     srcs = ["motions.py"],
     deps = [
+        "//src/core:config",
+        "//src/core:types",
         "//src/hardware:robot",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
