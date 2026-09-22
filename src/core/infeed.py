@@ -21,6 +21,13 @@ from src.core.tray import Tray, TraySlot
 from src.core.types import InfeedMode
 from src.core.workpiece import Workpiece
 
+__all__ = [
+  "GridInfeedStrategy",
+  "InfeedMode",
+  "InfeedStrategy",
+  "PerceptionInfeedStrategy",
+]
+
 
 class InfeedStrategy(abc.ABC):
   """Abstract base class defining how parts are localized and acquired."""
@@ -44,15 +51,9 @@ class PerceptionInfeedStrategy(InfeedStrategy):
     self,
     config: VisionConfig,
     view_frame_name: str,
+    workpiece: Workpiece | None = None,
     refinement_iters: int = 3,
   ) -> None:
-    """Initializes the vision-guided perception infeed strategy.
-
-    Args:
-        config: Scoped VisionConfig defining camera and pose estimator settings.
-        view_frame_name: Name of the scene frame used for camera acquisition.
-        refinement_iters: Number of FoundationPose refinement iterations.
-    """
     self.camera_name = config.camera_name
     self.pose_estimator_id = config.pose_estimator_id
     self.scene_object_id = config.scene_object_id
@@ -60,6 +61,7 @@ class PerceptionInfeedStrategy(InfeedStrategy):
     self.min_num_instances = config.min_num_instances
     self.refinement_iters = refinement_iters
     self.view_frame_name = view_frame_name
+    self._template_workpiece = workpiece or Workpiece(id="raw_stock_2x3x5")
     self._current_part_count = 0
 
   @property
@@ -69,18 +71,18 @@ class PerceptionInfeedStrategy(InfeedStrategy):
   def get_target_part(self) -> Workpiece | None:
     """Instantiates a new workpiece representation for vision acquisition."""
     self._current_part_count += 1
-    return Workpiece(id=f"workpiece_{self._current_part_count - 1}")
+    return Workpiece(
+      id=f"workpiece_{self._current_part_count - 1}",
+      cad_model_name=self._template_workpiece.cad_model_name,
+      object_name=self._template_workpiece.object_name,
+      grasp_offset=self._template_workpiece.grasp_offset,
+    )
 
 
 class GridInfeedStrategy(InfeedStrategy):
   """Deterministic tray grid infeed strategy for blind acquisition."""
 
   def __init__(self, tray: Tray) -> None:
-    """Initializes the grid-based infeed strategy.
-
-    Args:
-        tray: Populated Tray model defining slot positions and workpieces.
-    """
     self.tray = tray
 
   @property

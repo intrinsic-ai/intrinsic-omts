@@ -26,18 +26,21 @@ from src.core.config import (
 )
 from src.core.infeed import (
   GridInfeedStrategy,
+  InfeedMode,
   InfeedStrategy,
   PerceptionInfeedStrategy,
 )
 from src.core.tray import Tray, TraySlot
 from src.core.types import (
   FixtureState,
-  InfeedMode,
   JointPosition,
   MachineDoorState,
   PartState,
+  Phase,
   Pose3D,
+  SimulationMode,
   SlotState,
+  WorkpieceLocation,
 )
 from src.core.workcell import WorkcellState
 from src.core.workpiece import Workpiece
@@ -56,13 +59,16 @@ __all__ = [
   "MachineDoorState",
   "PartState",
   "PerceptionInfeedStrategy",
+  "Phase",
   "Pose3D",
   "RobotConfig",
+  "SimulationMode",
   "SlotState",
   "Tray",
   "TraySlot",
   "VisionConfig",
   "WorkcellState",
   "Workpiece",
+  "WorkpieceLocation",
   "load_app_config",
 ]

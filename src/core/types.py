@@ -12,14 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Core data types, enums, and geometric primitives for OMTS."""
+"""Core domain types, enumerations, and geometric primitives for OMTS."""
 
 import enum
 from dataclasses import dataclass
 
 
+class InfeedMode(enum.Enum):
+  """Defines how workpieces are localized at the infeed station."""
+
+  PERCEPTION = "perception"
+  GRID = "grid"
+
+
 class PartState(enum.Enum):
-  """State lifecycle of a workpiece in the machine tending cell."""
+  """Lifecycle status of an individual workpiece."""
 
   RAW = "raw"
   DETECTED = "detected"
@@ -40,61 +47,60 @@ class SlotState(enum.Enum):
   FAULT = "fault"
 
 
-class InfeedMode(enum.Enum):
-  """Infeed part localization and acquisition strategy."""
+class WorkpieceLocation(enum.Enum):
+  """Physical or logical station holding the workpiece."""
 
-  PERCEPTION = "perception"
-  GRID = "grid"
+  INFEED = "infeed"
+  GRIPPER = "gripper"
+  VISE = "vise"
+  OUTFEED = "outfeed"
+  SCRAP = "scrap"
+
+
+class FixtureState(enum.Enum):
+  """Clamping state of the CNC workholding fixture (vise)."""
+
+  OPEN = "open"
+  CLAMPED = "clamped"
+  FAULT = "fault"
+
+
+class MachineDoorState(enum.Enum):
+  """State of the CNC machine enclosure access door."""
+
+  OPEN = "open"
+  CLOSED = "closed"
+  MOVING = "moving"
+  FAULT = "fault"
+
+
+class Phase(enum.StrEnum):
+  """Ordered stages of one machine tending cycle."""
+
+  PICK = "pick"
+  LOAD = "load"
+  MACHINING = "machining"
+  UNLOAD = "unload"
+  RETURN = "return"
+
+  @property
+  def remaining(self) -> tuple["Phase", ...]:
+    """Returns this phase and every subsequent phase in execution order."""
+    order = tuple(Phase)
+    return order[order.index(self) :]
 
 
 class SimulationMode(enum.Enum):
-  """Execution mode requested from the Flowstate executive.
-
-  Mirrors `intrinsic_proto.executive.SimulationMode` without importing the
-  Intrinsic SDK, so that `src.core` stays dependency free.
-
-  Attributes:
-      REALITY: Full physics. Executes on real hardware, or in the simulator as
-        close to reality as possible.
-      PREVIEW: Executes skills in preview mode and visualizes world updates.
-      FAST_PREVIEW: Executes skills in preview mode without visualization.
-  """
+  """Executive execution mode selector."""
 
   REALITY = "reality"
   PREVIEW = "preview"
   FAST_PREVIEW = "fast_preview"
 
 
-class FixtureState(enum.Enum):
-  """Status of the CNC machine vise or chuck clamping mechanism."""
-
-  OPEN = "open"
-  CLAMPED = "clamped"
-  ERROR = "error"
-
-
-class MachineDoorState(enum.Enum):
-  """Status of the CNC enclosure safety door."""
-
-  OPEN = "open"
-  CLOSED = "closed"
-  MOVING = "moving"
-  ERROR = "error"
-
-
 @dataclass(frozen=True)
 class Pose3D:
-  """Represents a 3D Cartesian position and orientation quaternion.
-
-  Attributes:
-      x: Translation along X-axis (meters).
-      y: Translation along Y-axis (meters).
-      z: Translation along Z-axis (meters).
-      qx: Quaternion X component.
-      qy: Quaternion Y component.
-      qz: Quaternion Z component.
-      qw: Quaternion W component (scalar).
-  """
+  """Represents a 6-DOF pose in 3D space (meters and unit quaternion)."""
 
   x: float = 0.0
   y: float = 0.0
@@ -103,6 +109,16 @@ class Pose3D:
   qy: float = 0.0
   qz: float = 0.0
   qw: float = 1.0
+
+  @property
+  def position(self) -> tuple[float, float, float]:
+    """Returns the (x, y, z) translation tuple."""
+    return (self.x, self.y, self.z)
+
+  @property
+  def orientation(self) -> tuple[float, float, float, float]:
+    """Returns the (qx, qy, qz, qw) quaternion tuple."""
+    return (self.qx, self.qy, self.qz, self.qw)
 
   def to_translation_tuple(self) -> tuple[float, float, float]:
     """Returns (x, y, z) translation coordinates."""
@@ -115,14 +131,66 @@ class Pose3D:
 
 @dataclass(frozen=True)
 class JointPosition:
-  """Represents an N-DoF robot joint configuration.
+  """Represents a 6-DOF robot arm joint configuration in radians."""
 
-  Attributes:
-      positions: Joint angles in radians.
-  """
+  j1: float
+  j2: float
+  j3: float
+  j4: float
+  j5: float
+  j6: float
 
-  positions: tuple[float, ...]
+  def __init__(
+    self,
+    j1: float | list[float] | tuple[float, ...] = 0.0,
+    j2: float = 0.0,
+    j3: float = 0.0,
+    j4: float = 0.0,
+    j5: float = 0.0,
+    j6: float = 0.0,
+  ) -> None:
+    if isinstance(j1, (list, tuple)):
+      if len(j1) != 6:
+        raise ValueError(f"Expected 6 joint values, got {len(j1)}")
+      vals = [float(v) for v in j1]
+    else:
+      vals = [float(j1), float(j2), float(j3), float(j4), float(j5), float(j6)]
+    object.__setattr__(self, "j1", vals[0])
+    object.__setattr__(self, "j2", vals[1])
+    object.__setattr__(self, "j3", vals[2])
+    object.__setattr__(self, "j4", vals[3])
+    object.__setattr__(self, "j5", vals[4])
+    object.__setattr__(self, "j6", vals[5])
+
+  @property
+  def positions(self) -> tuple[float, ...]:
+    """Returns the 6 joint angles as a tuple."""
+    return (self.j1, self.j2, self.j3, self.j4, self.j5, self.j6)
+
+  def as_list(self) -> list[float]:
+    """Returns the 6 joint angles as an ordered list of floats."""
+    return [self.j1, self.j2, self.j3, self.j4, self.j5, self.j6]
 
   def to_list(self) -> list[float]:
-    """Returns joint angles as a list."""
-    return list(self.positions)
+    """Returns the 6 joint angles as an ordered list of floats."""
+    return self.as_list()
+
+  @classmethod
+  def from_sequence(
+    cls, values: list[float] | tuple[float, ...]
+  ) -> "JointPosition":
+    """Constructs a JointPosition from a 6-element sequence of radians."""
+    if len(values) != 6:
+      raise ValueError(f"Expected 6 joint values, got {len(values)}")
+    return cls(*[float(v) for v in values])
+
+
+@dataclass(frozen=True)
+class Touchdown:
+  """Compliant seating parameters for a robot-workpiece contact interaction."""
+
+  force_n: float = 8.0
+  standoff_m: float = 0.010
+  timeout_s: float = 40.0
+  retract_after_m: float = 0.005
+  direction: tuple[float, float, float] = (0.0, 0.0, 1.0)
