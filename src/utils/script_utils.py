@@ -17,19 +17,31 @@
 import importlib
 import inspect
 import os
+import re
 import sys
 import types
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
+
+_FIRST_PARTY_IMPORT = re.compile(r"^\s*(?:from|import)\s+src\b")
 
 
 def _read_source_from_file(filepath: str) -> str:
-  """Reads file content, checking direct path and Bazel runfiles."""
+  """Reads file content, checking direct path and Bazel runfiles.
+
+  Args:
+      filepath: Path to the python source file.
+
+  Returns:
+      The read source string.
+
+  Raises:
+      FileNotFoundError: If the source file cannot be located.
+  """
   if os.path.exists(filepath):
     with open(filepath, encoding="utf-8") as f:
       return f.read()
 
-  # Check Bazel runfiles
   runfiles_dir = os.environ.get("PYTHON_RUNFILES") or os.environ.get(
     "TEST_SRCDIR"
   )
@@ -42,10 +54,48 @@ def _read_source_from_file(filepath: str) -> str:
   raise FileNotFoundError(f"Could not locate source file: {filepath}")
 
 
+def _strip_first_party_imports(source: str) -> str:
+  """Drops `import src...` lines from a module's source.
+
+  Args:
+      source: Source code text.
+
+  Returns:
+      Sanitized source code without first-party src.* imports.
+  """
+  return "\n".join(
+    line for line in source.splitlines() if not _FIRST_PARTY_IMPORT.match(line)
+  )
+
+
+def _module_source(source: types.ModuleType) -> str:
+  """Returns a module's source text, falling back to reading its file.
+
+  Args:
+      source: Module object to extract source from.
+
+  Returns:
+      Source code text of the module.
+
+  Raises:
+      ValueError: If module source cannot be located or extracted.
+  """
+  try:
+    return inspect.getsource(source)
+  except (OSError, TypeError):
+    mod_file = getattr(source, "__file__", None)
+    if not mod_file:
+      raise ValueError(
+        f"Unable to extract source for module {source}"
+      ) from None
+    return _read_source_from_file(mod_file)
+
+
 def load_python_script(
   source: types.ModuleType | Callable[..., Any] | str,
   function_name: str | None = None,
   call_args: str | None = "context, params",
+  preludes: Sequence[types.ModuleType] = (),
 ) -> str:
   """Extracts executable Python source code from a module, function, or file for SBL bt.PythonScript.
 
@@ -59,6 +109,7 @@ def load_python_script(
         is a function, its name is automatically used by default.
       call_args: Arguments string to pass when appending the invocation call, e.g.
         "context, params". If None or empty, no invocation statement is appended.
+      preludes: Explicit modules whose source is prepended first.
 
   Returns:
       Source code string suitable for bt.PythonScript(function_body=...).
@@ -88,7 +139,6 @@ def load_python_script(
         raise ValueError(
           f"Unable to extract source for function {source}: {err}"
         ) from err
-
   elif isinstance(source, types.ModuleType):
     try:
       module_source = inspect.getsource(source)
@@ -98,26 +148,29 @@ def load_python_script(
         module_source = _read_source_from_file(mod_file)
       else:
         raise ValueError(f"Unable to extract source for module {source}")
-
   elif isinstance(source, str):
     if source.endswith(".py") or os.path.exists(source):
       module_source = _read_source_from_file(source)
     else:
-      # Treat as module dot-path
       mod = importlib.import_module(source)
       return load_python_script(
         source=mod,
         function_name=function_name,
         call_args=call_args,
+        preludes=preludes,
       )
   else:
     raise ValueError(f"Unsupported source type: {type(source)}")
 
-  code = module_source.rstrip()
+  parts = [_module_source(prelude) for prelude in preludes]
+  parts.append(module_source)
+  code = "\n\n".join(
+    _strip_first_party_imports(part).rstrip() for part in parts
+  )
   if target_func_name and call_args:
-    call_stmt = f"{target_func_name}({call_args})"
-    code = f"{code}\n\n{call_stmt}\n"
+    code = f"{code}\n\n{target_func_name}({call_args})\n"
 
+  compile(code, "<injected script>", "exec")
   return code
 
 
@@ -129,12 +182,12 @@ def create_dwell_task(
   """Creates a Task node that pauses execution for a specified duration.
 
   Args:
-    dwell_time_sec: Dwell duration in seconds.
-    solution: Optional live solution deployment handle.
-    task_name: Custom descriptive name for the task node.
+      dwell_time_sec: Dwell duration in seconds.
+      solution: Optional live solution deployment handle.
+      task_name: Custom descriptive name for the task node.
 
   Returns:
-    Task node executing the dwell Python script action.
+      Task node executing the dwell Python script action.
   """
   from intrinsic.solutions import (
     behavior_tree as bt,  # pylint: disable=g-import-not-at-top
@@ -145,4 +198,6 @@ def create_dwell_task(
   action = bt.PythonScript(
     function_body=f"import time\ntime.sleep({float(dwell_time_sec)})\n",
   )
-  return bt.Task(action=action, name=name)
+  task = bt.Task(action=action, name=name)
+  task.root = task
+  return task

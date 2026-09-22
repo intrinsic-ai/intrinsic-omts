@@ -25,7 +25,10 @@ from intrinsic.world.proto import (
 )
 
 from src.core.config import MachineConfig
-from src.utils.math_utils import object_exists_in_world, resolve_adio_resource
+from src.utils.execution_utils import (
+  object_exists_in_world,
+  resolve_adio_resource,
+)
 from src.utils.script_utils import create_dwell_task
 
 

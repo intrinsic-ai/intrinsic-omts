@@ -535,15 +535,21 @@ class HardwareAdaptersTest(absltest.TestCase):
     self.assertIn("tool_frame_name", sig.parameters)
 
   def test_dynamic_frame_calculator_min_safe_z_and_camera_validation(self):
+    from intrinsic.math.python import data_types
+
     from src.utils.dynamic_frame_calculator import (
       calculate_and_update_dynamic_frames,
     )
 
     mock_context = mock.MagicMock()
     mock_context.object_world = mock.MagicMock()
-    mock_context.object_world.get_transform.return_value = None
+    mock_context.object_world.get_transform.return_value = (
+      data_types.Pose3.identity()
+    )
 
     params = mock.MagicMock()
+    params.estimates = None
+    params.estimate_result = None
     params.parent_object = "root"
     params.camera_name = "orbbec_camera"
     params.pos_x = 0.3
@@ -556,7 +562,7 @@ class HardwareAdaptersTest(absltest.TestCase):
     params.approach_offset_z = 0.08
     params.pregrasp_frame_name = "pre_grasp"
     params.grasp_frame_name = "grasp"
-    params.target_scene_object_id = "ai.intrinsic.raw_stock_2x3x5"
+    params.target_scene_object_id = "raw_stock_2x3x5"
     params.tool_object_name = "gripper"
     params.tool_frame_name = "tool_frame"
 
@@ -579,7 +585,7 @@ class HardwareAdaptersTest(absltest.TestCase):
       calculate_and_update_dynamic_frames(mock_context, params)
 
   def test_resolve_adio_resource_with_strict_resources_container(self):
-    from src.utils.math_utils import resolve_adio_resource
+    from src.utils.execution_utils import resolve_adio_resource
 
     class _FakeResourceHandle:
       def __init__(self, types: list[str]) -> None:

@@ -20,7 +20,7 @@ from typing import Any
 from intrinsic.solutions import behavior_tree as bt
 
 from src.core.config import GripperConfig
-from src.utils.math_utils import resolve_adio_resource
+from src.utils.execution_utils import resolve_adio_resource
 
 
 class GripperInterface(abc.ABC):
