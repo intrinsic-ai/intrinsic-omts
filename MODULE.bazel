@@ -12,9 +12,9 @@ module(name = "omts")
 #
 # Binary assets are stored in Git LFS, so fetching requires a working `git-lfs`
 # installation (`git lfs install`). See README.md for setup.
-INTRINSIC_CORE_RELEASE = "20260921.0"  # buildifier: disable=unused-variable
+INTRINSIC_CORE_RELEASE = "20260922.0"  # buildifier: disable=unused-variable
 
-INTRINSIC_CORE_COMMIT = "6e9edb947161bc437bd874944ed06c9fa9787ed6"
+INTRINSIC_CORE_COMMIT = "523f2e03ddf3cb46a19b15be5e81586ae2f538c2"
 
 INTRINSIC_CORE_REMOTE = "https://github.com/intrinsic-ai/intrinsic-core.git"
 
@@ -147,7 +147,7 @@ go_deps.gazelle_override(
 
 # Prebuilt asset bundles that are not built from source by this repository.
 # They all live in a single release so that the pin can be moved atomically.
-OMTS_ASSETS_RELEASE = "v0.0.3"
+OMTS_ASSETS_RELEASE = "20260922.0"
 
 gh = use_extension("//bazel:gh_release.bzl", "gh_release")
 gh.download(
