@@ -1,0 +1,43 @@
+# proto-file: intrinsic/world/public/proto/object_world_updates.proto
+# proto-message: intrinsic_proto.world.ObjectWorldUpdates
+
+# Application (software) joint position limits for the UR5e of the OMTS cell.
+#
+# wrist_3_joint (joint 6) carries the gripper and camera cabling, so its
+# rotation is restricted to [-210 deg, +220 deg] instead of the UR5e default of
+# +/- 356.4 deg.
+#
+# intrinsic_proto.JointLimitsUpdate replaces a limit field as a whole, so all
+# six joints have to be listed in kinematic order even though only
+# wrist_3_joint deviates from the UR5e defaults in
+# @intrinsic-core//intrinsic_control/intrinsic/models/robot_definitions/ur:
+# ur5e/ur5e_limits.updates.pbtxt (95% of the system limits). Velocity,
+# acceleration, jerk, and effort limits are left unset and therefore keep
+# those defaults.
+updates {
+  update_object_joints {
+    object {
+      by_name {
+        object_name: "ur_module"
+      }
+    }
+    joint_application_limits {
+      min_position {
+        values: -6.2203534  # shoulder_pan_joint
+        values: -4.059      # shoulder_lift_joint
+        values: -2.772      # elbow_joint
+        values: -6.2203534  # wrist_1_joint
+        values: -6.2203534  # wrist_2_joint
+        values: -3.6651914  # wrist_3_joint (-210 deg)
+      }
+      max_position {
+        values: 6.2203534  # shoulder_pan_joint
+        values: 0.9504     # shoulder_lift_joint
+        values: 2.772      # elbow_joint
+        values: 6.2203534  # wrist_1_joint
+        values: 6.2203534  # wrist_2_joint
+        values: 3.8397244  # wrist_3_joint (+220 deg)
+      }
+    }
+  }
+}

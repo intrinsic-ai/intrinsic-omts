@@ -167,6 +167,35 @@ class WorldUpdateConfigsTest(absltest.TestCase):
         self.assertLen(joint_updates, 1)
         self.assertAlmostEqual(joint_updates[0].joint_positions[0], expected_j0)
 
+  def test_ur_module_application_limits(self):
+    """wrist_3_joint of the omts UR5e is limited to [-210 deg, +220 deg]."""
+    path = "configs/omts/ur_module.limits.updates.pbtxt"
+    updates = _load_updates_proto(path)
+    self.assertIsNotNone(updates, f"{path} is missing from {os.getcwd()}.")
+    limit_updates = [
+      update.update_object_joints
+      for update in updates.updates
+      if update.HasField("update_object_joints")
+      and update.update_object_joints.HasField("joint_application_limits")
+    ]
+    self.assertLen(limit_updates, 1)
+    limits = limit_updates[0].joint_application_limits
+    # JointLimitsUpdate replaces a field as a whole, so a partial vector would
+    # be rejected by the world service at runtime.
+    self.assertLen(limits.min_position.values, 6)
+    self.assertLen(limits.max_position.values, 6)
+    self.assertAlmostEqual(
+      limits.min_position.values[5], math.radians(-210), places=6
+    )
+    self.assertAlmostEqual(
+      limits.max_position.values[5], math.radians(220), places=6
+    )
+    # Application limits must stay inside the UR5e system limits.
+    for value in limits.min_position.values:
+      self.assertGreaterEqual(value, -2 * math.pi)
+    for value in limits.max_position.values:
+      self.assertLessEqual(value, 2 * math.pi)
+
   def test_app_config_frames_exist_in_cell_scene_updates(self):
     """Every static frame referenced by app_config.yaml must exist in scene.updates.pbtxt."""
     for cell in ("omts", "lab_bb_01"):
