@@ -54,8 +54,6 @@ if command -v ruff >/dev/null 2>&1; then
   RUFF_CMD="ruff"
 elif python3 -m ruff --version >/dev/null 2>&1; then
   RUFF_CMD="python3 -m ruff"
-elif [ -x "${HOME}/.jetski-server/extensions/charliermarsh.ruff-2026.78.0-linux-x64/bundled/libs/bin/ruff" ]; then
-  RUFF_CMD="${HOME}/.jetski-server/extensions/charliermarsh.ruff-2026.78.0-linux-x64/bundled/libs/bin/ruff"
 fi
 
 if [ -n "${RUFF_CMD}" ]; then
