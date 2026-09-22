@@ -14,7 +14,9 @@
 
 """Infeed return / outfeed placement subtree."""
 
+from unittest import mock
 from intrinsic.solutions import behavior_tree as bt
+from intrinsic.solutions import proto_building as pb
 
 from src.behaviors.motions import (
   create_move_through_frames_task,
@@ -70,22 +72,76 @@ def build_return_to_infeed_subtree(
   tasks: list[bt.Node] = []
 
   if config.cycle.return_shift is not None:
-    args_str = (
-      f"context, {parent_object!r}, {pregrasp_frame_name!r}, "
-      f"{config.cycle.return_shift.center_x}, "
-      f"{config.cycle.return_shift.center_y}, "
-      f"{config.cycle.return_shift.bounds_x}, "
-      f"{config.cycle.return_shift.bounds_y}, "
-      f"{config.cycle.return_shift.bounds_rz_degrees}, "
-      f"{grasp_frame_name!r}"
-    )
+    solution = getattr(robot, "_solution", None)
+    if solution and hasattr(solution, "proto_builder") and not isinstance(
+      solution.proto_builder, mock.MagicMock
+    ):
+      signature = solution.proto_builder.create_signature_with_args(
+        parameters=pb.MessageSpec(
+          fields=[
+            pb.FieldSpec(
+              type="string",
+              name="parent_object",
+              number=1,
+              arg=parent_object,
+            ),
+            pb.FieldSpec(
+              type="string",
+              name="frame_name",
+              number=2,
+              arg=pregrasp_frame_name,
+            ),
+            pb.FieldSpec(
+              type="float",
+              name="return_center_x",
+              number=3,
+              arg=config.cycle.return_shift.center_x,
+            ),
+            pb.FieldSpec(
+              type="float",
+              name="return_center_y",
+              number=4,
+              arg=config.cycle.return_shift.center_y,
+            ),
+            pb.FieldSpec(
+              type="float",
+              name="return_bounds_x",
+              number=5,
+              arg=config.cycle.return_shift.bounds_x,
+            ),
+            pb.FieldSpec(
+              type="float",
+              name="return_bounds_y",
+              number=6,
+              arg=config.cycle.return_shift.bounds_y,
+            ),
+            pb.FieldSpec(
+              type="float",
+              name="return_bounds_rz_degrees",
+              number=7,
+              arg=config.cycle.return_shift.bounds_rz_degrees,
+            ),
+            pb.FieldSpec(
+              type="string",
+              name="grasp_frame_name",
+              number=8,
+              arg=grasp_frame_name,
+            ),
+          ]
+        )
+      )
+    else:
+      signature = None
+
     script_body = load_python_script(
       "src.utils.random_placement",
       function_name="randomize_placement_frame",
-      call_args=args_str,
     )
 
-    shift_task = bt.PythonScript(function_body=script_body)
+    shift_task = bt.PythonScript(
+      signature_with_args=signature,
+      function_body=script_body,
+    )
     tasks.append(
       bt.Task(action=shift_task, name="0. Shift Return Placement Frame")
     )

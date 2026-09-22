@@ -17,31 +17,21 @@
 from typing import Any
 
 
-def randomize_placement_frame(
-  context: Any,
-  parent_object: str,
-  frame_name: str,
-  return_center_x: float,
-  return_center_y: float,
-  return_bounds_x: float,
-  return_bounds_y: float,
-  return_bounds_rz_degrees: float = 0.0,
-  grasp_frame_name: str | None = None,
-) -> None:
-  """Shifts return placement frame(s) to a random pose within a bounding box.
+def randomize_placement_frame(context: Any, params: Any) -> None:
+  """Shifts the return frame to a random position within a bounding box centered at a fixed position.
 
   Args:
       context: SBL BT PythonScript execution context providing `object_world`.
-      parent_object: Name of the parent object owning the frame.
-      frame_name: Name of the primary return frame (e.g. `pre_grasp`) to shift.
-      return_center_x: Fixed X position center.
-      return_center_y: Fixed Y position center.
-      return_bounds_x: Random shift bounding box width in X.
-      return_bounds_y: Random shift bounding box width in Y.
-      return_bounds_rz_degrees: Random shift angular bounds around Z in degrees.
-      grasp_frame_name: Optional secondary contact frame (e.g. `grasp`) shifted
-        to the same XY and Z-rotation while preserving its own Z height.
+      params: Dynamic parameters protobuf containing shift configuration.
   """
+  parent_object = params.parent_object
+  frame_name = params.frame_name
+  return_center_x = params.return_center_x
+  return_center_y = params.return_center_y
+  return_bounds_x = params.return_bounds_x
+  return_bounds_y = params.return_bounds_y
+  return_bounds_rz_degrees = params.return_bounds_rz_degrees
+  grasp_frame_name = getattr(params, "grasp_frame_name", None)
   import math
   import random
 

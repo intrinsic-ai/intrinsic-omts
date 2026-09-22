@@ -280,7 +280,7 @@ class BehaviorsTest(absltest.TestCase):
     shift_node = return_subtree.children[0]
     self.assertEqual(shift_node.name, "0. Shift Return Placement Frame")
     self.assertIn(
-      "'pre_grasp', 0.45, 0.0, 0.01, 0.01, 10.0, 'grasp'",
+      "randomize_placement_frame(context, params)",
       shift_node.proto.task.execute_code.python_code.function_body,
     )
     self.assertEqual(self.robot.build_move_blended_cartesian_task.call_count, 2)

@@ -279,17 +279,17 @@ class DynamicFrameCalculatorTest(absltest.TestCase):
     context = mock.MagicMock()
     context.object_world = mock_world
 
-    randomize_placement_frame(
-      context,
-      "root",
-      "pre_grasp",
-      0.4,
-      0.0,
-      0.02,
-      0.04,
-      20.0,
-      "grasp",
+    params = _make_params(
+      parent_object="root",
+      frame_name="pre_grasp",
+      return_center_x=0.4,
+      return_center_y=0.0,
+      return_bounds_x=0.02,
+      return_bounds_y=0.04,
+      return_bounds_rz_degrees=20.0,
+      grasp_frame_name="grasp",
     )
+    randomize_placement_frame(context, params)
 
     self.assertEqual(mock_world.update_transform.call_count, 2)
     updated_poses = {
