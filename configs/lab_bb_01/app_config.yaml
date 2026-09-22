@@ -42,3 +42,8 @@ cycle:
   return_touchdown_force_newtons: 5.0
   touchdown_timeout_seconds: 20.0
   machining_timeout_seconds: 30.0
+  return_shift:
+    center_x: 0.5
+    center_y: 0.0
+    bounds_x: 0.1
+    bounds_y: 0.1

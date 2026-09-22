@@ -276,7 +276,7 @@ class BehaviorsTest(absltest.TestCase):
     )
 
     self.assertIsNotNone(return_subtree)
-    self.assertEqual(len(return_subtree.children), 6)
+    self.assertEqual(len(return_subtree.children), 7)
     self.assertEqual(self.robot.build_move_blended_cartesian_task.call_count, 2)
     self.robot.build_detach_object_task.assert_called_once_with(
       object_name="raw_stock_2x3x5",
