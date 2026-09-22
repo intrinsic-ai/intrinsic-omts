@@ -208,9 +208,7 @@ def print_frame_transform(
   if transform is None:
     print(
       f"{label} could not read '{parent_object}/{frame_name}'.\n"
-      "  Ensure the frame exists in the world. Frames are declared in"
-      " configs/omts/scene.updates.pbtxt and applied by"
-      " tools/world:apply_scene_updates.",
+      "  Ensure the frame exists in the world.",
       file=sys.stderr,
     )
     return
