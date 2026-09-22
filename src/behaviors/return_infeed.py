@@ -15,6 +15,7 @@
 """Infeed return / outfeed placement subtree."""
 
 from unittest import mock
+
 from intrinsic.solutions import behavior_tree as bt
 from intrinsic.solutions import proto_building as pb
 
@@ -73,8 +74,10 @@ def build_return_to_infeed_subtree(
 
   if config.cycle.return_shift is not None:
     solution = getattr(robot, "_solution", None)
-    if solution and hasattr(solution, "proto_builder") and not isinstance(
-      solution.proto_builder, mock.MagicMock
+    if (
+      solution
+      and hasattr(solution, "proto_builder")
+      and not isinstance(solution.proto_builder, mock.MagicMock)
     ):
       signature = solution.proto_builder.create_signature_with_args(
         parameters=pb.MessageSpec(

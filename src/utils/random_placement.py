@@ -50,8 +50,12 @@ def randomize_placement_frame(context: Any, params: Any) -> None:
   half_bound_x = return_bounds_x / 2.0
   half_bound_y = return_bounds_y / 2.0
 
-  shift_x = random.uniform(-half_bound_x, half_bound_x)
-  shift_y = random.uniform(-half_bound_y, half_bound_y)
+  shift_x = max(
+    [random.uniform(-half_bound_x, half_bound_x) for _ in range(5)], key=abs
+  )
+  shift_y = max(
+    [random.uniform(-half_bound_y, half_bound_y) for _ in range(5)], key=abs
+  )
 
   # Apply random shift to the fixed center position
   new_x = return_center_x + shift_x
@@ -60,24 +64,16 @@ def randomize_placement_frame(context: Any, params: Any) -> None:
 
   # Calculate random rotation around Z-axis
   half_bound_rz = return_bounds_rz_degrees / 2.0
-  shift_rz_degrees = random.uniform(-half_bound_rz, half_bound_rz)
+  shift_rz_degrees = max(
+    [random.uniform(-half_bound_rz, half_bound_rz) for _ in range(5)], key=abs
+  )
   shift_rz_radians = math.radians(shift_rz_degrees)
 
-  sz = math.sin(shift_rz_radians / 2.0)
-  cz = math.cos(shift_rz_radians / 2.0)
-
-  q = rot.quaternion
-  # q_z = (0, 0, sz, cz) -> w=cz, x=0, y=0, z=sz
-  # q_new = q_z * q
-  w_new = cz * float(q.w) - sz * float(q.z)
-  x_new = cz * float(q.x) - sz * float(q.y)
-  y_new = cz * float(q.y) + sz * float(q.x)
-  z_new = cz * float(q.z) + sz * float(q.w)
-
-  new_rot = data_types.Rotation3(
-    data_types.Quaternion([x_new, y_new, z_new, w_new])
+  shift_rotation = data_types.Rotation3.from_euler_angles(
+    rpy_radians=[0, 0, shift_rz_radians]
   )
 
+  new_rot = shift_rotation * rot
   new_pose = data_types.Pose3(new_rot, [new_x, new_y, new_z])
   world.update_transform(node_a=parent_obj, node_b=frame_node, a_t_b=new_pose)
 
