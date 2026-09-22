@@ -55,6 +55,8 @@ intrinsic_solution(
     assets = _OMTS_SKILL_ASSETS + [
         "@intrinsic-core//intrinsic/resources/catalog/resourcedata/gripper:robotiq_pinch_gripper_resource_type",
         "@intrinsic-core//intrinsic/simulation/gazebo/asset:gazebo_simulator_type",
+        "@intrinsic-core//intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x12_30mm_22mm_dict_5x5",
+        "@intrinsic-core//intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x12_30mm_22mm_dict_5x5_estimator",
         "@intrinsic-core//intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5",
         "@intrinsic-core//intrinsic_perception/intrinsic/perception/calibration/charuco_boards:charuco_9x14_20mm_15mm_dict_5x5_estimator",
         "@intrinsic-core//intrinsic_perception/intrinsic/perception/calibration/services/v1:calibration_service",
@@ -89,6 +91,7 @@ intrinsic_solution(
         ":robotiq_pinch_gripper",
         ":raw_stock_2x3x5",
         ":gazebo_simulator",
+        ":charuco_9x12_30mm_22mm_dict_5x5",
         ":charuco_9x14_20mm_15mm_dict_5x5",
         ":calibration_service_instance",
         ":icon",
@@ -168,6 +171,11 @@ intrinsic_asset_instance(
 intrinsic_asset_instance(
     name = "raw_stock_2x3x5",
     asset = "ai.intrinsic.raw_stock_2x3x5",
+)
+
+intrinsic_asset_instance(
+    name = "charuco_9x12_30mm_22mm_dict_5x5",
+    asset = "ai.intrinsic.charuco_9x12_30mm_22mm_dict_5x5",
 )
 
 intrinsic_asset_instance(
