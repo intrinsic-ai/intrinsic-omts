@@ -28,6 +28,7 @@ py_library(
     name = "config",
     srcs = ["config.py"],
     deps = [
+        ":types",
         "@ai_intrinsic_sdks_pip_deps//pyyaml",
     ],
 )

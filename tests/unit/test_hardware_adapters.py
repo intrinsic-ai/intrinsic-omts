@@ -117,12 +117,23 @@ class HardwareAdaptersTest(absltest.TestCase):
     self.assertTrue(cart_rule.collision_action.is_excluded)
 
     # Blended Cartesian move
+    mock_move_robot.intrinsic_proto.skills.MotionSegment.reset_mock()
     blended_task = robot.build_move_blended_cartesian_task(
       target_frames=[("root", "transit"), ("root", "machine_approach")],
       motion_type=["ANY", "LINEAR"],
+      target_frame_offset=((0.0, 0.0, -0.01), (0.0, 0.0, 0.0, 1.0)),
+      excluded_collision_pairs=[("gripper", "raw_stock_2x3x5")],
     )
     self.assertIsInstance(blended_task, bt.Task)
     self.assertIn("ANY/LINEAR", blended_task.name)
+    blended_segment_kwargs = (
+      mock_move_robot.intrinsic_proto.skills.MotionSegment.call_args.kwargs
+    )
+    self.assertIn("collision_settings", blended_segment_kwargs)
+    self.assertAlmostEqual(
+      blended_segment_kwargs["cartesian_pose"].target_frame_offset.position.z,
+      -0.01,
+    )
 
     # Relative Cartesian move
     rel_task = robot.build_move_relative_cartesian_task(

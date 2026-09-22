@@ -38,6 +38,7 @@ from src.core.types import (
   PartState,
   Pose3D,
   SlotState,
+  Touchdown,
 )
 from src.core.workcell import WorkcellState
 from src.core.workpiece import Workpiece
@@ -59,6 +60,7 @@ __all__ = [
   "Pose3D",
   "RobotConfig",
   "SlotState",
+  "Touchdown",
   "Tray",
   "TraySlot",
   "VisionConfig",

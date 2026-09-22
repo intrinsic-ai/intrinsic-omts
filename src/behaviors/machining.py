@@ -16,7 +16,6 @@
 
 from intrinsic.solutions import behavior_tree as bt
 
-from src.behaviors.motions import create_move_to_frame_task
 from src.core.config import AppConfig
 from src.hardware.machine import CncMachineInterface
 from src.hardware.robot import RobotInterface
@@ -30,9 +29,8 @@ def build_machining_handshake_subtree(
   """Builds the Behavior Tree subtree for executing the CNC machining cycle.
 
   Sequence:
-  1. Move robot arm to safe standby position outside enclosure
-     (`machine_approach_frame`, `ANY`).
-  2. If `machine` is provided:
+  1. If `machine` is provided (with the arm already positioned at
+     `machine_approach_frame` after `load_machine`):
      a. Close CNC enclosure door.
      b. Pulse CNC cycle start digital output.
      c. Wait for CNC cycle completion signal or timeout.
@@ -46,19 +44,9 @@ def build_machining_handshake_subtree(
   Returns:
       Behavior tree sequence node executing machining cycle handshake.
   """
-  parent_object = config.frames.parent_object
-  standby_frame_name = config.frames.machine_approach_frame
   machining_timeout_seconds = config.cycle.machining_timeout_seconds
 
-  tasks: list[bt.Node] = [
-    create_move_to_frame_task(
-      robot=robot,
-      frame_name=standby_frame_name,
-      parent_object=parent_object,
-      motion_type="ANY",
-      task_name=f"Move to Safe Standby ({parent_object}/{standby_frame_name})",
-    ),
-  ]
+  tasks: list[bt.Node] = []
   if machine is not None:
     tasks.extend(
       [

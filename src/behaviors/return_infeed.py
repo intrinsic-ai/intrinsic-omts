@@ -17,8 +17,8 @@
 from intrinsic.solutions import behavior_tree as bt
 
 from src.behaviors.motions import (
-  create_compliant_touchdown_task,
-  create_move_to_frame_task,
+  create_move_through_frames_task,
+  create_seated_approach_tasks,
 )
 from src.core.config import AppConfig
 from src.hardware.gripper import GripperInterface
@@ -35,13 +35,13 @@ def build_return_to_infeed_subtree(
   Sequence:
   1. Approach infeed `pregrasp_frame` (`ANY`), blending through `transit_frame`
      if configured.
-  2. Perform compliant touchdown along tool +Z to place finished part on table
-     surface.
+  2. Approach `grasp_frame` standoff (`LINEAR`) and perform compliant touchdown
+     along tool +Z (`create_seated_approach_tasks` with
+     `config.return_touchdown`) to place finished part on table surface.
   3. Open gripper to release part and detach workpiece entity from gripper in
      the belief world.
-  4. Retract arm linearly to `pregrasp_frame` (`LINEAR`) with segment-scoped
-     `(tool, workpiece)` collision exclusion.
-  5. Return arm to `view_frame` (`ANY`).
+  4. Blended retract (`[pregrasp_frame, view_frame]`, `["LINEAR", "ANY"]`) with
+     segment-scoped collision exclusions to return arm to `view_frame`.
 
   Args:
       robot: Robot controller adapter.
@@ -53,66 +53,68 @@ def build_return_to_infeed_subtree(
   """
   parent_object = config.frames.parent_object
   pregrasp_frame_name = config.frames.pregrasp_frame
+  grasp_frame_name = config.frames.grasp_frame
   view_frame_name = config.frames.view_frame
   transit_frame_name = config.frames.transit_frame
-  return_touchdown_force_newtons = config.cycle.return_touchdown_force_newtons
-  touchdown_timeout_seconds = config.cycle.touchdown_timeout_seconds
   workpiece_object_name = config.cycle.workpiece_id
 
-  tasks: list[bt.Node] = []
+  tool_to_workpiece_collision_pair = (
+    config.robot.tool_object_name,
+    workpiece_object_name,
+  )
 
-  if transit_frame_name:
-    tasks.append(
-      robot.build_move_blended_cartesian_task(
-        target_frames=[
-          (parent_object, transit_frame_name),
-          (parent_object, pregrasp_frame_name),
-        ],
-        motion_type="ANY",
-        name=f"Blended Transit to Infeed Placement ({parent_object}/{transit_frame_name} -> {parent_object}/{pregrasp_frame_name})",
-      )
+  detach_collision_pairs = [tool_to_workpiece_collision_pair]
+
+  entry_frames = [f for f in (transit_frame_name, pregrasp_frame_name) if f]
+  tasks: list[bt.Node] = [
+    create_move_through_frames_task(
+      robot=robot,
+      frame_names=entry_frames,
+      parent_object=parent_object,
+      config=config,
+      motion_type="ANY",
+      excluded_collision_pairs=detach_collision_pairs,
+      task_name=(
+        f"Blended Transit to Infeed Placement ({' -> '.join(entry_frames)})"
+        if len(entry_frames) > 1
+        else (
+          f"Approach Infeed Placement ({parent_object}/{pregrasp_frame_name})"
+        )
+      ),
     )
-  else:
-    tasks.append(
-      create_move_to_frame_task(
-        robot=robot,
-        frame_name=pregrasp_frame_name,
-        parent_object=parent_object,
-        motion_type="ANY",
-        task_name=f"Approach Infeed Placement ({parent_object}/{pregrasp_frame_name})",
-      )
-    )
+  ]
 
   tasks.extend(
+    create_seated_approach_tasks(
+      robot=robot,
+      frame_name=grasp_frame_name,
+      parent_object=parent_object,
+      touchdown=config.return_touchdown,
+      config=config,
+      label="Return Infeed",
+      excluded_collision_pairs=detach_collision_pairs,
+    )
+  )
+
+  exit_frames = [
+    pregrasp_frame_name,
+    view_frame_name,
+  ]
+  tasks.extend(
     [
-      create_compliant_touchdown_task(
-        robot=robot,
-        direction=(0.0, 0.0, 1.0),
-        contact_force_newtons=return_touchdown_force_newtons,
-        timeout_seconds=touchdown_timeout_seconds,
-        task_name="Compliant Touchdown to Table Surface (+Z Tool)",
-      ),
       gripper.build_open_task(name="Release Finished Part"),
       robot.build_detach_object_task(
         object_name=workpiece_object_name,
         name=f"Detach {workpiece_object_name} from Gripper",
       ),
-      create_move_to_frame_task(
+      create_move_through_frames_task(
         robot=robot,
-        frame_name=pregrasp_frame_name,
+        frame_names=exit_frames,
         parent_object=parent_object,
-        motion_type="LINEAR",
-        excluded_collision_pairs=[
-          (config.robot.tool_object_name, workpiece_object_name),
-        ],
-        task_name=f"Retract Arm from Table ({parent_object}/{pregrasp_frame_name})",
-      ),
-      create_move_to_frame_task(
-        robot=robot,
-        frame_name=view_frame_name,
-        parent_object=parent_object,
-        motion_type="ANY",
-        task_name=f"Return to View Pose ({parent_object}/{view_frame_name})",
+        config=config,
+        motion_type=["LINEAR", "ANY"],
+        excluded_collision_pairs=detach_collision_pairs,
+        task_name=f"Blended Retract to View ({' -> '.join(exit_frames)})",
       ),
     ]
   )
