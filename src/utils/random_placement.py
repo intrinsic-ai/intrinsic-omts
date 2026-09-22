@@ -16,15 +16,16 @@
 
 from typing import Any
 
+
 def randomize_placement_frame(
-    context: Any,
-    parent_object: str,
-    frame_name: str,
-    return_center_x: float,
-    return_center_y: float,
-    return_bounds_x: float,
-    return_bounds_y: float,
-    return_bounds_rz_degrees: float,
+  context: Any,
+  parent_object: str,
+  frame_name: str,
+  return_center_x: float,
+  return_center_y: float,
+  return_bounds_x: float,
+  return_bounds_y: float,
+  return_bounds_rz_degrees: float,
 ) -> None:
   """Shifts the return frame to a random position within a bounding box centered at a fixed position.
 
@@ -40,37 +41,38 @@ def randomize_placement_frame(
   """
   import math
   import random
+
   from intrinsic.math.python import data_types
 
   world = context.object_world
-  parent_obj = getattr(world, parent_object, getattr(world, 'root', None))
+  parent_obj = getattr(world, parent_object, getattr(world, "root", None))
   frame_node = getattr(parent_obj, frame_name)
-  
+
   # Get current transform to preserve Z and orientation
   parent_t_frame = world.get_transform(parent_obj, frame_node)
   pos = parent_t_frame.translation
   rot = parent_t_frame.rotation
-  
+
   # Calculate random offsets within bounds
   half_bound_x = return_bounds_x / 2.0
   half_bound_y = return_bounds_y / 2.0
-  
+
   shift_x = random.uniform(-half_bound_x, half_bound_x)
   shift_y = random.uniform(-half_bound_y, half_bound_y)
-  
+
   # Apply random shift to the fixed center position
   new_x = return_center_x + shift_x
   new_y = return_center_y + shift_y
   new_z = float(pos[2])
-  
+
   # Calculate random rotation around Z-axis
   half_bound_rz = return_bounds_rz_degrees / 2.0
   shift_rz_degrees = random.uniform(-half_bound_rz, half_bound_rz)
   shift_rz_radians = math.radians(shift_rz_degrees)
-  
+
   sz = math.sin(shift_rz_radians / 2.0)
   cz = math.cos(shift_rz_radians / 2.0)
-  
+
   q = rot.quaternion
   # q_z = (0, 0, sz, cz) -> w=cz, x=0, y=0, z=sz
   # q_new = q_z * q
@@ -78,8 +80,10 @@ def randomize_placement_frame(
   x_new = cz * float(q.x) - sz * float(q.y)
   y_new = cz * float(q.y) + sz * float(q.x)
   z_new = cz * float(q.z) + sz * float(q.w)
-  
-  new_rot = data_types.Rotation3(data_types.Quaternion([x_new, y_new, z_new, w_new]))
-  
+
+  new_rot = data_types.Rotation3(
+    data_types.Quaternion([x_new, y_new, z_new, w_new])
+  )
+
   new_pose = data_types.Pose3(new_rot, [new_x, new_y, new_z])
   world.update_transform(node_a=parent_obj, node_b=frame_node, a_t_b=new_pose)
