@@ -47,3 +47,4 @@ cycle:
     center_y: 0.0
     bounds_x: 0.1
     bounds_y: 0.1
+    bounds_rz_degrees: 20.0

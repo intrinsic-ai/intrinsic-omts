@@ -213,6 +213,7 @@ class ReturnShiftConfig:
   center_y: float
   bounds_x: float
   bounds_y: float
+  bounds_rz_degrees: float = 0.0
 
 
 @dataclasses.dataclass(frozen=True)

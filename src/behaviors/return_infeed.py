@@ -70,7 +70,7 @@ def build_return_to_infeed_subtree(
   tasks: list[bt.Node] = []
 
   if config.cycle.return_shift is not None:
-    args_str = f"context, {parent_object!r}, {pregrasp_frame_name!r}, {config.cycle.return_shift.center_x}, {config.cycle.return_shift.center_y}, {config.cycle.return_shift.bounds_x}, {config.cycle.return_shift.bounds_y}"
+    args_str = f"context, {parent_object!r}, {pregrasp_frame_name!r}, {config.cycle.return_shift.center_x}, {config.cycle.return_shift.center_y}, {config.cycle.return_shift.bounds_x}, {config.cycle.return_shift.bounds_y}, {config.cycle.return_shift.bounds_rz_degrees}"
     script_body = load_python_script(
       "src.utils.random_placement",
       function_name="randomize_placement_frame",

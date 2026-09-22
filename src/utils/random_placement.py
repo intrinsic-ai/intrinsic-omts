@@ -24,6 +24,7 @@ def randomize_placement_frame(
     return_center_y: float,
     return_bounds_x: float,
     return_bounds_y: float,
+    return_bounds_rz_degrees: float,
 ) -> None:
   """Shifts the return frame to a random position within a bounding box centered at a fixed position.
 
@@ -35,7 +36,9 @@ def randomize_placement_frame(
       return_center_y: Fixed Y position center.
       return_bounds_x: Random shift bounding box width in X.
       return_bounds_y: Random shift bounding box width in Y.
+      return_bounds_rz_degrees: Random shift angular bounds around Z in degrees.
   """
+  import math
   import random
   from intrinsic.math.python import data_types
 
@@ -60,5 +63,23 @@ def randomize_placement_frame(
   new_y = return_center_y + shift_y
   new_z = float(pos[2])
   
-  new_pose = data_types.Pose3(rot, [new_x, new_y, new_z])
+  # Calculate random rotation around Z-axis
+  half_bound_rz = return_bounds_rz_degrees / 2.0
+  shift_rz_degrees = random.uniform(-half_bound_rz, half_bound_rz)
+  shift_rz_radians = math.radians(shift_rz_degrees)
+  
+  sz = math.sin(shift_rz_radians / 2.0)
+  cz = math.cos(shift_rz_radians / 2.0)
+  
+  q = rot.quaternion
+  # q_z = (0, 0, sz, cz) -> w=cz, x=0, y=0, z=sz
+  # q_new = q_z * q
+  w_new = cz * float(q.w) - sz * float(q.z)
+  x_new = cz * float(q.x) - sz * float(q.y)
+  y_new = cz * float(q.y) + sz * float(q.x)
+  z_new = cz * float(q.z) + sz * float(q.w)
+  
+  new_rot = data_types.Rotation3(data_types.Quaternion([x_new, y_new, z_new, w_new]))
+  
+  new_pose = data_types.Pose3(new_rot, [new_x, new_y, new_z])
   world.update_transform(node_a=parent_obj, node_b=frame_node, a_t_b=new_pose)
