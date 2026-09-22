@@ -1,0 +1,41 @@
+# proto-file: intrinsic/world/public/proto/object_world_updates.proto
+# proto-message: intrinsic_proto.world.ObjectWorldUpdates
+
+updates: {
+  update_transform: {
+    node_a {
+      by_name {
+        object {
+          object_name: "root"
+        }
+      }
+    }
+    node_b {
+      by_name {
+        object {
+          object_name: "raw_stock_2x3x5"
+        }
+      }
+    }
+    node_to_update: {
+      by_name {
+        object {
+          object_name: "raw_stock_2x3x5"
+        }
+      }
+    }
+    a_t_b {
+      position {
+        x: -0.525
+        y: -0.3
+        z: 1.21
+      }
+      orientation {
+        x: 0.5
+        y: -0.5
+        z: 0.5
+        w: 0.5
+      }
+    }
+  }
+}
