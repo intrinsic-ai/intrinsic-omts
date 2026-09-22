@@ -31,11 +31,13 @@ class RobotConfig:
       arm_part_name: Name of the robot arm part in `solution.world`.
       tool_object_name: Name of the end-effector object in `solution.world`.
       tool_frame_name: Name of the TCP frame on `tool_object_name`.
+      enclosure_object_name: Name of the cell enclosure object, if applicable.
   """
 
   arm_part_name: str
   tool_object_name: str
   tool_frame_name: str
+  enclosure_object_name: str | None = None
 
 
 @dataclasses.dataclass(frozen=True)

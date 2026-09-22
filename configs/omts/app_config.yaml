@@ -5,6 +5,7 @@ robot:
   arm_part_name: "ur_module"
   tool_object_name: "gripper"
   tool_frame_name: "tool_frame"
+  enclosure_object_name: "enclosure"
 
 gripper:
   type: "robotiq"
