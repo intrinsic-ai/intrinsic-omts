@@ -24,7 +24,7 @@ See the [Getting Started guide](https://github.com/intrinsic-ai/intrinsic-core/t
 ## High level OMTS architecture
 
 <p align="center">
-  <img src="docs/OMTS_Architecture.png" alt="High Level OMTS Architecture" />
+  <img src="docs/intrinsic_omts_architecture.svg" alt="High Level OMTS Architecture" />
 </p>
 
 See [Architecture.md](docs/ARCHITECTURE.md) for more details.
