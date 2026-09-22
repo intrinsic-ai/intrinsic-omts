@@ -151,40 +151,43 @@ OMTS adheres to clean separation of concerns:
 
 #### Workspace and dependencies
 
-Bazel fetches **Intrinsic Core** automatically via [`MODULE.bazel`](MODULE.bazel),
-so no manual `intrinsic-core` checkout is required:
+Bazel downloads the pre-packaged **Intrinsic Core** release archive
+(`intrinsic-core.tar.gz`, which includes all binary assets) automatically via
+[`MODULE.bazel`](MODULE.bazel), so no manual `intrinsic-core` checkout is
+required:
 
 ```python
 bazel_dep(name="intrinsic-core")
-git_override(
+archive_override(
   module_name="intrinsic-core",
-  commit=INTRINSIC_CORE_COMMIT,
-  remote=INTRINSIC_CORE_REMOTE,
+  patch_strip=1,
+  patches=["//bazel/patches:robotiq_hande_finger_offset.patch"],
+  sha256=INTRINSIC_CORE_SHA256,
+  urls=[INTRINSIC_CORE_URL],
 )
 
 bazel_dep(name="intrinsic_apis", version="0.0.1")
-git_override(
+archive_override(
   module_name="intrinsic_apis",
-  commit=INTRINSIC_CORE_COMMIT,
-  remote=INTRINSIC_CORE_REMOTE,
-  strip_prefix="intrinsic_apis",
+  sha256=INTRINSIC_CORE_SHA256,
+  strip_prefix="./intrinsic_apis",
+  urls=[INTRINSIC_CORE_URL],
 )
 ```
 
-**Git LFS** is required on the host machine because Intrinsic Core stores 3D
-meshes, textures, and model weights in Git LFS. Install and enable the smudge
-filter globally before building:
+**Git LFS** is used by this repository for the 3D scene meshes under `models/`
+(`*.glb`). Install and enable the smudge filter before cloning `intrinsic-omts`:
 
 ```bash
 sudo apt-get install git-lfs
 git lfs install
 ```
 
-To move to a different Intrinsic Core revision, update `INTRINSIC_CORE_COMMIT`
-in `MODULE.bazel`. The commit behind a release tag can be resolved with:
+To move to a different Intrinsic Core release, update `INTRINSIC_CORE_RELEASE`
+and `INTRINSIC_CORE_SHA256` in `MODULE.bazel`:
 
 ```bash
-git ls-remote https://github.com/intrinsic-ai/intrinsic-core.git 'refs/tags/<tag>^{}'
+curl -fsSL "https://github.com/intrinsic-ai/intrinsic-core/releases/download/<tag>/intrinsic-core.tar.gz" | sha256sum
 ```
 
 #### GitHub release artifacts
