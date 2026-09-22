@@ -114,6 +114,14 @@ def build_pick_from_infeed_subtree(
 
   tasks.append(gripper.build_open_task(name="Open Gripper"))
 
+  post_attach_collision_pairs = [
+    (config.robot.tool_object_name, workpiece_object_name),
+  ]
+  if config.robot.enclosure_object_name:
+    post_attach_collision_pairs.append(
+      (config.robot.enclosure_object_name, workpiece_object_name)
+    )
+
   tasks.extend(
     [
       create_move_to_frame_task(
@@ -150,9 +158,7 @@ def build_pick_from_infeed_subtree(
       create_relative_retract_task(
         robot=robot,
         distance_meters=retract_distance_meters,
-        excluded_collision_pairs=[
-          (config.robot.tool_object_name, workpiece_object_name),
-        ],
+        excluded_collision_pairs=post_attach_collision_pairs,
         task_name=f"Linear Retract after Attach ({retract_distance_meters * 100:.1f} cm, -Z Tool)",
       ),
     ]

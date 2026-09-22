@@ -37,6 +37,7 @@ class ConfigTest(absltest.TestCase):
     self.assertIsInstance(config, AppConfig)
     self.assertEqual(config.cell_name, "omts")
     self.assertEqual(config.robot.arm_part_name, "ur_module")
+    self.assertEqual(config.robot.enclosure_object_name, "enclosure")
     self.assertEqual(config.gripper.type, "robotiq")
     self.assertEqual(
       config.gripper.joint_name, "robotiq_hande_left_finger_joint"
