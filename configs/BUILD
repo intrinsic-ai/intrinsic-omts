@@ -16,6 +16,11 @@ filegroup(
 )
 
 filegroup(
+    name = "app_configs",
+    srcs = glob(["*/*.yaml"]),
+)
+
+filegroup(
     name = "all_world_updates",
     srcs = glob(["*/*.updates.pbtxt"]),
 )

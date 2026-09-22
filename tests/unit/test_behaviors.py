@@ -177,7 +177,7 @@ class BehaviorsTest(absltest.TestCase):
       name="Open CNC Vise"
     )
     self.vision.build_perception_and_spawn_task.assert_called_once_with(
-      approach_offset_z=0.08,
+      approach_offset_z=0.05,
       parent_object="root",
       pregrasp_frame_name="pre_grasp",
       grasp_frame_name="grasp",
@@ -192,16 +192,16 @@ class BehaviorsTest(absltest.TestCase):
     self.robot.build_move_relative_cartesian_task.assert_has_calls(
       [
         mock.call(
-          translation=(0.0, 0.0, -0.015),
+          translation=(0.0, 0.0, -0.01),
           motion_type="LINEAR",
           excluded_collision_pairs=[("gripper", "raw_stock_2x3x5")],
-          name="Linear Retract (1.5 cm, -Z Tool)",
+          name="Linear Retract (1.0 cm, -Z Tool)",
         ),
         mock.call(
-          translation=(0.0, 0.0, -0.015),
+          translation=(0.0, 0.0, -0.01),
           motion_type="LINEAR",
           excluded_collision_pairs=[("gripper", "raw_stock_2x3x5")],
-          name="Linear Retract after Attach (1.5 cm, -Z Tool)",
+          name="Linear Retract after Attach (1.0 cm, -Z Tool)",
         ),
       ],
       any_order=False,
@@ -303,16 +303,16 @@ class BehaviorsTest(absltest.TestCase):
     self.robot.build_move_relative_cartesian_task.assert_has_calls(
       [
         mock.call(
-          translation=(0.0, 0.0, -0.015),
+          translation=(0.0, 0.0, -0.01),
           motion_type="LINEAR",
           excluded_collision_pairs=[("gripper", "raw_stock_2x3x5")],
-          name="Linear Retract (1.5 cm, -Z Tool)",
+          name="Linear Retract (1.0 cm, -Z Tool)",
         ),
         mock.call(
-          translation=(0.0, 0.0, -0.015),
+          translation=(0.0, 0.0, -0.01),
           motion_type="LINEAR",
           excluded_collision_pairs=[("gripper", "raw_stock_2x3x5")],
-          name="Linear Retract Clear of Vise (1.5 cm, -Z Tool)",
+          name="Linear Retract Clear of Vise (1.0 cm, -Z Tool)",
         ),
       ],
       any_order=False,
@@ -385,7 +385,7 @@ class BehaviorsTest(absltest.TestCase):
     self.assertIsInstance(tree.root, bt.Sequence)
     self.assertEqual(len(tree.root.children), 5)
     self.vision.build_perception_and_spawn_task.assert_called_once_with(
-      approach_offset_z=0.08,
+      approach_offset_z=0.05,
       parent_object="root",
       pregrasp_frame_name="pre_grasp",
       grasp_frame_name="grasp",
@@ -1200,7 +1200,10 @@ class HermeticSolutionAndBehaviorTreeContractTest(absltest.TestCase):
           exec_code.parameter_message_full_name,
         )
         self.assertTrue(exec_code.parameters.proto.Unpack(params_msg))
-        self.assertAlmostEqual(params_msg.approach_offset_z, 0.08, places=5)
+        expected_offset = 0.05 if "omts" in config_path else 0.08
+        self.assertAlmostEqual(
+          params_msg.approach_offset_z, expected_offset, places=5
+        )
         self.assertEqual(params_msg.parent_object, "root")
         self.assertEqual(params_msg.pregrasp_frame_name, "pre_grasp")
         self.assertEqual(params_msg.grasp_frame_name, "grasp")
