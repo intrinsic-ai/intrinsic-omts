@@ -40,6 +40,11 @@ class HardwareAdaptersTest(absltest.TestCase):
 
   def test_ur_robot_motion_and_object_attachment(self):
     mock_solution = mock.MagicMock()
+    mock_solution.world.list_object_names.return_value = [
+      "gripper",
+      "raw_stock_2x3x5",
+      "schunk_egp_64nnb",
+    ]
     mock_move_robot = mock.MagicMock()
     mock_move_robot.return_value = bt.PythonScript(function_body="pass")
     mock_solution.skills.ai.intrinsic.move_robot = mock_move_robot
@@ -134,8 +139,7 @@ class HardwareAdaptersTest(absltest.TestCase):
     rel_exclude_task = robot.build_move_relative_cartesian_task(
       translation=(0.0, 0.0, -0.05),
       motion_type="LINEAR",
-      exclude_collision=True,
-      excluded_collision_objects=["raw_stock_2x3x5"],
+      excluded_collision_pairs=[("gripper", "raw_stock_2x3x5")],
     )
     self.assertIsInstance(rel_exclude_task, bt.Task)
     segment_kwargs = (
@@ -148,9 +152,12 @@ class HardwareAdaptersTest(absltest.TestCase):
     self.assertTrue(rule.collision_action.is_excluded)
     self.assertEqual(
       [ref.object.by_name.object_name for ref in rule.left],
-      ["gripper", "raw_stock_2x3x5"],
+      ["gripper"],
     )
-    self.assertEmpty(rule.right)
+    self.assertEqual(
+      [ref.object.by_name.object_name for ref in rule.right],
+      ["raw_stock_2x3x5"],
+    )
 
     # Move to contact
     contact_task = robot.build_move_to_contact_task(

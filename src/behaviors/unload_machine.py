@@ -120,8 +120,9 @@ def build_unload_machine_subtree(
       create_relative_retract_task(
         robot=robot,
         distance_meters=retract_distance_meters,
-        exclude_collision=True,
-        excluded_collision_objects=(workpiece_object_name,),
+        excluded_collision_pairs=[
+          (config.robot.tool_object_name, workpiece_object_name),
+        ],
         task_name=f"Linear Retract ({retract_distance_meters * 100:.1f} cm, -Z Tool)",
       ),
       gripper.build_close_task(name="Grasp Machined Part"),
@@ -132,8 +133,9 @@ def build_unload_machine_subtree(
       create_relative_retract_task(
         robot=robot,
         distance_meters=retract_distance_meters,
-        exclude_collision=True,
-        excluded_collision_objects=(workpiece_object_name,),
+        excluded_collision_pairs=[
+          (config.robot.tool_object_name, workpiece_object_name),
+        ],
         task_name=f"Linear Retract Clear of Vise ({retract_distance_meters * 100:.1f} cm, -Z Tool)",
       ),
       create_move_to_frame_task(
