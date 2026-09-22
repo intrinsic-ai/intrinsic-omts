@@ -121,6 +121,7 @@ intrinsic_solution(
             "//configs:lab_bb_01/orbbec_gemini.updates.pbtxt",
         ],
         "//conditions:default": [
+            "//configs:omts/ur_module.limits.updates.pbtxt",
             "//configs:omts/ur_module.attachments.updates.pbtxt",
             "//configs:omts/scene.updates.pbtxt",
             "//configs:omts/align_robot.updates.pbtxt",
