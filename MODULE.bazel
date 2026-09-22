@@ -1,38 +1,36 @@
 module(name = "omts")
 
-# Intrinsic Core, pinned to an intrinsic-ai/intrinsic-core release revision.
+# Intrinsic Core, pinned to an intrinsic-ai/intrinsic-core release archive.
 #
-# Intrinsic Core is built from source as part of the OMTS build. Bazel clones it directly,
-# so no manual sibling checkout is required.
+# Intrinsic Core is built from source as part of the OMTS build. Bazel downloads the
+# release archive directly (which already includes materialized Git LFS binary assets),
+# so neither a manual sibling checkout nor `git-lfs` is required to fetch it.
 #
-# INTRINSIC_CORE_COMMIT is pinned rather than the tag because git tags are mutable. It is
-# the commit that `INTRINSIC_CORE_RELEASE` points at:
-#   git ls-remote https://github.com/intrinsic-ai/intrinsic-core.git \
-#     refs/tags/<tag>^{}
-#
-# Binary assets are stored in Git LFS, so fetching requires a working `git-lfs`
-# installation (`git lfs install`). See README.md for setup.
-INTRINSIC_CORE_RELEASE = "20260922.0"  # buildifier: disable=unused-variable
+# When bumping INTRINSIC_CORE_RELEASE, update INTRINSIC_CORE_SHA256 with:
+#   curl -fsSL "https://github.com/intrinsic-ai/intrinsic-core/releases/download/<tag>/intrinsic-core.tar.gz" | sha256sum
+INTRINSIC_CORE_RELEASE = "20260922.0"
 
-INTRINSIC_CORE_COMMIT = "523f2e03ddf3cb46a19b15be5e81586ae2f538c2"
+INTRINSIC_CORE_URL = "https://github.com/intrinsic-ai/intrinsic-core/releases/download/{tag}/intrinsic-core.tar.gz".format(
+    tag = INTRINSIC_CORE_RELEASE,
+)
 
-INTRINSIC_CORE_REMOTE = "https://github.com/intrinsic-ai/intrinsic-core.git"
+INTRINSIC_CORE_SHA256 = "0009109250de1bec3b48abdd0a2ac36e7486447738810ebbb7fa216e2d5436f0"
 
 bazel_dep(name = "intrinsic-core")
-git_override(
+archive_override(
     module_name = "intrinsic-core",
-    commit = INTRINSIC_CORE_COMMIT,
     patch_strip = 1,
     patches = ["//bazel/patches:robotiq_hande_finger_offset.patch"],
-    remote = INTRINSIC_CORE_REMOTE,
+    sha256 = INTRINSIC_CORE_SHA256,
+    urls = [INTRINSIC_CORE_URL],
 )
 
 bazel_dep(name = "intrinsic_apis", version = "0.0.1")
-git_override(
+archive_override(
     module_name = "intrinsic_apis",
-    commit = INTRINSIC_CORE_COMMIT,
-    remote = INTRINSIC_CORE_REMOTE,
-    strip_prefix = "intrinsic_apis",
+    sha256 = INTRINSIC_CORE_SHA256,
+    strip_prefix = "./intrinsic_apis",
+    urls = [INTRINSIC_CORE_URL],
 )
 
 archive_override(
