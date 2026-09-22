@@ -62,8 +62,8 @@ cycle:
   touchdown_timeout_seconds: 30.0
   machining_timeout_seconds: 2.0
   return_shift:
-    center_x: 0.4
+    center_x: 0.45
     center_y: 0.0
-    bounds_x: 0.02
-    bounds_y: 0.04
-    bounds_rz_degrees: 20.0
+    bounds_x: 0.01
+    bounds_y: 0.01
+    bounds_rz_degrees: 10.0
