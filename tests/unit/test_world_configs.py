@@ -82,6 +82,8 @@ _EXPECTED_SCENE_FRAMES = {
     "view",
     "transit",
     "vise_view",
+    "grasp",
+    "pre_grasp",
   ],
   "configs/lab_bb_01/scene.updates.pbtxt": [
     "grasp",

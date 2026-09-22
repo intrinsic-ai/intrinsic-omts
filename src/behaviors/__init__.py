@@ -20,6 +20,8 @@ from src.behaviors.machining import build_machining_handshake_subtree
 from src.behaviors.motions import (
   create_compliant_touchdown_task,
   create_move_through_frames_task,
+  create_move_to_frame_task,
+  create_relative_retract_task,
   create_seated_approach_tasks,
 )
 from src.behaviors.pick import build_pick_from_infeed_subtree
@@ -35,5 +37,7 @@ __all__ = [
   "build_unload_machine_subtree",
   "create_compliant_touchdown_task",
   "create_move_through_frames_task",
+  "create_move_to_frame_task",
+  "create_relative_retract_task",
   "create_seated_approach_tasks",
 ]
