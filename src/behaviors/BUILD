@@ -74,6 +74,8 @@ py_library(
         "//src/core:config",
         "//src/hardware:gripper",
         "//src/hardware:robot",
+        "//src/utils:random_placement",
+        "//src/utils:script_utils",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
     ],
 )

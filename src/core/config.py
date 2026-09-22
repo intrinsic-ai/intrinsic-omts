@@ -188,6 +188,9 @@ class CycleConfig:
       return_touchdown_force_newtons: Force threshold for table placement (N).
       touchdown_timeout_seconds: Timeout for `move_to_contact` actions (s).
       machining_timeout_seconds: Maximum duration to wait for CNC cycle (s).
+      return_shift: Optional configuration for applying a randomized positional
+        shift when returning the workpiece. If None, the object is placed at
+        the exact view frame location.
   """
 
   num_cycles: int
@@ -200,6 +203,18 @@ class CycleConfig:
   return_touchdown_force_newtons: float
   touchdown_timeout_seconds: float
   machining_timeout_seconds: float
+  return_shift: "ReturnShiftConfig | None" = None
+
+
+@dataclasses.dataclass(frozen=True)
+class ReturnShiftConfig:
+  """Parameters for randomizing the placement position of the returned workpiece."""
+
+  center_x: float
+  center_y: float
+  bounds_x: float
+  bounds_y: float
+  bounds_rz_degrees: float = 0.0
 
 
 @dataclasses.dataclass(frozen=True)
@@ -315,6 +330,10 @@ def _construct_section(
   ):
     section_dict["sensor_ids"] = tuple(
       int(x) for x in section_dict["sensor_ids"]
+    )
+  elif section_name == "cycle" and section_dict.get("return_shift") is not None:
+    section_dict["return_shift"] = ReturnShiftConfig(
+      **section_dict["return_shift"]
     )
   elif section_name == "machine":
     for joint_key in (

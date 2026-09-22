@@ -276,7 +276,13 @@ class BehaviorsTest(absltest.TestCase):
     )
 
     self.assertIsNotNone(return_subtree)
-    self.assertEqual(len(return_subtree.children), 6)
+    self.assertEqual(len(return_subtree.children), 7)
+    shift_node = return_subtree.children[0]
+    self.assertEqual(shift_node.name, "0. Shift Return Placement Frame")
+    self.assertIn(
+      "randomize_placement_frame(context, params)",
+      shift_node.proto.task.execute_code.python_code.function_body,
+    )
     self.assertEqual(self.robot.build_move_blended_cartesian_task.call_count, 2)
     self.robot.build_detach_object_task.assert_called_once_with(
       object_name="raw_stock_2x3x5",

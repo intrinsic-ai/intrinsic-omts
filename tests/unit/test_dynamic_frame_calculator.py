@@ -32,6 +32,7 @@ from src.utils.math_utils import (
   normalize_motion_types,
   object_exists_in_world,
 )
+from src.utils.random_placement import randomize_placement_frame
 from src.utils.script_utils import load_python_script
 
 
@@ -248,6 +249,81 @@ class DynamicFrameCalculatorTest(absltest.TestCase):
     self.assertAlmostEqual(float(q.y), -1.0, places=5)
     self.assertAlmostEqual(float(q.z), 0.0, places=5)
     self.assertAlmostEqual(float(q.w), 0.0, places=5)
+
+  def test_randomize_placement_frame_shifts_pregrasp_and_grasp_in_lockstep(
+    self,
+  ) -> None:
+    """Verifies pre_grasp and grasp receive identical XY/RZ shifts."""
+    mock_world = mock.MagicMock()
+    mock_root = mock.MagicMock()
+    mock_world.root = mock_root
+
+    pregrasp_initial = data_types.Pose3(
+      data_types.Rotation3(data_types.Quaternion([1.0, 0.0, 0.0, 0.0])),
+      [0.30, -0.20, 1.13],
+    )
+    grasp_initial = data_types.Pose3(
+      data_types.Rotation3(data_types.Quaternion([1.0, 0.0, 0.0, 0.0])),
+      [0.30, -0.20, 1.05],
+    )
+
+    def _get_transform(node_a: Any, node_b: Any) -> data_types.Pose3:
+      del node_a
+      if node_b is mock_root.pre_grasp:
+        return pregrasp_initial
+      if node_b is mock_root.grasp:
+        return grasp_initial
+      raise AssertionError(f"Unexpected node_b: {node_b}")
+
+    mock_world.get_transform.side_effect = _get_transform
+    context = mock.MagicMock()
+    context.object_world = mock_world
+
+    params = _make_params(
+      parent_object="root",
+      frame_name="pre_grasp",
+      return_center_x=0.4,
+      return_center_y=0.0,
+      return_bounds_x=0.02,
+      return_bounds_y=0.04,
+      return_bounds_rz_degrees=20.0,
+      grasp_frame_name="grasp",
+    )
+    randomize_placement_frame(context, params)
+
+    self.assertEqual(mock_world.update_transform.call_count, 2)
+    updated_poses = {
+      call.kwargs["node_b"]: call.kwargs["a_t_b"]
+      for call in mock_world.update_transform.call_args_list
+    }
+    pregrasp_updated = updated_poses[mock_root.pre_grasp]
+    grasp_updated = updated_poses[mock_root.grasp]
+
+    self.assertAlmostEqual(
+      float(pregrasp_updated.translation[0]),
+      float(grasp_updated.translation[0]),
+      places=6,
+    )
+    self.assertAlmostEqual(
+      float(pregrasp_updated.translation[1]),
+      float(grasp_updated.translation[1]),
+      places=6,
+    )
+    self.assertGreaterEqual(float(pregrasp_updated.translation[0]), 0.39)
+    self.assertLessEqual(float(pregrasp_updated.translation[0]), 0.41)
+    self.assertGreaterEqual(float(pregrasp_updated.translation[1]), -0.02)
+    self.assertLessEqual(float(pregrasp_updated.translation[1]), 0.02)
+    self.assertAlmostEqual(
+      float(pregrasp_updated.translation[2]), 1.13, places=6
+    )
+    self.assertAlmostEqual(float(grasp_updated.translation[2]), 1.05, places=6)
+
+    q_pre = pregrasp_updated.rotation.quaternion
+    q_grasp = grasp_updated.rotation.quaternion
+    self.assertAlmostEqual(float(q_pre.x), float(q_grasp.x), places=6)
+    self.assertAlmostEqual(float(q_pre.y), float(q_grasp.y), places=6)
+    self.assertAlmostEqual(float(q_pre.z), float(q_grasp.z), places=6)
+    self.assertAlmostEqual(float(q_pre.w), float(q_grasp.w), places=6)
 
 
 class MathUtilsTest(absltest.TestCase):

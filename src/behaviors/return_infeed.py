@@ -14,7 +14,10 @@
 
 """Infeed return / outfeed placement subtree."""
 
+from unittest import mock
+
 from intrinsic.solutions import behavior_tree as bt
+from intrinsic.solutions import proto_building as pb
 
 from src.behaviors.motions import (
   create_move_through_frames_task,
@@ -23,6 +26,7 @@ from src.behaviors.motions import (
 from src.core.config import AppConfig
 from src.hardware.gripper import GripperInterface
 from src.hardware.robot import RobotInterface
+from src.utils.script_utils import load_python_script
 
 
 def build_return_to_infeed_subtree(
@@ -33,14 +37,15 @@ def build_return_to_infeed_subtree(
   """Builds the Behavior Tree subtree for returning the finished part to infeed.
 
   Sequence:
-  1. Approach infeed `pregrasp_frame` (`ANY`), blending through `transit_frame`
+  1. Calculate random XY shift for placement position based on config.
+  2. Approach infeed `pregrasp_frame` (`ANY`), blending through `transit_frame`
      if configured.
-  2. Approach `grasp_frame` standoff (`LINEAR`) and perform compliant touchdown
+  3. Approach `grasp_frame` standoff (`LINEAR`) and perform compliant touchdown
      along tool +Z (`create_seated_approach_tasks` with
      `config.return_touchdown`) to place finished part on table surface.
-  3. Open gripper to release part and detach workpiece entity from gripper in
+  4. Open gripper to release part and detach workpiece entity from gripper in
      the belief world.
-  4. Blended retract (`[pregrasp_frame, view_frame]`, `["LINEAR", "ANY"]`) with
+  5. Blended retract (`[pregrasp_frame, view_frame]`, `["LINEAR", "ANY"]`) with
      segment-scoped collision exclusions to return arm to `view_frame`.
 
   Args:
@@ -65,8 +70,87 @@ def build_return_to_infeed_subtree(
 
   detach_collision_pairs = [tool_to_workpiece_collision_pair]
 
+  tasks: list[bt.Node] = []
+
+  if config.cycle.return_shift is not None:
+    solution = getattr(robot, "_solution", None)
+    if (
+      solution
+      and hasattr(solution, "proto_builder")
+      and not isinstance(solution.proto_builder, mock.MagicMock)
+    ):
+      signature = solution.proto_builder.create_signature_with_args(
+        parameters=pb.MessageSpec(
+          fields=[
+            pb.FieldSpec(
+              type="string",
+              name="parent_object",
+              number=1,
+              arg=parent_object,
+            ),
+            pb.FieldSpec(
+              type="string",
+              name="frame_name",
+              number=2,
+              arg=pregrasp_frame_name,
+            ),
+            pb.FieldSpec(
+              type="float",
+              name="return_center_x",
+              number=3,
+              arg=config.cycle.return_shift.center_x,
+            ),
+            pb.FieldSpec(
+              type="float",
+              name="return_center_y",
+              number=4,
+              arg=config.cycle.return_shift.center_y,
+            ),
+            pb.FieldSpec(
+              type="float",
+              name="return_bounds_x",
+              number=5,
+              arg=config.cycle.return_shift.bounds_x,
+            ),
+            pb.FieldSpec(
+              type="float",
+              name="return_bounds_y",
+              number=6,
+              arg=config.cycle.return_shift.bounds_y,
+            ),
+            pb.FieldSpec(
+              type="float",
+              name="return_bounds_rz_degrees",
+              number=7,
+              arg=config.cycle.return_shift.bounds_rz_degrees,
+            ),
+            pb.FieldSpec(
+              type="string",
+              name="grasp_frame_name",
+              number=8,
+              arg=grasp_frame_name,
+            ),
+          ]
+        )
+      )
+    else:
+      signature = None
+
+    script_body = load_python_script(
+      "src.utils.random_placement",
+      function_name="randomize_placement_frame",
+    )
+
+    shift_task = bt.PythonScript(
+      signature_with_args=signature,
+      function_body=script_body,
+    )
+    tasks.append(
+      bt.Task(action=shift_task, name="0. Shift Return Placement Frame")
+    )
+
   entry_frames = [f for f in (transit_frame_name, pregrasp_frame_name) if f]
-  tasks: list[bt.Node] = [
+  tasks.append(
     create_move_through_frames_task(
       robot=robot,
       frame_names=entry_frames,
@@ -82,7 +166,7 @@ def build_return_to_infeed_subtree(
         )
       ),
     )
-  ]
+  )
 
   tasks.extend(
     create_seated_approach_tasks(

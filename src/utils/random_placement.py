@@ -1,0 +1,88 @@
+# Copyright 2026 Intrinsic Innovation LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Dynamic frame shifting for return infeed positioning."""
+
+from typing import Any
+
+
+def randomize_placement_frame(context: Any, params: Any) -> None:
+  """Shifts the return frame to a random position within a bounding box centered at a fixed position.
+
+  Args:
+      context: SBL BT PythonScript execution context providing `object_world`.
+      params: Dynamic parameters protobuf containing shift configuration.
+  """
+  parent_object = params.parent_object
+  frame_name = params.frame_name
+  return_center_x = params.return_center_x
+  return_center_y = params.return_center_y
+  return_bounds_x = params.return_bounds_x
+  return_bounds_y = params.return_bounds_y
+  return_bounds_rz_degrees = params.return_bounds_rz_degrees
+  grasp_frame_name = getattr(params, "grasp_frame_name", None)
+  import math
+  import random
+
+  from intrinsic.math.python import data_types
+
+  world = context.object_world
+  parent_obj = getattr(world, parent_object, getattr(world, "root", None))
+  frame_node = getattr(parent_obj, frame_name)
+
+  # Get current transform to preserve Z and orientation
+  parent_t_frame = world.get_transform(parent_obj, frame_node)
+  pos = parent_t_frame.translation
+  rot = parent_t_frame.rotation
+
+  # Calculate random offsets within bounds
+  half_bound_x = return_bounds_x / 2.0
+  half_bound_y = return_bounds_y / 2.0
+
+  shift_x = max(
+    [random.uniform(-half_bound_x, half_bound_x) for _ in range(5)], key=abs
+  )
+  shift_y = max(
+    [random.uniform(-half_bound_y, half_bound_y) for _ in range(5)], key=abs
+  )
+
+  # Apply random shift to the fixed center position
+  new_x = return_center_x + shift_x
+  new_y = return_center_y + shift_y
+  new_z = float(pos[2])
+
+  # Calculate random rotation around Z-axis
+  half_bound_rz = return_bounds_rz_degrees / 2.0
+  shift_rz_degrees = max(
+    [random.uniform(-half_bound_rz, half_bound_rz) for _ in range(5)], key=abs
+  )
+  shift_rz_radians = math.radians(shift_rz_degrees)
+
+  shift_rotation = data_types.Rotation3.from_euler_angles(
+    rpy_radians=[0, 0, shift_rz_radians]
+  )
+
+  new_rot = shift_rotation * rot
+  new_pose = data_types.Pose3(new_rot, [new_x, new_y, new_z])
+  world.update_transform(node_a=parent_obj, node_b=frame_node, a_t_b=new_pose)
+
+  if grasp_frame_name and grasp_frame_name != frame_name:
+    grasp_node = getattr(parent_obj, grasp_frame_name, None)
+    if grasp_node is not None:
+      parent_t_grasp = world.get_transform(parent_obj, grasp_node)
+      grasp_z = float(parent_t_grasp.translation[2])
+      grasp_pose = data_types.Pose3(new_rot, [new_x, new_y, grasp_z])
+      world.update_transform(
+        node_a=parent_obj, node_b=grasp_node, a_t_b=grasp_pose
+      )
