@@ -34,7 +34,7 @@ from intrinsic.world.proto import (
 )
 
 from src.core.config import RobotConfig
-from src.core.types import JointPosition
+from src.core.types import JointPosition, Pose3D
 from src.utils.execution_utils import (
   create_transform_node_ref,
   describe_motion_types,
@@ -57,12 +57,14 @@ class RobotInterface(abc.ABC):
 
   def build_move_to_joint_position_task(
     self,
-    joint_position: JointPosition,
+    joint_positions: JointPosition | Sequence[float],
     name: str | None = None,
   ) -> bt.Node:
     """Builds a behavior tree task to move the robot arm to an explicit JointPosition."""
+    if isinstance(joint_positions, JointPosition):
+      joint_positions = joint_positions.as_list()
     return self.build_move_joint_task(
-      joint_target=joint_position,
+      joint_target=joint_positions,
       name=name,
     )
 
@@ -90,6 +92,8 @@ class RobotInterface(abc.ABC):
     self,
     target_frames: Sequence[tuple[str, str]],
     motion_type: str | Sequence[str] = "ANY",
+    target_frame_offset: Pose3D | None = None,
+    excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
     name: str | None = None,
   ) -> bt.Node:
     """Builds a behavior tree task to execute a blended trajectory through target frames."""
@@ -101,6 +105,8 @@ class RobotInterface(abc.ABC):
     translation: tuple[float, float, float],
     motion_type: str = "LINEAR",
     excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
+    exclude_collision: bool = False,
+    excluded_collision_objects: Sequence[str] | None = None,
     name: str | None = None,
   ) -> bt.Node:
     """Builds a behavior tree task to move the robot tool relative to its current pose."""
@@ -170,16 +176,6 @@ class UrRobot(RobotInterface):
     return create_transform_node_ref(
       self._tool_object_name, self._tool_frame_name
     )
-
-  def _motion_type_enum(self, motion_type: str) -> Any:
-    """Maps a motion type string to MotionSegment.MotionType enum."""
-    motion_proto = (
-      self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType
-    )
-    return {
-      "LINEAR": motion_proto.LINEAR,
-      "JOINT": motion_proto.JOINT,
-    }.get(motion_type.upper(), motion_proto.ANY)
 
   def build_move_joint_task(
     self,
@@ -302,45 +298,11 @@ class UrRobot(RobotInterface):
         "motion_type": motion_type_enum,
       }
 
-    if excluded_collision_pairs:
-      valid_pairs = [
-        (left_obj, right_obj)
-        for left_obj, right_obj in excluded_collision_pairs
-        if object_exists_in_world(self._solution, left_obj)
-        and object_exists_in_world(self._solution, right_obj)
-      ]
-      if valid_pairs:
-        collision_rules = [
-          collision_settings_pb2.CollisionSettings.CollisionRule(
-            left=[
-              collision_settings_pb2.ObjectOrEntityReference(
-                object=object_world_refs_pb2.ObjectReference(
-                  by_name=object_world_refs_pb2.ObjectReferenceByName(
-                    object_name=left_obj,
-                  )
-                )
-              )
-            ],
-            right=[
-              collision_settings_pb2.ObjectOrEntityReference(
-                object=object_world_refs_pb2.ObjectReference(
-                  by_name=object_world_refs_pb2.ObjectReferenceByName(
-                    object_name=right_obj,
-                  )
-                )
-              )
-            ],
-            collision_action=collision_action_pb2.CollisionAction(
-              is_excluded=True,
-            ),
-          )
-          for left_obj, right_obj in valid_pairs
-        ]
-        collision_settings = collision_settings_pb2.CollisionSettings(
-          disable_collision_checking=False,
-          collision_rules=collision_rules,
-        )
-        segment_kwargs["collision_settings"] = collision_settings
+    collision_settings = self._build_collision_settings(
+      excluded_collision_pairs
+    )
+    if collision_settings is not None:
+      segment_kwargs["collision_settings"] = collision_settings
 
     motion_segment = (
       self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
@@ -358,6 +320,8 @@ class UrRobot(RobotInterface):
     self,
     target_frames: Sequence[tuple[str, str]],
     motion_type: str | Sequence[str] = "ANY",
+    target_frame_offset: Pose3D | None = None,
+    excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
     name: str | None = None,
   ) -> bt.Node:
     """Builds an SBL move_robot task executing a blended trajectory through target frames."""
@@ -370,6 +334,10 @@ class UrRobot(RobotInterface):
       f"Blended Move through {path_desc} ({describe_motion_types(motion_types)})"
     )
 
+    collision_settings = self._build_collision_settings(
+      excluded_collision_pairs
+    )
+
     motion_segments = []
     for (obj_name, frame_name), segment_type in zip(
       target_frames, motion_types, strict=True
@@ -379,10 +347,40 @@ class UrRobot(RobotInterface):
         moving_frame=self.tool_frame_reference,
         target_frame=target_node_ref,
       )
+      if target_frame_offset is not None:
+        if isinstance(target_frame_offset, Pose3D):
+          pos = (
+            target_frame_offset.x,
+            target_frame_offset.y,
+            target_frame_offset.z,
+          )
+          quat = (
+            target_frame_offset.qx,
+            target_frame_offset.qy,
+            target_frame_offset.qz,
+            target_frame_offset.qw,
+          )
+        elif isinstance(target_frame_offset, tuple):
+          pos, quat = target_frame_offset
+        else:
+          pos, quat = (0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)
+        cartesian_pose.target_frame_offset.CopyFrom(
+          pose_pb2.Pose(
+            position=point_pb2.Point(x=pos[0], y=pos[1], z=pos[2]),
+            orientation=quaternion_pb2.Quaternion(
+              x=quat[0], y=quat[1], z=quat[2], w=quat[3]
+            ),
+          )
+        )
+      segment_kwargs: dict[str, Any] = {
+        "cartesian_pose": cartesian_pose,
+        "motion_type": self._motion_type_enum(segment_type),
+      }
+      if collision_settings is not None:
+        segment_kwargs["collision_settings"] = collision_settings
       motion_segments.append(
         self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
-          cartesian_pose=cartesian_pose,
-          motion_type=self._motion_type_enum(segment_type),
+          **segment_kwargs
         )
       )
 
@@ -397,9 +395,12 @@ class UrRobot(RobotInterface):
     translation: tuple[float, float, float],
     motion_type: str = "LINEAR",
     excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
+    exclude_collision: bool = False,
+    excluded_collision_objects: Sequence[str] | None = None,
     name: str | None = None,
   ) -> bt.Node:
     """Builds a relative Cartesian motion task along tool frames using RelativePoseEquality."""
+    del exclude_collision
     task_name = (
       name
       or f"Move relative ({translation[0]:.3f}, {translation[1]:.3f}, {translation[2]:.3f}) [{motion_type}]"
@@ -418,45 +419,15 @@ class UrRobot(RobotInterface):
       "relative_cartesian_pose": relative_cartesian_pose,
       "motion_type": self._motion_type_enum(motion_type),
     }
-    if excluded_collision_pairs:
-      valid_pairs = [
-        (left_obj, right_obj)
-        for left_obj, right_obj in excluded_collision_pairs
-        if object_exists_in_world(self._solution, left_obj)
-        and object_exists_in_world(self._solution, right_obj)
+    pairs = list(excluded_collision_pairs or ())
+    if not pairs and excluded_collision_objects:
+      pairs = [
+        (self._tool_object_name, obj_name)
+        for obj_name in excluded_collision_objects
       ]
-      if valid_pairs:
-        collision_rules = [
-          collision_settings_pb2.CollisionSettings.CollisionRule(
-            left=[
-              collision_settings_pb2.ObjectOrEntityReference(
-                object=object_world_refs_pb2.ObjectReference(
-                  by_name=object_world_refs_pb2.ObjectReferenceByName(
-                    object_name=left_obj,
-                  )
-                )
-              )
-            ],
-            right=[
-              collision_settings_pb2.ObjectOrEntityReference(
-                object=object_world_refs_pb2.ObjectReference(
-                  by_name=object_world_refs_pb2.ObjectReferenceByName(
-                    object_name=right_obj,
-                  )
-                )
-              )
-            ],
-            collision_action=collision_action_pb2.CollisionAction(
-              is_excluded=True,
-            ),
-          )
-          for left_obj, right_obj in valid_pairs
-        ]
-        collision_settings = collision_settings_pb2.CollisionSettings(
-          disable_collision_checking=False,
-          collision_rules=collision_rules,
-        )
-        segment_kwargs["collision_settings"] = collision_settings
+    collision_settings = self._build_collision_settings(pairs or None)
+    if collision_settings is not None:
+      segment_kwargs["collision_settings"] = collision_settings
 
     motion_segment = (
       self._move_robot_skill.intrinsic_proto.skills.MotionSegment(
@@ -541,3 +512,59 @@ class UrRobot(RobotInterface):
       object_entity=object_ref,
     )
     return bt.Task(action=action, name=task_name)
+
+  def _motion_type_enum(self, motion_type: str) -> Any:
+    """Maps a motion type string to MotionSegment.MotionType enum."""
+    motion_proto = (
+      self._move_robot_skill.intrinsic_proto.skills.MotionSegment.MotionType
+    )
+    return {
+      "LINEAR": motion_proto.LINEAR,
+      "JOINT": motion_proto.JOINT,
+    }.get(motion_type.upper(), motion_proto.ANY)
+
+  def _build_collision_settings(
+    self,
+    excluded_collision_pairs: Sequence[tuple[str, str]] | None,
+  ) -> collision_settings_pb2.CollisionSettings | None:
+    """Builds scoped CollisionSettings for valid world object pairs."""
+    if not excluded_collision_pairs:
+      return None
+    valid_pairs = [
+      (left_obj, right_obj)
+      for left_obj, right_obj in excluded_collision_pairs
+      if object_exists_in_world(self._solution, left_obj)
+      and object_exists_in_world(self._solution, right_obj)
+    ]
+    if not valid_pairs:
+      return None
+    collision_rules = [
+      collision_settings_pb2.CollisionSettings.CollisionRule(
+        left=[
+          collision_settings_pb2.ObjectOrEntityReference(
+            object=object_world_refs_pb2.ObjectReference(
+              by_name=object_world_refs_pb2.ObjectReferenceByName(
+                object_name=left_obj,
+              )
+            )
+          )
+        ],
+        right=[
+          collision_settings_pb2.ObjectOrEntityReference(
+            object=object_world_refs_pb2.ObjectReference(
+              by_name=object_world_refs_pb2.ObjectReferenceByName(
+                object_name=right_obj,
+              )
+            )
+          )
+        ],
+        collision_action=collision_action_pb2.CollisionAction(
+          is_excluded=True,
+        ),
+      )
+      for left_obj, right_obj in valid_pairs
+    ]
+    return collision_settings_pb2.CollisionSettings(
+      disable_collision_checking=False,
+      collision_rules=collision_rules,
+    )

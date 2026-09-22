@@ -69,6 +69,7 @@ py_test(
 py_test(
     name = "test_hardware_adapters",
     srcs = ["test_hardware_adapters.py"],
+    data = ["//configs:all_configs"],
     deps = [
         "//src/core:config",
         "//src/core:types",
