@@ -12,6 +12,8 @@ nodes (`bt.Task` / `bt.Sequence`).
 | [`gripper.py`](gripper.py) | `GripperInterface` | `RobotiqGripper`, `DioGripper` | `gripper_cmd_skill` (metric finger joint position), `dio_set_output` (solenoid/relay pins) |
 | [`machine.py`](machine.py) | `CncMachineInterface` | `DioCncMachine` | `dio_set_output`, `dio_wait_for_input` / `dio_read_input`, `update_world` (belief-world door/vise joint synchronization) |
 | [`vision.py`](vision.py) | `VisionInterface` | `OrbbecVision` | `capture_images`, `estimate_pose_multi_view` (FoundationPose), `bt.PythonScript` dynamic frame calculation wrapped in `bt.Retry` |
+| [`grasping.py`](grasping.py) | `GraspPlannerInterface` | *(none in-tree)* | Extension point only; an implementation contributes the task that writes planned `grasp` / `pre_grasp` frames. |
+| [`grasp_planners.py`](grasp_planners.py) | — | `create_grasp_planner` factory | Maps a `GraspPlannerType` to a planner instance. Returns `None` for `cuboid_center`, whose grasp is emitted by the perception pipeline itself. |
 
 ## Adapter Design Rules
 
@@ -25,3 +27,9 @@ nodes (`bt.Task` / `bt.Sequence`).
   vise digital outputs, it appends an `update_world` task updating the
   corresponding scene object joint positions (`cnc_enclosure`,
   `schunk_egp_64nnb`) so collision checking reflects the physical state.
+* **One-Way Grasp Planner Dependencies**: `grasping.py` holds only the
+  `GraspPlannerInterface` contract and never imports a planner, so an
+  out-of-tree integration can implement it without OMTS depending back on that
+  integration. `grasp_planners.py` is the single module that knows which
+  concrete planner belongs to which `GraspPlannerType`, which is why
+  `src/hardware/__init__.py` re-exports the interface but not the factory.

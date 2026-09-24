@@ -22,6 +22,7 @@ from src.behaviors.motions import (
 )
 from src.core.config import AppConfig
 from src.core.infeed import InfeedMode, InfeedStrategy, PerceptionInfeedStrategy
+from src.hardware.grasping import GraspPlannerInterface
 from src.hardware.gripper import GripperInterface
 from src.hardware.machine import CncMachineInterface
 from src.hardware.robot import RobotInterface
@@ -35,6 +36,7 @@ def build_pick_from_infeed_subtree(
   infeed_strategy: InfeedStrategy,
   config: AppConfig,
   machine: CncMachineInterface | None = None,
+  grasp_planner: GraspPlannerInterface | None = None,
 ) -> bt.Node:
   """Builds the Behavior Tree subtree for locating and grasping a raw workpiece.
 
@@ -44,14 +46,16 @@ def build_pick_from_infeed_subtree(
   2. If `infeed_strategy.mode` is `PERCEPTION`, move to `view_frame` (`ANY`)
      and run the 3-step perception pipeline (capture RGB-D, estimate 6D pose
      via FoundationPose, and update dynamic `pre_grasp`/`grasp` frames).
-  3. Open gripper fingers.
-  4. Move tool to dynamic `pre_grasp` frame (`ANY`).
-  5. Approach `grasp` standoff (`LINEAR`), perform compliant touchdown along
+  3. If `grasp_planner` is provided, run it to plan the grasp on the localized
+     workpiece, overwriting `pre_grasp`/`grasp` with the planned poses.
+  4. Open gripper fingers.
+  5. Move tool to dynamic `pre_grasp` frame (`ANY`).
+  6. Approach `grasp` standoff (`LINEAR`), perform compliant touchdown along
      tool +Z (`config.pick_touchdown`), and execute relative linear retract
      along tool -Z (`create_seated_approach_tasks`).
-  6. Close gripper to grasp part and attach workpiece entity to gripper in the
+  7. Close gripper to grasp part and attach workpiece entity to gripper in the
      belief world.
-  7. Retract arm linearly back up to `pre_grasp` (`LINEAR`).
+  8. Retract arm linearly back up to `pre_grasp` (`LINEAR`).
 
   Args:
       robot: Robot controller adapter.
@@ -60,9 +64,17 @@ def build_pick_from_infeed_subtree(
       infeed_strategy: Infeed strategy model (`PerceptionInfeedStrategy`).
       config: Validated application configuration dataclass.
       machine: Optional CNC machine adapter to prepare prior to pick.
+      grasp_planner: Optional grasp planner. `None` selects the built-in
+        cuboid-center behaviour, where the perception pipeline publishes the
+        grasp frames itself.
 
   Returns:
       Behavior tree sequence executing the infeed pick pipeline.
+
+  Raises:
+      ValueError: If a grasp planner is supplied without perception infeed. A
+        planner localizes the grasp *on* a workpiece whose pose is already
+        known, so it cannot substitute for locating the part.
   """
   parent_object = config.frames.parent_object
   view_frame_name = config.frames.view_frame
@@ -70,6 +82,15 @@ def build_pick_from_infeed_subtree(
   grasp_frame_name = config.frames.grasp_frame
   approach_offset_z = config.cycle.approach_offset_z
   workpiece_object_name = config.cycle.workpiece_id
+
+  is_perception_infeed = infeed_strategy.mode == InfeedMode.PERCEPTION
+  if grasp_planner is not None and not is_perception_infeed:
+    raise ValueError(
+      f"Grasp planning requires infeed mode "
+      f"'{InfeedMode.PERCEPTION.value}'. A planner localizes the grasp on the "
+      f"workpiece, not the workpiece itself, so the part's pose must come "
+      f"from perception first."
+    )
 
   tasks: list[bt.Node] = []
 
@@ -81,7 +102,7 @@ def build_pick_from_infeed_subtree(
       ]
     )
 
-  if infeed_strategy.mode == InfeedMode.PERCEPTION:
+  if is_perception_infeed:
     if not isinstance(infeed_strategy, PerceptionInfeedStrategy):
       raise TypeError(
         "InfeedMode.PERCEPTION requires a PerceptionInfeedStrategy instance."
@@ -107,6 +128,16 @@ def build_pick_from_infeed_subtree(
           name="Perception & Dynamic Grasp Frame Update Pipeline",
         ),
       ]
+    )
+
+  if grasp_planner is not None:
+    tasks.append(
+      grasp_planner.build_plan_grasp_task(
+        workpiece_object_name=workpiece_object_name,
+        parent_object=parent_object,
+        grasp_frame_name=grasp_frame_name,
+        pregrasp_frame_name=pregrasp_frame_name,
+      )
     )
 
   tasks.append(gripper.build_open_task(name="Open Gripper"))

@@ -90,6 +90,11 @@ flowchart LR
 
 ## 3. Perception & Dynamic Grasp Synthesis
 
+The grasp backend is selected by `grasp.planner` in the cell config, overridable
+with `--grasp_planner`. The only backend today is `cuboid_center`, described
+below: its grasp falls out of the FoundationPose estimate, so the perception
+pipeline publishes the grasp frames itself and no separate planning step runs.
+
 During vision-guided infeed (`OrbbecVision.build_perception_and_spawn_task`):
 
 1. **`capture_images`**: Captures synchronized RGB and Depth frames from the
@@ -111,6 +116,12 @@ During vision-guided infeed (`OrbbecVision.build_perception_and_spawn_task`):
      `|dot(q_i, q_tool)|` to minimize wrist joint rotation in SO(3).
    * Updates `root/pre_grasp` (offset vertically by `+approach_z_offset`) and
      `root/grasp` in the SBL `ObjectWorld`.
+
+A backend that cannot be folded into perception this way instead implements
+[`GraspPlannerInterface`](../src/hardware/grasping.py) and is returned by
+[`create_grasp_planner`](../src/hardware/grasp_planners.py). The pick subtree
+then runs that planner's task directly after perception, and it writes the same
+`root/pre_grasp` and `root/grasp` frames, so the downstream motion is unchanged.
 
 ---
 

@@ -3,6 +3,25 @@ load("@intrinsic-core//bazel:python.bzl", "py_library")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
+    name = "grasping",
+    srcs = ["grasping.py"],
+    deps = [
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
+    ],
+)
+
+py_library(
+    name = "grasp_planners",
+    srcs = ["grasp_planners.py"],
+    deps = [
+        ":grasping",
+        "//src/core:config",
+        "//src/core:types",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
+    ],
+)
+
+py_library(
     name = "robot",
     srcs = ["robot.py"],
     deps = [
@@ -65,6 +84,7 @@ py_library(
     name = "hardware",
     srcs = ["__init__.py"],
     deps = [
+        ":grasping",
         ":gripper",
         ":machine",
         ":robot",

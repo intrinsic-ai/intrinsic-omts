@@ -15,9 +15,11 @@
 """Unit tests for strict cell YAML configuration loading."""
 
 import dataclasses
+import pathlib
 import tempfile
 from unittest import mock
 
+import yaml
 from absl import app
 from absl.testing import absltest
 from intrinsic.solutions import execution
@@ -25,10 +27,12 @@ from intrinsic.solutions import execution
 from src import main as omts_main
 from src.core.config import (
   AppConfig,
+  GraspConfig,
   GripperConfig,
   load_app_config,
 )
-from src.core.types import SimulationMode, Touchdown
+from src.core.types import GraspPlannerType, SimulationMode, Touchdown
+from src.hardware.grasp_planners import create_grasp_planner
 
 
 class ConfigTest(absltest.TestCase):
@@ -105,6 +109,44 @@ class ConfigTest(absltest.TestCase):
     self.assertEqual(config.vision.min_safe_z, 0.60)
     self.assertEqual(config.cycle.pick_touchdown_force_newtons, 15.0)
     self.assertIsNone(config.robot.enclosure_object_name)
+
+  def test_shipped_configs_select_the_cuboid_center_planner(self):
+    for path in (
+      "configs/omts/app_config.yaml",
+      "configs/lab_bb_01/app_config.yaml",
+    ):
+      with self.subTest(path=path):
+        config = load_app_config(path)
+        self.assertEqual(config.grasp.planner, "cuboid_center")
+        self.assertEqual(
+          config.grasp.planner_type, GraspPlannerType.CUBOID_CENTER
+        )
+
+  def test_omitted_grasp_section_defaults_to_cuboid_center(self):
+    raw = yaml.safe_load(
+      pathlib.Path("configs/omts/app_config.yaml").read_text(encoding="utf-8")
+    )
+    del raw["grasp"]
+    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as tmp:
+      yaml.safe_dump(raw, tmp)
+      tmp_path = tmp.name
+
+    config = load_app_config(tmp_path)
+    self.assertEqual(config.grasp.planner_type, GraspPlannerType.CUBOID_CENTER)
+
+  def test_unsupported_grasp_planner_fails_loudly(self):
+    raw = yaml.safe_load(
+      pathlib.Path("configs/omts/app_config.yaml").read_text(encoding="utf-8")
+    )
+    raw["grasp"] = {"planner": "moveit"}
+    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as tmp:
+      yaml.safe_dump(raw, tmp)
+      tmp_path = tmp.name
+
+    with self.assertRaisesRegex(
+      ValueError, "Unsupported grasp planner 'moveit'"
+    ):
+      load_app_config(tmp_path)
 
   def test_missing_required_section_fails_loudly(self):
     yaml_content = """
@@ -240,6 +282,140 @@ gripper:
     # Extra CLI positional argument raises UsageError
     with self.assertRaises(app.UsageError):
       omts_main.main(["main.py", "unexpected_arg"])
+
+
+class GraspConfigTest(absltest.TestCase):
+  """Unit tests for the grasp planner selection dataclass."""
+
+  def test_defaults_to_cuboid_center(self):
+    self.assertEqual(GraspConfig().planner_type, GraspPlannerType.CUBOID_CENTER)
+
+  def test_planner_type_returns_the_matching_enum_member(self):
+    config = GraspConfig(planner="cuboid_center")
+    self.assertIs(config.planner_type, GraspPlannerType.CUBOID_CENTER)
+
+  def test_rejects_an_unknown_planner(self):
+    with self.assertRaises(ValueError):
+      GraspConfig(planner="nonexistent_planner")
+
+  def test_error_names_the_section_and_the_supported_values(self):
+    with self.assertRaises(ValueError) as ctx:
+      GraspConfig(planner="Cuboid_Center")
+    message = str(ctx.exception)
+    self.assertIn("'grasp'", message)
+    self.assertIn("cuboid_center", message)
+
+  def test_is_immutable(self):
+    config = GraspConfig()
+    with self.assertRaises(dataclasses.FrozenInstanceError):
+      config.planner = "something_else"
+
+
+class GraspPlannerFactoryTest(absltest.TestCase):
+  """Unit tests for `create_grasp_planner`."""
+
+  def test_cuboid_center_needs_no_planner_object(self):
+    """Its frames come from the perception pipeline, not from a planner."""
+    planner = create_grasp_planner(
+      planner_type=GraspPlannerType.CUBOID_CENTER,
+      solution=mock.MagicMock(),
+      config=GraspConfig(),
+    )
+    self.assertIsNone(planner)
+
+  def test_unhandled_backend_fails_loudly(self):
+    """Guards against adding an enum member without a factory branch."""
+    with self.assertRaisesRegex(ValueError, "Unhandled grasp planner"):
+      create_grasp_planner(
+        planner_type=mock.sentinel.future_planner,
+        solution=mock.MagicMock(),
+        config=GraspConfig(),
+      )
+
+
+class GraspPlannerSelectionTest(absltest.TestCase):
+  """Tests how the entry point resolves which grasp planner to use."""
+
+  def _run_pipeline(self, mock_build_bt, mock_connect, **kwargs):
+    mock_solution = mock.MagicMock()
+    mock_solution.resources = {
+      "orbbec_camera": mock.MagicMock(),
+      "pose_estimator_service": mock.MagicMock(),
+    }
+    mock_connect.return_value = mock_solution
+    mock_build_bt.return_value = mock.MagicMock()
+    config = load_app_config("configs/omts/app_config.yaml")
+    omts_main.run_machine_tending_pipeline(
+      solution_address="localhost:17080",
+      config=config,
+      **kwargs,
+    )
+    return mock_build_bt.call_args.kwargs
+
+  @mock.patch("src.main.deployments.connect")
+  @mock.patch("src.main.build_machine_tending_behavior_tree")
+  def test_cuboid_center_passes_no_planner_to_the_tree(
+    self, mock_build_bt: mock.MagicMock, mock_connect: mock.MagicMock
+  ):
+    kwargs = self._run_pipeline(mock_build_bt, mock_connect)
+    self.assertIsNone(kwargs["grasp_planner"])
+
+  @mock.patch("src.main.deployments.connect")
+  @mock.patch("src.main.build_machine_tending_behavior_tree")
+  def test_cli_override_is_accepted(
+    self, mock_build_bt: mock.MagicMock, mock_connect: mock.MagicMock
+  ):
+    """The override path must work even when it names the current default."""
+    kwargs = self._run_pipeline(
+      mock_build_bt,
+      mock_connect,
+      grasp_planner_override=GraspPlannerType.CUBOID_CENTER,
+    )
+    self.assertIsNone(kwargs["grasp_planner"])
+
+  @mock.patch("src.main.create_grasp_planner")
+  @mock.patch("src.main.deployments.connect")
+  @mock.patch("src.main.build_machine_tending_behavior_tree")
+  def test_cli_override_takes_precedence_over_config(
+    self,
+    mock_build_bt: mock.MagicMock,
+    mock_connect: mock.MagicMock,
+    mock_factory: mock.MagicMock,
+  ):
+    """A stand-in for a second backend, which does not exist yet.
+
+    Overriding with `CUBOID_CENTER` would be indistinguishable from reading it
+    out of the shipped config, so this asserts on a value the config can never
+    produce. The factory is mocked, so it never has to recognize the stand-in;
+    it only needs the `.value` that the entry point logs.
+    """
+    mock_factory.return_value = None
+    override = mock.MagicMock()
+    override.value = "other_planner"
+
+    self._run_pipeline(
+      mock_build_bt, mock_connect, grasp_planner_override=override
+    )
+
+    self.assertIs(mock_factory.call_args.kwargs["planner_type"], override)
+
+  @mock.patch("src.main.create_grasp_planner")
+  @mock.patch("src.main.deployments.connect")
+  @mock.patch("src.main.build_machine_tending_behavior_tree")
+  def test_config_is_used_when_no_override_is_given(
+    self,
+    mock_build_bt: mock.MagicMock,
+    mock_connect: mock.MagicMock,
+    mock_factory: mock.MagicMock,
+  ):
+    mock_factory.return_value = None
+
+    self._run_pipeline(mock_build_bt, mock_connect)
+
+    self.assertIs(
+      mock_factory.call_args.kwargs["planner_type"],
+      GraspPlannerType.CUBOID_CENTER,
+    )
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@ from typing import Any, TypeVar
 
 import yaml
 
-from src.core.types import Touchdown
+from src.core.types import GraspPlannerType, Touchdown
 
 _T = TypeVar("_T")
 
@@ -218,6 +218,32 @@ class ReturnShiftConfig:
 
 
 @dataclasses.dataclass(frozen=True)
+class GraspConfig:
+  """Selects the grasp planning backend used during the infeed pick.
+
+  Attributes:
+      planner: Grasp planner backend. Only `'cuboid_center'` is supported
+        today, which is what OMTS has always done; stating it explicitly means
+        adding a backend later is a config change rather than a code change.
+  """
+
+  planner: str = GraspPlannerType.CUBOID_CENTER.value
+
+  def __post_init__(self) -> None:
+    valid = sorted(member.value for member in GraspPlannerType)
+    if self.planner not in valid:
+      raise ValueError(
+        f"Unsupported grasp planner '{self.planner}' in section 'grasp'. "
+        f"Expected one of {valid}."
+      )
+
+  @property
+  def planner_type(self) -> GraspPlannerType:
+    """Returns `planner` as its enum member."""
+    return GraspPlannerType(self.planner)
+
+
+@dataclasses.dataclass(frozen=True)
 class AppConfig:
   """Top-level configuration for a machine tending cell deployment.
 
@@ -229,6 +255,8 @@ class AppConfig:
       frames: Named world transform frames for motion planning.
       cycle: Cycle execution, force, and timeout parameters.
       machine: Optional CNC enclosure, vise, and handshake configuration.
+      grasp: Grasp planner selection. Defaults to the built-in cuboid-center
+        planner when the section is omitted.
   """
 
   cell_name: str
@@ -238,6 +266,7 @@ class AppConfig:
   frames: FramesConfig
   cycle: CycleConfig
   machine: MachineConfig | None = None
+  grasp: GraspConfig = dataclasses.field(default_factory=GraspConfig)
 
   @property
   def pick_touchdown(self) -> Touchdown:
@@ -377,6 +406,11 @@ def load_app_config(path: str | pathlib.Path) -> AppConfig:
     if "machine" in raw_data and raw_data["machine"] is not None
     else None
   )
+  grasp_config = (
+    _construct_section(GraspConfig, raw_data, "grasp", file_path)
+    if "grasp" in raw_data and raw_data["grasp"] is not None
+    else GraspConfig()
+  )
 
   return AppConfig(
     cell_name=str(raw_data["cell_name"]),
@@ -386,4 +420,5 @@ def load_app_config(path: str | pathlib.Path) -> AppConfig:
     vision=_construct_section(VisionConfig, raw_data, "vision", file_path),
     frames=_construct_section(FramesConfig, raw_data, "frames", file_path),
     cycle=_construct_section(CycleConfig, raw_data, "cycle", file_path),
+    grasp=grasp_config,
   )

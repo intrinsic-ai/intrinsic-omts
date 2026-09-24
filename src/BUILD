@@ -11,6 +11,7 @@ py_binary(
         "//src/behaviors",
         "//src/core",
         "//src/hardware",
+        "//src/hardware:grasp_planners",
         "//src/utils",
         "@com_google_absl_py//absl:app",
         "@com_google_absl_py//absl/flags",

@@ -9,7 +9,7 @@ end-to-end machine tending cycle.
 | :--- | :--- | :--- |
 | [`machine_tending_bt.py`](machine_tending_bt.py) | `build_machine_tending_behavior_tree` | Assembles all 5 subtrees into a single `bt.Sequence` and wraps it in `bt.Loop(max_times=...)` for multi-cycle (`> 1`) or continuous (`<= 0`) execution. |
 | [`motions.py`](motions.py) | `create_move_to_frame_task`, `create_compliant_touchdown_task`, `create_relative_retract_task` | Reusable building blocks for Cartesian frame alignment, force-controlled contact (`move_to_contact`), and linear `-Z` tool retracts (`RelativePoseEquality`). |
-| [`pick.py`](pick.py) | `build_pick_from_infeed_subtree` | **Subtree 1**: Optional CNC door/vise prep, view pose alignment, 3D vision pose estimation & dynamic grasp frame update, compliant touchdown, 3 cm `-Z` retract, grasp, world attach, and linear lift. |
+| [`pick.py`](pick.py) | `build_pick_from_infeed_subtree` | **Subtree 1**: Optional CNC door/vise prep, view pose alignment, 3D vision pose estimation & dynamic grasp frame update, optional grasp planner step, compliant touchdown, 3 cm `-Z` retract, grasp, world attach, and linear lift. |
 | [`load_machine.py`](load_machine.py) | `build_load_machine_subtree` | **Subtree 2**: Door/vise open verification, blended/direct approach to CNC entry & vise, compliant seating into jaws, vise clamp, release, world detach, and linear exit. |
 | [`machining.py`](machining.py) | `build_machining_handshake_subtree` | **Subtree 3**: Robot standby outside enclosure, CNC door close, 0.5 s cycle-start DIO pulse, and cycle-complete wait/timeout. |
 | [`unload_machine.py`](unload_machine.py) | `build_unload_machine_subtree` | **Subtree 4**: Door/vise open, machine & vise approach, compliant touchdown to machined part, 3 cm `-Z` retract, grasp, world attach, 3 cm `-Z` lift clear of vise jaws, and linear extraction. |
@@ -26,3 +26,10 @@ end-to-end machine tending cycle.
   targeted `CollisionRule` exclusions (e.g., excluding `[gripper, workpiece]`
   during `-Z` linear retracts or `[gripper, vise]` during vise approach) rather
   than disabling collision checking globally.
+* **Optional Grasp Planner (`grasp_planner=None`)**: `None` selects the built-in
+  cuboid-center behaviour, where the perception pipeline publishes `pre_grasp` /
+  `grasp` itself and no extra node is emitted. A supplied
+  `GraspPlannerInterface` adds one node immediately after the perception
+  pipeline, so it refines a pose perception has already established; passing a
+  planner with a non-perception infeed mode is a `ValueError` rather than a
+  silent no-op.
