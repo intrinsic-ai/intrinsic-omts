@@ -47,9 +47,9 @@ py_binary(
     main = "change_ur_solver.py",
     deps = [
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
-        "@intrinsic-core//intrinsic_sdk/intrinsic/world/python:object_world_resources",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:worlds",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/world/python:object_world_resources",
     ],
 )
 
@@ -58,8 +58,8 @@ py_binary(
     srcs = ["check_ur_solver.py"],
     main = "check_ur_solver.py",
     deps = [
-        "@intrinsic-core//intrinsic_sdk/intrinsic/world/python:object_world_resources",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:worlds",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/world/python:object_world_resources",
     ],
 )
