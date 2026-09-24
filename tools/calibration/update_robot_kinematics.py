@@ -92,6 +92,9 @@ def update_robot_kinematics(
     resource_id=resource_id,
     world_id=world_id,
   )
+  request.user_specified_update.set_ik_solvers_update.ik_solvers.add(
+    ik_solver="rt_calibrated_ur5e"
+  )
   try:
     stub.UpdateRobotKinematics(request, timeout=timeout)
     logging.info(

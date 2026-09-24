@@ -40,3 +40,26 @@ py_binary(
         ":apply_scene_updates_lib",
     ],
 )
+
+py_binary(
+    name = "change_ur_solver",
+    srcs = ["change_ur_solver.py"],
+    main = "change_ur_solver.py",
+    deps = [
+        "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/world/python:object_world_resources",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:worlds",
+    ],
+)
+
+py_binary(
+    name = "check_ur_solver",
+    srcs = ["check_ur_solver.py"],
+    main = "check_ur_solver.py",
+    deps = [
+        "@intrinsic-core//intrinsic_sdk/intrinsic/world/python:object_world_resources",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:worlds",
+    ],
+)
