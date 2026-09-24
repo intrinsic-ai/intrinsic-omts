@@ -50,6 +50,9 @@ frames:
   preplace_vise_frame: "vise_pre_place"
   place_vise_frame: "vise_place"
 
+grasp:
+  planner: "cuboid_center"
+
 cycle:
   num_cycles: 1
   workpiece_id: "raw_stock_2x3x5"

@@ -42,11 +42,38 @@ from src.behaviors.pick import build_pick_from_infeed_subtree
 from src.behaviors.return_infeed import build_return_to_infeed_subtree
 from src.behaviors.unload_machine import build_unload_machine_subtree
 from src.core.config import load_app_config
-from src.core.infeed import PerceptionInfeedStrategy
+from src.core.infeed import InfeedStrategy, PerceptionInfeedStrategy
+from src.core.types import InfeedMode
+from src.hardware.grasping import GraspPlannerInterface
 from src.hardware.gripper import DioGripper, GripperInterface, RobotiqGripper
 from src.hardware.machine import CncMachineInterface, DioCncMachine
 from src.hardware.robot import RobotInterface, UrRobot
 from src.hardware.vision import OrbbecVision, VisionInterface
+
+_FAKE_PLANNER_TASK_NAME = "Fake Plan Grasp"
+
+
+class _FakeGraspPlanner(GraspPlannerInterface):
+  def __init__(self) -> None:
+    self.calls: list[dict[str, str]] = []
+
+  def build_plan_grasp_task(
+    self,
+    workpiece_object_name: str,
+    parent_object: str = "root",
+    grasp_frame_name: str = "grasp",
+    pregrasp_frame_name: str = "pre_grasp",
+    name: str | None = None,
+  ) -> bt.Node:
+    self.calls.append(
+      {
+        "workpiece_object_name": workpiece_object_name,
+        "parent_object": parent_object,
+        "grasp_frame_name": grasp_frame_name,
+        "pregrasp_frame_name": pregrasp_frame_name,
+      }
+    )
+    return bt.Sequence(name=name or _FAKE_PLANNER_TASK_NAME, children=[])
 
 
 def _make_mock_node_builder(name_prefix: str):
@@ -195,6 +222,76 @@ class BehaviorsTest(absltest.TestCase):
       excluded_collision_pairs=[("gripper", "raw_stock_2x3x5")],
       name="Infeed Pick: Linear Retract (1.5 cm, -Z Tool)",
     )
+
+  def test_build_infeed_pick_subtree_runs_grasp_planner_after_perception(self):
+    planner = _FakeGraspPlanner()
+
+    pick_subtree = build_pick_from_infeed_subtree(
+      robot=self.robot,
+      gripper=self.gripper,
+      vision=self.vision,
+      infeed_strategy=self.infeed_strategy,
+      config=self.config,
+      machine=self.machine,
+      grasp_planner=planner,
+    )
+
+    # Exactly one task more than the cuboid-center subtree above.
+    self.assertEqual(len(pick_subtree.children), 14)
+    self.assertEqual(
+      planner.calls,
+      [
+        {
+          "workpiece_object_name": "raw_stock_2x3x5",
+          "parent_object": "root",
+          "grasp_frame_name": "grasp",
+          "pregrasp_frame_name": "pre_grasp",
+        }
+      ],
+    )
+
+    # The planner refines a pose that perception has already established, so
+    # it must run after the perception pipeline and before the gripper opens.
+    child_names = [child.name for child in pick_subtree.children]
+    self.assertEqual(
+      child_names.index(_FAKE_PLANNER_TASK_NAME),
+      child_names.index("Perception & Dynamic Grasp Frame Update Pipeline") + 1,
+    )
+    self.assertLess(
+      child_names.index(_FAKE_PLANNER_TASK_NAME),
+      child_names.index("Open Gripper"),
+    )
+
+  def test_build_infeed_pick_subtree_rejects_planner_without_perception(self):
+    grid_strategy = mock.MagicMock(spec=InfeedStrategy)
+    grid_strategy.mode = InfeedMode.GRID
+
+    with self.assertRaises(ValueError):
+      build_pick_from_infeed_subtree(
+        robot=self.robot,
+        gripper=self.gripper,
+        vision=self.vision,
+        infeed_strategy=grid_strategy,
+        config=self.config,
+        machine=self.machine,
+        grasp_planner=_FakeGraspPlanner(),
+      )
+
+  def test_build_master_behavior_tree_forwards_grasp_planner(self):
+    planner = _FakeGraspPlanner()
+
+    build_machine_tending_behavior_tree(
+      robot=self.robot,
+      gripper=self.gripper,
+      machine=self.machine,
+      vision=self.vision,
+      infeed_strategy=self.infeed_strategy,
+      config=self.config,
+      num_cycles_override=1,
+      grasp_planner=planner,
+    )
+
+    self.assertLen(planner.calls, 1)
 
   def test_build_load_machine_subtree_steps_and_detachment(self):
     load_subtree = build_load_machine_subtree(

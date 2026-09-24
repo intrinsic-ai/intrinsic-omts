@@ -47,6 +47,20 @@ class InfeedMode(enum.Enum):
   GRID = "grid"
 
 
+class GraspPlannerType(enum.Enum):
+  """Backend that decides where and how the workpiece is grasped.
+
+  Attributes:
+      CUBOID_CENTER: Built-in heuristic. Places the grasp at the centre of the
+        detected workpiece with the gripper aligned to its short side, derived
+        directly from the 6D pose estimate. Currently the only supported
+        backend; naming it makes the choice explicit in `app_config.yaml` and
+        gives model-based planners somewhere to slot in later.
+  """
+
+  CUBOID_CENTER = "cuboid_center"
+
+
 class SimulationMode(enum.Enum):
   """Execution mode requested from the Flowstate executive.
 

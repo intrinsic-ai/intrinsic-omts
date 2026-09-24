@@ -7,12 +7,12 @@ strict YAML configuration dataclasses for OMTS workcells.
 
 | Module | Key Symbols | Description |
 | :--- | :--- | :--- |
-| [`config.py`](config.py) | `AppConfig`, `RobotConfig`, `GripperConfig`, `MachineConfig`, `VisionConfig`, `FramesConfig`, `CycleConfig`, `load_app_config` | Frozen configuration dataclasses and fail-loud YAML loader. Validates all required cell parameters before connecting to hardware. |
+| [`config.py`](config.py) | `AppConfig`, `RobotConfig`, `GripperConfig`, `MachineConfig`, `VisionConfig`, `FramesConfig`, `CycleConfig`, `GraspConfig`, `load_app_config` | Frozen configuration dataclasses and fail-loud YAML loader. Validates all required cell parameters before connecting to hardware. `GraspConfig` selects the grasp planning backend and defaults to `cuboid_center`, so the section may be omitted. |
 | [`infeed.py`](infeed.py) | `InfeedStrategy`, `PerceptionInfeedStrategy`, `GridInfeedStrategy` | Strategy pattern encapsulating part localization via 3D vision pose estimation (`PERCEPTION`) or deterministic row/column indexing (`GRID`). |
 | [`tray.py`](tray.py) | `Tray`, `TraySlot` | N × M pallet grid model with row-major slot lookup and metric pitch coordinate calculation (`get_slot_relative_pose`). |
 | [`workpiece.py`](workpiece.py) | `Workpiece` | Lifecycle tracking (`RAW` → `DETECTED` → `IN_TRANSIT` → `IN_MACHINE` → `MACHINED` → `INSPECTED_OK` / `REJECTED`) and grasp metadata for individual parts. |
 | [`workcell.py`](workcell.py) | `WorkcellState` | Cell-level runtime state tracker (active workpiece, fixture/door state, completed/failed cycle counters, and cycle duration timing). |
-| [`types.py`](types.py) | `PartState`, `SlotState`, `InfeedMode`, `SimulationMode`, `FixtureState`, `MachineDoorState`, `Pose3D`, `JointPosition` | Core enumerations and immutable geometric primitives (`Pose3D`, `JointPosition`). |
+| [`types.py`](types.py) | `PartState`, `SlotState`, `InfeedMode`, `GraspPlannerType`, `SimulationMode`, `FixtureState`, `MachineDoorState`, `Pose3D`, `JointPosition` | Core enumerations and immutable geometric primitives (`Pose3D`, `JointPosition`). |
 
 ## Design Invariants
 

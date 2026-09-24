@@ -275,6 +275,13 @@ bazel run //src:omts_app -- \
   --config="configs/omts/app_config.yaml" \
   --num_cycles=3 \
   --simulation_mode=fast_preview
+
+# Override the grasp planner backend (defaults to the `grasp` section of the
+# cell config, which ships as `cuboid_center`):
+bazel run //src:omts_app -- \
+  --address=localhost:17080 \
+  --config="configs/omts/app_config.yaml" \
+  --grasp_planner=cuboid_center
 ```
 
 ### 6. Testing and developer tools

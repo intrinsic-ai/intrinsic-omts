@@ -23,6 +23,7 @@ from src.behaviors.return_infeed import build_return_to_infeed_subtree
 from src.behaviors.unload_machine import build_unload_machine_subtree
 from src.core.config import AppConfig
 from src.core.infeed import InfeedStrategy
+from src.hardware.grasping import GraspPlannerInterface
 from src.hardware.gripper import GripperInterface
 from src.hardware.machine import CncMachineInterface
 from src.hardware.robot import RobotInterface
@@ -37,6 +38,7 @@ def build_machine_tending_behavior_tree(
   infeed_strategy: InfeedStrategy,
   config: AppConfig,
   num_cycles_override: int | None = None,
+  grasp_planner: GraspPlannerInterface | None = None,
   tree_name: str = "OMTS Machine Tending Master Cycle",
 ) -> bt.BehaviorTree:
   """Assembles the complete machine tending sequence into an SBL Behavior Tree.
@@ -66,6 +68,9 @@ def build_machine_tending_behavior_tree(
       config: Validated application configuration dataclass.
       num_cycles_override: Optional override for number of cycles to execute
         (1 = single sequence, >1 = finite Loop, <=0 = continuous Loop).
+      grasp_planner: Optional grasp planner for the infeed pick. `None` selects
+        the built-in cuboid-center behaviour, where the perception pipeline
+        publishes the grasp frames itself.
       tree_name: Descriptive name for the Behavior Tree.
 
   Returns:
@@ -78,6 +83,7 @@ def build_machine_tending_behavior_tree(
     infeed_strategy=infeed_strategy,
     config=config,
     machine=machine,
+    grasp_planner=grasp_planner,
   )
 
   load_subtree = build_load_machine_subtree(
