@@ -36,9 +36,10 @@ bazel run //src:omts_app -- \
   --num_cycles=3 \
   --simulation_mode=fast_preview
 
-# Override the grasp planner backend from the 'grasp' config section
+# Override the 'grasp' config section's backend for this run. `moveit` needs
+# the MoveIt planning service (see third_party/intrinsic_moveit/README.md).
 bazel run //src:omts_app -- \
   --address=localhost:17080 \
   --config=configs/omts/app_config.yaml \
-  --grasp_planner=cuboid_center
+  --grasp_planner=moveit
 ```

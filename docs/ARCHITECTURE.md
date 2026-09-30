@@ -91,9 +91,9 @@ flowchart LR
 ## 3. Perception & Dynamic Grasp Synthesis
 
 The grasp backend is selected by `grasp.planner` in the cell config, overridable
-with `--grasp_planner`. The only backend today is `cuboid_center`, described
-below: its grasp falls out of the FoundationPose estimate, so the perception
-pipeline publishes the grasp frames itself and no separate planning step runs.
+with `--grasp_planner`. The default, `cuboid_center`, is described below: its
+grasp falls out of the FoundationPose estimate, so the perception pipeline
+publishes the grasp frames itself and no separate planning step runs.
 
 During vision-guided infeed (`OrbbecVision.build_perception_and_spawn_task`):
 
@@ -108,20 +108,31 @@ During vision-guided infeed (`OrbbecVision.build_perception_and_spawn_task`):
    * Queries live camera extrinsics in `root` and computes the world target pose
      (`T_root_target = T_root_camera @ T_camera_target`).
    * Enforces the minimum height safety bound (`z_target >= min_safe_z`).
-   * Projects the workpiece horizontal axes onto the world XY plane to find
-     the longest axis angle (`theta_longest`) and aligns the gripper yaw
-     (`psi = theta_longest`) across the short side.
-   * Evaluates all 4 symmetrically equivalent parallel-jaw grasp quaternions
-     (`+q1`, `-q1`, `+q2`, `-q2`) and selects the candidate maximizing
-     `|dot(q_i, q_tool)|` to minimize wrist joint rotation in SO(3).
-   * Updates `root/pre_grasp` (offset vertically by `+approach_z_offset`) and
-     `root/grasp` in the SBL `ObjectWorld`.
+   * Then, **only when `publish_grasp_frames` is set** (the `cuboid_center`
+     backend):
+     * Projects the workpiece horizontal axes onto the world XY plane to find
+       the longest axis angle (`theta_longest`) and aligns the gripper yaw
+       (`psi = theta_longest`) across the short side.
+     * Evaluates all 4 symmetrically equivalent parallel-jaw grasp quaternions
+       (`+q1`, `-q1`, `+q2`, `-q2`) and selects the candidate maximizing
+       `|dot(q_i, q_tool)|` to minimize wrist joint rotation in SO(3).
+     * Updates `root/pre_grasp` (offset vertically by `+approach_z_offset`) and
+       `root/grasp` in the SBL `ObjectWorld`.
 
-A backend that cannot be folded into perception this way instead implements
-[`GraspPlannerInterface`](../src/hardware/grasping.py) and is returned by
-[`create_grasp_planner`](../src/hardware/grasp_planners.py). The pick subtree
-then runs that planner's task directly after perception, and it writes the same
-`root/pre_grasp` and `root/grasp` frames, so the downstream motion is unchanged.
+### Grasp backends
+
+Steps 1-2 and the pose update in step 3 localize the *workpiece* and always run.
+Producing the *grasp* on that workpiece is the selectable part:
+
+| Backend | Who writes `root/grasp` / `root/pre_grasp` |
+| :--- | :--- |
+| `cuboid_center` (default) | The dynamic frame calculator, as described above. Purely geometric: no reachability or collision reasoning. |
+| `moveit` | A [`GraspPlannerInterface`](../src/hardware/grasping.py) node, built by [`create_grasp_planner`](../src/hardware/grasp_planners.py), appended after perception. `publish_grasp_frames` is `False`, so the calculator stops at the pose update and the [MoveIt integration](../third_party/intrinsic_moveit/README.md) samples reachable, collision-free candidates instead. |
+
+Exactly one of the two writes those frames on any given run, so a planner
+failure can never leave a stale heuristic grasp in the world. Everything
+downstream of the pick reads only `root/grasp` and `root/pre_grasp` and is
+therefore identical either way.
 
 ---
 

@@ -210,6 +210,7 @@ class BehaviorsTest(absltest.TestCase):
       grasp_frame_name="grasp",
       tool_object_name="gripper",
       tool_frame_name="tool_frame",
+      publish_grasp_frames=True,
       name="Perception & Dynamic Grasp Frame Update Pipeline",
     )
     self.robot.build_attach_object_task.assert_called_once_with(
@@ -249,6 +250,11 @@ class BehaviorsTest(absltest.TestCase):
         }
       ],
     )
+
+    # The planner owns the grasp frames, so the heuristic must not also write
+    # them; perception still localizes the part.
+    perception_call = self.vision.build_perception_and_spawn_task.call_args
+    self.assertFalse(perception_call.kwargs["publish_grasp_frames"])
 
     # The planner refines a pose that perception has already established, so
     # it must run after the perception pipeline and before the gripper opens.
@@ -418,6 +424,7 @@ class BehaviorsTest(absltest.TestCase):
       grasp_frame_name="grasp",
       tool_object_name="gripper",
       tool_frame_name="tool_frame",
+      publish_grasp_frames=True,
       name="Perception & Dynamic Grasp Frame Update Pipeline",
     )
     self.machine.build_open_door_task.assert_not_called()

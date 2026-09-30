@@ -20,6 +20,7 @@ from typing import Any
 from absl.testing import absltest
 from intrinsic.solutions import behavior_tree as bt
 
+from src.hardware.grasping import GraspPlannerInterface
 from src.hardware.robot import RobotInterface
 from third_party.intrinsic_moveit.moveit_grasp_planner import (
   SURFACE_Z_NEG,
@@ -227,6 +228,61 @@ class GraspPlanningTest(absltest.TestCase):
         robot=self.robot,
         candidate_objects=[],
       )
+
+
+class GraspPlannerInterfaceComplianceTest(absltest.TestCase):
+  """The MoveIt planner as OMTS drives it, through GraspPlannerInterface."""
+
+  def test_planner_satisfies_the_omts_contract(self):
+    self.assertIsInstance(MockMoveItGraspPlanner(), GraspPlannerInterface)
+
+  def test_single_workpiece_becomes_a_one_candidate_request(self):
+    planner = MockMoveItGraspPlanner(surfaces=[0, 1, 4, 5], num_rotations=6)
+
+    planner.build_plan_grasp_task(workpiece_object_name="raw_stock_2x3x5")
+
+    self.assertEqual(planner.planned_objects, [("raw_stock_2x3x5",)])
+    self.assertEqual(planner.plan_calls[0]["surfaces"], (0, 1, 4, 5))
+    self.assertEqual(planner.plan_calls[0]["num_rotations"], 6)
+
+  def test_no_settle_yields_the_plan_task_alone(self):
+    planner = MockMoveItGraspPlanner(settle_seconds=0.0)
+
+    task = planner.build_plan_grasp_task(
+      workpiece_object_name="raw_stock_2x3x5"
+    )
+
+    self.assertNotIsInstance(task, bt.Sequence)
+    self.assertIn("raw_stock_2x3x5", task.name)
+
+  def test_settle_dwell_precedes_the_plan_task(self):
+    planner = MockMoveItGraspPlanner(settle_seconds=0.3)
+
+    task = planner.build_plan_grasp_task(
+      workpiece_object_name="raw_stock_2x3x5"
+    )
+
+    self.assertIsInstance(task, bt.Sequence)
+    self.assertLen(task.children, 2)
+    self.assertIn("Settle", task.children[0].name)
+
+  def test_output_frames_are_forwarded(self):
+    planner = MockMoveItGraspPlanner()
+
+    task = planner.build_plan_grasp_task(
+      workpiece_object_name="raw_stock_2x3x5",
+      parent_object="root",
+      grasp_frame_name="custom_grasp",
+      pregrasp_frame_name="custom_pre_grasp",
+      name="Custom Name",
+    )
+
+    self.assertEqual(task.name, "Custom Name")
+    self.assertEqual(planner.plan_calls[0]["grasp_frame_name"], "custom_grasp")
+    self.assertEqual(
+      planner.plan_calls[0]["pregrasp_frame_name"], "custom_pre_grasp"
+    )
+    self.assertEqual(planner.plan_calls[0]["output_parent_object"], "root")
 
 
 class ResolveTargetObjectsTest(absltest.TestCase):

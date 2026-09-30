@@ -137,6 +137,7 @@ def run_machine_tending_pipeline(
     planner_type=planner_type,
     solution=solution,
     config=config.grasp,
+    tool_object_name=config.robot.tool_object_name,
   )
 
   tree = build_machine_tending_behavior_tree(

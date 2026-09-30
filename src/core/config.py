@@ -219,15 +219,38 @@ class ReturnShiftConfig:
 
 @dataclasses.dataclass(frozen=True)
 class GraspConfig:
-  """Selects the grasp planning backend used during the infeed pick.
+  """Selects and tunes the grasp planning backend used during the infeed pick.
+
+  Only `planner` is meaningful for the built-in `'cuboid_center'` backend; the
+  `moveit_*` fields are forwarded to the `intrinsic-moveit` integration and are
+  ignored otherwise.
 
   Attributes:
-      planner: Grasp planner backend. Only `'cuboid_center'` is supported
-        today, which is what OMTS has always done; stating it explicitly means
-        adding a backend later is a config change rather than a code change.
+      planner: Grasp planner backend (`'cuboid_center'` or `'moveit'`).
+      moveit_tool_frame_name: MoveIt robot model link used as the grasp TCP.
+        This is an SRDF link name, not an Object World frame.
+      moveit_group_name: MoveIt planning group for the arm.
+      moveit_end_effector_group: MoveIt end-effector group.
+      moveit_surfaces: Workpiece surfaces to sample grasp candidates on
+        (`0:+X, 1:-X, 2:+Y, 3:-Y, 4:+Z, 5:-Z`). Empty means every surface.
+      moveit_num_rotations: Grasp candidates per surface, spread evenly about
+        the surface normal.
+      moveit_retract_dist_m: Distance in meters between the planned grasp and
+        pre-grasp frames.
+      moveit_timeout_ms: Grasp planning timeout in milliseconds.
+      moveit_settle_seconds: Dwell before planning, letting the MoveIt planning
+        scene catch up with the workpiece pose perception just published.
   """
 
   planner: str = GraspPlannerType.CUBOID_CENTER.value
+  moveit_tool_frame_name: str = "hande_tcp"
+  moveit_group_name: str = "ur_manipulator"
+  moveit_end_effector_group: str = "hand"
+  moveit_surfaces: tuple[int, ...] = ()
+  moveit_num_rotations: int = 4
+  moveit_retract_dist_m: float = 0.05
+  moveit_timeout_ms: float = 15000.0
+  moveit_settle_seconds: float = 0.3
 
   def __post_init__(self) -> None:
     valid = sorted(member.value for member in GraspPlannerType)
@@ -235,6 +258,30 @@ class GraspConfig:
       raise ValueError(
         f"Unsupported grasp planner '{self.planner}' in section 'grasp'. "
         f"Expected one of {valid}."
+      )
+    if any(not 0 <= surface <= 5 for surface in self.moveit_surfaces):
+      raise ValueError(
+        f"moveit_surfaces entries must be in 0..5, got "
+        f"{list(self.moveit_surfaces)}."
+      )
+    if self.moveit_num_rotations <= 0:
+      raise ValueError(
+        f"moveit_num_rotations must be positive, got "
+        f"{self.moveit_num_rotations}."
+      )
+    if self.moveit_retract_dist_m <= 0.0:
+      raise ValueError(
+        f"moveit_retract_dist_m must be positive, got "
+        f"{self.moveit_retract_dist_m}."
+      )
+    if self.moveit_timeout_ms <= 0.0:
+      raise ValueError(
+        f"moveit_timeout_ms must be positive, got {self.moveit_timeout_ms}."
+      )
+    if self.moveit_settle_seconds < 0.0:
+      raise ValueError(
+        f"moveit_settle_seconds must not be negative, got "
+        f"{self.moveit_settle_seconds}."
       )
 
   @property
@@ -375,6 +422,12 @@ def _construct_section(
         section_dict[joint_key] = tuple(
           float(x) for x in section_dict[joint_key]
         )
+  elif section_name == "grasp" and isinstance(
+    section_dict.get("moveit_surfaces"), list
+  ):
+    section_dict["moveit_surfaces"] = tuple(
+      int(x) for x in section_dict["moveit_surfaces"]
+    )
 
   return cls(**section_dict)
 

@@ -6,6 +6,7 @@ py_test(
     name = "test_moveit_grasp_planning",
     srcs = ["test_moveit_grasp_planning.py"],
     deps = [
+        "//src/hardware:grasping",
         "//src/hardware:robot",
         "//third_party/intrinsic_moveit:moveit_grasp_planner",
         "//third_party/intrinsic_moveit:moveit_grasp_planning",

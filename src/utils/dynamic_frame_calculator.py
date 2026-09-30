@@ -31,7 +31,9 @@ def calculate_and_update_dynamic_frames(context: Any, params: Any) -> None:
   Args:
       context: SBL BT PythonScript execution context providing `object_world`.
       params: Dynamic parameters protobuf containing detected pose and frame
-        names.
+        names. An optional `publish_grasp_frames` field suppresses the grasp
+        frame updates when an external grasp planner owns them; the workpiece
+        pose update and the `min_safe_z` check always run.
   """
   world = context.object_world
   parent_obj = getattr(
@@ -92,6 +94,12 @@ def calculate_and_update_dynamic_frames(context: Any, params: Any) -> None:
       world.update_transform(
         node_a=actual_parent, node_b=target_obj, a_t_b=root_t_target
       )
+
+  # An external grasp planner may own the grasp frames; everything above this
+  # point is localization and runs either way. `getattr` keeps the script
+  # compatible with signatures generated before the flag existed.
+  if not bool(getattr(params, "publish_grasp_frames", True)):
+    return
 
   # Determine longest axis alignment in root XY plane:
   # Local X is the longest axis (5"), local Z is the medium axis (3"), local Y is the thickness (2").

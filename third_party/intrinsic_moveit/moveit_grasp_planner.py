@@ -14,15 +14,21 @@
 
 """Grasp planner interfaces and implementations.
 
-`MoveItGraspPlanner` wraps the sideloaded `ai.intrinsic.moveit_plan_grasp_skill`
-asset. The skill forwards a `PlanGrasps` request to the
-`moveit_planning_service` ROS 2 node, ranks the returned candidates by grasp
-quality, and writes the top-ranked grasp and pre-grasp poses back into the
-Object World Service by updating pre-existing frames.
+`MoveItGraspPlanner` wraps the `ai.intrinsic.moveit_plan_grasp_skill` asset.
+The skill forwards a `PlanGrasps` request to the `moveit_planning_service` ROS 2
+node, ranks the returned candidates by grasp quality, and writes the top-ranked
+grasp and pre-grasp poses back into the Object World Service by updating
+pre-existing frames.
 
 Because the poses are published to the world rather than returned on the
 blackboard, downstream Cartesian motions can simply target the output frames by
 name (see `third_party.intrinsic_moveit.moveit_grasp_planning`).
+
+`MoveItGraspPlannerInterface` extends the first-party
+`src.hardware.grasping.GraspPlannerInterface`, so `//src:omts_app` can select
+MoveIt as its grasp planner. The MoveIt-native `build_plan_grasps_task` stays
+available for callers that need the full request surface, such as the
+`moveit_plan_grasp_and_move` CLI tool.
 """
 
 import abc
@@ -31,6 +37,9 @@ from typing import Any
 
 from intrinsic.solutions import behavior_tree as bt
 from intrinsic.world.proto import object_world_refs_pb2
+
+from src.hardware.grasping import GraspPlannerInterface
+from src.utils.script_utils import create_dwell_task
 
 # Object surface indices understood by the grasp planning service. Indices refer
 # to the object's local axes: 0:+X, 1:-X, 2:+Y, 3:-Y, 4:+Z (top), 5:-Z (bottom).
@@ -55,12 +64,19 @@ SURFACE_ALL: tuple[int, ...] = ()
 # name and matches the planning service's own fallback default.
 DEFAULT_TOOL_FRAME = "hande_tcp"
 
-# Attribute name of the sideloaded skill under `solution.skills.ai.intrinsic`.
+# Attribute name of the skill under `solution.skills.ai.intrinsic`.
 DEFAULT_GRASP_SKILL_NAME = "moveit_plan_grasp_skill"
 
 
-class MoveItGraspPlannerInterface(abc.ABC):
-  """Abstract interface for model-based grasp planning."""
+class MoveItGraspPlannerInterface(GraspPlannerInterface):
+  """Abstract interface for MoveIt-backed model-based grasp planning."""
+
+  # Request shaping applied when the planner is driven through the first-party
+  # `GraspPlannerInterface`, which intentionally carries no MoveIt vocabulary.
+  # Subclasses override these from their own configuration.
+  default_surfaces: Sequence[int] = SURFACE_ALL
+  default_num_rotations: int = 4
+  default_settle_seconds: float = 0.0
 
   @abc.abstractmethod
   def build_plan_grasps_task(
@@ -79,9 +95,61 @@ class MoveItGraspPlannerInterface(abc.ABC):
     """Builds a task planning grasps and publishing the result to the world."""
     raise NotImplementedError
 
+  def build_plan_grasp_task(
+    self,
+    workpiece_object_name: str,
+    parent_object: str = "root",
+    grasp_frame_name: str = "grasp",
+    pregrasp_frame_name: str = "pre_grasp",
+    name: str | None = None,
+  ) -> bt.Node:
+    """Plans a grasp for a single workpiece, per `GraspPlannerInterface`.
+
+    The planning service reads the part from the MoveIt planning scene, which
+    is mirrored from the Object World over the ROS bridge. Callers publish the
+    part's pose immediately beforehand, so a short dwell is inserted first to
+    let that update propagate; without it the planner can plan against the
+    previous pose.
+
+    Args:
+        workpiece_object_name: Object World name of the part to grasp.
+        parent_object: Object owning the output frames.
+        grasp_frame_name: Pre-existing frame updated to the planned grasp pose.
+        pregrasp_frame_name: Pre-existing frame updated to the planned
+          pre-grasp pose.
+        name: Optional custom behavior tree task name.
+
+    Returns:
+        Behavior tree node publishing the planned frames when executed.
+    """
+    task_name = name or f"Plan MoveIt Grasp ({workpiece_object_name})"
+    plan_task = self.build_plan_grasps_task(
+      candidate_objects=[workpiece_object_name],
+      grasp_frame_name=grasp_frame_name,
+      pregrasp_frame_name=pregrasp_frame_name,
+      output_parent_object=parent_object,
+      surfaces=self.default_surfaces,
+      num_rotations=self.default_num_rotations,
+      name=task_name,
+    )
+    if self.default_settle_seconds <= 0.0:
+      return plan_task
+    return bt.Sequence(
+      name=task_name,
+      children=[
+        create_dwell_task(
+          dwell_time_sec=self.default_settle_seconds,
+          task_name=(
+            f"Settle MoveIt Planning Scene ({self.default_settle_seconds}s)"
+          ),
+        ),
+        plan_task,
+      ],
+    )
+
 
 class MoveItGraspPlanner(MoveItGraspPlannerInterface):
-  """Grasp planner adapter backed by the sideloaded MoveIt grasp skill."""
+  """Grasp planner adapter backed by the MoveIt grasp planning skill."""
 
   def __init__(
     self,
@@ -94,6 +162,9 @@ class MoveItGraspPlanner(MoveItGraspPlannerInterface):
     timeout_ms: float = 15000.0,
     max_num_grasps: int = 1,
     gripper_motion_duration_sec: float = 0.5,
+    surfaces: Sequence[int] = SURFACE_ALL,
+    num_rotations: int = 4,
+    settle_seconds: float = 0.0,
     skill_name: str = DEFAULT_GRASP_SKILL_NAME,
   ) -> None:
     """Initializes the MoveIt grasp planner adapter.
@@ -111,6 +182,12 @@ class MoveItGraspPlanner(MoveItGraspPlannerInterface):
       max_num_grasps: Maximum number of ranked grasps returned in the result.
       gripper_motion_duration_sec: Time budget for the gripper open/close
         posture used while planning.
+      surfaces: Surfaces sampled when planning through
+        `GraspPlannerInterface.build_plan_grasp_task`. Ignored by callers that
+        pass `surfaces` to `build_plan_grasps_task` directly.
+      num_rotations: Grasp candidates per surface for the same entry point.
+      settle_seconds: Dwell inserted before planning through that entry point,
+        letting the MoveIt planning scene catch up with the Object World.
       skill_name: Attribute name of the grasp skill under
         `solution.skills.ai.intrinsic`.
 
@@ -127,15 +204,18 @@ class MoveItGraspPlanner(MoveItGraspPlannerInterface):
     self._max_num_grasps = max_num_grasps
     self._gripper_motion_duration_sec = gripper_motion_duration_sec
     self._skill_name = skill_name
+    self.default_surfaces = tuple(surfaces)
+    self.default_num_rotations = num_rotations
+    self.default_settle_seconds = settle_seconds
 
     try:
       self._grasp_skill = getattr(solution.skills.ai.intrinsic, skill_name)
     except AttributeError as exc:
       raise ValueError(
         f"Grasp skill 'ai.intrinsic.{skill_name}' is not available in this"
-        " solution. Install the bundle with 'inctl asset install"
-        " --address <address> <path-to-bundle>.tar' and then call"
-        " 'solution.skills.update()' or reconnect."
+        " solution. It ships with '//:omts_solution', so redeploy the solution"
+        " and then call 'solution.skills.update()' or reconnect. Solutions"
+        " deployed before the skill was added need to be restarted."
       ) from exc
 
   @property
@@ -288,9 +368,17 @@ class MoveItGraspPlanner(MoveItGraspPlannerInterface):
 class MockMoveItGraspPlanner(MoveItGraspPlannerInterface):
   """Mock grasp planner for offline tests without a deployed grasp skill."""
 
-  def __init__(self) -> None:
+  def __init__(
+    self,
+    surfaces: Sequence[int] = SURFACE_ALL,
+    num_rotations: int = 4,
+    settle_seconds: float = 0.0,
+  ) -> None:
     self.planned_objects: list[tuple[str, ...]] = []
     self.plan_calls: list[dict[str, Any]] = []
+    self.default_surfaces = tuple(surfaces)
+    self.default_num_rotations = num_rotations
+    self.default_settle_seconds = settle_seconds
 
   def build_plan_grasps_task(
     self,
@@ -310,6 +398,9 @@ class MockMoveItGraspPlanner(MoveItGraspPlannerInterface):
     self.plan_calls.append(
       {
         "candidate_objects": tuple(candidate_objects),
+        "grasp_frame_name": grasp_frame_name,
+        "pregrasp_frame_name": pregrasp_frame_name,
+        "output_parent_object": output_parent_object,
         "surfaces": tuple(surfaces),
         "num_rotations": num_rotations,
         "retract_dist_m": retract_dist_m,

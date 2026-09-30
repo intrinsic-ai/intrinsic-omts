@@ -14,11 +14,9 @@
 
 """Construction of the configured grasp planner.
 
-This is the single place that maps a `GraspPlannerType` onto a concrete
-planner. Entry points resolve which backend was asked for and call
-`create_grasp_planner`; everything downstream depends only on
-`GraspPlannerInterface`, so adding a backend is a change to this file plus a
-config value.
+This is the only first-party module that knows the `intrinsic-moveit`
+integration exists. Everything downstream depends on `GraspPlannerInterface`
+alone, so adding a backend is a change to this file plus a config value.
 """
 
 from intrinsic.solutions import deployments
@@ -26,12 +24,14 @@ from intrinsic.solutions import deployments
 from src.core.config import GraspConfig
 from src.core.types import GraspPlannerType
 from src.hardware.grasping import GraspPlannerInterface
+from third_party.intrinsic_moveit.moveit_grasp_planner import MoveItGraspPlanner
 
 
 def create_grasp_planner(
   planner_type: GraspPlannerType,
   solution: deployments.Solution,
   config: GraspConfig,
+  tool_object_name: str,
 ) -> GraspPlannerInterface | None:
   """Builds the grasp planner selected for this run.
 
@@ -40,6 +40,7 @@ def create_grasp_planner(
       solution: Connected SBL deployment instance, for backends that invoke
         skills. Unused by `CUBOID_CENTER`.
       config: Grasp planner configuration for the cell.
+      tool_object_name: Object World object owning the gripper tool frame.
 
   Returns:
       Grasp planner to run after perception, or None for
@@ -47,11 +48,22 @@ def create_grasp_planner(
       publishes itself.
 
   Raises:
-      ValueError: If the backend is not handled here. `GraspConfig` already
-        rejects unknown names, so this fires when a new `GraspPlannerType`
-        member is added without a corresponding branch.
+      ValueError: If the backend is not handled here, or if MoveIt is selected
+        but its grasp planning skill is missing from the solution.
   """
-  del solution, config  # Only needed by model-based backends.
   if planner_type is GraspPlannerType.CUBOID_CENTER:
     return None
+  if planner_type is GraspPlannerType.MOVEIT:
+    return MoveItGraspPlanner(
+      solution=solution,
+      tool_frame_name=config.moveit_tool_frame_name,
+      tool_object_name=tool_object_name,
+      group_name=config.moveit_group_name,
+      end_effector_group=config.moveit_end_effector_group,
+      retract_dist_m=config.moveit_retract_dist_m,
+      timeout_ms=config.moveit_timeout_ms,
+      surfaces=config.moveit_surfaces,
+      num_rotations=config.moveit_num_rotations,
+      settle_seconds=config.moveit_settle_seconds,
+    )
   raise ValueError(f"Unhandled grasp planner backend '{planner_type}'.")
