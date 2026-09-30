@@ -361,8 +361,9 @@ reachable two ways:
 
 `//:omts_solution` installs the `ai.intrinsic.moveit_plan_grasp_skill` skill for
 you, so nothing needs sideloading. The skill still needs somewhere to plan:
-standing up the MoveIt planning service (building the ROS workspace and
-reconfiguring `flowstate_ros_bridge`) remains a user-side prerequisite.
+building the ROS workspace and running the MoveIt planning service remains a
+user-side prerequisite. The `flowstate_ros_bridge` the solution already deploys
+works as-is; it needs no reconfiguration.
 
 > [!NOTE]
 > Until you have completed the [intrinsic-moveit](https://github.com/intrinsic-ai/intrinsic-moveit)
