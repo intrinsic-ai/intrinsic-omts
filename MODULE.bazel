@@ -75,6 +75,13 @@ single_version_override(
     version = "32.1",
 )
 
+# TODO: Remove this override when updating INTRINSIC_CORE_RELEASE to the next
+# release (not yet available), as this is already fixed on intrinsic-core main.
+single_version_override(
+    module_name = "tinygltf",
+    version = "2.9.6.bcr.1",
+)
+
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
     is_default = True,

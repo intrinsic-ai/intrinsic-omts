@@ -42,6 +42,7 @@ class ApplySceneUpdatesTest(absltest.TestCase):
     self.assertEqual(args.address, "localhost:17080")
     self.assertEqual(args.files, DEFAULT_UPDATE_FILES)
     self.assertTrue(args.reset_sim)
+    self.assertFalse(args.update_init_world)
 
   def test_parse_args_no_reset_sim(self) -> None:
     """Tests disabling simulation reset via --no-reset_sim flag."""
@@ -52,6 +53,13 @@ class ApplySceneUpdatesTest(absltest.TestCase):
     """Tests explicitly enabling simulation reset via --reset_sim flag."""
     args = parse_args(["--reset_sim"])
     self.assertTrue(args.reset_sim)
+
+  def test_parse_args_update_init_world(self) -> None:
+    """Tests enabling and disabling init_world updates via CLI flags."""
+    args = parse_args(["--update_init_world"])
+    self.assertTrue(args.update_init_world)
+    args_no = parse_args(["--no-update_init_world"])
+    self.assertFalse(args_no.update_init_world)
 
   @mock.patch("tools.world.apply_scene_updates._connect_initial_world")
   @mock.patch("tools.world.apply_scene_updates.deployments.connect")
@@ -66,9 +74,7 @@ class ApplySceneUpdatesTest(absltest.TestCase):
     mock_solution = mock.MagicMock()
     mock_solution.is_simulated = True
     mock_solution.simulator = mock.MagicMock()
-    mock_init_world = mock.MagicMock()
     mock_connect.return_value = mock_solution
-    mock_connect_init.return_value = mock_init_world
 
     updates = object_world_updates_pb2.ObjectWorldUpdates()
     joint_up = updates.updates.add().update_object_joints
@@ -80,13 +86,40 @@ class ApplySceneUpdatesTest(absltest.TestCase):
 
     main(["--files", "test.pbtxt"])
 
+    mock_connect_init.assert_not_called()
+    mock_apply_file.assert_called_once_with(
+      world=mock_solution.world,
+      filepath="test.pbtxt",
+      init_world=None,
+    )
+    mock_solution.world.batch_update.assert_called_once_with(updates)
+    mock_solution.simulator.reset.assert_called_once()
+
+  @mock.patch("tools.world.apply_scene_updates._connect_initial_world")
+  @mock.patch("tools.world.apply_scene_updates.deployments.connect")
+  @mock.patch("tools.world.apply_scene_updates.apply_pbtxt_file")
+  def test_main_updates_init_world_when_flag_enabled(
+    self,
+    mock_apply_file: mock.MagicMock,
+    mock_connect: mock.MagicMock,
+    mock_connect_init: mock.MagicMock,
+  ) -> None:
+    """Tests that init_world is connected and updated when --update_init_world is set."""
+    mock_solution = mock.MagicMock()
+    mock_solution.is_simulated = False
+    mock_solution.simulator = None
+    mock_init_world = mock.MagicMock()
+    mock_connect.return_value = mock_solution
+    mock_connect_init.return_value = mock_init_world
+
+    main(["--update_init_world", "--files", "test.pbtxt"])
+
+    mock_connect_init.assert_called_once_with(mock_solution)
     mock_apply_file.assert_called_once_with(
       world=mock_solution.world,
       filepath="test.pbtxt",
       init_world=mock_init_world,
     )
-    mock_solution.world.batch_update.assert_called_once_with(updates)
-    mock_solution.simulator.reset.assert_called_once()
 
   @mock.patch("tools.world.apply_scene_updates._connect_initial_world")
   @mock.patch("tools.world.apply_scene_updates.deployments.connect")
@@ -101,16 +134,15 @@ class ApplySceneUpdatesTest(absltest.TestCase):
     mock_solution = mock.MagicMock()
     mock_solution.is_simulated = True
     mock_solution.simulator = mock.MagicMock()
-    mock_init_world = mock.MagicMock()
     mock_connect.return_value = mock_solution
-    mock_connect_init.return_value = mock_init_world
 
     main(["--no-reset_sim", "--files", "test.pbtxt"])
 
+    mock_connect_init.assert_not_called()
     mock_apply_file.assert_called_once_with(
       world=mock_solution.world,
       filepath="test.pbtxt",
-      init_world=mock_init_world,
+      init_world=None,
     )
     mock_solution.simulator.reset.assert_not_called()
 
@@ -127,16 +159,15 @@ class ApplySceneUpdatesTest(absltest.TestCase):
     mock_solution = mock.MagicMock()
     mock_solution.is_simulated = False
     mock_solution.simulator = None
-    mock_init_world = mock.MagicMock()
     mock_connect.return_value = mock_solution
-    mock_connect_init.return_value = mock_init_world
 
     main(["--files", "test.pbtxt"])
 
+    mock_connect_init.assert_not_called()
     mock_apply_file.assert_called_once_with(
       world=mock_solution.world,
       filepath="test.pbtxt",
-      init_world=mock_init_world,
+      init_world=None,
     )
 
   def setUp(self):

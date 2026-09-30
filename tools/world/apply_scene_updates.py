@@ -66,6 +66,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
       " when connected to a simulated solution (default: True)."
     ),
   )
+  parser.add_argument(
+    "--update_init_world",
+    action=argparse.BooleanOptionalAction,
+    default=False,
+    help=(
+      "Whether to also apply updates to the initial world ('init_world') so"
+      " they persist across world resets (default: False)."
+    ),
+  )
   return parser.parse_args(argv)
 
 
@@ -267,11 +276,14 @@ def apply_pbtxt_file(
 
 
 def main(argv: Sequence[str] | None = None) -> None:
+  """Main entrypoint for applying scene updates live."""
   args = parse_args(argv)
   print(f"Connecting to solution at {args.address}...")
   solution = deployments.connect(address=args.address)
   world = solution.world
-  init_world = _connect_initial_world(solution)
+  init_world = (
+    _connect_initial_world(solution) if args.update_init_world else None
+  )
 
   print(f"\n=== Applying {len(args.files)} World Update File(s) Live ===")
   joint_updates = object_world_updates_pb2.ObjectWorldUpdates()
