@@ -536,6 +536,21 @@ class HardwareAdaptersTest(absltest.TestCase):
       "3. Calculate & Update Dynamic Grasp & Pre-Grasp Frames",
     )
 
+    # With an external grasp planner, step 3 only localizes the workpiece.
+    suppressed = vision.build_perception_and_spawn_task(
+      approach_offset_z=0.08,
+      parent_object="root",
+      pregrasp_frame_name="pre_grasp",
+      grasp_frame_name="grasp",
+      tool_object_name="gripper",
+      tool_frame_name="tool_frame",
+      publish_grasp_frames=False,
+      max_tries=3,
+    )
+    self.assertEqual(
+      suppressed.child.children[2].name, "3. Update Detected Workpiece Pose"
+    )
+
   def test_orbbec_vision_signature_cleanups(self):
     sig = inspect.signature(OrbbecVision.build_perception_and_spawn_task)
     self.assertNotIn("target_scene_object_id", sig.parameters)
@@ -779,7 +794,12 @@ class HardwareAdaptersTest(absltest.TestCase):
     # max_tries=1 returns bt.Sequence directly without bt.Retry wrapper
     self.assertIsInstance(seq_task, bt.Sequence)
     self.assertIsNotNone(real_pb.last_parameters)
-    self.assertLen(real_pb.last_parameters.fields, 16)
+    self.assertLen(real_pb.last_parameters.fields, 17)
+    publish_field = real_pb.last_parameters.fields[-1]
+    self.assertEqual(publish_field.name, "publish_grasp_frames")
+    self.assertEqual(publish_field.number, 17)
+    self.assertEqual(publish_field.type, "bool")
+    self.assertTrue(publish_field.arg)
 
     # Missing resources raise ValueError
     mock_solution.resources = {}

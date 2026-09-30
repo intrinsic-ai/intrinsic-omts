@@ -7,15 +7,21 @@ service enumerates grasp candidates over the part's surfaces, ranks them, and
 writes the winner's grasp and pre-grasp poses back into the world. A dedicated
 CLI tool drives it for scene bring-up and verification.
 
-> [!IMPORTANT]
-> This is **not** part of first-party OMTS and OMTS never deploys it for you.
-> Every command below is inert until you have completed the intrinsic-moveit
-> integration. If `//:omts_solution` is all you have deployed, start with
-> [Setup & Prerequisites](#setup--prerequisites).
+This is the `moveit` backend of the OMTS grasp planner selection. Choose it with
+`bazel run //src:omts_app -- --grasp_planner=moveit`, or permanently per cell
+with `grasp: {planner: "moveit"}` in `app_config.yaml`. The default backend
+remains the built-in `cuboid_center` heuristic, which needs none of this.
 
-Once a first-party grasp planner ships it will become the default and will live
-under `src/` and `tools/grasping/` using the unqualified names. Everything here
-is named `moveit_*` so the two never have to be told apart by context.
+> [!IMPORTANT]
+> `//:omts_solution` installs the `ai.intrinsic.moveit_plan_grasp_skill` skill
+> for you, but it does **not** run the MoveIt planning service the skill talks
+> to. Until you have completed the intrinsic-moveit integration,
+> `--grasp_planner=moveit` fails at runtime and every command below is inert.
+> Start with [Setup & Prerequisites](#setup--prerequisites).
+
+The planning code here is third-party and deliberately namespaced: everything is
+named `moveit_*` so that it never has to be told apart from the built-in
+planner by context.
 
 ---
 
@@ -67,13 +73,17 @@ When planning a grasp, OMTS does not directly move the robot through MoveIt. Ins
 ```mermaid
 flowchart TD
     subgraph OMTS["1. OMTS Client"]
-        CLI["moveit_plan_grasp_and_move (CLI)"]
-        BT["Behavior Tree Subtree\n- Step 1: Plan Grasps Task\n- Step 2: Approach Motion Task"]
-        CLI --> BT
+        App["omts_app --grasp_planner=moveit\n(production cycle)"]
+        CLI["moveit_plan_grasp_and_move (CLI)\n(bring-up & debugging)"]
+        Plan["Plan Grasps Task"]
+        Approach["Approach Motion Task\n(CLI only; the pick subtree\nruns its own approach)"]
+        App --> Plan
+        CLI --> Plan
+        CLI --> Approach
     end
 
     subgraph Solution["2. Intrinsic Solution Runtime"]
-        Skill["ai.intrinsic.moveit_plan_grasp_skill\n(Sideloaded Skill)"]
+        Skill["ai.intrinsic.moveit_plan_grasp_skill\n(installed by //:omts_solution)"]
         World["Object World Service\n(root/grasp, root/pre_grasp)"]
         ICON["Robot Controller (ICON)"]
     end
@@ -85,11 +95,11 @@ flowchart TD
     end
 
     %% Execution sequence
-    BT -->|"Step 1: Execute skill"| Skill
+    Plan -->|"Execute skill"| Skill
     Skill -->|"ROS 2 Service Call (over Zenoh)"| Service
     Service -->|"Winning grasp & pre-grasp poses"| Skill
     Skill -->|"Write poses into root/grasp & root/pre_grasp"| World
-    BT -->|"Step 2: Approach frame"| ICON
+    Approach -->|"Move to pre-grasp frame"| ICON
     ICON -->|"Read root/pre_grasp pose"| World
     ICON -->|"Move arm to pre-grasp"| Robot["UR5e Arm"]
 ```
@@ -103,15 +113,21 @@ flowchart TD
 
 | Path | Role |
 | :--- | :--- |
-| [`moveit_grasp_planner.py`](./moveit_grasp_planner.py) | `MoveItGraspPlannerInterface` and its `MoveItGraspPlanner` / `MockMoveItGraspPlanner` implementations; surface constants. |
+| [`moveit_grasp_planner.py`](./moveit_grasp_planner.py) | `MoveItGraspPlannerInterface` (implements the first-party [`GraspPlannerInterface`](../../src/hardware/grasping.py)) and its `MoveItGraspPlanner` / `MockMoveItGraspPlanner` implementations; surface constants. |
 | [`moveit_grasp_planning.py`](./moveit_grasp_planning.py) | `build_moveit_grasp_planning_subtree` — plan a grasp, then approach the resulting pre-grasp. |
 | [`tools/moveit_plan_grasp_and_move.py`](./tools/moveit_plan_grasp_and_move.py) | CLI tool to plan a grasp on target workpiece(s) and move the arm to pre-grasp. |
 | [`tests/`](./tests/) | Offline unit tests for grasp planning subtree and CLI argument parsing. |
 
-The integration borrows exactly two things from first-party OMTS:
-`//src/hardware:robot` (for `RobotInterface` and `UrRobot`) and
-`//src/behaviors:motions` (for the approach move). Nothing first-party depends
-on anything here.
+This package depends on three first-party targets: `//src/hardware:grasping`
+(the `GraspPlannerInterface` contract it implements), `//src/hardware:robot`
+(for `RobotInterface` and `UrRobot`), and `//src/behaviors:motions` (for the
+approach move), plus `//src/utils:script_utils` for the settle dwell.
+
+In the other direction, exactly one first-party target reaches in here:
+[`//src/hardware:grasp_planners`](../../src/hardware/grasp_planners.py), the
+factory that maps `GraspPlannerType.MOVEIT` to a `MoveItGraspPlanner`. Nothing
+else first-party imports this package, so `--grasp_planner=cuboid_center` never
+touches any of it.
 
 ---
 
@@ -121,13 +137,20 @@ Users will also need to set up a ROS colcon workspace that has `intrinsic-moveit
 
 In order for the integration to work, we will need to reconfigure OMTS's running `flowstate_ros_bridge` service. The detailed configurations required can be found [here](https://github.com/intrinsic-ai/intrinsic-moveit/blob/main/docs/flowstate_ros_bridge_configuration.md).
 
+> [!NOTE]
+> The `moveit_plan_grasp_skill` itself is **not** a manual step. `//:omts_solution`
+> downloads the bundle at build time (pinned by `INTRINSIC_MOVEIT_RELEASE` in
+> [`MODULE.bazel`](../../MODULE.bazel)) and installs
+> `ai.intrinsic.moveit_plan_grasp_skill` with every deployment. If you bump that
+> pin, redeploy the solution rather than `inctl asset install`-ing by hand, so
+> the solution and the installed skill cannot drift apart.
+
 ### 1. Reconfigure `flowstate_ros_bridge`
 
 ```bash
-# Download the required binaries
+# Download the required config
 cd ~/Downloads/
 gh release download v0.0.2 -R intrinsic-ai/intrinsic-moveit \
-  -p "moveit_plan_grasp_skill.bundle.tar" \
   -p "flowstate_ros_bridge_config.binarypb"
 
 # Stop flowstate_ros_bridge
@@ -138,17 +161,7 @@ inctl service add --address localhost:17080 ai.intrinsic.flowstate_ros_bridge \
   --config ~/Downloads/flowstate_ros_bridge_config.binarypb
 ```
 
-### 2. Install the Grasp Planning Skill
-
-We will also need the `moveit_plan_grasp_skill` which can be called from OMTS, and interacts with the `moveit_planning_service` to obtain pre-grasps and grasps:
-
-```bash
-# Install the planning skill
-inctl asset install --address localhost:17080 \
-  ~/Downloads/moveit_plan_grasp_skill.bundle.tar
-```
-
-### 3. Ensure Output Frames Exist in the World
+### 2. Ensure Output Frames Exist in the World
 
 The grasp skill only updates pre-existing frames; it never creates them. Make sure `root/grasp` and `root/pre_grasp` are declared in your world (from [`configs/omts/scene.updates.pbtxt`](../../configs/omts/scene.updates.pbtxt)):
 
@@ -156,7 +169,7 @@ The grasp skill only updates pre-existing frames; it never creates them. Make su
 bazel run //tools/world:apply_scene_updates -- --address=localhost:17080
 ```
 
-### 4. Start `moveit_planning_service`
+### 3. Start `moveit_planning_service`
 
 We can now start the `moveit_planning_service`:
 
@@ -171,7 +184,7 @@ ros2 launch moveit_planning_service service.launch.py headless:=false \
   start_service_status_monitor:=false
 ```
 
-### 5. Verify Scene Synchronization in RViz
+### 4. Verify Scene Synchronization in RViz
 
 Once the planning service launches, verify that the additional RViz window opens:
 - The robot is represented by its meshes.
@@ -236,6 +249,58 @@ bazel run //third_party/intrinsic_moveit/tools:moveit_plan_grasp_and_move -- \
   --target_object=raw_stock_2x3x5 \
   --surfaces=0,1,4,5
 ```
+
+---
+
+## Using MoveIt in the Production Cycle
+
+Once the tutorial above plans successfully, switch the machine tending cycle
+over to the same planner:
+
+```bash
+# One run
+bazel run //src:omts_app -- \
+  --address=localhost:17080 \
+  --config="configs/omts/app_config.yaml" \
+  --grasp_planner=moveit
+```
+
+To make it the default for a cell, set it in `app_config.yaml` instead. The
+`grasp` section is optional and defaults to `cuboid_center`, so cells that do
+not use MoveIt can omit it entirely:
+
+```yaml
+grasp:
+  planner: "moveit"
+  moveit_tool_frame_name: "hande_tcp"     # SRDF link, not an Object World frame
+  moveit_group_name: "ur_manipulator"
+  moveit_end_effector_group: "hand"
+  moveit_surfaces: [0, 1, 4, 5]           # see "Why --surfaces=0,1,4,5"; [] means all
+  moveit_num_rotations: 4
+  moveit_retract_dist_m: 0.05             # grasp → pre-grasp separation
+  moveit_timeout_ms: 15000.0
+  moveit_settle_seconds: 0.3              # dwell so the planning scene catches up
+```
+
+What changes inside [subtree 1](../../src/behaviors/pick.py): perception still
+captures and runs pose estimation to localize the workpiece, but it is asked for
+`publish_grasp_frames=False`, so it no longer writes the cuboid-center
+`root/grasp` and `root/pre_grasp`. The grasp planning skill writes them instead,
+immediately afterwards. The rest of the cycle — touchdown, retract, grasp,
+attach, lift — is byte-for-byte the same, because it only ever reads those two
+frames.
+
+> [!TIP]
+> `moveit_settle_seconds` exists because perception publishes the workpiece pose
+> to the Object World and the MoveIt planning scene mirrors it asynchronously.
+> Planning immediately after the pose update can therefore plan against the
+> *previous* pose. Raise it if grasps look correct in RViz but land offset on
+> hardware; set it to `0` to skip the dwell entirely.
+
+Grasp planning requires `infeed.mode: perception` — the planner localizes a
+grasp *on* a workpiece whose pose is already known, so it cannot substitute for
+knowing where the part is. Combining it with `grid` raises `ValueError` while
+the tree is being built, before anything moves.
 
 ---
 

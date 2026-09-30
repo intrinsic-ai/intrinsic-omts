@@ -79,6 +79,7 @@ class VisionInterface(abc.ABC):
     grasp_frame_name: str,
     tool_object_name: str,
     tool_frame_name: str,
+    publish_grasp_frames: bool = True,
     max_tries: int = 3,
     retry_delay_sec: float = 1.0,
     name: str | None = None,
@@ -137,11 +138,32 @@ class OrbbecVision(VisionInterface):
     grasp_frame_name: str,
     tool_object_name: str,
     tool_frame_name: str,
+    publish_grasp_frames: bool = True,
     max_tries: int = 3,
     retry_delay_sec: float = 1.0,
     name: str | None = None,
   ) -> bt.Node:
-    """Builds the pipeline to capture RGB-D, estimate 6D poses, and dynamically update grasp frames."""
+    """Builds the pipeline to capture RGB-D, estimate 6D poses, and dynamically update grasp frames.
+
+    Args:
+        approach_offset_z: Vertical offset in meters from grasp to pre-grasp.
+        parent_object: World object owning the output frames.
+        pregrasp_frame_name: Pre-grasp frame to publish.
+        grasp_frame_name: Grasp frame to publish.
+        tool_object_name: World object owning the moving tool frame.
+        tool_frame_name: Moving tool frame, used to pick the grasp rotation
+          closest to the arm's current wrist pose.
+        publish_grasp_frames: Whether the cuboid-center heuristic publishes the
+          grasp and pre-grasp frames. Set to False when an external grasp
+          planner owns them; the workpiece pose update and the `min_safe_z`
+          check still run, since both are localization concerns.
+        max_tries: Attempts before the pipeline gives up.
+        retry_delay_sec: Dwell between attempts.
+        name: Optional custom behavior tree task name.
+
+    Returns:
+        Behavior tree node running the perception pipeline.
+    """
     task_name = name or "Perception & Dynamic Grasp Frame Update Pipeline"
 
     skills = self._solution.skills
@@ -188,7 +210,8 @@ class OrbbecVision(VisionInterface):
       action=estimate_action, name="2. Estimate 6D Workpiece Poses"
     )
 
-    # 3. Dynamic Grasp and Pre-Grasp Frame Calculation and World Update via bt.PythonScript
+    # 3. Workpiece pose update, and optionally the cuboid-center grasp and
+    #    pre-grasp frames, via bt.PythonScript
     calc_task = self._create_frame_calc_script_task(
       estimate_action=estimate_action,
       approach_offset_z=approach_offset_z,
@@ -197,6 +220,7 @@ class OrbbecVision(VisionInterface):
       grasp_frame_name=grasp_frame_name,
       tool_object_name=tool_object_name,
       tool_frame_name=tool_frame_name,
+      publish_grasp_frames=publish_grasp_frames,
     )
 
     acquisition_and_calc_seq = bt.Sequence(
@@ -230,6 +254,7 @@ class OrbbecVision(VisionInterface):
     grasp_frame_name: str,
     tool_object_name: str,
     tool_frame_name: str,
+    publish_grasp_frames: bool = True,
   ) -> bt.Task:
     """Builds the bt.PythonScript task for dynamic frame calculation and world updates."""
     first_est = estimate_action.result.estimates[0].root_t_target
@@ -335,6 +360,12 @@ class OrbbecVision(VisionInterface):
               number=16,
               arg=tool_frame_name,
             ),
+            pb.FieldSpec(
+              type="bool",
+              name="publish_grasp_frames",
+              number=17,
+              arg=publish_grasp_frames,
+            ),
           ]
         ),
       )
@@ -345,7 +376,9 @@ class OrbbecVision(VisionInterface):
       signature_with_args=signature,
       function_body=load_python_script(calculate_and_update_dynamic_frames),
     )
-    return bt.Task(
-      action=calc_script,
-      name="3. Calculate & Update Dynamic Grasp & Pre-Grasp Frames",
+    task_name = (
+      "3. Calculate & Update Dynamic Grasp & Pre-Grasp Frames"
+      if publish_grasp_frames
+      else "3. Update Detected Workpiece Pose"
     )
+    return bt.Task(action=calc_script, name=task_name)

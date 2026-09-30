@@ -14,9 +14,14 @@
 
 """CLI tool to plan a grasp with MoveIt and approach the resulting pre-grasp.
 
-Runs the sideloaded `ai.intrinsic.moveit_plan_grasp_skill` against one or more
-candidate objects, then moves the arm to the pre-grasp frame the skill wrote
-back into the Object World Service.
+Runs `ai.intrinsic.moveit_plan_grasp_skill` (installed with `//:omts_solution`)
+against one or more candidate objects, then moves the arm to the pre-grasp frame
+the skill wrote back into the Object World Service.
+
+This tool is for bringing the integration up and debugging candidates in
+isolation: it stops at the pre-grasp and never closes the gripper. To use the
+same planner in a production cycle, run
+`//src:omts_app --grasp_planner=moveit` instead.
 """
 
 import argparse
@@ -57,11 +62,11 @@ examples (run through Bazel as `bazel run
   moveit_plan_grasp_and_move --target_object=raw_stock_2x3x5 --surfaces=4
 
 prerequisites:
-  This is a third-party integration. It does nothing until you have completed
-  the intrinsic-moveit integration; OMTS does not deploy any of it for you.
+  The ai.intrinsic.moveit_plan_grasp_skill asset ships with //:omts_solution,
+  but the planning service it calls does not. This tool does nothing until you
+  have completed the intrinsic-moveit integration yourself.
 
   * moveit_planning_service is running and reachable over Zenoh.
-  * ai.intrinsic.moveit_plan_grasp_skill is installed in the target solution.
   * The output frames already exist in the world
     (see configs/omts/scene.updates.pbtxt).
 

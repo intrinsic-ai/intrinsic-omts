@@ -290,6 +290,7 @@ py_test(
         "//src/core:config",
         "//src/core:types",
         "//src/hardware:grasp_planners",
+        "//src/hardware:grasping",
         "@ai_intrinsic_sdks_pip_deps//pyyaml",
         "@com_google_absl_py//absl:app",
         "@com_google_absl_py//absl/testing:absltest",

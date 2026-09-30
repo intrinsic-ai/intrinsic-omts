@@ -50,15 +50,19 @@ class InfeedMode(enum.Enum):
 class GraspPlannerType(enum.Enum):
   """Backend that decides where and how the workpiece is grasped.
 
+  Both backends publish the same `grasp` and `pre_grasp` frames, so the pick
+  sequence that consumes them is identical either way.
+
   Attributes:
       CUBOID_CENTER: Built-in heuristic. Places the grasp at the centre of the
         detected workpiece with the gripper aligned to its short side, derived
-        directly from the 6D pose estimate. Currently the only supported
-        backend; naming it makes the choice explicit in `app_config.yaml` and
-        gives model-based planners somewhere to slot in later.
+        directly from the 6D pose estimate.
+      MOVEIT: Model-based planning through the `intrinsic-moveit` integration.
+        Requires the MoveIt planning service to be running and reachable.
   """
 
   CUBOID_CENTER = "cuboid_center"
+  MOVEIT = "moveit"
 
 
 class SimulationMode(enum.Enum):

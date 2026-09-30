@@ -31,6 +31,11 @@ config_setting(
 
 _OMTS_SKILL_ASSETS = [
     ":hand_e_gripper_cmd_skill_asset",
+    # Installed unconditionally so `omts_app --grasp_planner=moveit` has the
+    # skill available. It is inert unless a moveit_planning_service is running,
+    # which remains a user-side prerequisite. See
+    # third_party/intrinsic_moveit/README.md.
+    ":moveit_plan_grasp_skill_asset",
     "@intrinsic-core//intrinsic_control/intrinsic/icon/skills:dio_read_input_skill",
     "@intrinsic-core//intrinsic_control/intrinsic/icon/skills:dio_set_output_skill",
     "@intrinsic-core//intrinsic_perception/intrinsic/perception/skills:capture_images_skill",
@@ -290,11 +295,34 @@ imported_asset_bundle(
     manifest = ":hand_e_gripper_cmd_skill_manifest.binpb",
 )
 
+genrule(
+    name = "moveit_plan_grasp_skill_manifest",
+    srcs = ["@moveit_plan_grasp_skill_bundle//:moveit_plan_grasp_skill.bundle.tar"],
+    outs = ["moveit_plan_grasp_skill_manifest.binpb"],
+    cmd = "tar -xOf $< skill_manifest.binpb > $@",
+)
+
+genrule(
+    name = "moveit_plan_grasp_skill_fds",
+    srcs = ["@moveit_plan_grasp_skill_bundle//:moveit_plan_grasp_skill.bundle.tar"],
+    outs = ["moveit_plan_grasp_skill_fds.binpb"],
+    cmd = "tar -xOf $< descriptors-transitive-descriptor-set.proto.bin > $@",
+)
+
+imported_asset_bundle(
+    name = "moveit_plan_grasp_skill_asset",
+    asset_type = "ASSET_TYPE_SKILL",
+    bundle = "@moveit_plan_grasp_skill_bundle//:moveit_plan_grasp_skill.bundle.tar",
+    file_descriptor_set = ":moveit_plan_grasp_skill_fds.binpb",
+    manifest = ":moveit_plan_grasp_skill_manifest.binpb",
+)
+
 solution_manifest_only(
     name = "omts_solution_manifest",
     extra_manifests = [
         ":BUILD",
         ":hand_e_gripper_cmd_skill_manifest",
+        ":moveit_plan_grasp_skill_manifest",
     ],
     skills = _OMTS_SKILL_ASSETS,
 )

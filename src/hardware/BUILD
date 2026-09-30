@@ -17,6 +17,7 @@ py_library(
         ":grasping",
         "//src/core:config",
         "//src/core:types",
+        "//third_party/intrinsic_moveit:moveit_grasp_planner",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
     ],
 )

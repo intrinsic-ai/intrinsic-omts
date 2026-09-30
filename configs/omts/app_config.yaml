@@ -52,6 +52,16 @@ frames:
 
 grasp:
   planner: "cuboid_center"
+  moveit_tool_frame_name: "hande_tcp"
+  moveit_group_name: "ur_manipulator"
+  moveit_end_effector_group: "hand"
+  # raw_stock_2x3x5's long (127 mm) axis is Y, so 0,1,4,5 means "any long face,
+  # never an end cap": an end-cap grasp holds the part cantilevered by its tip.
+  moveit_surfaces: [0, 1, 4, 5]
+  moveit_num_rotations: 4
+  moveit_retract_dist_m: 0.05
+  moveit_timeout_ms: 15000.0
+  moveit_settle_seconds: 0.3
 
 cycle:
   num_cycles: 1

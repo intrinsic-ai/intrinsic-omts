@@ -191,11 +191,29 @@ gh.download(
     sha256 = "b872cd424ad3c81e8a3f719394b459917107e832e868c9f427788156bd97283d",
     tag = OMTS_ASSETS_RELEASE,
 )
+
+# Published by intrinsic-ai/intrinsic-moveit on its own cadence, so it is pinned
+# separately from OMTS_ASSETS_RELEASE. The skill is installed with every
+# solution; running it additionally needs the MoveIt planning service, which
+# stays a user-side prerequisite (third_party/intrinsic_moveit/README.md).
+#
+# When bumping INTRINSIC_MOVEIT_RELEASE, update the checksum with:
+#   curl -fsSL "https://github.com/intrinsic-ai/intrinsic-moveit/releases/download/<tag>/moveit_plan_grasp_skill.bundle.tar" | sha256sum
+INTRINSIC_MOVEIT_RELEASE = "v0.0.2"
+
+gh.download(
+    name = "moveit_plan_grasp_skill_bundle",
+    pattern = "moveit_plan_grasp_skill.bundle.tar",
+    repo = "intrinsic-ai/intrinsic-moveit",
+    sha256 = "2f5470a251fe778e5f59a95168858000c3d7d1709f970f19f6f3eadc58c551ec",
+    tag = INTRINSIC_MOVEIT_RELEASE,
+)
 use_repo(
     gh,
     "flowstate_ros_bridge_bundle",
     "hand_e_gripper_cmd_skill_bundle",
     "hand_e_gripper_service_bundle",
+    "moveit_plan_grasp_skill_bundle",
     "orbbec_gemini_driver_bundle",
     "segmentation_weights_bundle",
 )
