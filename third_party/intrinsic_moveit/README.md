@@ -40,7 +40,7 @@ flowchart LR
     subgraph Solution["Intrinsic Solution (localhost:17080)"]
         World["Object World Service\n- Scene obstacles & vice\n- Workpiece (raw_stock_2x3x5)"]
         ICON["Robot Controller (ICON)\n- UR5e joint states"]
-        Bridge["flowstate_ros_bridge\n(configured for ur_module & icon)"]
+        Bridge["flowstate_ros_bridge\n(deployed by //:omts_solution)"]
 
         World -->|"Link transforms"| Bridge
         ICON -->|"Joint states"| Bridge
@@ -56,10 +56,10 @@ flowchart LR
     end
 
     World -.->|"Collision geometry sync"| PSM
-    Bridge -->|"/tf, /tf_static\n/joint_states (over Zenoh)"| PSM
+    Bridge -->|"/tf, /joint_states (over Zenoh)"| PSM
 ```
 
-- **Robot Transforms & Joints**: `flowstate_ros_bridge` streams `/tf`, `/tf_static` (anchored at `ur_module/base_link`), and `/joint_states` to ROS 2 over Zenoh.
+- **Robot Transforms & Joints**: `flowstate_ros_bridge` streams `/tf` and `/joint_states` to ROS 2 over Zenoh. Its default config, as deployed by `//:omts_solution`, is sufficient; MoveIt matches joint states by name, so no bridge reconfiguration is needed.
 - **Collision Objects**: Object geometries from the Object World Service (such as tables, the CNC vice, and workpieces) are converted into MoveIt collision objects and displayed as green meshes in RViz.
 
 ---
@@ -135,8 +135,6 @@ touches any of it.
 
 Users will also need to set up a ROS colcon workspace that has `intrinsic-moveit` built. See [`intrinsic-moveit`](https://github.com/intrinsic-ai/intrinsic-moveit) for the setup instructions.
 
-In order for the integration to work, we will need to reconfigure OMTS's running `flowstate_ros_bridge` service. The detailed configurations required can be found [here](https://github.com/intrinsic-ai/intrinsic-moveit/blob/main/docs/flowstate_ros_bridge_configuration.md).
-
 > [!NOTE]
 > The `moveit_plan_grasp_skill` itself is **not** a manual step. `//:omts_solution`
 > downloads the bundle at build time (pinned by `INTRINSIC_MOVEIT_RELEASE` in
@@ -145,31 +143,7 @@ In order for the integration to work, we will need to reconfigure OMTS's running
 > pin, redeploy the solution rather than `inctl asset install`-ing by hand, so
 > the solution and the installed skill cannot drift apart.
 
-### 1. Reconfigure `flowstate_ros_bridge`
-
-```bash
-# Download the required config
-cd ~/Downloads/
-gh release download v0.0.2 -R intrinsic-ai/intrinsic-moveit \
-  -p "flowstate_ros_bridge_config.binarypb"
-
-# Stop flowstate_ros_bridge
-inctl service delete --address localhost:17080 flowstate_ros_bridge
-
-# Restart flowstate_ros_bridge with the config
-inctl service add --address localhost:17080 ai.intrinsic.flowstate_ros_bridge \
-  --config ~/Downloads/flowstate_ros_bridge_config.binarypb
-```
-
-### 2. Ensure Output Frames Exist in the World
-
-The grasp skill only updates pre-existing frames; it never creates them. Make sure `root/grasp` and `root/pre_grasp` are declared in your world (from [`configs/omts/scene.updates.pbtxt`](../../configs/omts/scene.updates.pbtxt)):
-
-```bash
-bazel run //tools/world:apply_scene_updates -- --address=localhost:17080
-```
-
-### 3. Start `moveit_planning_service`
+### 1. Start `moveit_planning_service`
 
 We can now start the `moveit_planning_service`:
 
@@ -184,7 +158,7 @@ ros2 launch moveit_planning_service service.launch.py headless:=false \
   start_service_status_monitor:=false
 ```
 
-### 4. Verify Scene Synchronization in RViz
+### 2. Verify Scene Synchronization in RViz
 
 Once the planning service launches, verify that the additional RViz window opens:
 - The robot is represented by its meshes.
