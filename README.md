@@ -98,33 +98,7 @@ flowchart TD
     INFEED --> CNC_LOAD --> MACHINING --> CNC_UNLOAD --> OUTFEED
 ```
 
-### 2. Repository layout
-
-```text
-omts/
-├── .bazelrc                             # Compiler flags, toolchains, and CUDA settings
-├── .bazelversion                        # Pinned Bazel version (8.x)
-├── MODULE.bazel                         # Bzlmod dependencies (@intrinsic-core, @intrinsic_apis)
-├── BUILD                                # Defines intrinsic_solution(:omts_solution)
-├── configs/                             # Cell YAML configs, .pbtxt updates & service manifests
-│   ├── common/                          # Shared service configs & asset manifests
-│   ├── omts/                            # Production cell (UR5e, CNC enclosure, Schunk vise)
-│   ├── lab_bb_01/                       # Lab cell (UR3e, CAW enclosure, no CNC/vise)
-│   └── kr_10/                           # KUKA KR10 placeholder config
-├── models/                              # SDF/GLB 3D scene assets & manifests
-├── src/                                 # Main OMTS Python package (//src:omts_app)
-│   ├── main.py                          # Application CLI entrypoint
-│   ├── core/                            # Domain models, infeed strategies & YAML config
-│   ├── behaviors/                       # Master Behavior Tree & 5 cycle subtrees
-│   ├── hardware/                        # Robot, Gripper, Machine & Vision SBL adapters
-│   ├── utils/                           # Dynamic frame calculator & script/math helpers
-│   └── foundationpose/                  # Triton config & Bazel MLModel packaging for FoundationPose
-├── third_party/                         # C++/CUDA bindings, model.py & deps for FoundationPose
-├── tools/                               # Commissioning, calibration, jogging & world CLI tools
-└── tests/                               # Offline hermetic unit test suite
-```
-
-### 3. Object-oriented design and SBL abstractions
+### 2. Architecture and SBL abstractions
 
 OMTS adheres to clean separation of concerns:
 
@@ -135,7 +109,7 @@ OMTS adheres to clean separation of concerns:
   - `GridInfeed`: Uses mathematical row/column indexing for structured tray pallets.
 - **Composable Behavior Trees ([`src/behaviors/`](src/behaviors/))**: Modular factory functions returning standard `bt.Node` / `bt.SubTree` building blocks.
 
-### 4. Prerequisites and workspace setup
+### 3. Prerequisites and workspace setup
 
 #### Hardware requirements
 
@@ -205,9 +179,9 @@ and model weights from this repository's GitHub Releases (configured in
   [`flowstate_orbbec`](https://github.com/intrinsic-ai/intrinsic-ros-camera-drivers/tree/main/flowstate_orbbec).
 - `segmentation.tar.gz`: Pretrained RF-DETR segmentation model.
 
-### 5. Build and run instructions
+### 4. Build and run instructions
 
-#### 5.1. Deploy the workcell solution
+#### 4.1. Deploy the workcell solution
 
 Build and launch the ICON controller, hardware modules, perception services, and
 simulator:
@@ -220,7 +194,7 @@ bazel run //:omts_solution -c opt -- --address=localhost:17080
 bazel run //:omts_solution -c opt --//:setup=lab_bb_01 -- --address=localhost:17080
 ```
 
-#### 5.2. Apply scene updates (simulation / fresh deployment)
+#### 4.2. Apply scene updates (simulation / fresh deployment)
 
 Push kinematic attachments, robot base alignment, and scene frames to the live
 `ObjectWorld` (pass `--reset_sim` to synchronize Gazebo's `sim_world`):
@@ -231,7 +205,7 @@ bazel run //tools/world:apply_scene_updates -- \
   --reset_sim
 ```
 
-#### 5.3. Register and verify pose estimator (required before running `omts_app`)
+#### 4.3. Register and verify pose estimator (required before running `omts_app`)
 
 Register the FoundationPose estimator for the raw stock workpiece before
 starting the machine tending application:
@@ -254,7 +228,7 @@ bazel run //tools/pose_estimation:run_pose_estimation -- \
   --pose_estimator_id=ai.intrinsic.raw_stock_2x3x5_estimator
 ```
 
-#### 5.4. Run the OMTS application
+#### 4.4. Run the OMTS application
 
 Connect to the running deployment and execute the machine tending Behavior Tree:
 
@@ -284,7 +258,7 @@ bazel run //src:omts_app -- \
   --grasp_planner=cuboid_center
 ```
 
-### 6. Testing and developer tools
+### 5. Testing and developer tools
 
 #### Unit tests
 
@@ -319,7 +293,7 @@ bazel run //tools/gripper:control_gripper -- --address=localhost:17080 --action=
 bazel run //tools/machine:control_machine -- --address=localhost:17080 --action=open_door
 ```
 
-### 7. Code quality and formatting
+### 6. Code quality and formatting
 
 OMTS enforces formatting and linting checks on all pull requests via GitHub
 Actions CI (`line-length = 80`, `indent-width = 2`):
@@ -332,7 +306,7 @@ Actions CI (`line-length = 80`, `indent-width = 2`):
 ./tools/lint.sh
 ```
 
-### 8. Licensing information for NVIDIA FoundationPose®
+### 7. Licensing information for NVIDIA FoundationPose®
 
 OMTS uses the FoundationPose model by NVIDIA for RGB-D pose estimation.
 FoundationPose is packaged into an `MlModelAsset` in
@@ -375,7 +349,7 @@ This project is licensed under the [Apache 2.0 License](LICENSE).
 
 ---
 
-> **Disclaimer**: This is not an officially supported Google product.
+**Disclaimer**: This is not an officially supported Google product.
 
 ---
 
