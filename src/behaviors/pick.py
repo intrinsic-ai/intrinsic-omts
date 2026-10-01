@@ -25,12 +25,12 @@ from src.core.infeed import InfeedMode, InfeedStrategy, PerceptionInfeedStrategy
 from src.hardware.grasping import GraspPlannerInterface
 from src.hardware.gripper import GripperInterface
 from src.hardware.machine import CncMachineInterface
-from src.hardware.robot import RobotInterface
+from src.hardware.robot import Robot
 from src.hardware.vision import VisionInterface
 
 
 def build_pick_from_infeed_subtree(
-  robot: RobotInterface,
+  robot: Robot,
   gripper: GripperInterface,
   vision: VisionInterface,
   infeed_strategy: InfeedStrategy,

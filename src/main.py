@@ -29,7 +29,7 @@ from src.core.types import GraspPlannerType, SimulationMode
 from src.hardware.grasp_planners import create_grasp_planner
 from src.hardware.gripper import DioGripper, GripperInterface, RobotiqGripper
 from src.hardware.machine import DioCncMachine
-from src.hardware.robot import UrRobot
+from src.hardware.robot import Robot
 from src.hardware.vision import OrbbecVision
 from src.utils.execution_utils import to_executive_simulation_mode
 
@@ -100,7 +100,7 @@ def run_machine_tending_pipeline(
       config=config.gripper,
     )
 
-  robot = UrRobot(
+  robot = Robot(
     solution=solution,
     config=config.robot,
   )

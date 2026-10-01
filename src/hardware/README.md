@@ -8,7 +8,7 @@ nodes (`bt.Task` / `bt.Sequence`).
 
 | Module | Abstract Interface | Concrete Implementation(s) | SBL Skills Wrapped |
 | :--- | :--- | :--- | :--- |
-| [`robot.py`](robot.py) | `RobotInterface` | `UrRobot` | `move_robot` (`JOINT`, `LINEAR`, `ANY`, `RelativePoseEquality`, `RotationCone`), `move_to_contact`, `attach_object_to_robot`, `detach_object` |
+| [`robot.py`](robot.py) | — | `Robot` | `move_robot` (`JOINT`, `LINEAR`, `ANY`, `RelativePoseEquality`, `RotationCone`), `move_to_contact`, `attach_object_to_robot`, `detach_object` |
 | [`gripper.py`](gripper.py) | `GripperInterface` | `RobotiqGripper`, `DioGripper` | `gripper_cmd_skill` (metric finger joint position), `dio_set_output` (solenoid/relay pins) |
 | [`machine.py`](machine.py) | `CncMachineInterface` | `DioCncMachine` | `dio_set_output`, `dio_wait_for_input` / `dio_read_input`, `update_world` (belief-world door/vise joint synchronization) |
 | [`vision.py`](vision.py) | `VisionInterface` | `OrbbecVision` | `capture_images`, `estimate_pose_multi_view` (FoundationPose), `bt.PythonScript` dynamic frame calculation wrapped in `bt.Retry` |
@@ -17,6 +17,11 @@ nodes (`bt.Task` / `bt.Sequence`).
 
 ## Adapter Design Rules
 
+* **No Robot Interface**: `move_robot`, `move_to_contact`,
+  `attach_object_to_robot`, and `detach_object` are vendor-neutral and bind to
+  any ICON-controlled arm, so a single `Robot` class serves UR, KUKA, FANUC,
+  etc. Robot-specific details come from the world (kinematics, named joint
+  configurations) and `RobotConfig` (arm part and tool frame names).
 * **Scoped Configuration Dataclasses**: Every adapter constructor accepts the
   connected `solution` handle and its scoped configuration dataclass
   (`RobotConfig`, `GripperConfig`, `MachineConfig`, `VisionConfig`).

@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Robot hardware interface and Universal Robots implementation for SBL."""
+"""Robot adapter building vendor-neutral SBL motion and attachment tasks."""
 
-import abc
 from collections.abc import Sequence
 from typing import Any
 
@@ -43,113 +42,22 @@ from src.utils.math_utils import (
 )
 
 
-class RobotInterface(abc.ABC):
-  """Abstract interface for robot motion, compliant contact, and object attachment."""
+class Robot:
+  """Robot arm adapter targeting Intrinsic SBL skills.
 
-  @abc.abstractmethod
-  def build_move_joint_task(
-    self,
-    joint_target: str | JointPosition | Sequence[float] | Any,
-    name: str | None = None,
-  ) -> bt.Node:
-    """Builds a behavior tree task to move the robot arm to a named joint pose or configuration."""
-    raise NotImplementedError
-
-  def build_move_to_joint_position_task(
-    self,
-    joint_position: JointPosition,
-    name: str | None = None,
-  ) -> bt.Node:
-    """Builds a behavior tree task to move the robot arm to an explicit JointPosition."""
-    return self.build_move_joint_task(
-      joint_target=joint_position,
-      name=name,
-    )
-
-  @abc.abstractmethod
-  def build_move_cartesian_task(
-    self,
-    target_frame_name: str | None,
-    target_object_name: str,
-    motion_type: str,
-    allow_tool_z_rotation: bool = False,
-    cone_opening_half_angle: float = 0.0,
-    moving_frame_offset: tuple[float, float, float] | None = None,
-    target_frame_offset: (
-      tuple[tuple[float, float, float], tuple[float, float, float, float]]
-      | None
-    ) = None,
-    excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
-    name: str | None = None,
-  ) -> bt.Node:
-    """Builds a behavior tree task to move the robot tool to a target frame or object."""
-    raise NotImplementedError
-
-  @abc.abstractmethod
-  def build_move_blended_cartesian_task(
-    self,
-    target_frames: Sequence[tuple[str, str]],
-    motion_type: str | Sequence[str] = "ANY",
-    target_frame_offset: (
-      tuple[tuple[float, float, float], tuple[float, float, float, float]]
-      | None
-    ) = None,
-    excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
-    name: str | None = None,
-  ) -> bt.Node:
-    """Builds a behavior tree task to execute a blended trajectory through target frames."""
-    raise NotImplementedError
-
-  @abc.abstractmethod
-  def build_move_relative_cartesian_task(
-    self,
-    translation: tuple[float, float, float],
-    motion_type: str = "LINEAR",
-    excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
-    name: str | None = None,
-  ) -> bt.Node:
-    """Builds a behavior tree task to move the robot tool relative to its current pose."""
-    raise NotImplementedError
-
-  @abc.abstractmethod
-  def build_move_to_contact_task(
-    self,
-    direction: tuple[float, float, float],
-    contact_force_newtons: float,
-    timeout_seconds: float,
-    name: str | None = None,
-  ) -> bt.Node:
-    """Builds a compliant move_to_contact behavior tree task."""
-    raise NotImplementedError
-
-  @abc.abstractmethod
-  def build_attach_object_task(
-    self,
-    object_name: str,
-    name: str | None = None,
-  ) -> bt.Node:
-    """Builds a task to attach an object to the robot gripper in the object world."""
-    raise NotImplementedError
-
-  @abc.abstractmethod
-  def build_detach_object_task(
-    self,
-    object_name: str,
-    name: str | None = None,
-  ) -> bt.Node:
-    """Builds a task to detach an object from the robot gripper in the object world."""
-    raise NotImplementedError
-
-
-class UrRobot(RobotInterface):
-  """Universal Robots controller wrapper targeting Intrinsic SBL skills."""
+  The wrapped skills (`move_robot`, `move_to_contact`, `attach_object_to_robot`,
+  `detach_object`) are vendor-neutral and bind to any ICON-controlled arm, so a
+  single implementation serves UR, KUKA, FANUC, etc. Robot-specific details
+  (kinematics, named joint configurations, tool frames) come from the world
+  and `RobotConfig`.
+  """
 
   def __init__(
     self,
     solution: Any,
     config: RobotConfig,
   ) -> None:
-    """Initializes UR robot adapter with collision checking enabled.
+    """Initializes the robot adapter with collision checking enabled.
 
     Args:
         solution: Connected SBL deployment instance (from deployments.connect).
@@ -216,6 +124,17 @@ class UrRobot(RobotInterface):
       arm_part=self.arm_part,
     )
     return bt.Task(action=skill_action, name=task_name)
+
+  def build_move_to_joint_position_task(
+    self,
+    joint_position: JointPosition,
+    name: str | None = None,
+  ) -> bt.Node:
+    """Builds a behavior tree task to move the robot arm to an explicit JointPosition."""
+    return self.build_move_joint_task(
+      joint_target=joint_position,
+      name=name,
+    )
 
   def build_move_cartesian_task(
     self,

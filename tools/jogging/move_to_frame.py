@@ -21,7 +21,7 @@ from typing import Any
 from intrinsic.solutions import deployments, execution
 
 from src.core.config import RobotConfig
-from src.hardware.robot import UrRobot
+from src.hardware.robot import Robot
 
 
 def list_available_frames(world: Any) -> list[tuple[str, str]]:
@@ -181,7 +181,7 @@ def move_robot_to_frame(
     tool_object_name=tool_object_name,
     tool_frame_name=tool_frame_name,
   )
-  robot = UrRobot(
+  robot = Robot(
     solution=solution,
     config=config,
   )

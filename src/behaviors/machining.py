@@ -18,11 +18,11 @@ from intrinsic.solutions import behavior_tree as bt
 
 from src.core.config import AppConfig
 from src.hardware.machine import CncMachineInterface
-from src.hardware.robot import RobotInterface
+from src.hardware.robot import Robot
 
 
 def build_machining_handshake_subtree(
-  robot: RobotInterface,
+  robot: Robot,
   machine: CncMachineInterface | None,
   config: AppConfig,
 ) -> bt.Node:

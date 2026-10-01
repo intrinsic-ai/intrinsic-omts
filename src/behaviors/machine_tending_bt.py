@@ -26,12 +26,12 @@ from src.core.infeed import InfeedStrategy
 from src.hardware.grasping import GraspPlannerInterface
 from src.hardware.gripper import GripperInterface
 from src.hardware.machine import CncMachineInterface
-from src.hardware.robot import RobotInterface
+from src.hardware.robot import Robot
 from src.hardware.vision import VisionInterface
 
 
 def build_machine_tending_behavior_tree(
-  robot: RobotInterface,
+  robot: Robot,
   gripper: GripperInterface,
   machine: CncMachineInterface | None,
   vision: VisionInterface,

@@ -25,12 +25,12 @@ from src.behaviors.motions import (
 )
 from src.core.config import AppConfig
 from src.hardware.gripper import GripperInterface
-from src.hardware.robot import RobotInterface
+from src.hardware.robot import Robot
 from src.utils.script_utils import load_python_script
 
 
 def build_return_to_infeed_subtree(
-  robot: RobotInterface,
+  robot: Robot,
   gripper: GripperInterface,
   config: AppConfig,
 ) -> bt.Node:

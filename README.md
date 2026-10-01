@@ -103,7 +103,7 @@ flowchart TD
 OMTS adheres to clean separation of concerns:
 
 - **Domain Models ([`src/core/`](src/core/))**: Represents manufacturing state (`Workpiece`, `PartState`, `TraySlot`, `WorkcellState`) independently from robot kinematics.
-- **Hardware Adapters ([`src/hardware/`](src/hardware/))**: Unified interfaces (`Robot`, `Gripper`, `Machine`, `VisionSensor`) wrapping low-level SBL gRPC stubs and allowing seamless substitution with mock objects during unit testing.
+- **Hardware Adapters ([`src/hardware/`](src/hardware/))**: Stateless adapters that build SBL skill tasks. `Robot` is a single class for any ICON-controlled arm because the motion and attachment skills it wraps are vendor-neutral; grippers, the CNC machine, and the camera have interfaces with device-specific implementations.
 - **Infeed Strategy Pattern ([`src/core/infeed.py`](src/core/infeed.py))**: Encapsulates part acquisition logic:
   - `PerceptionInfeed`: Uses camera + pose estimation for unstructured / random part placement.
   - `GridInfeed`: Uses mathematical row/column indexing for structured tray pallets.

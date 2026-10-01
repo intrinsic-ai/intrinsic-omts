@@ -23,11 +23,11 @@ from src.behaviors.motions import (
 from src.core.config import AppConfig
 from src.hardware.gripper import GripperInterface
 from src.hardware.machine import CncMachineInterface
-from src.hardware.robot import RobotInterface
+from src.hardware.robot import Robot
 
 
 def build_load_machine_subtree(
-  robot: RobotInterface,
+  robot: Robot,
   gripper: GripperInterface,
   machine: CncMachineInterface | None,
   config: AppConfig,

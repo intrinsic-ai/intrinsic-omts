@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for stateless hardware adapters (UrRobot, Grippers, DioCncMachine, OrbbecVision)."""
+"""Unit tests for stateless hardware adapters (Robot, Grippers, DioCncMachine, OrbbecVision)."""
 
 import inspect
 from unittest import mock
@@ -29,13 +29,13 @@ from src.core.config import (
 from src.core.types import JointPosition
 from src.hardware.gripper import DioGripper, RobotiqGripper
 from src.hardware.machine import DioCncMachine
-from src.hardware.robot import UrRobot
+from src.hardware.robot import Robot
 from src.hardware.vision import OrbbecVision
 
 
 class HardwareAdaptersTest(absltest.TestCase):
   def test_ur_robot_has_no_disable_collision_checking(self):
-    sig = inspect.signature(UrRobot.__init__)
+    sig = inspect.signature(Robot.__init__)
     self.assertNotIn("disable_collision_checking", sig.parameters)
 
   def test_ur_robot_motion_and_object_attachment(self):
@@ -63,7 +63,7 @@ class HardwareAdaptersTest(absltest.TestCase):
       tool_object_name="gripper",
       tool_frame_name="tool_frame",
     )
-    robot = UrRobot(
+    robot = Robot(
       solution=mock_solution,
       config=robot_config,
     )
@@ -446,7 +446,7 @@ class HardwareAdaptersTest(absltest.TestCase):
     mock_move_robot.return_value = bt.PythonScript(function_body="pass")
     mock_solution.skills.ai.intrinsic.move_robot = mock_move_robot
 
-    robot = UrRobot(
+    robot = Robot(
       solution=mock_solution,
       config=RobotConfig(
         arm_part_name="ur_module",
@@ -638,7 +638,7 @@ class HardwareAdaptersTest(absltest.TestCase):
     mock_move_robot.return_value = bt.PythonScript(function_body="pass")
     mock_solution.skills.ai.intrinsic.move_robot = mock_move_robot
 
-    robot = UrRobot(
+    robot = Robot(
       solution=mock_solution,
       config=RobotConfig(
         arm_part_name="ur_module",

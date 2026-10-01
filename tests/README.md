@@ -19,7 +19,7 @@ bazel test --test_output=errors //tests/unit:test_behaviors
 | :--- | :--- | :--- |
 | `test_config` | `src/core/config.py` | Strict YAML loading (`omts`, `lab_bb_01`), missing key rejection, optional `machine` section handling. |
 | `test_behaviors` | `src/behaviors/*.py` | Master BT assembly (`bt.Loop` single/finite/continuous), optional `machine=None` node omission, segment-scoped collision rules, compliant touchdowns, and linear retracts across all 5 subtrees. |
-| `test_hardware_adapters` | `src/hardware/*.py` | `UrRobot`, `RobotiqGripper`, `DioGripper`, `DioCncMachine`, and `OrbbecVision` skill generation, ADIO capability resolution, and belief-world joint synchronization. |
+| `test_hardware_adapters` | `src/hardware/*.py` | `Robot`, `RobotiqGripper`, `DioGripper`, `DioCncMachine`, and `OrbbecVision` skill generation, ADIO capability resolution, and belief-world joint synchronization. |
 | `test_infeed` | `src/core/infeed.py` | `PerceptionInfeedStrategy` and `GridInfeedStrategy` part acquisition lifecycle. |
 | `test_tray` | `src/core/tray.py` | Row-major slot iteration, pitch offset math, and slot occupancy transitions. |
 | `test_workpiece` | `src/core/workpiece.py` | Workpiece state machine transitions (`RAW` through `INSPECTED_OK`/`REJECTED`). |

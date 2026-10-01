@@ -22,7 +22,7 @@ from intrinsic.solutions import deployments, execution
 
 from src.core.config import RobotConfig
 from src.core.types import JointPosition
-from src.hardware.robot import UrRobot
+from src.hardware.robot import Robot
 
 
 def list_available_joint_configs(
@@ -137,7 +137,7 @@ def move_robot_to_joint(
     tool_object_name="gripper",
     tool_frame_name="tool_frame",
   )
-  robot = UrRobot(
+  robot = Robot(
     solution=solution,
     config=config,
   )

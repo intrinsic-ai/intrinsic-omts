@@ -57,7 +57,7 @@ class MoveToJointTest(absltest.TestCase):
     configs = list_available_joint_configs(mock_world, "ur_module")
     self.assertEqual(configs, [("home", [0.0, -1.57, 1.57, 0.0, 0.0, 0.0])])
 
-  @mock.patch("tools.jogging.move_to_joint.UrRobot")
+  @mock.patch("tools.jogging.move_to_joint.Robot")
   def test_move_robot_to_joint_executes_task(self, mock_ur_robot_cls):
     mock_solution = mock.MagicMock()
     mock_robot = mock.MagicMock()

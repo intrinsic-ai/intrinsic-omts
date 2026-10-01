@@ -20,13 +20,13 @@ from intrinsic.solutions import behavior_tree as bt
 
 from src.core.config import AppConfig
 from src.core.types import Touchdown
-from src.hardware.robot import RobotInterface
+from src.hardware.robot import Robot
 
 DEFAULT_TOUCHDOWN = Touchdown()
 
 
 def create_move_to_frame_task(
-  robot: RobotInterface,
+  robot: Robot,
   frame_name: str | None,
   parent_object: str | None = None,
   motion_type: str = "ANY",
@@ -82,7 +82,7 @@ def create_move_to_frame_task(
 
 
 def create_move_through_frames_task(
-  robot: RobotInterface,
+  robot: Robot,
   frame_names: Sequence[str],
   parent_object: str | None = None,
   *,
@@ -143,7 +143,7 @@ def create_move_through_frames_task(
 
 
 def create_compliant_touchdown_task(
-  robot: RobotInterface,
+  robot: Robot,
   direction: tuple[float, float, float] = (0.0, 0.0, 1.0),
   contact_force_newtons: float = 8.0,
   timeout_seconds: float = 40.0,
@@ -176,7 +176,7 @@ def create_compliant_touchdown_task(
 
 
 def create_relative_retract_task(
-  robot: RobotInterface,
+  robot: Robot,
   distance_meters: float,
   excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
   task_name: str | None = None,
@@ -206,7 +206,7 @@ def create_relative_retract_task(
 
 
 def create_seated_approach_tasks(
-  robot: RobotInterface,
+  robot: Robot,
   frame_name: str,
   parent_object: str | None = None,
   touchdown: Touchdown = DEFAULT_TOUCHDOWN,

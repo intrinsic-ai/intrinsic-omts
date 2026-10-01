@@ -47,7 +47,7 @@ from src.core.types import InfeedMode
 from src.hardware.grasping import GraspPlannerInterface
 from src.hardware.gripper import DioGripper, GripperInterface, RobotiqGripper
 from src.hardware.machine import CncMachineInterface, DioCncMachine
-from src.hardware.robot import RobotInterface, UrRobot
+from src.hardware.robot import Robot
 from src.hardware.vision import OrbbecVision, VisionInterface
 
 _FAKE_PLANNER_TASK_NAME = "Fake Plan Grasp"
@@ -90,7 +90,7 @@ class BehaviorsTest(absltest.TestCase):
     super().setUp()
     self.config = load_app_config("configs/omts/app_config.yaml")
 
-    self.robot = mock.MagicMock(spec=RobotInterface)
+    self.robot = mock.MagicMock(spec=Robot)
     self.robot.build_move_joint_task.side_effect = _make_mock_node_builder(
       "Move Joint"
     )
@@ -1135,7 +1135,7 @@ class HermeticSolutionAndBehaviorTreeContractTest(absltest.TestCase):
     cell_key = "lab_bb_01" if "lab_bb_01" in config_path else "omts"
     world_objects = self.cell_world_objects[cell_key]
     solution = FakeSolution(self.skill_infos, world_objects=world_objects)
-    robot = UrRobot(solution=solution, config=config.robot)
+    robot = Robot(solution=solution, config=config.robot)
     if use_dio_gripper:
       dio_gripper_cfg = dataclasses.replace(
         config.gripper,
@@ -1370,7 +1370,7 @@ class HermeticSolutionAndBehaviorTreeContractTest(absltest.TestCase):
       self.skill_infos,
       world_objects=self.cell_world_objects["omts"],
     )
-    robot = UrRobot(solution=solution, config=config.robot)
+    robot = Robot(solution=solution, config=config.robot)
     assert config.machine is not None
     machine = DioCncMachine(solution=solution, config=config.machine)
     illegal_parallel_tree = bt.BehaviorTree(

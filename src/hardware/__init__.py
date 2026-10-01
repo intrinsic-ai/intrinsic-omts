@@ -22,7 +22,7 @@ from src.hardware.machine import (
   CncMachineInterface,
   DioCncMachine,
 )
-from src.hardware.robot import RobotInterface, UrRobot
+from src.hardware.robot import Robot
 from src.hardware.vision import OrbbecVision, VisionInterface
 
 __all__ = [
@@ -32,8 +32,7 @@ __all__ = [
   "GraspPlannerInterface",
   "GripperInterface",
   "OrbbecVision",
-  "RobotInterface",
+  "Robot",
   "RobotiqGripper",
-  "UrRobot",
   "VisionInterface",
 ]
