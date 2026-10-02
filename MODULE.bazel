@@ -191,11 +191,19 @@ gh.download(
     sha256 = "b872cd424ad3c81e8a3f719394b459917107e832e868c9f427788156bd97283d",
     tag = OMTS_ASSETS_RELEASE,
 )
+gh.download(
+    name = "moveit_plan_grasp_skill_bundle",
+    pattern = "moveit_plan_grasp_skill.bundle.tar",
+    repo = "intrinsic-ai/intrinsic-moveit",
+    sha256 = "2f5470a251fe778e5f59a95168858000c3d7d1709f970f19f6f3eadc58c551ec",
+    tag = "v0.0.2",
+)
 use_repo(
     gh,
     "flowstate_ros_bridge_bundle",
     "hand_e_gripper_cmd_skill_bundle",
     "hand_e_gripper_service_bundle",
+    "moveit_plan_grasp_skill_bundle",
     "orbbec_gemini_driver_bundle",
     "segmentation_weights_bundle",
 )

@@ -325,6 +325,88 @@ class DynamicFrameCalculatorTest(absltest.TestCase):
     self.assertAlmostEqual(float(q_pre.z), float(q_grasp.z), places=6)
     self.assertAlmostEqual(float(q_pre.w), float(q_grasp.w), places=6)
 
+  def test_publish_grasp_frames_false_still_updates_workpiece_pose(
+    self,
+  ) -> None:
+    """With an external planner, only the localization half must run."""
+    mock_world = mock.MagicMock()
+    mock_root = mock.MagicMock()
+    mock_root.list_frames.return_value = []
+    mock_world.root = mock_root
+    mock_world.get_transform.return_value = None
+
+    mock_stock = mock.MagicMock()
+    mock_stock.parent = mock_root
+    # A bare MagicMock would auto-create the dotted id and satisfy the first
+    # lookup, so null it out to exercise the short-name fallback as the real
+    # world does.
+    setattr(mock_world, "ai.intrinsic.raw_stock_2x3x5", None)
+    mock_world.raw_stock_2x3x5 = mock_stock
+
+    context = mock.MagicMock()
+    context.object_world = mock_world
+    params = _make_params(pos_z=1.00, publish_grasp_frames=False)
+
+    calculate_and_update_dynamic_frames(context, params)
+
+    mock_world.create_frame.assert_not_called()
+    mock_world.update_transform.assert_called_once()
+    self.assertIs(
+      mock_world.update_transform.call_args.kwargs["node_b"], mock_stock
+    )
+
+  def test_publish_grasp_frames_false_still_enforces_min_safe_z(self) -> None:
+    mock_world = mock.MagicMock()
+    mock_root = mock.MagicMock()
+    mock_root.list_frames.return_value = []
+    mock_world.root = mock_root
+    mock_world.get_transform.return_value = None
+
+    context = mock.MagicMock()
+    context.object_world = mock_world
+    params = _make_params(
+      pos_z=0.50, min_safe_z=0.95, publish_grasp_frames=False
+    )
+
+    with self.assertRaisesRegex(ValueError, "below "):
+      calculate_and_update_dynamic_frames(context, params)
+
+  def test_omitted_publish_grasp_frames_defaults_to_publishing(self) -> None:
+    """Signatures generated before the flag existed must keep working."""
+    mock_world = mock.MagicMock()
+    mock_root = mock.MagicMock()
+    mock_root.list_frames.return_value = []
+    mock_world.root = mock_root
+    mock_world.get_transform.return_value = None
+
+    context = mock.MagicMock()
+    context.object_world = mock_world
+
+    class _LegacyParams:
+      """Params object without the publish_grasp_frames field."""
+
+      parent_object = "root"
+      camera_name = "orbbec_camera"
+      pos_x = 0.30
+      pos_y = -0.20
+      pos_z = 1.05
+      ori_x = 0.0
+      ori_y = 0.0
+      ori_z = 0.0
+      ori_w = 1.0
+      approach_offset_z = 0.08
+      pregrasp_frame_name = "pre_grasp"
+      grasp_frame_name = "grasp"
+      target_scene_object_id = ""
+      min_safe_z = 0.95
+      tool_object_name = "gripper"
+      tool_frame_name = "tool_frame"
+
+    mock_world.orbbec_camera = mock.MagicMock()
+    calculate_and_update_dynamic_frames(context, _LegacyParams())
+
+    self.assertEqual(mock_world.create_frame.call_count, 2)
+
 
 class MathUtilsTest(absltest.TestCase):
   """Unit tests for math_utils helper functions."""

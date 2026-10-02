@@ -30,6 +30,8 @@ end-to-end machine tending cycle.
   cuboid-center behaviour, where the perception pipeline publishes `pre_grasp` /
   `grasp` itself and no extra node is emitted. A supplied
   `GraspPlannerInterface` adds one node immediately after the perception
-  pipeline, so it refines a pose perception has already established; passing a
-  planner with a non-perception infeed mode is a `ValueError` rather than a
-  silent no-op.
+  pipeline, so it refines a pose perception has already established, and
+  perception is built with `publish_grasp_frames=False` so exactly one component
+  writes those frames; a planner failure can never leave a stale heuristic
+  grasp behind. Passing a planner with a non-perception infeed mode is a
+  `ValueError` rather than a silent no-op.
