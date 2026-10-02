@@ -31,10 +31,6 @@ config_setting(
 
 _OMTS_SKILL_ASSETS = [
     ":hand_e_gripper_cmd_skill_asset",
-    # Installed unconditionally so `omts_app --grasp_planner=moveit` has the
-    # skill available. It is inert unless a moveit_planning_service is running,
-    # which remains a user-side prerequisite. See
-    # third_party/intrinsic_moveit/README.md.
     ":moveit_plan_grasp_skill_asset",
     "@intrinsic-core//intrinsic_control/intrinsic/icon/skills:dio_read_input_skill",
     "@intrinsic-core//intrinsic_control/intrinsic/icon/skills:dio_set_output_skill",
