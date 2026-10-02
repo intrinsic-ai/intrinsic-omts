@@ -182,7 +182,7 @@ and model weights from this repository's GitHub Releases (configured in
   (`ai.intrinsic.moveit_plan_grasp_skill`). It is installed into every solution
   so that `--grasp_planner=moveit` works without sideloading, but it only
   executes once you have stood up the MoveIt planning service — see
-  [§9 Optional integrations](#9-optional-integrations).
+  [§8 Optional integrations](#8-optional-integrations).
 
 ### 4. Build and run instructions
 
@@ -256,7 +256,7 @@ bazel run //src:omts_app -- \
   --simulation_mode=fast_preview
 
 # Optionally, plan the infeed grasp with MoveIt instead of the built-in cuboid-center
-# heuristic (requires the MoveIt planning service, see §9):
+# heuristic (requires the MoveIt planning service, see §8):
 bazel run //src:omts_app -- \
   --address=localhost:17080 \
   --config="configs/omts/app_config.yaml" \
