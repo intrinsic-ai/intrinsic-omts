@@ -191,7 +191,6 @@ gh.download(
     sha256 = "b872cd424ad3c81e8a3f719394b459917107e832e868c9f427788156bd97283d",
     tag = OMTS_ASSETS_RELEASE,
 )
-
 gh.download(
     name = "moveit_plan_grasp_skill_bundle",
     pattern = "moveit_plan_grasp_skill.bundle.tar",

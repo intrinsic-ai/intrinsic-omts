@@ -346,7 +346,7 @@ distribute these weights.
 
 ---
 
-## 9. Optional integrations
+## 8. Optional integrations
 
 MoveIt grasp planning is an opt-in alternative to the built-in cuboid-center
 heuristic. The integration code is third-party and lives under
