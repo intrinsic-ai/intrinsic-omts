@@ -137,7 +137,7 @@ Users will also need to set up a ROS colcon workspace that has `intrinsic-moveit
 
 > [!NOTE]
 > The `moveit_plan_grasp_skill` itself is **not** a manual step. `//:omts_solution`
-> downloads the bundle at build time (pinned by `INTRINSIC_MOVEIT_RELEASE` in
+> downloads the bundle at build time (pinned in
 > [`MODULE.bazel`](../../MODULE.bazel)) and installs
 > `ai.intrinsic.moveit_plan_grasp_skill` with every deployment. If you bump that
 > pin, redeploy the solution rather than `inctl asset install`-ing by hand, so
