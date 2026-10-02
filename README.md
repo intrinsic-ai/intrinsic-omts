@@ -255,7 +255,7 @@ bazel run //src:omts_app -- \
   --num_cycles=3 \
   --simulation_mode=fast_preview
 
-# Plan the infeed grasp with MoveIt instead of the built-in cuboid-center
+# Optionally, plan the infeed grasp with MoveIt instead of the built-in cuboid-center
 # heuristic (requires the MoveIt planning service, see §9):
 bazel run //src:omts_app -- \
   --address=localhost:17080 \
@@ -358,12 +358,6 @@ reachable two ways:
   localizes the workpiece, but MoveIt plans the grasp on it.
 - **Standalone**: the `moveit_plan_grasp_and_move` CLI tool, for bringing the
   integration up and debugging candidates outside a production cycle.
-
-`//:omts_solution` installs the `ai.intrinsic.moveit_plan_grasp_skill` skill for
-you, so nothing needs sideloading. The skill still needs somewhere to plan:
-building the ROS workspace and running the MoveIt planning service remains a
-user-side prerequisite. The `flowstate_ros_bridge` the solution already deploys
-works as-is; it needs no reconfiguration.
 
 > [!NOTE]
 > Until you have completed the [intrinsic-moveit](https://github.com/intrinsic-ai/intrinsic-moveit)
