@@ -45,8 +45,8 @@ def build_pick_from_infeed_subtree(
      robot motion to avoid `lock_the_universe` resource conflicts.
   2. If `infeed_strategy.mode` is `PERCEPTION`, move to `view_frame` (`ANY`)
      and run the 3-step perception pipeline (capture RGB-D, estimate 6D pose
-     via FoundationPose, and update the workpiece pose plus, unless a
-     `grasp_planner` is provided, the cuboid-center `pre_grasp`/`grasp` frames).
+     via FoundationPose, and update the workpiece pose. If no `grasp_planner`
+     is provided, update the cuboid-center `pre_grasp`/`grasp` frames too).
   3. If `grasp_planner` is provided, run it to plan the grasp on the localized
      workpiece and publish `pre_grasp`/`grasp` from the planned poses.
   4. Open gripper fingers.

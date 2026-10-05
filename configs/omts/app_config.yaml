@@ -52,6 +52,7 @@ frames:
 
 grasp:
   planner: "cuboid_center"
+  # moveit_* configurations below are only relevant when planner is "moveit"
   moveit_tool_frame_name: "hande_tcp"
   moveit_group_name: "ur_manipulator"
   moveit_end_effector_group: "hand"

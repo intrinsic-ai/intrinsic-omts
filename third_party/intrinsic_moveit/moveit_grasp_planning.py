@@ -25,7 +25,7 @@ from collections.abc import Sequence
 from intrinsic.solutions import behavior_tree as bt
 
 from src.behaviors.motions import create_move_to_frame_task
-from src.hardware.robot import RobotInterface
+from src.hardware.robot import Robot
 from third_party.intrinsic_moveit.moveit_grasp_planner import (
   SURFACE_Z_POS,
   MoveItGraspPlannerInterface,
@@ -35,7 +35,7 @@ from third_party.intrinsic_moveit.moveit_grasp_planner import (
 def build_moveit_grasp_planning_subtree(
   grasp_planner: MoveItGraspPlannerInterface,
   candidate_objects: Sequence[str],
-  robot: RobotInterface | None = None,
+  robot: Robot | None = None,
   parent_object: str = "root",
   grasp_frame: str = "grasp",
   pregrasp_frame: str = "pre_grasp",

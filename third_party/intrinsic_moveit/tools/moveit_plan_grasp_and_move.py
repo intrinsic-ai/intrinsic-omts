@@ -34,7 +34,7 @@ from intrinsic.solutions import deployments, execution
 from intrinsic.world.proto import object_world_refs_pb2
 
 from src.core.config import RobotConfig
-from src.hardware.robot import UrRobot
+from src.hardware.robot import Robot
 from third_party.intrinsic_moveit.moveit_grasp_planner import (
   DEFAULT_TOOL_FRAME,
   SURFACE_ALL,
@@ -332,7 +332,7 @@ def moveit_plan_grasp_and_move(
 
   robot = None
   if not plan_only:
-    robot = UrRobot(
+    robot = Robot(
       solution=solution,
       config=RobotConfig(
         arm_part_name=arm_part_name,
