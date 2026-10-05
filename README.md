@@ -123,47 +123,6 @@ OMTS adheres to clean separation of concerns:
 - **Networking**: 2–3 Gigabit Ethernet ports (Port 1: LAN/Internet; Port 2:
   Real-time Robot Controller; Optional Port 3: PoE Camera switch).
 
-#### Workspace and dependencies
-
-Bazel downloads the pre-packaged **Intrinsic Core** release archive
-(`intrinsic-core.tar.gz`, which includes all binary assets) automatically via
-[`MODULE.bazel`](MODULE.bazel), so no manual `intrinsic-core` checkout is
-required:
-
-```python
-bazel_dep(name="intrinsic-core")
-archive_override(
-  module_name="intrinsic-core",
-  patch_strip=1,
-  patches=["//bazel/patches:robotiq_hande_finger_offset.patch"],
-  sha256=INTRINSIC_CORE_SHA256,
-  urls=[INTRINSIC_CORE_URL],
-)
-
-bazel_dep(name="intrinsic_apis", version="0.0.1")
-archive_override(
-  module_name="intrinsic_apis",
-  sha256=INTRINSIC_CORE_SHA256,
-  strip_prefix="./intrinsic_apis",
-  urls=[INTRINSIC_CORE_URL],
-)
-```
-
-**Git LFS** is used by this repository for the 3D scene meshes under `models/`
-(`*.glb`). Install and enable the smudge filter before cloning `intrinsic-omts`:
-
-```bash
-sudo apt-get install git-lfs
-git lfs install
-```
-
-To move to a different Intrinsic Core release, update `INTRINSIC_CORE_RELEASE`
-and `INTRINSIC_CORE_SHA256` in `MODULE.bazel`:
-
-```bash
-curl -fsSL "https://github.com/intrinsic-ai/intrinsic-core/releases/download/<tag>/intrinsic-core.tar.gz" | sha256sum
-```
-
 #### GitHub release artifacts
 
 During the build, Bazel automatically downloads the following prebuilt bundles
@@ -189,20 +148,40 @@ and model weights from this repository's GitHub Releases (configured in
 #### 4.1. Deploy the workcell solution
 
 Build and launch the ICON controller, hardware modules, perception services, and
-simulator:
+simulator. By default, `//:omts_solution` deploys in `real` mode
+(`default_operation_mode = "real"` in [`BUILD`](BUILD)). Pass
+`--operation_mode=sim` after `--` to run in simulation (Gazebo physics and
+simulated 3D camera renders):
 
 ```bash
-# Deploy default OMTS cell (UR5e + CNC enclosure + Schunk vise):
-bazel run //:omts_solution -c opt -- --address=localhost:17080
+# Deploy default OMTS cell (UR5e + CNC enclosure + Schunk vise) in simulation:
+bazel run //:omts_solution -c opt -- \
+  --address=localhost:17080 \
+  --operation_mode=sim
 
-# Deploy Lab BB-01 cell (UR3e + CAW enclosure, no CNC machine):
+# Deploy Lab BB-01 cell (UR3e + CAW enclosure, no CNC machine) in simulation:
+bazel run //:omts_solution -c opt --//:setup=lab_bb_01 -- \
+  --address=localhost:17080 \
+  --operation_mode=sim
+
+# Deploy on physical hardware (defaults to --operation_mode=real):
+bazel run //:omts_solution -c opt -- --address=localhost:17080
 bazel run //:omts_solution -c opt --//:setup=lab_bb_01 -- --address=localhost:17080
 ```
+
+> [!NOTE]
+> Deploying without `--operation_mode=sim` starts the solution in `real` mode,
+> where ICON requires a real-time kernel and physical robot connection (failing
+> with `no healthy upstream` otherwise) and Gazebo runs as a no-op stub. When
+> switching a running cluster between `real` and `sim`, stop the active solution
+> first (`inctl solution stop --address=localhost:17080`).
 
 #### 4.2. Apply scene updates (simulation / fresh deployment)
 
 Push kinematic attachments, robot base alignment, and scene frames to the live
-`ObjectWorld` (pass `--reset_sim` to synchronize Gazebo's `sim_world`):
+`ObjectWorld`. When the solution is deployed with `--operation_mode=sim`,
+`--reset_sim` (enabled by default) calls `solution.simulator.reset()` to clone
+the updated Belief World (`world`) into Gazebo's `sim_world`:
 
 ```bash
 bazel run //tools/world:apply_scene_updates -- \
@@ -262,6 +241,14 @@ bazel run //src:omts_app -- \
   --config="configs/omts/app_config.yaml" \
   --grasp_planner=moveit
 ```
+
+> [!TIP]
+> `--simulation_mode` on `//src:omts_app` controls the SBL Executive preview
+> mode (`reality`, `preview`, `fast_preview`), not the cluster deployment mode.
+> When the solution is deployed with `--operation_mode=sim`, leave
+> `--simulation_mode` at its default (`reality`) so the Behavior Tree executes
+> against Gazebo and the simulated camera; use `preview` or `fast_preview` only
+> for kinematic trajectory previews in the Belief World without stepping Gazebo.
 
 The grasp planner defaults to `cuboid_center`, which derives a top-down grasp
 from the pose estimate and needs no extra services. `--grasp_planner` overrides
