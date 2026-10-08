@@ -72,6 +72,7 @@ class ConfigTest(absltest.TestCase):
     self.assertEqual(config.cycle.load_seat_force_newtons, 10.0)
     self.assertEqual(config.cycle.unload_touchdown_force_newtons, 10.0)
     self.assertEqual(config.cycle.return_touchdown_force_newtons, 10.0)
+    self.assertEqual(config.cycle.standoff_distance_meters, 0.02)
     self.assertEqual(config.cycle.retract_distance_meters, 0.015)
     self.assertEqual(
       config.pick_touchdown,
@@ -94,7 +95,7 @@ class ConfigTest(absltest.TestCase):
     self.assertEqual(
       config.return_touchdown,
       Touchdown(
-        force_n=10.0, standoff_m=0.02, timeout_s=30.0, retract_after_m=0.0
+        force_n=10.0, standoff_m=0.035, timeout_s=30.0, retract_after_m=0.0
       ),
     )
     self.assertEqual(config.robot.enclosure_object_name, "enclosure")
@@ -109,7 +110,12 @@ class ConfigTest(absltest.TestCase):
     self.assertIsNone(config.frames.transit_frame)
     self.assertEqual(config.vision.min_safe_z, 0.60)
     self.assertEqual(config.cycle.pick_touchdown_force_newtons, 15.0)
-    self.assertIsNone(config.robot.enclosure_object_name)
+    self.assertEqual(config.cycle.standoff_distance_meters, 0.03)
+    self.assertEqual(config.robot.enclosure_object_name, "enclosure")
+    self.assertEqual(config.cycle.return_shift.center_x, 0.25)
+    self.assertEqual(config.cycle.return_shift.center_y, 0.25)
+    self.assertEqual(config.cycle.return_shift.bounds_x, 0.04)
+    self.assertEqual(config.cycle.return_shift.bounds_y, 0.04)
 
   def test_shipped_configs_select_the_cuboid_center_planner(self):
     for path in (

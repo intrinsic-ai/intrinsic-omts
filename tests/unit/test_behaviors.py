@@ -38,6 +38,10 @@ from intrinsic.world.python import object_world_resources
 from src.behaviors.load_machine import build_load_machine_subtree
 from src.behaviors.machine_tending_bt import build_machine_tending_behavior_tree
 from src.behaviors.machining import build_machining_handshake_subtree
+from src.behaviors.motions import (
+  create_compliant_touchdown_task,
+  create_seated_approach_tasks,
+)
 from src.behaviors.pick import build_pick_from_infeed_subtree
 from src.behaviors.return_infeed import build_return_to_infeed_subtree
 from src.behaviors.unload_machine import build_unload_machine_subtree
@@ -310,6 +314,22 @@ class BehaviorsTest(absltest.TestCase):
     self.assertIsNotNone(load_subtree)
     self.assertEqual(len(load_subtree.children), 8)
     self.assertEqual(self.robot.build_move_blended_cartesian_task.call_count, 2)
+    self.robot.build_move_blended_cartesian_task.assert_any_call(
+      target_frames=[
+        ("root", "transit"),
+        ("root", "machine_approach"),
+        ("root", "vise_pre_place"),
+        ("root", "vise_place"),
+      ],
+      motion_type=["ANY", "ANY", "ANY", "LINEAR"],
+      target_frame_offset=((0.0, 0.0, -0.02), (0.0, 0.0, 0.0, 1.0)),
+      excluded_collision_pairs=[
+        ("raw_stock_2x3x5", "schunk_egp_64nnb"),
+        ("gripper", "schunk_egp_64nnb"),
+        ("gripper", "raw_stock_2x3x5"),
+      ],
+      name="Load Vise: Blended Approach to Standoff (root/vise_place)",
+    )
     self.robot.build_detach_object_task.assert_called_once_with(
       object_name="raw_stock_2x3x5",
       name="Detach raw_stock_2x3x5 from Gripper",
@@ -391,17 +411,96 @@ class BehaviorsTest(absltest.TestCase):
       object_name="raw_stock_2x3x5",
       name="Detach raw_stock_2x3x5 from Gripper",
     )
-    self.robot.build_move_cartesian_task.assert_called_once_with(
+    expected_collision_pairs = [
+      ("gripper", "raw_stock_2x3x5"),
+      ("enclosure", "raw_stock_2x3x5"),
+      ("gripper", "enclosure"),
+    ]
+    self.assertEqual(self.robot.build_move_cartesian_task.call_count, 3)
+    self.robot.build_move_cartesian_task.assert_any_call(
       target_frame_name="grasp",
       target_object_name="root",
       motion_type="LINEAR",
       allow_tool_z_rotation=False,
       cone_opening_half_angle=0.0,
       moving_frame_offset=None,
-      target_frame_offset=((0.0, 0.0, -0.02), (0.0, 0.0, 0.0, 1.0)),
-      excluded_collision_pairs=[("gripper", "raw_stock_2x3x5")],
+      target_frame_offset=((0.0, 0.0, -0.035), (0.0, 0.0, 0.0, 1.0)),
+      excluded_collision_pairs=expected_collision_pairs,
       name="Return Infeed: Linear Approach to Standoff (root/grasp)",
     )
+    self.robot.build_move_cartesian_task.assert_any_call(
+      target_frame_name="grasp",
+      target_object_name="root",
+      motion_type="LINEAR",
+      allow_tool_z_rotation=False,
+      cone_opening_half_angle=0.0,
+      moving_frame_offset=None,
+      target_frame_offset=((0.0, 0.0, -0.035), (0.0, 0.0, 0.0, 1.0)),
+      excluded_collision_pairs=expected_collision_pairs,
+      name="Return Infeed: Re-approach Standoff (root/grasp)",
+    )
+    self.robot.build_move_cartesian_task.assert_any_call(
+      target_frame_name="grasp",
+      target_object_name="root",
+      motion_type="LINEAR",
+      allow_tool_z_rotation=False,
+      cone_opening_half_angle=0.0,
+      moving_frame_offset=None,
+      target_frame_offset=((0.0, 0.0, -0.015), (0.0, 0.0, 0.0, 1.0)),
+      excluded_collision_pairs=expected_collision_pairs,
+      name="Return Infeed: Fallback Linear Seat (root/grasp)",
+    )
+
+  def test_seated_approach_touchdown_retry_and_fallback_structure(self):
+    tasks = create_seated_approach_tasks(
+      robot=self.robot,
+      frame_name="grasp",
+      parent_object="root",
+      touchdown=self.config.pick_touchdown,
+      config=self.config,
+      label="Infeed Pick",
+      excluded_collision_pairs=[("gripper", "raw_stock_2x3x5")],
+    )
+    self.assertLen(tasks, 3)
+    approach_node, touchdown_node, retract_node = tasks
+    self.assertEqual(
+      approach_node.name,
+      "Infeed Pick: Linear Approach to Standoff (root/grasp)",
+    )
+    self.assertEqual(
+      retract_node.name,
+      "Infeed Pick: Linear Retract (1.5 cm, -Z Tool)",
+    )
+    self.assertIsInstance(touchdown_node, bt.Fallback)
+    self.assertEqual(
+      touchdown_node.name, "Infeed Pick: Compliant Touchdown (+Z Tool)"
+    )
+    self.assertLen(touchdown_node.tries, 2)
+
+    retry_node = touchdown_node.tries[0].node
+    fallback_node = touchdown_node.tries[1].node
+    self.assertIsInstance(retry_node, bt.Retry)
+    self.assertEqual(retry_node.max_tries, 2)
+    self.assertEqual(
+      retry_node.name, "Infeed Pick: Compliant Touchdown (+Z Tool) (Retry)"
+    )
+    self.assertEqual(
+      retry_node.child.name, "Infeed Pick: Compliant Touchdown (+Z Tool)"
+    )
+    self.assertEqual(
+      retry_node.recovery.name,
+      "Infeed Pick: Re-approach Standoff (root/grasp)",
+    )
+    self.assertEqual(
+      fallback_node.name, "Infeed Pick: Fallback Linear Seat (root/grasp)"
+    )
+
+    direct_task = create_compliant_touchdown_task(
+      robot=self.robot,
+      touchdown=self.config.pick_touchdown,
+      task_name="Direct Touchdown",
+    )
+    self.assertEqual(direct_task.name, "Direct Touchdown")
 
   def test_build_master_behavior_tree_without_cnc_machine(self):
     lab_config = load_app_config("configs/lab_bb_01/app_config.yaml")
@@ -418,7 +517,7 @@ class BehaviorsTest(absltest.TestCase):
     self.assertIsInstance(tree.root, bt.Sequence)
     self.assertEqual(len(tree.root.children), 5)
     self.vision.build_perception_and_spawn_task.assert_called_once_with(
-      approach_offset_z=0.08,
+      approach_offset_z=lab_config.cycle.approach_offset_z,
       parent_object="root",
       pregrasp_frame_name="pre_grasp",
       grasp_frame_name="grasp",
@@ -426,6 +525,17 @@ class BehaviorsTest(absltest.TestCase):
       tool_frame_name="tool_frame",
       publish_grasp_frames=True,
       name="Perception & Dynamic Grasp Frame Update Pipeline",
+    )
+    retract_m = lab_config.cycle.retract_distance_meters
+    self.robot.build_move_relative_cartesian_task.assert_any_call(
+      translation=(0.0, 0.0, -retract_m),
+      motion_type="LINEAR",
+      excluded_collision_pairs=[
+        ("gripper", "raw_stock_2x3x5"),
+        ("enclosure", "raw_stock_2x3x5"),
+        ("gripper", "enclosure"),
+      ],
+      name=f"Unload Vise: Linear Retract ({retract_m * 100:.1f} cm, -Z Tool)",
     )
     self.machine.build_open_door_task.assert_not_called()
     self.machine.build_close_door_task.assert_not_called()
@@ -1234,7 +1344,10 @@ class HermeticSolutionAndBehaviorTreeContractTest(absltest.TestCase):
           exec_code.parameter_message_full_name,
         )
         self.assertTrue(exec_code.parameters.proto.Unpack(params_msg))
-        self.assertAlmostEqual(params_msg.approach_offset_z, 0.08, places=5)
+        expected_offset_z = load_app_config(config_path).cycle.approach_offset_z
+        self.assertAlmostEqual(
+          params_msg.approach_offset_z, expected_offset_z, places=5
+        )
         self.assertEqual(params_msg.parent_object, "root")
         self.assertEqual(params_msg.pregrasp_frame_name, "pre_grasp")
         self.assertEqual(params_msg.grasp_frame_name, "grasp")

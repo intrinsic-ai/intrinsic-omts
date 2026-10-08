@@ -150,8 +150,8 @@ class JointPosition:
 class Touchdown:
   """Compliant seating parameters for a robot-workpiece contact interaction."""
 
-  force_n: float = 8.0
-  standoff_m: float = 0.020
-  timeout_s: float = 40.0
-  retract_after_m: float = 0.005
+  force_n: float
+  standoff_m: float
+  timeout_s: float
+  retract_after_m: float
   direction: tuple[float, float, float] = (0.0, 0.0, 1.0)

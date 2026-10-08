@@ -21,7 +21,7 @@ from absl.testing import absltest
 from intrinsic.solutions import behavior_tree as bt
 
 from src.hardware.grasping import GraspPlannerInterface
-from src.hardware.robot import RobotInterface
+from src.hardware.robot import Robot
 from third_party.intrinsic_moveit.moveit_grasp_planner import (
   SURFACE_Z_NEG,
   SURFACE_Z_POS,
@@ -35,7 +35,7 @@ from third_party.intrinsic_moveit.tools.moveit_plan_grasp_and_move import (
 )
 
 
-class MockRobot(RobotInterface):
+class MockRobot(Robot):
   """Mock robot adapter for offline testing."""
 
   def __init__(self) -> None:

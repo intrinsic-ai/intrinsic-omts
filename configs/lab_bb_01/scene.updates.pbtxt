@@ -8,7 +8,7 @@ updates {
       position {
         x: 0.15
         y: 0.25
-        z: 0.71
+        z: 0.73
       }
       orientation {
         x: 1.0
@@ -30,7 +30,7 @@ updates {
       position {
         x: 0.15
         y: 0.25
-        z: 0.73
+        z: 0.80
       }
       orientation {
         x: 1.0
@@ -52,7 +52,7 @@ updates {
       position {
         x: 0.47
         y: 0.37
-        z: 0.78
+        z: 0.80
       }
       orientation {
         x: 0.7071
@@ -75,7 +75,7 @@ updates {
       position {
         x: 0.47
         y: 0.37
-        z: 0.7
+        z: 0.73
       }
       orientation {
         x: 0.7071

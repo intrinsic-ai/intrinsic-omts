@@ -22,8 +22,6 @@ from src.core.config import AppConfig
 from src.core.types import Touchdown
 from src.hardware.robot import Robot
 
-DEFAULT_TOUCHDOWN = Touchdown()
-
 
 def create_move_to_frame_task(
   robot: Robot,
@@ -149,8 +147,26 @@ def create_compliant_touchdown_task(
   timeout_seconds: float = 40.0,
   task_name: str | None = None,
   touchdown: Touchdown | None = None,
+  *,
+  max_tries: int = 1,
+  recovery_task: bt.Node | None = None,
+  fallback_task: bt.Node | None = None,
 ) -> bt.Node:
-  """Builds a force-controlled compliant `move_to_contact` task.
+  """Builds a force-controlled compliant `move_to_contact` task with retry/fallback.
+
+  In Gazebo simulation, `ai.intrinsic.move_to_contact` (`ActionId.STABILIZE`)
+  can time out after `SETTLING_TIMEOUT_S = 2.0s` with error `10301`
+  (`"Stabilize action timed out without making contact."`) either when an early
+  force transient triggers `STABILIZE` during descent or when rigid-body contact
+  forces fail to settle above `min_contact_force` once `JOINT_STOP` halts the
+  arm at the surface.
+
+  When `max_tries > 1`, the `move_to_contact` task is wrapped in `bt.Retry`
+  (running `recovery_task`—such as re-approaching the unloaded standoff pose so
+  `ActionId.TARE` executes in free space—between failed attempts). When
+  `fallback_task` is provided, the node is wrapped in `bt.Fallback` so that if
+  all `move_to_contact` attempts time out in simulation, execution falls back
+  cleanly to `fallback_task` to complete the machine tending cycle.
 
   Args:
       robot: Robot controller adapter.
@@ -159,20 +175,48 @@ def create_compliant_touchdown_task(
       timeout_seconds: Maximum duration in seconds to search for contact.
       task_name: Optional custom name for the Behavior Tree task node.
       touchdown: Optional `Touchdown` parameters overriding individual fields.
+      max_tries: Maximum number of `move_to_contact` attempts in `bt.Retry`
+        (`<= 1` disables the `bt.Retry` wrapper).
+      recovery_task: Optional recovery `bt.Node` executed between retry
+        attempts (e.g., linear move back to the unloaded standoff pose).
+      fallback_task: Optional fallback `bt.Node` executed via `bt.Fallback` if
+        `move_to_contact` exhausts all retry attempts.
 
   Returns:
-      Configured SBL Behavior Tree Task node.
+      Configured SBL Behavior Tree node (`bt.Fallback`, `bt.Retry`, or
+      `bt.Task`).
   """
   if touchdown is not None:
     direction = touchdown.direction
     contact_force_newtons = touchdown.force_n
     timeout_seconds = touchdown.timeout_s
-  return robot.build_move_to_contact_task(
+  base_name = task_name or "Compliant Touchdown"
+  contact_task = robot.build_move_to_contact_task(
     direction=direction,
     contact_force_newtons=contact_force_newtons,
     timeout_seconds=timeout_seconds,
-    name=task_name or "Compliant Touchdown",
+    name=base_name,
   )
+  primary_node: bt.Node = contact_task
+  if max_tries > 1:
+    retry_name = (
+      f"{base_name} (Retry)" if fallback_task is not None else base_name
+    )
+    primary_node = bt.Retry(
+      max_tries=max_tries,
+      child=contact_task,
+      recovery=recovery_task,
+      name=retry_name,
+    )
+  if fallback_task is not None:
+    return bt.Fallback(
+      tries=[
+        bt.Fallback.Try(condition=None, node=primary_node),
+        bt.Fallback.Try(condition=None, node=fallback_task),
+      ],
+      name=base_name,
+    )
+  return primary_node
 
 
 def create_relative_retract_task(
@@ -209,16 +253,30 @@ def create_seated_approach_tasks(
   robot: Robot,
   frame_name: str,
   parent_object: str | None = None,
-  touchdown: Touchdown = DEFAULT_TOUCHDOWN,
   *,
+  touchdown: Touchdown,
   config: AppConfig | None = None,
   label: str,
   approach_frames: Sequence[str] = (),
   approach_motion_types: str | Sequence[str] = "ANY",
   excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
   retract_excluded_collision_pairs: Sequence[tuple[str, str]] | None = None,
+  touchdown_max_tries: int = 2,
 ) -> list[bt.Node]:
-  """Builds a standoff approach, compliant touchdown, and optional lift.
+  """Builds a standoff approach, resilient compliant touchdown, and optional lift.
+
+  Wraps the compliant `move_to_contact` touchdown in a `bt.Fallback` +
+  `bt.Retry` structure:
+  1. Primary branch (`bt.Retry`, `max_tries=touchdown_max_tries`): Executes
+     `move_to_contact` along `+Z` tool. If an attempt fails (such as Gazebo's
+     `STABILIZE` timeout `"Stabilize action timed out without making contact."`),
+     the retry `recovery` node moves linearly back to the unloaded standoff pose
+     (`-touchdown.standoff_m`) so the F/T sensor is tared in free space before
+     retrying `move_to_contact`.
+  2. Fallback branch (`bt.Fallback`): If `move_to_contact` still times out after
+     all retry attempts in simulation, executes a linear Cartesian move to the
+     seated contact pose on `parent/frame_name` so the cycle can recover and
+     proceed reliably.
 
   Args:
       robot: Robot controller adapter.
@@ -228,14 +286,20 @@ def create_seated_approach_tasks(
       config: Optional application configuration to resolve `parent_object`.
       label: Descriptive prefix for generated Behavior Tree task names.
       approach_frames: Optional intermediate frames blended prior to standoff.
-      approach_motion_types: Motion type(s) for `approach_frames` segments.
+      approach_motion_types: Motion type string (e.g. `'ANY'` or `'LINEAR'`,
+        applied to every frame in `approach_frames`) or per-frame sequence of
+        motion types for `approach_frames`. The final segment into `frame_name`
+        standoff always uses `'LINEAR'`.
       excluded_collision_pairs: Optional pairs of object names to exclude from
-        collision checking during the initial approach segments.
+        collision checking during the approach, retry recovery, and fallback
+        segments.
       retract_excluded_collision_pairs: Optional pairs of object names to
         exclude during the retract segment (e.g. when grasped).
+      touchdown_max_tries: Number of `move_to_contact` attempts before falling
+        back to the linear seat task.
 
   Returns:
-      Ordered list of SBL Behavior Tree task nodes.
+      Ordered list of SBL Behavior Tree nodes.
   """
   parent = parent_object or (
     config.frames.parent_object if config is not None else "root"
@@ -275,12 +339,49 @@ def create_seated_approach_tasks(
       ),
     )
 
+  reapproach_standoff_task = create_move_to_frame_task(
+    robot=robot,
+    frame_name=frame_name,
+    parent_object=parent,
+    motion_type="LINEAR",
+    target_frame_offset=standoff_offset,
+    excluded_collision_pairs=excluded_collision_pairs,
+    task_name=f"{label}: Re-approach Standoff ({parent}/{frame_name})",
+  )
+
+  fallback_z_offset = 0.0
+  if touchdown.retract_after_m == 0.0 and config is not None:
+    fallback_z_offset = round(
+      -(
+        float(touchdown.standoff_m)
+        - float(config.cycle.standoff_distance_meters)
+      ),
+      6,
+    )
+  fallback_offset = (
+    ((0.0, 0.0, fallback_z_offset), (0.0, 0.0, 0.0, 1.0))
+    if abs(fallback_z_offset) > 1e-9
+    else None
+  )
+  fallback_seat_task = create_move_to_frame_task(
+    robot=robot,
+    frame_name=frame_name,
+    parent_object=parent,
+    motion_type="LINEAR",
+    target_frame_offset=fallback_offset,
+    excluded_collision_pairs=excluded_collision_pairs,
+    task_name=f"{label}: Fallback Linear Seat ({parent}/{frame_name})",
+  )
+
   tasks = [
     approach_task,
     create_compliant_touchdown_task(
       robot=robot,
       touchdown=touchdown,
       task_name=f"{label}: Compliant Touchdown (+Z Tool)",
+      max_tries=touchdown_max_tries,
+      recovery_task=reapproach_standoff_task,
+      fallback_task=fallback_seat_task,
     ),
   ]
   if touchdown.retract_after_m > 0.0:

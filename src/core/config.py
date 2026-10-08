@@ -181,6 +181,8 @@ class CycleConfig:
         `<=0` = continuous loop).
       workpiece_id: Name of the workpiece object in `solution.world`.
       approach_offset_z: Vertical offset in meters from `grasp` to `pre_grasp`.
+      standoff_distance_meters: Linear approach standoff distance in meters
+        prior to compliant `move_to_contact` touchdown.
       retract_distance_meters: Tool `-Z` linear retract distance in meters.
       pick_touchdown_force_newtons: Force threshold for infeed pick contact (N).
       load_seat_force_newtons: Force threshold for seating part in vise (N).
@@ -196,6 +198,7 @@ class CycleConfig:
   num_cycles: int
   workpiece_id: str
   approach_offset_z: float
+  standoff_distance_meters: float
   retract_distance_meters: float
   pick_touchdown_force_newtons: float
   load_seat_force_newtons: float
@@ -320,6 +323,7 @@ class AppConfig:
     """Returns compliant touchdown parameters for picking from the infeed."""
     return Touchdown(
       force_n=self.cycle.pick_touchdown_force_newtons,
+      standoff_m=self.cycle.standoff_distance_meters,
       timeout_s=self.cycle.touchdown_timeout_seconds,
       retract_after_m=self.cycle.retract_distance_meters,
     )
@@ -329,6 +333,7 @@ class AppConfig:
     """Returns compliant touchdown parameters for seating into the CNC vise."""
     return Touchdown(
       force_n=self.cycle.load_seat_force_newtons,
+      standoff_m=self.cycle.standoff_distance_meters,
       timeout_s=self.cycle.touchdown_timeout_seconds,
       retract_after_m=0.0,
     )
@@ -338,7 +343,9 @@ class AppConfig:
     """Returns compliant touchdown parameters for grasping from the CNC vise."""
     return Touchdown(
       force_n=self.cycle.unload_touchdown_force_newtons,
-      standoff_m=0.020 + self.cycle.retract_distance_meters,
+      standoff_m=(
+        self.cycle.standoff_distance_meters + self.cycle.retract_distance_meters
+      ),
       timeout_s=self.cycle.touchdown_timeout_seconds,
       retract_after_m=self.cycle.retract_distance_meters,
     )
@@ -348,6 +355,9 @@ class AppConfig:
     """Returns compliant touchdown parameters for returning to the infeed."""
     return Touchdown(
       force_n=self.cycle.return_touchdown_force_newtons,
+      standoff_m=(
+        self.cycle.standoff_distance_meters + self.cycle.retract_distance_meters
+      ),
       timeout_s=self.cycle.touchdown_timeout_seconds,
       retract_after_m=0.0,
     )

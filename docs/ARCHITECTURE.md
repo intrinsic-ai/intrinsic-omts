@@ -85,6 +85,17 @@ flowchart LR
    (`world`). When running in simulation, passing `--reset_sim` invokes
    `solution.simulator.reset()` to clone the updated Belief World into Gazebo's
    `sim_world`.
+8. **Resilient Compliant Touchdown (`bt.Fallback` + `bt.Retry`)**:
+   In Gazebo simulation, `ai.intrinsic.move_to_contact` (`ActionId.STABILIZE`)
+   can fail with `10301` (`"Stabilize action timed out without making contact."`)
+   when rigid-body contact forces fail to settle within `SETTLING_TIMEOUT_S`
+   (`2.0s`) or when an early force spike triggers `STABILIZE` during descent.
+   `create_seated_approach_tasks` (`src/behaviors/motions.py`) wraps every
+   `move_to_contact` touchdown in a `bt.Fallback` whose primary try is a
+   `bt.Retry(max_tries=2)` node (`recovery` moves linearly back to the unloaded
+   standoff pose so `ActionId.TARE` executes in free space) and whose fallback
+   try moves linearly to the seated contact pose (`Fallback Linear Seat`) if all
+   `move_to_contact` retries time out.
 
 ---
 
@@ -154,47 +165,42 @@ sequenceDiagram
     Vision->>World: Update dynamic root/pre_grasp & root/grasp (PythonScript)
     Gripper->>Gripper: Open Gripper
     Robot->>Robot: Move to root/pre_grasp (ANY)
-    Robot->>Robot: Compliant Touchdown to Part (+Z tool)
-    Robot->>Robot: Relative Linear Retract (-Z tool, 3 cm)
+    Robot->>Robot: Linear Approach to Standoff & Compliant Touchdown (+Z tool, Retry + Fallback)
+    Robot->>Robot: Relative Linear Retract (-Z tool, 1.5 cm)
     Gripper->>Gripper: Close Gripper (Grasp Part)
     Robot->>World: Attach workpiece to Gripper
     Robot->>Robot: Linear Retract to root/pre_grasp (LINEAR)
 
     Note over Robot,World: 2. Load Machine Subtree (src/behaviors/load_machine.py)
     CNC->>World: Ensure CNC Door (DIO + 10s dwell + update_world) & Vise Open (DIO + update_world)
-    Robot->>Robot: Blended Transit / Move to machine_approach (ANY)
-    Robot->>Robot: Approach CNC Vise preplace_vise_frame (ANY)
-    Robot->>Robot: Compliant Seat Part into Vise (+Z tool)
+    Robot->>Robot: Blended Approach via transit -> machine_approach -> preplace_vise -> Standoff
+    Robot->>Robot: Compliant Seat Part into Vise (+Z tool, Retry + Fallback)
     CNC->>World: Clamp CNC Vise (DIO + update_world)
     Gripper->>Gripper: Release Part in Vise
     Robot->>World: Detach workpiece from Gripper
-    Robot->>Robot: Linear Retract to preplace_vise_frame (LINEAR)
-    Robot->>Robot: Linear Retract to machine_approach (LINEAR)
+    Robot->>Robot: Blended Exit via preplace_vise_frame -> machine_approach (LINEAR -> ANY)
 
     Note over Robot,World: 3. Machining Handshake Subtree (src/behaviors/machining.py)
-    Robot->>Robot: Move to Safe Standby machine_approach (ANY)
     CNC->>World: Close CNC Door (DIO + 10s dwell + update_world)
     CNC->>CNC: Pulse Cycle Start Output (0.5s high)
     CNC->>CNC: Wait for Cycle Complete (DIO input / dwell)
 
     Note over Robot,World: 4. Unload Machine Subtree (src/behaviors/unload_machine.py)
-    CNC->>World: Open CNC Door (DIO + 10s dwell + update_world) & Vise (DIO + update_world)
-    Robot->>Robot: Approach Machine Entry machine_approach (ANY)
-    Robot->>Robot: Approach Machined Part preplace_vise_frame (ANY)
-    Robot->>Robot: Compliant Touchdown to Machined Part (+Z tool)
-    Robot->>Robot: Relative Linear Retract (-Z tool, 3 cm)
+    CNC->>World: Open CNC Door (DIO + 10s dwell + update_world)
+    Robot->>Robot: Blended Approach via preplace_vise_frame -> Standoff (LINEAR)
+    Robot->>Robot: Compliant Touchdown to Machined Part (+Z tool, Retry + Fallback)
+    Robot->>Robot: Relative Linear Retract (-Z tool, 1.5 cm)
     Gripper->>Gripper: Grasp Machined Part
     Robot->>World: Attach workpiece to Gripper
-    Robot->>Robot: Relative Linear Retract clear of Vise (-Z tool, 3 cm)
-    Robot->>Robot: Linear Retract to machine_approach (LINEAR)
+    CNC->>World: Open CNC Vise (DIO + update_world)
+    Robot->>Robot: Blended Retract via preplace_vise_frame -> machine_approach (LINEAR -> ANY)
 
     Note over Robot,World: 5. Return to Infeed Subtree (src/behaviors/return_infeed.py)
     Robot->>Robot: Blended Transit / Move to root/pre_grasp (ANY)
-    Robot->>Robot: Compliant Touchdown to Table Surface (+Z tool)
+    Robot->>Robot: Linear Approach to Standoff & Compliant Touchdown (+Z tool, Retry + Fallback)
     Gripper->>Gripper: Release Finished Part
     Robot->>World: Detach workpiece from Gripper
-    Robot->>Robot: Linear Retract to root/pre_grasp (LINEAR)
-    Robot->>Robot: Return to view frame (ANY)
+    Robot->>Robot: Blended Retract via root/pre_grasp -> view frame (LINEAR -> ANY)
 ```
 
 ---
@@ -204,7 +210,7 @@ sequenceDiagram
 | Error Code / Symptom | Root Cause | Resolution |
 | :--- | :--- | :--- |
 | `ai.intrinsic.move_robot:10301` (`IK solver couldn't find any solutions`) | Camera unparented in world (`orbbec_camera` attached to `root` at `[0,0,0]`) or target frame outside reachable envelope. | Run `bazel run //tools/world:apply_scene_updates -- --address=localhost:17080` to attach `orbbec_camera` to `ur_module/flange`, then inspect with `//tools/world:inspect_world`. |
-| `ai.intrinsic.move_to_contact:10301` (`Stabilize action timed out`) | Contact threshold too high or search vector pointing away from surface. | Verify `direction=(0.0, 0.0, 1.0)` in tool frame and check force thresholds in `configs/<cell>/app_config.yaml`. |
+| `ai.intrinsic.move_to_contact:10301` (`Stabilize action timed out without making contact`) | Gazebo rigid-body contact force chatter failing to settle during `SETTLING_TIMEOUT_S = 2.0s`, early F/T spike triggering `STABILIZE` during descent, or contact threshold too high. | Handled automatically at runtime by `create_seated_approach_tasks` (`bt.Retry` with linear standoff re-approach recovery + `bt.Fallback` linear seat). If persistent on physical hardware, verify `direction=(0.0, 0.0, 1.0)` in tool frame and check force thresholds in `configs/<cell>/app_config.yaml`. |
 | `ai.intrinsic.executive:18201` (Resource reservation conflict) | `update_world` executed concurrently with `move_robot` inside a `bt.Parallel` node. | Keep door/vise actuation (`update_world`) in a sequential `bt.Sequence` before `move_robot`. |
 | `ai.intrinsic.executive:13001` (`PROTECTIVE_STOP`) | Robot exceeded wrench limits or wrist joint 6 wrapped during approach. | Clear protective stop on teach pendant; ensure compliant `move_to_contact` is used for surface seating and geodesic quaternion selection is active. |
 | `ai.intrinsic.move_robot:10601` (`Frame does not exist`) | Target frame missing from active `ObjectWorld`. | Run `bazel run //tools/world:apply_scene_updates -- --address=localhost:17080` to populate cell scene frames. |

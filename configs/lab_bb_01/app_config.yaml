@@ -5,6 +5,7 @@ robot:
   arm_part_name: "ur_module"
   tool_object_name: "gripper"
   tool_frame_name: "tool_frame"
+  enclosure_object_name: "enclosure"
 
 gripper:
   type: "robotiq"
@@ -37,8 +38,9 @@ grasp:
 cycle:
   num_cycles: 1
   workpiece_id: "raw_stock_2x3x5"
-  approach_offset_z: 0.08
-  retract_distance_meters: 0.03
+  approach_offset_z: 0.10
+  standoff_distance_meters: 0.03
+  retract_distance_meters: 0.015
   pick_touchdown_force_newtons: 15.0
   load_seat_force_newtons: 8.0
   unload_touchdown_force_newtons: 15.0
@@ -46,8 +48,8 @@ cycle:
   touchdown_timeout_seconds: 20.0
   machining_timeout_seconds: 30.0
   return_shift:
-    center_x: 0.5
-    center_y: 0.0
-    bounds_x: 0.1
-    bounds_y: 0.1
+    center_x: 0.25
+    center_y: 0.25
+    bounds_x: 0.04
+    bounds_y: 0.04
     bounds_rz_degrees: 20.0

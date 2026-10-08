@@ -77,17 +77,20 @@ def build_load_machine_subtree(
       (config.robot.tool_object_name, workpiece_object_name),
     ]
   )
+  if not vise_object_name and config.robot.enclosure_object_name:
+    vise_collision_pairs.extend(
+      [
+        (config.robot.enclosure_object_name, workpiece_object_name),
+        (config.robot.tool_object_name, config.robot.enclosure_object_name),
+      ]
+    )
 
   entry_frames = [
-    f
-    for f in (
-      transit_frame_name,
-      machine_approach_frame_name,
-      preplace_vise_frame_name,
-    )
-    if f
+    machine_approach_frame_name,
+    preplace_vise_frame_name,
   ]
-  entry_motions = ["ANY"] * (len(entry_frames) - 1) + ["LINEAR"]
+  if transit_frame_name:
+    entry_frames.insert(0, transit_frame_name)
 
   tasks: list[bt.Node] = []
   if machine is not None:
@@ -107,7 +110,7 @@ def build_load_machine_subtree(
       config=config,
       label="Load Vise",
       approach_frames=entry_frames,
-      approach_motion_types=entry_motions,
+      approach_motion_types="ANY",
       excluded_collision_pairs=vise_collision_pairs,
     )
   )

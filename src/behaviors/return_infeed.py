@@ -69,6 +69,13 @@ def build_return_to_infeed_subtree(
   )
 
   detach_collision_pairs = [tool_to_workpiece_collision_pair]
+  if config.robot.enclosure_object_name:
+    detach_collision_pairs.extend(
+      [
+        (config.robot.enclosure_object_name, workpiece_object_name),
+        (config.robot.tool_object_name, config.robot.enclosure_object_name),
+      ]
+    )
 
   tasks: list[bt.Node] = []
 
@@ -149,7 +156,9 @@ def build_return_to_infeed_subtree(
       bt.Task(action=shift_task, name="0. Shift Return Placement Frame")
     )
 
-  entry_frames = [f for f in (transit_frame_name, pregrasp_frame_name) if f]
+  entry_frames = [pregrasp_frame_name]
+  if transit_frame_name:
+    entry_frames.insert(0, transit_frame_name)
   tasks.append(
     create_move_through_frames_task(
       robot=robot,

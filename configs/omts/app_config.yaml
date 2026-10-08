@@ -68,6 +68,7 @@ cycle:
   num_cycles: 1
   workpiece_id: "raw_stock_2x3x5"
   approach_offset_z: 0.08
+  standoff_distance_meters: 0.02
   retract_distance_meters: 0.015
   pick_touchdown_force_newtons: 10.0
   load_seat_force_newtons: 10.0

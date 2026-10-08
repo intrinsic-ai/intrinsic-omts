@@ -78,6 +78,13 @@ def build_unload_machine_subtree(
       (config.robot.tool_object_name, workpiece_object_name),
     ]
   )
+  if not vise_object_name and config.robot.enclosure_object_name:
+    vise_collision_pairs.extend(
+      [
+        (config.robot.enclosure_object_name, workpiece_object_name),
+        (config.robot.tool_object_name, config.robot.enclosure_object_name),
+      ]
+    )
 
   tasks: list[bt.Node] = []
   if machine is not None:
@@ -92,7 +99,7 @@ def build_unload_machine_subtree(
       config=config,
       label="Unload Vise",
       approach_frames=[preplace_vise_frame_name],
-      approach_motion_types=["LINEAR"],
+      approach_motion_types="LINEAR",
       excluded_collision_pairs=vise_collision_pairs,
     )
   )
