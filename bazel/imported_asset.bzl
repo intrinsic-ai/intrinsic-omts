@@ -75,7 +75,7 @@ imported_asset_bundle = rule(
                   "from the bundle itself).",
         ),
         "_assetlocalinfogen": attr.label(
-            default = Label("@intrinsic-core//intrinsic/assets/build_defs:assetlocalinfogen"),
+            default = Label("@intrinsic-core//intrinsic_sdk/intrinsic/assets/build_defs:assetlocalinfogen"),
             cfg = "exec",
             executable = True,
         ),
