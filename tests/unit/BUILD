@@ -200,6 +200,17 @@ py_test(
 )
 
 py_test(
+    name = "test_edit_frames_rviz",
+    srcs = ["test_edit_frames_rviz.py"],
+    deps = [
+        "//tools/world:edit_frames_rviz_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
+    ],
+)
+
+py_test(
     name = "test_execution_utils",
     srcs = ["test_execution_utils.py"],
     deps = [
