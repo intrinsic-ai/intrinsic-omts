@@ -42,18 +42,19 @@ py_binary(
 )
 
 py_library(
-    name = "pose_math_lib",
-    srcs = ["pose_math.py"],
-)
-
-py_library(
     name = "pbtxt_pose_store_lib",
     srcs = ["pbtxt_pose_store.py"],
     deps = [
         ":apply_scene_updates_lib",
-        ":pose_math_lib",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:proto_conversion",
     ],
+)
+
+py_library(
+    name = "rviz_marker_node_lib",
+    srcs = ["rviz_marker_node.py"],
 )
 
 py_library(
@@ -62,16 +63,10 @@ py_library(
     deps = [
         ":apply_scene_updates_lib",
         ":pbtxt_pose_store_lib",
-        ":pose_math_lib",
+        ":rviz_marker_node_lib",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
-    ],
-)
-
-py_library(
-    name = "rviz_marker_node_lib",
-    srcs = ["rviz_marker_node.py"],
-    deps = [
-        ":rviz_marker_controller_lib",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:proto_conversion",
     ],
 )
 
@@ -84,11 +79,11 @@ py_library(
     deps = [
         ":apply_scene_updates_lib",
         ":pbtxt_pose_store_lib",
-        ":pose_math_lib",
         ":rviz_marker_controller_lib",
         ":rviz_marker_node_lib",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
         "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:proto_conversion",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:worlds",
     ],

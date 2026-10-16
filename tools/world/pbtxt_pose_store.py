@@ -21,22 +21,59 @@ from collections.abc import Sequence
 from typing import Any
 
 from google.protobuf import text_format
+from intrinsic.math.python import data_types, proto_conversion
 from intrinsic.world.proto import object_world_updates_pb2
 
 from tools.world.apply_scene_updates import (
   adapt_updates_for_live_world,
   find_file,
 )
-from tools.world.pose_math import (
-  Pose3Tuple,
-  normalize_quaternion,
-  quaternion_to_rpy_deg,
-)
+
+Pose3Tuple = tuple[
+  tuple[float, float, float], tuple[float, float, float, float]
+]
 
 DEFAULT_PBTXT_HEADER = (
   "# proto-file: intrinsic/world/public/proto/object_world_updates.proto\n"
   "# proto-message: intrinsic_proto.world.ObjectWorldUpdates\n\n"
 )
+
+
+def _normalize_quaternion(
+  orientation: Sequence[float],
+) -> tuple[float, float, float, float]:
+  """Normalizes `(qx, qy, qz, qw)` via `Rotation3`, defaulting to identity."""
+  qx = float(orientation[0])
+  qy = float(orientation[1])
+  qz = float(orientation[2])
+  qw = float(orientation[3])
+  norm_sq = qx * qx + qy * qy + qz * qz + qw * qw
+  if norm_sq < 1e-12:
+    return (0.0, 0.0, 0.0, 1.0)
+  q_xyzw = data_types.Rotation3.from_xyzw(
+    [qx, qy, qz, qw], normalize=True
+  ).quaternion.xyzw
+  return (
+    float(q_xyzw[0]),
+    float(q_xyzw[1]),
+    float(q_xyzw[2]),
+    float(q_xyzw[3]),
+  )
+
+
+def _quaternion_to_rpy_deg(
+  orientation: Sequence[float],
+) -> tuple[float, float, float]:
+  """Converts `(qx, qy, qz, qw)` to rounded extrinsic XYZ RPY in degrees."""
+  norm_q = _normalize_quaternion(orientation)
+  rpy = data_types.Rotation3.from_xyzw(
+    list(norm_q), normalize=True
+  ).euler_angles(radians=False)
+  return (
+    round(float(rpy[0]), 4),
+    round(float(rpy[1]), 4),
+    round(float(rpy[2]), 4),
+  )
 
 
 @dataclasses.dataclass
@@ -63,8 +100,7 @@ class PoseEntry:
       0.0,
       0.0,
     ):
-      rpy = tuple(round(v, 4) for v in quaternion_to_rpy_deg(*self.orientation))
-      self.rpy_deg = (rpy[0], rpy[1], rpy[2])
+      self.rpy_deg = _quaternion_to_rpy_deg(self.orientation)
 
   def to_dict(self) -> dict[str, Any]:
     """Serializes the pose entry into a JSON-compatible dictionary."""
@@ -175,6 +211,36 @@ def _extract_target_name_from_node(node: Any) -> str:
   return ""
 
 
+def _pose_from_proto_normalized(pose_proto: Any) -> data_types.Pose3:
+  """Converts a `pose_pb2.Pose` to `data_types.Pose3`, normalizing safely."""
+  ori = pose_proto.orientation
+  raw_q = (float(ori.x), float(ori.y), float(ori.z), float(ori.w))
+  norm_sq = sum(c * c for c in raw_q)
+  if norm_sq < 1e-12:
+    norm_q = (0.0, 0.0, 0.0, 1.0)
+  else:
+    q_xyzw = data_types.Rotation3.from_xyzw(
+      raw_q, normalize=True
+    ).quaternion.xyzw
+    norm_q = (
+      float(q_xyzw[0]),
+      float(q_xyzw[1]),
+      float(q_xyzw[2]),
+      float(q_xyzw[3]),
+    )
+  sanitized = proto_conversion.pose_to_proto(
+    data_types.Pose3(
+      rotation=data_types.Rotation3(data_types.Quaternion(list(norm_q))),
+      translation=[
+        float(pose_proto.position.x),
+        float(pose_proto.position.y),
+        float(pose_proto.position.z),
+      ],
+    )
+  )
+  return proto_conversion.pose_from_proto(sanitized)
+
+
 def _pose_entry_from_update(
   filepath: str,
   update_index: int,
@@ -187,13 +253,9 @@ def _pose_entry_from_update(
       cf.parent_object_with_filter.reference.by_name.object_name or "root"
     )
     target_name = cf.new_frame_name
-    pos = cf.parent_t_new_frame.position
-    ori = cf.parent_t_new_frame.orientation
-    position = (float(pos.x), float(pos.y), float(pos.z))
-    raw_q = (float(ori.x), float(ori.y), float(ori.z), float(ori.w))
-    norm_sq = sum(c * c for c in raw_q)
-    orientation = (0.0, 0.0, 0.0, 1.0) if norm_sq < 1e-12 else raw_q
-    rpy_deg = tuple(round(v, 4) for v in quaternion_to_rpy_deg(*orientation))
+    pose = _pose_from_proto_normalized(cf.parent_t_new_frame)
+    position, orientation = _extract_pose_from_transform(pose)
+    rpy_deg = _quaternion_to_rpy_deg(orientation)
     return PoseEntry(
       entry_id=f"{filepath}::{update_index}",
       marker_name=f"{parent_name}/{target_name}",
@@ -204,7 +266,7 @@ def _pose_entry_from_update(
       target_name=target_name,
       position=position,
       orientation=orientation,
-      rpy_deg=(rpy_deg[0], rpy_deg[1], rpy_deg[2]),
+      rpy_deg=rpy_deg,
     )
 
   if update.HasField("update_transform"):
@@ -215,13 +277,9 @@ def _pose_entry_from_update(
       or _extract_target_name_from_node(ut.node_b)
       or f"transform_{update_index}"
     )
-    pos = ut.a_t_b.position
-    ori = ut.a_t_b.orientation
-    position = (float(pos.x), float(pos.y), float(pos.z))
-    raw_q = (float(ori.x), float(ori.y), float(ori.z), float(ori.w))
-    norm_sq = sum(c * c for c in raw_q)
-    orientation = (0.0, 0.0, 0.0, 1.0) if norm_sq < 1e-12 else raw_q
-    rpy_deg = tuple(round(v, 4) for v in quaternion_to_rpy_deg(*orientation))
+    pose = _pose_from_proto_normalized(ut.a_t_b)
+    position, orientation = _extract_pose_from_transform(pose)
+    rpy_deg = _quaternion_to_rpy_deg(orientation)
     return PoseEntry(
       entry_id=f"{filepath}::{update_index}",
       marker_name=f"{parent_name}/{target_name}",
@@ -232,7 +290,7 @@ def _pose_entry_from_update(
       target_name=target_name,
       position=position,
       orientation=orientation,
-      rpy_deg=(rpy_deg[0], rpy_deg[1], rpy_deg[2]),
+      rpy_deg=rpy_deg,
     )
 
   return None
@@ -276,6 +334,240 @@ def _extract_header_comments(content: str) -> str:
   if header_lines and any("proto-file" in ln for ln in header_lines):
     return "\n".join(header_lines) + "\n\n"
   return DEFAULT_PBTXT_HEADER
+
+
+def _find_named_blocks(
+  text: str, field_name: str
+) -> list[tuple[int, int, int, int]]:
+  """Finds top-level `field_name [:] { ... }` blocks in protobuf text.
+
+  Ignores braces and identifiers inside `#` comments and quoted string literals.
+
+  Args:
+    text: Protobuf text-format string to scan.
+    field_name: Top-level message field name to locate.
+
+  Returns:
+    List of `(block_start, open_brace_idx, close_brace_idx, block_end)` tuples.
+  """
+  blocks: list[tuple[int, int, int, int]] = []
+  n = len(text)
+  i = 0
+  depth = 0
+  current_start: int | None = None
+  current_open: int | None = None
+
+  def _is_ident_char(ch: str) -> bool:
+    return ch.isalnum() or ch == "_"
+
+  while i < n:
+    ch = text[i]
+    if ch == "#":
+      newline_idx = text.find("\n", i)
+      if newline_idx == -1:
+        break
+      i = newline_idx + 1
+      continue
+
+    if ch in ('"', "'"):
+      quote = ch
+      i += 1
+      while i < n:
+        if text[i] == "\\":
+          i += 2
+          continue
+        if text[i] == quote:
+          i += 1
+          break
+        i += 1
+      continue
+
+    if depth == 0:
+      if text.startswith(field_name, i) and (
+        i == 0 or not _is_ident_char(text[i - 1])
+      ):
+        after_ident = i + len(field_name)
+        if after_ident == n or not _is_ident_char(text[after_ident]):
+          j = after_ident
+          saw_colon = False
+          while j < n:
+            if text[j].isspace():
+              j += 1
+            elif text[j] == "#" and not saw_colon:
+              nl = text.find("\n", j)
+              j = n if nl == -1 else nl + 1
+            elif text[j] == ":" and not saw_colon:
+              saw_colon = True
+              j += 1
+            elif text[j] == "#":
+              nl = text.find("\n", j)
+              j = n if nl == -1 else nl + 1
+            else:
+              break
+          if j < n and text[j] == "{":
+            current_start = i
+            current_open = j
+            depth = 1
+            i = j + 1
+            continue
+
+    if ch == "{":
+      depth += 1
+    elif ch == "}":
+      if depth > 0:
+        depth -= 1
+        if (
+          depth == 0 and current_start is not None and current_open is not None
+        ):
+          blocks.append((current_start, current_open, i, i + 1))
+          current_start = None
+          current_open = None
+    i += 1
+
+  return blocks
+
+
+def _format_scalar_subblock(
+  parent_text: str,
+  block_span: tuple[int, int, int, int],
+  fields: Sequence[tuple[str, float]],
+) -> str:
+  """Formats a `position` or `orientation` block while keeping `#` comments."""
+  sub_start, sub_open, sub_close, _ = block_span
+  line_start = parent_text.rfind("\n", 0, sub_start)
+  prefix = (
+    parent_text[line_start + 1 : sub_start]
+    if line_start != -1
+    else parent_text[:sub_start]
+  )
+  block_indent = prefix if prefix.isspace() else "      "
+  field_indent = block_indent + "  "
+
+  sub_header = parent_text[sub_start : sub_open + 1]
+  sub_inner = parent_text[sub_open + 1 : sub_close]
+
+  comment_lines: list[str] = []
+  trailing_comments: dict[str, str] = {}
+  for line in sub_inner.splitlines():
+    stripped = line.strip()
+    if not stripped:
+      continue
+    if stripped.startswith("#"):
+      comment_lines.append(f"{field_indent}{stripped}")
+    elif "#" in stripped:
+      code_part, comment_part = stripped.split("#", 1)
+      key_token = code_part.split(":", 1)[0].strip()
+      if key_token:
+        trailing_comments[key_token] = f"  #{comment_part}"
+
+  out_lines = [sub_header]
+  out_lines.extend(comment_lines)
+  for key, val in fields:
+    suffix = trailing_comments.get(key, "")
+    out_lines.append(f"{field_indent}{key}: {val}{suffix}")
+  out_lines.append(f"{block_indent}}}")
+  return "\n".join(out_lines)
+
+
+def _replace_pose_in_pbtxt_content(
+  content: str,
+  update_index: int,
+  total_updates: int,
+  position: tuple[float, float, float],
+  orientation: tuple[float, float, float, float],
+) -> str | None:
+  """Updates `position` and `orientation` in-place for `updates[update_index]`.
+
+  Preserves all header comments, inter-block comments, untouched `updates`
+  blocks, and inline `#` comments inside the updated block.
+
+  Args:
+    content: Original `.pbtxt` file text.
+    update_index: 0-based index of the `updates` block to modify.
+    total_updates: Total number of parsed `updates` entries in the proto.
+    position: Rounded `(x, y, z)` translation values.
+    orientation: Full-precision `(qx, qy, qz, qw)` unit quaternion values.
+
+  Returns:
+    Updated `.pbtxt` text with comments preserved, or `None` if in-place
+    replacement is not applicable.
+  """
+  update_blocks = _find_named_blocks(content, "updates")
+  if len(update_blocks) != total_updates:
+    return None
+  if update_index < 0 or update_index >= len(update_blocks):
+    return None
+
+  _, u_open, u_close, _ = update_blocks[update_index]
+  u_inner = content[u_open + 1 : u_close]
+
+  cf_blocks = _find_named_blocks(u_inner, "create_frame")
+  ut_blocks = _find_named_blocks(u_inner, "update_transform")
+  if cf_blocks:
+    _, in_open, in_close, _ = cf_blocks[0]
+    pose_field = "parent_t_new_frame"
+  elif ut_blocks:
+    _, in_open, in_close, _ = ut_blocks[0]
+    pose_field = "a_t_b"
+  else:
+    return None
+
+  in_inner = u_inner[in_open + 1 : in_close]
+  pose_blocks = _find_named_blocks(in_inner, pose_field)
+  if not pose_blocks:
+    return None
+
+  _, p_open, p_close, _ = pose_blocks[0]
+  pose_inner = in_inner[p_open + 1 : p_close]
+
+  pos_blocks = _find_named_blocks(pose_inner, "position")
+  ori_blocks = _find_named_blocks(pose_inner, "orientation")
+  if not pos_blocks or not ori_blocks:
+    return None
+
+  pos_str = _format_scalar_subblock(
+    pose_inner,
+    pos_blocks[0],
+    [("x", position[0]), ("y", position[1]), ("z", position[2])],
+  )
+  ori_str = _format_scalar_subblock(
+    pose_inner,
+    ori_blocks[0],
+    [
+      ("x", orientation[0]),
+      ("y", orientation[1]),
+      ("z", orientation[2]),
+      ("w", orientation[3]),
+    ],
+  )
+
+  replacements = sorted(
+    [
+      (pos_blocks[0][0], pos_blocks[0][3], pos_str),
+      (ori_blocks[0][0], ori_blocks[0][3], ori_str),
+    ],
+    key=lambda item: item[0],
+    reverse=True,
+  )
+  new_pose_inner = pose_inner
+  for start_idx, end_idx, rep_text in replacements:
+    new_pose_inner = (
+      new_pose_inner[:start_idx] + rep_text + new_pose_inner[end_idx:]
+    )
+
+  new_in_inner = in_inner[: p_open + 1] + new_pose_inner + in_inner[p_close:]
+  new_u_inner = u_inner[: in_open + 1] + new_in_inner + u_inner[in_close:]
+  new_content = content[: u_open + 1] + new_u_inner + content[u_close:]
+  if "proto-file" not in new_content:
+    new_content = DEFAULT_PBTXT_HEADER + new_content.lstrip("\n")
+
+  try:
+    check_proto = object_world_updates_pb2.ObjectWorldUpdates()
+    text_format.Parse(new_content, check_proto)
+  except Exception:  # pylint: disable=broad-exception-caught
+    return None
+
+  return new_content
 
 
 def load_pose_entries_from_file(
@@ -331,7 +623,9 @@ def update_pose_in_pbtxt(
 ) -> PoseEntry:
   """Updates a `create_frame` or `update_transform` entry in a `.pbtxt` file.
 
-  Preserves all other `updates` in the file and the `# proto-file:` header.
+  Preserves inline `#` comments, untouched `updates` blocks, and the
+  `# proto-file:` header. Position is rounded to 4 decimal places while unit
+  quaternion components retain full float precision.
 
   Args:
     filepath: Path to the `.pbtxt` file.
@@ -362,37 +656,41 @@ def update_pose_in_pbtxt(
       f"(total updates: {len(updates.updates)})"
     )
 
-  norm_q = normalize_quaternion(*orientation)
-  px = round(float(position[0]), 4)
-  py = round(float(position[1]), 4)
-  pz = round(float(position[2]), 4)
-  qx = round(float(norm_q[0]), 4)
-  qy = round(float(norm_q[1]), 4)
-  qz = round(float(norm_q[2]), 4)
-  qw = round(float(norm_q[3]), 4)
+  rounded_pos = (
+    round(float(position[0]), 4),
+    round(float(position[1]), 4),
+    round(float(position[2]), 4),
+  )
+  norm_q = _normalize_quaternion(orientation)
+  pose_obj = data_types.Pose3(
+    rotation=data_types.Rotation3.from_xyzw(list(norm_q), normalize=True),
+    translation=list(rounded_pos),
+  )
+  pose_proto_val = proto_conversion.pose_to_proto(pose_obj)
 
   target_update = updates.updates[update_index]
   if target_update.HasField("create_frame"):
-    pose_proto = target_update.create_frame.parent_t_new_frame
+    target_update.create_frame.parent_t_new_frame.CopyFrom(pose_proto_val)
   elif target_update.HasField("update_transform"):
-    pose_proto = target_update.update_transform.a_t_b
+    target_update.update_transform.a_t_b.CopyFrom(pose_proto_val)
   else:
     raise ValueError(
       f"Update at index {update_index} in {filepath} is not a "
       "create_frame or update_transform entry."
     )
 
-  pose_proto.position.x = px
-  pose_proto.position.y = py
-  pose_proto.position.z = pz
-  pose_proto.orientation.x = qx
-  pose_proto.orientation.y = qy
-  pose_proto.orientation.z = qz
-  pose_proto.orientation.w = qw
+  new_content = _replace_pose_in_pbtxt_content(
+    content=content,
+    update_index=update_index,
+    total_updates=len(updates.updates),
+    position=rounded_pos,
+    orientation=norm_q,
+  )
+  if new_content is None:
+    new_content = header + text_format.MessageToString(updates)
 
-  body = text_format.MessageToString(updates)
   with open(resolved_path, "w", encoding="utf-8") as f:
-    f.write(header + body)
+    f.write(new_content)
 
   updated_entry = _pose_entry_from_update(filepath, update_index, target_update)
   if updated_entry is None:
@@ -437,14 +735,17 @@ def add_frame_to_pbtxt(
   if content.strip():
     text_format.Parse(content, updates)
 
-  norm_q = normalize_quaternion(*orientation)
-  px = round(float(position[0]), 4)
-  py = round(float(position[1]), 4)
-  pz = round(float(position[2]), 4)
-  qx = round(float(norm_q[0]), 4)
-  qy = round(float(norm_q[1]), 4)
-  qz = round(float(norm_q[2]), 4)
-  qw = round(float(norm_q[3]), 4)
+  rounded_pos = (
+    round(float(position[0]), 4),
+    round(float(position[1]), 4),
+    round(float(position[2]), 4),
+  )
+  norm_q = _normalize_quaternion(orientation)
+  pose_obj = data_types.Pose3(
+    rotation=data_types.Rotation3.from_xyzw(list(norm_q), normalize=True),
+    translation=list(rounded_pos),
+  )
+  pose_proto_val = proto_conversion.pose_to_proto(pose_obj)
 
   found_index: int | None = None
   for idx, update in enumerate(updates.updates):
@@ -454,33 +755,48 @@ def add_frame_to_pbtxt(
         cf.parent_object_with_filter.reference.by_name.object_name or "root"
       )
       if cf.new_frame_name == clean_frame and existing_parent == clean_parent:
-        cf.parent_t_new_frame.position.x = px
-        cf.parent_t_new_frame.position.y = py
-        cf.parent_t_new_frame.position.z = pz
-        cf.parent_t_new_frame.orientation.x = qx
-        cf.parent_t_new_frame.orientation.y = qy
-        cf.parent_t_new_frame.orientation.z = qz
-        cf.parent_t_new_frame.orientation.w = qw
+        cf.parent_t_new_frame.CopyFrom(pose_proto_val)
         found_index = idx
         break
 
-  if found_index is None:
+  new_content: str | None = None
+  if found_index is not None:
+    new_content = _replace_pose_in_pbtxt_content(
+      content=content,
+      update_index=found_index,
+      total_updates=len(updates.updates),
+      position=rounded_pos,
+      orientation=norm_q,
+    )
+  else:
     found_index = len(updates.updates)
     new_update = updates.updates.add()
     cf = new_update.create_frame
     cf.parent_object_with_filter.reference.by_name.object_name = clean_parent
     cf.new_frame_name = clean_frame
-    cf.parent_t_new_frame.position.x = px
-    cf.parent_t_new_frame.position.y = py
-    cf.parent_t_new_frame.position.z = pz
-    cf.parent_t_new_frame.orientation.x = qx
-    cf.parent_t_new_frame.orientation.y = qy
-    cf.parent_t_new_frame.orientation.z = qz
-    cf.parent_t_new_frame.orientation.w = qw
+    cf.parent_t_new_frame.CopyFrom(pose_proto_val)
 
-  body = text_format.MessageToString(updates)
+    if content.strip():
+      single_msg = object_world_updates_pb2.ObjectWorldUpdates()
+      single_msg.updates.add().CopyFrom(new_update)
+      base_text = content
+      if "proto-file" not in base_text:
+        base_text = DEFAULT_PBTXT_HEADER + base_text.lstrip("\n")
+      if not base_text.endswith("\n"):
+        base_text += "\n"
+      candidate_text = base_text + text_format.MessageToString(single_msg)
+      try:
+        check_proto = object_world_updates_pb2.ObjectWorldUpdates()
+        text_format.Parse(candidate_text, check_proto)
+        new_content = candidate_text
+      except Exception:  # pylint: disable=broad-exception-caught
+        new_content = None
+
+  if new_content is None:
+    new_content = header + text_format.MessageToString(updates)
+
   with open(resolved_path, "w", encoding="utf-8") as f:
-    f.write(header + body)
+    f.write(new_content)
 
   entry = _pose_entry_from_update(
     filepath, found_index, updates.updates[found_index]
@@ -497,19 +813,21 @@ def _build_single_entry_updates(
   raw_updates = object_world_updates_pb2.ObjectWorldUpdates()
   up = raw_updates.updates.add()
 
+  norm_q = _normalize_quaternion(entry.orientation)
+  pose_proto_val = proto_conversion.pose_to_proto(
+    data_types.Pose3(
+      rotation=data_types.Rotation3.from_xyzw(list(norm_q), normalize=True),
+      translation=list(entry.position),
+    )
+  )
+
   if entry.entry_type == "create_frame":
     cf = up.create_frame
     cf.parent_object_with_filter.reference.by_name.object_name = (
       entry.parent_name or "root"
     )
     cf.new_frame_name = entry.target_name
-    cf.parent_t_new_frame.position.x = entry.position[0]
-    cf.parent_t_new_frame.position.y = entry.position[1]
-    cf.parent_t_new_frame.position.z = entry.position[2]
-    cf.parent_t_new_frame.orientation.x = entry.orientation[0]
-    cf.parent_t_new_frame.orientation.y = entry.orientation[1]
-    cf.parent_t_new_frame.orientation.z = entry.orientation[2]
-    cf.parent_t_new_frame.orientation.w = entry.orientation[3]
+    cf.parent_t_new_frame.CopyFrom(pose_proto_val)
     return raw_updates
 
   copied_from_file = False
@@ -540,13 +858,7 @@ def _build_single_entry_updates(
     ut.node_b.by_name.object.object_name = entry.target_name
     ut.node_to_update.by_name.object.object_name = entry.target_name
 
-  ut.a_t_b.position.x = entry.position[0]
-  ut.a_t_b.position.y = entry.position[1]
-  ut.a_t_b.position.z = entry.position[2]
-  ut.a_t_b.orientation.x = entry.orientation[0]
-  ut.a_t_b.orientation.y = entry.orientation[1]
-  ut.a_t_b.orientation.z = entry.orientation[2]
-  ut.a_t_b.orientation.w = entry.orientation[3]
+  ut.a_t_b.CopyFrom(pose_proto_val)
   return raw_updates
 
 
@@ -582,64 +894,14 @@ def apply_pose_entry_to_world(
     return False
 
 
-def _extract_pose_from_transform(transform: Any) -> Pose3Tuple:
-  """Extracts `((x, y, z), (qx, qy, qz, qw))` from an SBL Pose3/Transform."""
-  if hasattr(transform, "position"):
-    pos = transform.position
-    if hasattr(pos, "x"):
-      pos_x, pos_y, pos_z = float(pos.x), float(pos.y), float(pos.z)
-    elif hasattr(pos, "xyz"):
-      pos_x, pos_y, pos_z = (
-        float(pos.xyz[0]),
-        float(pos.xyz[1]),
-        float(pos.xyz[2]),
-      )
-    else:
-      pos_x, pos_y, pos_z = float(pos[0]), float(pos[1]), float(pos[2])
-  elif hasattr(transform, "translation"):
-    trans = transform.translation
-    pos_x, pos_y, pos_z = float(trans[0]), float(trans[1]), float(trans[2])
-  else:
-    pos_x, pos_y, pos_z = 0.0, 0.0, 0.0
-
-  if hasattr(transform, "rotation"):
-    rot = transform.rotation
-    if hasattr(rot, "quaternion"):
-      quat = rot.quaternion
-      if hasattr(quat, "xyzw"):
-        ori_x, ori_y, ori_z, ori_w = (
-          float(quat.xyzw[0]),
-          float(quat.xyzw[1]),
-          float(quat.xyzw[2]),
-          float(quat.xyzw[3]),
-        )
-      elif hasattr(quat, "x"):
-        ori_x, ori_y, ori_z, ori_w = (
-          float(quat.x),
-          float(quat.y),
-          float(quat.z),
-          float(quat.w),
-        )
-      else:
-        ori_x, ori_y, ori_z, ori_w = (
-          float(quat[0]),
-          float(quat[1]),
-          float(quat[2]),
-          float(quat[3]),
-        )
-    elif hasattr(rot, "xyzw"):
-      ori_x, ori_y, ori_z, ori_w = (
-        float(rot.xyzw[0]),
-        float(rot.xyzw[1]),
-        float(rot.xyzw[2]),
-        float(rot.xyzw[3]),
-      )
-    else:
-      ori_x, ori_y, ori_z, ori_w = 0.0, 0.0, 0.0, 1.0
-  else:
-    ori_x, ori_y, ori_z, ori_w = 0.0, 0.0, 0.0, 1.0
-
-  return (pos_x, pos_y, pos_z), normalize_quaternion(ori_x, ori_y, ori_z, ori_w)
+def _extract_pose_from_transform(transform: data_types.Pose3) -> Pose3Tuple:
+  """Extracts `((x, y, z), (qx, qy, qz, qw))` from a `data_types.Pose3`."""
+  pos = transform.translation
+  quat = transform.rotation.quaternion.xyzw
+  return (
+    (float(pos[0]), float(pos[1]), float(pos[2])),
+    (float(quat[0]), float(quat[1]), float(quat[2]), float(quat[3])),
+  )
 
 
 def _resolve_world_node(world: Any, node_name: str) -> Any:

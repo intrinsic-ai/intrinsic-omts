@@ -23,22 +23,22 @@ automatically persists the updated pose to the source `.updates.pbtxt` file.
 """
 
 import argparse
-import logging
 import os
 import shutil
 import subprocess
 from collections.abc import Sequence
-from typing import Any
 
-from intrinsic.solutions import deployments, worlds
+from intrinsic.solutions import deployments
 
 from tools.world.apply_scene_updates import (
   DEFAULT_UPDATE_FILES,
   apply_pbtxt_file,
+  connect_initial_world,
   find_file,
 )
 from tools.world.pbtxt_pose_store import (
   DEFAULT_PBTXT_HEADER,
+  Pose3Tuple,
   PoseEntry,
   add_frame_to_pbtxt,
   apply_pose_entry_to_world,
@@ -48,30 +48,21 @@ from tools.world.pbtxt_pose_store import (
   snap_entry_to_tool_pose,
   update_pose_in_pbtxt,
 )
-from tools.world.pose_math import (
-  Pose3Tuple,
-  compose_pose_delta,
-  compose_transforms,
-  invert_transform,
-  normalize_quaternion,
-  quaternion_to_rpy_deg,
-  relative_transform,
-  rpy_deg_to_quaternion,
-)
-from tools.world.rviz_marker_controller import (
+from tools.world.rviz_marker_controller import RvizFrameEditorController
+from tools.world.rviz_marker_node import (
   AXIS_CONTROL_SPECS,
   MENU_LABELS,
   ControlInteractionMode,
   ControlOrientationMode,
   FeedbackEventType,
   MenuEntryId,
-  RvizFrameEditorController,
   build_6dof_interactive_marker,
-)
-from tools.world.rviz_marker_node import (
+  build_marker_from_dict,
   run_inprocess_ros2_node,
   run_subprocess_ros2_node,
 )
+
+_connect_initial_world = connect_initial_world
 
 __all__ = [
   "AXIS_CONTROL_SPECS",
@@ -89,18 +80,13 @@ __all__ = [
   "add_frame_to_pbtxt",
   "apply_pose_entry_to_world",
   "build_6dof_interactive_marker",
-  "compose_pose_delta",
-  "compose_transforms",
-  "invert_transform",
+  "build_marker_from_dict",
+  "connect_initial_world",
   "load_pose_entries",
   "load_pose_entries_from_file",
   "main",
-  "normalize_quaternion",
   "parse_args",
-  "quaternion_to_rpy_deg",
-  "relative_transform",
   "resolve_safe_pbtxt_path",
-  "rpy_deg_to_quaternion",
   "run_ros2_interactive_marker_loop",
   "snap_entry_to_tool_pose",
   "update_pose_in_pbtxt",
@@ -205,18 +191,6 @@ def run_ros2_interactive_marker_loop(
       topic_ns=topic_ns,
       cmd=cmd,
     )
-
-
-def _connect_initial_world(solution: Any) -> Any | None:
-  """Connects to `init_world` (`EditWorldId.INITIAL`) if available."""
-  grpc_channel = getattr(solution, "grpc_channel", None)
-  if grpc_channel is None:
-    return None
-  try:
-    return worlds.ObjectWorld.connect(worlds.EditWorldId.INITIAL, grpc_channel)
-  except Exception as e:  # pylint: disable=broad-exception-caught
-    logging.warning("Could not connect to initial world ('init_world'): %s", e)
-    return None
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -336,7 +310,7 @@ def main(argv: Sequence[str] | None = None) -> None:
       solution = deployments.connect(address=args.address)
       world = solution.world
       if args.update_init_world:
-        init_world = _connect_initial_world(solution)
+        init_world = connect_initial_world(solution)
       if args.apply_on_start:
         for fpath in args.files:
           apply_pbtxt_file(world=world, filepath=fpath, init_world=init_world)

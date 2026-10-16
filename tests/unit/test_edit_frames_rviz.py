@@ -14,6 +14,7 @@
 
 """Unit tests for the RViz 6-DoF interactive frame editor (edit_frames_rviz)."""
 
+import io
 import math
 import os
 import tempfile
@@ -21,7 +22,7 @@ from unittest import mock
 
 from absl.testing import absltest
 from google.protobuf import text_format
-from intrinsic.math.python import data_types
+from intrinsic.math.python import data_types, proto_conversion
 from intrinsic.world.proto import object_world_updates_pb2
 
 from tools.world.edit_frames_rviz import (
@@ -39,15 +40,6 @@ from tools.world.pbtxt_pose_store import (
   snap_entry_to_tool_pose,
   update_pose_in_pbtxt,
 )
-from tools.world.pose_math import (
-  compose_pose_delta,
-  compose_transforms,
-  invert_transform,
-  normalize_quaternion,
-  quaternion_to_rpy_deg,
-  relative_transform,
-  rpy_deg_to_quaternion,
-)
 from tools.world.rviz_marker_controller import (
   AXIS_CONTROL_SPECS,
   ControlInteractionMode,
@@ -55,7 +47,11 @@ from tools.world.rviz_marker_controller import (
   FeedbackEventType,
   MenuEntryId,
   RvizFrameEditorController,
+)
+from tools.world.rviz_marker_node import (
   build_6dof_interactive_marker,
+  build_marker_from_dict,
+  run_subprocess_ros2_node,
 )
 
 SAMPLE_PBTXT = """# proto-file: intrinsic/world/public/proto/object_world_updates.proto
@@ -137,112 +133,6 @@ updates {
 """
 
 
-class EditFramesRvizMathTest(absltest.TestCase):
-  """Tests for pure-Python quaternion and Euler RPY math functions."""
-
-  def test_normalize_quaternion_unit_and_non_unit(self) -> None:
-    """Tests quaternion normalization and zero-norm fallback."""
-    qx, qy, qz, qw = normalize_quaternion(0.0, 0.0, 2.0, 2.0)
-    self.assertAlmostEqual(qx, 0.0)
-    self.assertAlmostEqual(qy, 0.0)
-    self.assertAlmostEqual(qz, math.sqrt(0.5), places=6)
-    self.assertAlmostEqual(qw, math.sqrt(0.5), places=6)
-
-    self.assertEqual(
-      normalize_quaternion(0.0, 0.0, 0.0, 0.0),
-      (0.0, 0.0, 0.0, 1.0),
-    )
-
-  def test_rpy_quaternion_round_trips(self) -> None:
-    """Tests RPY <-> Quaternion conversions across identity, 90-deg, and general angles."""
-    test_angles = [
-      (0.0, 0.0, 0.0),
-      (90.0, 0.0, 0.0),
-      (0.0, 45.0, 0.0),
-      (0.0, 0.0, -90.0),
-      (30.0, -25.0, 120.0),
-      (-145.0, 15.0, -60.0),
-    ]
-    for roll, pitch, yaw in test_angles:
-      qx, qy, qz, qw = rpy_deg_to_quaternion(roll, pitch, yaw)
-      norm = math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw)
-      self.assertAlmostEqual(norm, 1.0, places=6)
-      r_out, p_out, y_out = quaternion_to_rpy_deg(qx, qy, qz, qw)
-      self.assertAlmostEqual(r_out, roll, places=4)
-      self.assertAlmostEqual(p_out, pitch, places=4)
-      self.assertAlmostEqual(y_out, yaw, places=4)
-
-  def test_compose_pose_delta_parent_frame(self) -> None:
-    """Tests compose_pose_delta when local_frame=False (parent frame axes)."""
-    pos = (1.0, 2.0, 3.0)
-    ori = rpy_deg_to_quaternion(0.0, 0.0, 90.0)
-    new_pos, new_ori = compose_pose_delta(
-      position=pos,
-      orientation=ori,
-      delta_xyz=(0.1, -0.2, 0.05),
-      delta_rpy_deg=(0.0, 0.0, 0.0),
-      local_frame=False,
-    )
-    self.assertAlmostEqual(new_pos[0], 1.1, places=6)
-    self.assertAlmostEqual(new_pos[1], 1.8, places=6)
-    self.assertAlmostEqual(new_pos[2], 3.05, places=6)
-    for a, b in zip(new_ori, ori, strict=True):
-      self.assertAlmostEqual(a, b, places=6)
-
-  def test_compose_pose_delta_local_frame(self) -> None:
-    """Tests compose_pose_delta when local_frame=True (local body axes)."""
-    pos = (1.0, 2.0, 3.0)
-    ori = rpy_deg_to_quaternion(0.0, 0.0, 90.0)
-    new_pos, new_ori = compose_pose_delta(
-      position=pos,
-      orientation=ori,
-      delta_xyz=(0.5, 0.0, 0.0),
-      delta_rpy_deg=(0.0, 0.0, -90.0),
-      local_frame=True,
-    )
-    self.assertAlmostEqual(new_pos[0], 1.0, places=5)
-    self.assertAlmostEqual(new_pos[1], 2.5, places=5)
-    self.assertAlmostEqual(new_pos[2], 3.0, places=5)
-    r, p, y = quaternion_to_rpy_deg(*new_ori)
-    self.assertAlmostEqual(r, 0.0, places=4)
-    self.assertAlmostEqual(p, 0.0, places=4)
-    self.assertAlmostEqual(y, 0.0, places=4)
-
-  def test_compose_invert_and_relative_transform_round_trips(self) -> None:
-    """Tests compose_transforms, invert_transform, and relative_transform accuracy."""
-    t_root_parent = (
-      (-0.57, -0.10, 1.02),
-      rpy_deg_to_quaternion(0.0, 0.0, 90.0),
-    )
-    t_parent_child = (
-      (-0.0725, 0.005, 0.0),
-      rpy_deg_to_quaternion(15.0, -20.0, 35.0),
-    )
-    t_root_child = compose_transforms(t_root_parent, t_parent_child)
-
-    # For yaw=+90 deg on parent, child local (-0.0725, 0.005, 0.0) rotates to (-0.005, -0.0725, 0.0)
-    self.assertAlmostEqual(t_root_child[0][0], -0.57 - 0.005, places=5)
-    self.assertAlmostEqual(t_root_child[0][1], -0.10 - 0.0725, places=5)
-    self.assertAlmostEqual(t_root_child[0][2], 1.02, places=5)
-
-    # T * T^-1 == Identity
-    ident_pos, ident_ori = compose_transforms(
-      t_root_parent, invert_transform(t_root_parent)
-    )
-    for c in ident_pos:
-      self.assertAlmostEqual(c, 0.0, places=6)
-    self.assertAlmostEqual(abs(ident_ori[3]), 1.0, places=6)
-
-    # Recover relative transform T_parent_child from T_root_parent and T_root_child
-    recovered_pos, recovered_ori = relative_transform(
-      t_root_parent, t_root_child
-    )
-    for a, b in zip(recovered_pos, t_parent_child[0], strict=True):
-      self.assertAlmostEqual(a, b, places=6)
-    for a, b in zip(recovered_ori, t_parent_child[1], strict=True):
-      self.assertAlmostEqual(a, b, places=6)
-
-
 class EditFramesRvizPbtxtAndWorldTest(absltest.TestCase):
   """Tests for .pbtxt path safety, persistence, and live ObjectWorld sync."""
 
@@ -317,7 +207,8 @@ class EditFramesRvizPbtxtAndWorldTest(absltest.TestCase):
     self.assertEqual(updated_1.target_name, "cnc_enclosure")
     self.assertAlmostEqual(updated_1.position[0], -0.60)
 
-    # Verify non-pose updates (update_object_joints at index 2) and header are preserved.
+    # Verify non-pose updates (update_object_joints at index 2) and header are
+    # preserved.
     with open(self.pbtxt_path, encoding="utf-8") as f:
       raw_text = f.read()
     self.assertIn("# proto-file:", raw_text)
@@ -372,6 +263,201 @@ class EditFramesRvizPbtxtAndWorldTest(absltest.TestCase):
     )
     self.assertLen(entries_after, 3)
 
+  def test_unit_quaternion_precision_and_position_rounding_on_save(
+    self,
+  ) -> None:
+    """Tests saved quaternions keep full unit norm while positions round to 4dp."""
+    rot = data_types.Rotation3.from_euler_angles(
+      rpy_degrees=[30.0, -25.0, 120.0]
+    )
+    q_xyzw = tuple(float(c) for c in rot.quaternion.xyzw)
+
+    update_pose_in_pbtxt(
+      filepath=self.pbtxt_path,
+      update_index=0,
+      position=(0.123456, -0.654321, 1.987654),
+      orientation=q_xyzw,
+      allowed_root=self.temp_dir.name,
+    )
+    add_frame_to_pbtxt(
+      filepath=self.pbtxt_path,
+      frame_name="precise_frame",
+      parent_name="root",
+      position=(0.555555, -0.444444, 0.333333),
+      orientation=q_xyzw,
+      allowed_root=self.temp_dir.name,
+    )
+
+    with open(self.pbtxt_path, encoding="utf-8") as f:
+      parsed = object_world_updates_pb2.ObjectWorldUpdates()
+      text_format.Parse(f.read(), parsed)
+
+    pose_0 = parsed.updates[0].create_frame.parent_t_new_frame
+    self.assertAlmostEqual(pose_0.position.x, 0.1235, places=6)
+    self.assertAlmostEqual(pose_0.position.y, -0.6543, places=6)
+    self.assertAlmostEqual(pose_0.position.z, 1.9877, places=6)
+    norm_0 = math.sqrt(
+      pose_0.orientation.x**2
+      + pose_0.orientation.y**2
+      + pose_0.orientation.z**2
+      + pose_0.orientation.w**2
+    )
+    self.assertLess(abs(norm_0 - 1.0), 1e-7)
+    converted_0 = proto_conversion.pose_from_proto(pose_0)
+    for actual, expected in zip(
+      converted_0.rotation.quaternion.xyzw, q_xyzw, strict=True
+    ):
+      self.assertAlmostEqual(float(actual), expected, places=7)
+
+    pose_added = parsed.updates[3].create_frame.parent_t_new_frame
+    self.assertAlmostEqual(pose_added.position.x, 0.5556, places=6)
+    self.assertAlmostEqual(pose_added.position.y, -0.4444, places=6)
+    self.assertAlmostEqual(pose_added.position.z, 0.3333, places=6)
+    norm_added = math.sqrt(
+      pose_added.orientation.x**2
+      + pose_added.orientation.y**2
+      + pose_added.orientation.z**2
+      + pose_added.orientation.w**2
+    )
+    self.assertLess(abs(norm_added - 1.0), 1e-7)
+    converted_added = proto_conversion.pose_from_proto(pose_added)
+    for actual, expected in zip(
+      converted_added.rotation.quaternion.xyzw, q_xyzw, strict=True
+    ):
+      self.assertAlmostEqual(float(actual), expected, places=7)
+
+  def test_inline_comments_preserved_in_pbtxt_on_save(self) -> None:
+    """Tests saving via update_pose_in_pbtxt and add_frame_to_pbtxt preserves # comments."""
+    commented_pbtxt = """# proto-file: intrinsic/world/public/proto/object_world_updates.proto
+# proto-message: intrinsic_proto.world.ObjectWorldUpdates
+
+# Section comment before view frame
+updates {
+  # Inline comment inside view update block
+  create_frame {
+    new_frame_name: "view"
+    parent_t_new_frame {
+      position {
+        x: 0.1753
+        y: -0.1008
+        z: 1.4011
+      }
+      orientation {
+        x: 0.0
+        y: 0.0
+        z: 0.0
+        w: 1.0
+      }
+    }
+    parent_object_with_filter {
+      reference {
+        by_name {
+          object_name: "root"
+        }
+      }
+    }
+  }
+}
+
+# Comment between updates blocks
+updates {
+  # Inline comment inside cnc_enclosure transform
+  update_transform {
+    node_a {
+      by_name {
+        object {
+          object_name: "enclosure"
+        }
+      }
+    }
+    node_b {
+      by_name {
+        object {
+          object_name: "cnc_enclosure"
+        }
+      }
+    }
+    node_to_update {
+      by_name {
+        object {
+          object_name: "cnc_enclosure"
+        }
+      }
+    }
+    a_t_b {
+      position {
+        x: -0.57
+        y: -0.10
+        z: 1.02
+      }
+      orientation {
+        x: 0.0
+        y: 0.0
+        z: 0.70710678
+        w: 0.70710678
+      }
+    }
+  }
+}
+# Trailing comment at end of file
+"""
+    with open(self.pbtxt_path, "w", encoding="utf-8") as f:
+      f.write(commented_pbtxt)
+
+    update_pose_in_pbtxt(
+      filepath=self.pbtxt_path,
+      update_index=0,
+      position=(0.22, -0.11, 1.44),
+      orientation=(0.0, 0.0, 0.0, 1.0),
+      allowed_root=self.temp_dir.name,
+    )
+    with open(self.pbtxt_path, encoding="utf-8") as f:
+      after_update = f.read()
+
+    self.assertIn("# Section comment before view frame", after_update)
+    self.assertIn("# Inline comment inside view update block", after_update)
+    self.assertIn("# Comment between updates blocks", after_update)
+    self.assertIn(
+      "# Inline comment inside cnc_enclosure transform", after_update
+    )
+    self.assertIn("# Trailing comment at end of file", after_update)
+
+    # Update existing frame via add_frame_to_pbtxt and append a new frame
+    add_frame_to_pbtxt(
+      filepath=self.pbtxt_path,
+      frame_name="view",
+      parent_name="root",
+      position=(0.33, -0.22, 1.55),
+      orientation=(0.0, 0.0, 0.0, 1.0),
+      allowed_root=self.temp_dir.name,
+    )
+    add_frame_to_pbtxt(
+      filepath=self.pbtxt_path,
+      frame_name="appended_frame",
+      parent_name="root",
+      position=(0.10, 0.20, 0.30),
+      orientation=(0.0, 0.0, 0.0, 1.0),
+      allowed_root=self.temp_dir.name,
+    )
+    with open(self.pbtxt_path, encoding="utf-8") as f:
+      after_add = f.read()
+
+    self.assertIn("# Section comment before view frame", after_add)
+    self.assertIn("# Inline comment inside view update block", after_add)
+    self.assertIn("# Comment between updates blocks", after_add)
+    self.assertIn("# Inline comment inside cnc_enclosure transform", after_add)
+    self.assertIn("# Trailing comment at end of file", after_add)
+
+    parsed = object_world_updates_pb2.ObjectWorldUpdates()
+    text_format.Parse(after_add, parsed)
+    self.assertLen(parsed.updates, 3)
+    self.assertAlmostEqual(
+      parsed.updates[0].create_frame.parent_t_new_frame.position.x, 0.33
+    )
+    self.assertEqual(
+      parsed.updates[2].create_frame.new_frame_name, "appended_frame"
+    )
+
   def test_apply_pose_entry_to_world_and_snap_to_tool_pose(self) -> None:
     """Tests live world synchronization and snapping an entry to gripper TCP."""
     mock_world = mock.MagicMock()
@@ -401,7 +487,9 @@ class EditFramesRvizPbtxtAndWorldTest(absltest.TestCase):
     mock_init_world.batch_update.assert_called_once()
 
     mock_pose = data_types.Pose3(
-      data_types.Rotation3(data_types.Quaternion([0.0, 0.0, 0.7071, 0.7071])),
+      data_types.Rotation3(
+        data_types.Quaternion([0.0, 0.0, math.sqrt(0.5), math.sqrt(0.5)])
+      ),
       [0.31, 0.42, 0.89],
     )
     mock_world.get_transform.return_value = mock_pose
@@ -434,6 +522,7 @@ class EditFramesRvizMarkerAndControllerTest(absltest.TestCase):
     self.mock_solution.is_simulated = True
     self.mock_solution.simulator = mock.MagicMock()
     self.mock_world = mock.MagicMock()
+    self.mock_world.get_transform.return_value = None
     self.mock_root = mock.MagicMock()
     self.mock_root.list_frames.return_value = ["view"]
     self.mock_world.root = self.mock_root
@@ -457,7 +546,7 @@ class EditFramesRvizMarkerAndControllerTest(absltest.TestCase):
     super().tearDown()
 
   def test_build_6dof_interactive_marker_controls_and_modes(self) -> None:
-    """Tests 6-DoF InteractiveMarker generation for INHERIT and FIXED orientation modes."""
+    """Tests 6-DoF InteractiveMarker generation for PoseEntry and dict inputs."""
     entry = self.controller.entries_by_marker["root/view"]
     marker_inherit = build_6dof_interactive_marker(
       entry, scale=0.22, fixed_orientation=False
@@ -511,6 +600,19 @@ class EditFramesRvizMarkerAndControllerTest(absltest.TestCase):
     ]
     for c in axis_controls_fixed:
       self.assertEqual(c.orientation_mode, int(ControlOrientationMode.FIXED))
+
+    # Verify build_marker_from_dict consolidates cleanly with dict input
+    marker_from_dict = build_marker_from_dict(
+      item=entry.to_dict(),
+      scale=0.22,
+      fixed_orientation=True,
+      fixed_frame="root",
+      marker_pose={"position": [0.1, 0.2, 0.3], "orientation": [0, 0, 0, 1]},
+    )
+    self.assertEqual(marker_from_dict.header.frame_id, "root")
+    self.assertEqual(marker_from_dict.name, "root/view")
+    self.assertLen(marker_from_dict.controls, 7)
+    self.assertAlmostEqual(marker_from_dict.pose.position.x, 0.1, places=4)
 
   def test_handle_feedback_pose_update_streams_to_world_without_saving_file(
     self,
@@ -643,10 +745,8 @@ class EditFramesRvizMarkerAndControllerTest(absltest.TestCase):
     self.assertTrue(reset_res["reset"])
     self.mock_solution.simulator.reset.assert_called_once()
 
-  def test_build_markers_anchors_all_entries_in_root_and_composes_chained_poses(
-    self,
-  ) -> None:
-    """Tests build_markers sets header.frame_id=='root' and empty sub-marker frame_id for all entries."""
+  def _write_schunk_pbtxt(self) -> str:
+    """Writes a child schunk.updates.pbtxt relative to cnc_enclosure."""
     schunk_pbtxt = os.path.join(self.temp_dir.name, "schunk.updates.pbtxt")
     with open(schunk_pbtxt, "w", encoding="utf-8") as f:
       f.write(
@@ -693,7 +793,13 @@ updates {
 }
 """
       )
+    return schunk_pbtxt
 
+  def test_build_markers_anchors_all_entries_in_root_and_composes_chained_poses(
+    self,
+  ) -> None:
+    """Tests build_markers sets header.frame_id=='root' and empty sub-marker frame_id for all entries."""
+    schunk_pbtxt = self._write_schunk_pbtxt()
     chained_controller = RvizFrameEditorController(
       files=[self.pbtxt_path, schunk_pbtxt],
       world=None,
@@ -714,7 +820,7 @@ updates {
       self.assertEqual(menu_ctrl.markers[0].header.frame_id, "")
 
     # Verify chained pose of cnc_enclosure/schunk in 'root':
-    # cnc_enclosure is at (-0.57, -0.10, 1.02) with +90 deg Z rotation (qz=0.7071, qw=0.7071).
+    # cnc_enclosure is at (-0.57, -0.10, 1.02) with +90 deg Z rotation.
     # schunk relative to cnc_enclosure is (-0.0725, 0.005, 0.0).
     # In root: x = -0.57 - 0.005 = -0.575, y = -0.10 - 0.0725 = -0.1725, z = 1.02.
     schunk_marker = markers["cnc_enclosure/schunk"]
@@ -726,53 +832,7 @@ updates {
     self,
   ) -> None:
     """Tests dragging a non-root parent entry in 'root' saves parent-relative a_t_b pose to .pbtxt."""
-    schunk_pbtxt = os.path.join(self.temp_dir.name, "schunk.updates.pbtxt")
-    with open(schunk_pbtxt, "w", encoding="utf-8") as f:
-      f.write(
-        """# proto-file: intrinsic/world/public/proto/object_world_updates.proto
-# proto-message: intrinsic_proto.world.ObjectWorldUpdates
-
-updates {
-  update_transform {
-    node_a {
-      by_name {
-        object {
-          object_name: "cnc_enclosure"
-        }
-      }
-    }
-    node_b {
-      by_name {
-        object {
-          object_name: "schunk"
-        }
-      }
-    }
-    node_to_update {
-      by_name {
-        object {
-          object_name: "schunk"
-        }
-      }
-    }
-    a_t_b {
-      position {
-        x: -0.0725
-        y: 0.005
-        z: 0.0
-      }
-      orientation {
-        x: 0.0
-        y: 0.0
-        z: 0.0
-        w: 1.0
-      }
-    }
-  }
-}
-"""
-      )
-
+    schunk_pbtxt = self._write_schunk_pbtxt()
     chained_controller = RvizFrameEditorController(
       files=[self.pbtxt_path, schunk_pbtxt],
       world=self.mock_world,
@@ -780,14 +840,34 @@ updates {
       allowed_root=self.temp_dir.name,
     )
 
-    # Suppose user drags cnc_enclosure/schunk in RViz ('root' frame) to a new target pose
-    # corresponding to local offset (0.10, -0.20, 0.05) relative to cnc_enclosure.
+    # Suppose user drags cnc_enclosure/schunk in RViz ('root' frame) to a new
+    # target pose corresponding to local offset (0.10, -0.20, 0.05) relative to
+    # cnc_enclosure.
     t_root_cnc = chained_controller.get_parent_pose_in_fixed_frame(
       "cnc_enclosure"
     )
-    desired_local = ((0.10, -0.20, 0.05), (0.0, 0.0, 0.0, 1.0))
-    dragged_root_pos, dragged_root_ori = compose_transforms(
-      t_root_cnc, desired_local
+    pose_root_cnc = data_types.Pose3(
+      rotation=data_types.Rotation3.from_xyzw(
+        list(t_root_cnc[1]), normalize=True
+      ),
+      translation=list(t_root_cnc[0]),
+    )
+    pose_desired_local = data_types.Pose3(
+      rotation=data_types.Rotation3.identity(),
+      translation=[0.10, -0.20, 0.05],
+    )
+    pose_dragged_root = pose_root_cnc.multiply(pose_desired_local)
+    dragged_root_pos = (
+      float(pose_dragged_root.translation[0]),
+      float(pose_dragged_root.translation[1]),
+      float(pose_dragged_root.translation[2]),
+    )
+    q_xyzw = pose_dragged_root.rotation.quaternion.xyzw
+    dragged_root_ori = (
+      float(q_xyzw[0]),
+      float(q_xyzw[1]),
+      float(q_xyzw[2]),
+      float(q_xyzw[3]),
     )
 
     res = chained_controller.handle_feedback(
@@ -800,7 +880,8 @@ updates {
     self.assertEqual(res["status"], "saved_on_mouse_up")
     self.assertTrue(res["saved_to_file"])
 
-    # Saved entry in .pbtxt must be parent-relative (desired_local), NOT root coordinates!
+    # Saved entry in .pbtxt must be parent-relative (desired_local), NOT root
+    # coordinates!
     disk_entries = load_pose_entries_from_file(
       schunk_pbtxt, allowed_root=self.temp_dir.name
     )
@@ -815,6 +896,129 @@ updates {
       res["marker_pose"]["position"], dragged_root_pos, strict=True
     ):
       self.assertAlmostEqual(a, b, places=3)
+
+  def test_parent_marker_updates_recompute_descendant_marker_poses(
+    self,
+  ) -> None:
+    """Tests updating a parent marker recomputes descendant_marker_poses across all events."""
+    schunk_pbtxt = self._write_schunk_pbtxt()
+    chained_controller = RvizFrameEditorController(
+      files=[self.pbtxt_path, schunk_pbtxt],
+      world=self.mock_world,
+      init_world=self.mock_init_world,
+      allowed_root=self.temp_dir.name,
+    )
+
+    # 1. POSE_UPDATE on enclosure/cnc_enclosure to (1.0, 2.0, 3.0) with identity
+    # orientation: schunk (-0.0725, 0.005, 0.0) in root becomes (0.9275, 2.005, 3.0)
+    res_drag = chained_controller.handle_feedback(
+      marker_name="enclosure/cnc_enclosure",
+      event_type=int(FeedbackEventType.POSE_UPDATE),
+      position=(1.0, 2.0, 3.0),
+      orientation=(0.0, 0.0, 0.0, 1.0),
+      now=10.0,
+    )
+    self.assertIn("descendant_marker_poses", res_drag)
+    self.assertIn("cnc_enclosure/schunk", res_drag["descendant_marker_poses"])
+    schunk_drag_pos = res_drag["descendant_marker_poses"][
+      "cnc_enclosure/schunk"
+    ]["position"]
+    self.assertAlmostEqual(schunk_drag_pos[0], 0.9275, places=4)
+    self.assertAlmostEqual(schunk_drag_pos[1], 2.005, places=4)
+    self.assertAlmostEqual(schunk_drag_pos[2], 3.0, places=4)
+
+    # 2. REVERT_FROM_FILE restores cnc_enclosure and recomputes schunk in root
+    res_revert = chained_controller.handle_feedback(
+      marker_name="enclosure/cnc_enclosure",
+      event_type=int(FeedbackEventType.MENU_SELECT),
+      menu_entry_id=int(MenuEntryId.REVERT_FROM_FILE),
+    )
+    schunk_revert_pos = res_revert["descendant_marker_poses"][
+      "cnc_enclosure/schunk"
+    ]["position"]
+    self.assertAlmostEqual(schunk_revert_pos[0], -0.575, places=4)
+    self.assertAlmostEqual(schunk_revert_pos[1], -0.1725, places=4)
+    self.assertAlmostEqual(schunk_revert_pos[2], 1.02, places=4)
+
+    # 3. MOUSE_UP on enclosure/cnc_enclosure
+    res_up = chained_controller.handle_feedback(
+      marker_name="enclosure/cnc_enclosure",
+      event_type=int(FeedbackEventType.MOUSE_UP),
+      position=(0.5, 0.5, 1.0),
+      orientation=(0.0, 0.0, 0.0, 1.0),
+      now=20.0,
+    )
+    schunk_up_pos = res_up["descendant_marker_poses"]["cnc_enclosure/schunk"][
+      "position"
+    ]
+    self.assertAlmostEqual(schunk_up_pos[0], 0.4275, places=4)
+    self.assertAlmostEqual(schunk_up_pos[1], 0.505, places=4)
+    self.assertAlmostEqual(schunk_up_pos[2], 1.0, places=4)
+
+    # 4. SAVE_NOW on enclosure/cnc_enclosure
+    chained_controller.handle_feedback(
+      marker_name="enclosure/cnc_enclosure",
+      event_type=int(FeedbackEventType.POSE_UPDATE),
+      position=(0.0, 1.0, 2.0),
+      orientation=(0.0, 0.0, 0.0, 1.0),
+      now=30.0,
+    )
+    res_save = chained_controller.handle_feedback(
+      marker_name="enclosure/cnc_enclosure",
+      event_type=int(FeedbackEventType.MENU_SELECT),
+      menu_entry_id=int(MenuEntryId.SAVE_NOW),
+    )
+    schunk_save_pos = res_save["descendant_marker_poses"][
+      "cnc_enclosure/schunk"
+    ]["position"]
+    self.assertAlmostEqual(schunk_save_pos[0], -0.0725, places=4)
+    self.assertAlmostEqual(schunk_save_pos[1], 1.005, places=4)
+    self.assertAlmostEqual(schunk_save_pos[2], 2.0, places=4)
+
+    # 5. SNAP_TO_TOOL on enclosure/cnc_enclosure
+    tool_node = self.mock_world.gripper.tool_frame
+    snap_pose = data_types.Pose3(
+      data_types.Rotation3.identity(),
+      [2.0, 3.0, 4.0],
+    )
+    self.mock_world.get_transform.side_effect = lambda _a, b: (
+      snap_pose if b == tool_node else None
+    )
+    res_snap = chained_controller.handle_feedback(
+      marker_name="enclosure/cnc_enclosure",
+      event_type=int(FeedbackEventType.MENU_SELECT),
+      menu_entry_id=int(MenuEntryId.SNAP_TO_TOOL),
+    )
+    schunk_snap_pos = res_snap["descendant_marker_poses"][
+      "cnc_enclosure/schunk"
+    ]["position"]
+    self.assertAlmostEqual(schunk_snap_pos[0], 1.9275, places=4)
+    self.assertAlmostEqual(schunk_snap_pos[1], 3.005, places=4)
+    self.assertAlmostEqual(schunk_snap_pos[2], 4.0, places=4)
+
+  def test_run_subprocess_ros2_node_raises_on_early_exit_with_stderr(
+    self,
+  ) -> None:
+    """Tests run_subprocess_ros2_node raises RuntimeError with stderr when child exits before ready."""
+    fake_proc = mock.MagicMock()
+    fake_proc.stdin = io.StringIO()
+    fake_proc.stdout = io.StringIO("")
+    fake_proc.stderr = io.StringIO("ImportError: libddsc.so not found\n")
+    fake_proc.poll.return_value = 1
+    fake_proc.wait.return_value = 1
+    fake_proc.returncode = 1
+
+    with mock.patch(
+      "tools.world.rviz_marker_node.subprocess.Popen", return_value=fake_proc
+    ):
+      with self.assertRaisesRegex(
+        RuntimeError, "ImportError: libddsc.so not found"
+      ):
+        run_subprocess_ros2_node(
+          controller=self.controller,
+          topic_ns="omts_frame_editor",
+          cmd=["/usr/bin/python3", "-u", "rviz_marker_node.py"],
+        )
 
   def test_parse_args_defaults(self) -> None:
     """Tests CLI argument defaults for edit_frames_rviz."""

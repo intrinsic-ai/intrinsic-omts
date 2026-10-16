@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""RViz 6-DoF InteractiveMarker builder and feedback controller."""
+"""RViz 6-DoF InteractiveMarker feedback controller."""
 
 import dataclasses
-import enum
 import logging
 import os
 import threading
@@ -24,6 +23,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from google.protobuf import text_format
+from intrinsic.math.python import data_types
 from intrinsic.world.proto import object_world_updates_pb2
 
 from tools.world.apply_scene_updates import (
@@ -31,8 +31,11 @@ from tools.world.apply_scene_updates import (
   extract_joint_updates,
 )
 from tools.world.pbtxt_pose_store import (
+  Pose3Tuple,
   PoseEntry,
   _extract_pose_from_transform,
+  _normalize_quaternion,
+  _quaternion_to_rpy_deg,
   _resolve_world_node,
   apply_pose_entry_to_world,
   load_pose_entries,
@@ -41,319 +44,36 @@ from tools.world.pbtxt_pose_store import (
   snap_entry_to_tool_pose,
   update_pose_in_pbtxt,
 )
-from tools.world.pose_math import (
-  Pose3Tuple,
-  compose_transforms,
-  normalize_quaternion,
-  quaternion_to_rpy_deg,
-  relative_transform,
+from tools.world.rviz_marker_node import (
+  AXIS_CONTROL_SPECS,
+  MENU_LABELS,
+  ControlInteractionMode,
+  ControlOrientationMode,
+  FeedbackEventType,
+  MenuEntryId,
+  build_6dof_interactive_marker,
 )
 
-
-class FeedbackEventType(enum.IntEnum):
-  """Standard `visualization_msgs/msg/InteractiveMarkerFeedback` event types."""
-
-  KEEP_ALIVE = 0
-  POSE_UPDATE = 1
-  MENU_SELECT = 2
-  BUTTON_CLICK = 3
-  MOUSE_DOWN = 4
-  MOUSE_UP = 5
-
-
-class ControlInteractionMode(enum.IntEnum):
-  """Standard `visualization_msgs/msg/InteractiveMarkerControl` modes."""
-
-  NONE = 0
-  MENU = 1
-  BUTTON = 2
-  MOVE_AXIS = 3
-  MOVE_PLANE = 4
-  ROTATE_AXIS = 5
-  MOVE_ROTATE = 6
-  MOVE_3D = 7
-  ROTATE_3D = 8
-  MOVE_ROTATE_3D = 9
+__all__ = [
+  "AXIS_CONTROL_SPECS",
+  "MENU_LABELS",
+  "ControlInteractionMode",
+  "ControlOrientationMode",
+  "FeedbackEventType",
+  "MenuEntryId",
+  "RvizFrameEditorController",
+  "build_6dof_interactive_marker",
+]
 
 
-class ControlOrientationMode(enum.IntEnum):
-  """Standard `visualization_msgs/msg/InteractiveMarkerControl` orientations."""
-
-  INHERIT = 0
-  FIXED = 1
-  VIEW_FACING = 2
-
-
-class MenuEntryId(enum.IntEnum):
-  """Right-click context menu entry IDs for each RViz interactive marker."""
-
-  SAVE_NOW = 1
-  SNAP_TO_TOOL = 2
-  TOGGLE_AXES_MODE = 3
-  REVERT_FROM_FILE = 4
-  RESET_SIM = 5
-
-
-MENU_LABELS: tuple[tuple[MenuEntryId, str], ...] = (
-  (MenuEntryId.SAVE_NOW, "Save Pose to .pbtxt Now"),
-  (MenuEntryId.SNAP_TO_TOOL, "Snap to Gripper TCP (tool_frame)"),
-  (
-    MenuEntryId.TOGGLE_AXES_MODE,
-    "Toggle Control Axes (Local INHERIT / Parent FIXED)",
-  ),
-  (MenuEntryId.REVERT_FROM_FILE, "Revert Pose from .pbtxt"),
-  (MenuEntryId.RESET_SIM, "Reset Gazebo Simulation"),
-)
-
-AXIS_CONTROL_SPECS: tuple[
-  tuple[str, tuple[float, float, float, float], int], ...
-] = (
-  (
-    "rotate_x",
-    (0.70710678, 0.0, 0.0, 0.70710678),
-    ControlInteractionMode.ROTATE_AXIS,
-  ),
-  (
-    "move_x",
-    (0.70710678, 0.0, 0.0, 0.70710678),
-    ControlInteractionMode.MOVE_AXIS,
-  ),
-  (
-    "rotate_z",
-    (0.0, 0.70710678, 0.0, 0.70710678),
-    ControlInteractionMode.ROTATE_AXIS,
-  ),
-  (
-    "move_z",
-    (0.0, 0.70710678, 0.0, 0.70710678),
-    ControlInteractionMode.MOVE_AXIS,
-  ),
-  (
-    "rotate_y",
-    (0.0, 0.0, 0.70710678, 0.70710678),
-    ControlInteractionMode.ROTATE_AXIS,
-  ),
-  (
-    "move_y",
-    (0.0, 0.0, 0.70710678, 0.70710678),
-    ControlInteractionMode.MOVE_AXIS,
-  ),
-)
-
-
-@dataclasses.dataclass
-class _FallbackHeader:
-  """Duck-typed `std_msgs.msg.Header` for unit tests without `rclpy`."""
-
-  frame_id: str = ""
-
-
-@dataclasses.dataclass
-class _FallbackPoint:
-  """Duck-typed `geometry_msgs.msg.Point`."""
-
-  x: float = 0.0
-  y: float = 0.0
-  z: float = 0.0
-
-
-@dataclasses.dataclass
-class _FallbackQuaternion:
-  """Duck-typed `geometry_msgs.msg.Quaternion`."""
-
-  x: float = 0.0
-  y: float = 0.0
-  z: float = 0.0
-  w: float = 1.0
-
-
-@dataclasses.dataclass
-class _FallbackPose:
-  """Duck-typed `geometry_msgs.msg.Pose`."""
-
-  position: _FallbackPoint = dataclasses.field(default_factory=_FallbackPoint)
-  orientation: _FallbackQuaternion = dataclasses.field(
-    default_factory=_FallbackQuaternion
+def _pose_tuple_to_pose3(pose: Pose3Tuple) -> data_types.Pose3:
+  """Converts `((x, y, z), (qx, qy, qz, qw))` to a `data_types.Pose3`."""
+  pos, ori = pose
+  norm_q = _normalize_quaternion(ori)
+  return data_types.Pose3(
+    rotation=data_types.Rotation3(data_types.Quaternion(list(norm_q))),
+    translation=[float(pos[0]), float(pos[1]), float(pos[2])],
   )
-
-
-@dataclasses.dataclass
-class _FallbackVector3:
-  """Duck-typed `geometry_msgs.msg.Vector3`."""
-
-  x: float = 0.0
-  y: float = 0.0
-  z: float = 0.0
-
-
-@dataclasses.dataclass
-class _FallbackColorRGBA:
-  """Duck-typed `std_msgs.msg.ColorRGBA`."""
-
-  r: float = 0.0
-  g: float = 0.0
-  b: float = 0.0
-  a: float = 1.0
-
-
-@dataclasses.dataclass
-class _FallbackMarker:
-  """Duck-typed `visualization_msgs.msg.Marker`."""
-
-  CUBE = 1
-  SPHERE = 2
-
-  header: _FallbackHeader = dataclasses.field(default_factory=_FallbackHeader)
-  type: int = 1
-  scale: _FallbackVector3 = dataclasses.field(default_factory=_FallbackVector3)
-  color: _FallbackColorRGBA = dataclasses.field(
-    default_factory=_FallbackColorRGBA
-  )
-
-
-@dataclasses.dataclass
-class _FallbackInteractiveMarkerControl:
-  """Duck-typed `visualization_msgs.msg.InteractiveMarkerControl`."""
-
-  name: str = ""
-  orientation: _FallbackQuaternion = dataclasses.field(
-    default_factory=_FallbackQuaternion
-  )
-  orientation_mode: int = int(ControlOrientationMode.INHERIT)
-  interaction_mode: int = int(ControlInteractionMode.NONE)
-  always_visible: bool = False
-  markers: list[Any] = dataclasses.field(default_factory=list)
-
-
-@dataclasses.dataclass
-class _FallbackInteractiveMarker:
-  """Duck-typed `visualization_msgs.msg.InteractiveMarker`."""
-
-  header: _FallbackHeader = dataclasses.field(default_factory=_FallbackHeader)
-  pose: _FallbackPose = dataclasses.field(default_factory=_FallbackPose)
-  name: str = ""
-  description: str = ""
-  scale: float = 0.18
-  controls: list[Any] = dataclasses.field(default_factory=list)
-
-
-class _FallbackRosMsgs:
-  """Factory namespace used when `visualization_msgs.msg` is not installed."""
-
-  InteractiveMarker = _FallbackInteractiveMarker
-  InteractiveMarkerControl = _FallbackInteractiveMarkerControl
-  Marker = _FallbackMarker
-
-
-def _get_ros_msgs(ros_msgs: Any | None = None) -> Any:
-  """Returns `ros_msgs`, `visualization_msgs.msg` if importable, or fallback."""
-  if ros_msgs is not None:
-    return ros_msgs
-  try:
-    from visualization_msgs import msg as vis_msg  # type: ignore[import-not-found]
-
-    return vis_msg
-  except Exception:  # pylint: disable=broad-exception-caught
-    return _FallbackRosMsgs
-
-
-def build_6dof_interactive_marker(
-  entry: PoseEntry,
-  scale: float = 0.18,
-  fixed_orientation: bool = False,
-  ros_msgs: Any | None = None,
-  fixed_frame: str = "root",
-  marker_pose: Pose3Tuple | None = None,
-) -> Any:
-  """Builds a 6-DoF `InteractiveMarker` with a context menu for `entry`.
-
-  Always anchors `int_marker.header.frame_id` in `fixed_frame` (default `"root"`)
-  so RViz's `InteractiveMarkerClient` never attempts a `/tf` lookup on bare
-  SBL object names (such as `"enclosure"` or `"cnc_enclosure"`), which only
-  exist in `/tf` with `/base_link` suffixes.
-
-  Args:
-    entry: `PoseEntry` to represent as an interactive marker in RViz.
-    scale: Marker scale in meters (default: `0.18`).
-    fixed_orientation: If `True`, sets axis controls to `FIXED` (parent frame
-      axes); if `False`, sets them to `INHERIT` (local frame axes).
-    ros_msgs: Optional module/factory providing `InteractiveMarker`,
-      `InteractiveMarkerControl`, and `Marker`.
-    fixed_frame: RViz Fixed Frame name (default: `"root"`).
-    marker_pose: Optional `(position, orientation)` tuple of `entry` expressed
-      in `fixed_frame`. Defaults to `(entry.position, entry.orientation)`.
-
-  Returns:
-    Constructed `InteractiveMarker` message.
-  """
-  msgs = _get_ros_msgs(ros_msgs)
-  int_marker = msgs.InteractiveMarker()
-  int_marker.header.frame_id = fixed_frame or "root"
-  int_marker.name = (
-    entry.marker_name or f"{entry.parent_name or 'root'}/{entry.target_name}"
-  )
-  int_marker.description = f"{entry.target_name} ({entry.entry_type})"
-  int_marker.scale = float(scale)
-
-  pos, ori = (
-    marker_pose
-    if marker_pose is not None
-    else (entry.position, entry.orientation)
-  )
-  int_marker.pose.position.x = float(pos[0])
-  int_marker.pose.position.y = float(pos[1])
-  int_marker.pose.position.z = float(pos[2])
-  ox, oy, oz, ow = normalize_quaternion(*ori)
-  int_marker.pose.orientation.x = float(ox)
-  int_marker.pose.orientation.y = float(oy)
-  int_marker.pose.orientation.z = float(oz)
-  int_marker.pose.orientation.w = float(ow)
-
-  # Central clickable MENU visual marker so right-clicking opens the RViz menu.
-  menu_control = msgs.InteractiveMarkerControl()
-  menu_control.name = "menu"
-  menu_control.interaction_mode = int(ControlInteractionMode.MENU)
-  menu_control.always_visible = True
-
-  center_marker = msgs.Marker()
-  if hasattr(center_marker, "header"):
-    center_marker.header.frame_id = ""
-  center_marker.type = getattr(msgs.Marker, "CUBE", 1)
-  box_size = float(scale) * 0.25
-  center_marker.scale.x = box_size
-  center_marker.scale.y = box_size
-  center_marker.scale.z = box_size
-  if entry.entry_type == "create_frame":
-    center_marker.color.r = 0.2
-    center_marker.color.g = 0.75
-    center_marker.color.b = 0.95
-  else:
-    center_marker.color.r = 0.95
-    center_marker.color.g = 0.65
-    center_marker.color.b = 0.2
-  center_marker.color.a = 0.85
-  menu_control.markers.append(center_marker)
-  int_marker.controls.append(menu_control)
-
-  # 6-DoF translation arrows and rotation rings along X, Y, Z.
-  orientation_mode = int(
-    ControlOrientationMode.FIXED
-    if fixed_orientation
-    else ControlOrientationMode.INHERIT
-  )
-  for ctrl_name, (qx, qy, qz, qw), interaction_mode in AXIS_CONTROL_SPECS:
-    ctrl = msgs.InteractiveMarkerControl()
-    ctrl.name = ctrl_name
-    nq_x, nq_y, nq_z, nq_w = normalize_quaternion(qx, qy, qz, qw)
-    ctrl.orientation.x = float(nq_x)
-    ctrl.orientation.y = float(nq_y)
-    ctrl.orientation.z = float(nq_z)
-    ctrl.orientation.w = float(nq_w)
-    ctrl.interaction_mode = int(interaction_mode)
-    ctrl.orientation_mode = orientation_mode
-    int_marker.controls.append(ctrl)
-
-  return int_marker
 
 
 class RvizFrameEditorController:
@@ -422,43 +142,36 @@ class RvizFrameEditorController:
   def get_parent_pose_in_fixed_frame(self, parent_name: str) -> Pose3Tuple:
     """Resolves `T_fixed_parent` (`((x, y, z), (qx, qy, qz, qw))`).
 
-    Queries the live SBL `ObjectWorld` when available and configured, or falls
-    back to chaining loaded `PoseEntry` transforms up to `self.fixed_frame`.
-    Unfound top-level scene objects (such as `'enclosure'`, which is fixed at
-    the world origin) default to identity.
+    Chains loaded `PoseEntry` transforms up to `self.fixed_frame`, or queries
+    the live SBL `ObjectWorld` when `parent_name` is not managed by loaded
+    entries. Unfound top-level scene objects (such as `'enclosure'`, which is
+    fixed at the world origin) default to identity.
 
     Args:
       parent_name: Parent object or `object/frame` name.
 
     Returns:
-      Transform `(position, orientation)` of `parent_name` in `self.fixed_frame`.
+      Transform `(position, orientation)` of `parent_name` in
+      `self.fixed_frame`.
     """
     if not parent_name or parent_name == self.fixed_frame:
       return ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
 
-    if self.world is not None:
-      try:
-        fixed_node = _resolve_world_node(self.world, self.fixed_frame)
-        parent_node = _resolve_world_node(self.world, parent_name)
-        tf = self.world.get_transform(fixed_node, parent_node)
-        if tf is not None and not type(tf).__module__.startswith(
-          "unittest.mock"
-        ):
-          return _extract_pose_from_transform(tf)
-      except Exception:  # pylint: disable=broad-exception-caught
-        pass
-
-    # Fallback: walk loaded entries_by_marker chain up to self.fixed_frame.
-    accum: Pose3Tuple = ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+    accum = data_types.Pose3.identity()
     curr_name = parent_name
     visited: set[str] = set()
+    matched_any = False
     while (
       curr_name and curr_name != self.fixed_frame and curr_name not in visited
     ):
       visited.add(curr_name)
       matched: PoseEntry | None = None
       for candidate in self.entries_by_marker.values():
-        if candidate.target_name == curr_name:
+        if (
+          candidate.target_name == curr_name
+          or f"{candidate.parent_name or 'root'}/{candidate.target_name}"
+          == curr_name
+        ):
           matched = candidate
           break
       if matched is None and "/" in curr_name:
@@ -469,23 +182,42 @@ class RvizFrameEditorController:
             break
       if matched is None:
         break
-      accum = compose_transforms(
-        (matched.position, matched.orientation),
-        accum,
+      matched_any = True
+      matched_pose = _pose_tuple_to_pose3(
+        (matched.position, matched.orientation)
       )
+      accum = matched_pose.multiply(accum)
       curr_name = matched.parent_name or self.fixed_frame
 
-    return accum
+    if matched_any:
+      return _extract_pose_from_transform(accum)
+
+    if self.world is not None:
+      try:
+        fixed_node = _resolve_world_node(self.world, self.fixed_frame)
+        parent_node = _resolve_world_node(self.world, parent_name)
+        tf = self.world.get_transform(fixed_node, parent_node)
+        if tf is not None:
+          return _extract_pose_from_transform(tf)
+      except Exception:  # pylint: disable=broad-exception-caught
+        pass
+
+    return _extract_pose_from_transform(accum)
 
   def get_entry_pose_in_fixed_frame(self, entry: PoseEntry) -> Pose3Tuple:
-    """Computes `T_fixed_target = T_fixed_parent * T_parent_target` for `entry`."""
-    t_fixed_parent = self.get_parent_pose_in_fixed_frame(entry.parent_name)
-    return compose_transforms(
-      t_fixed_parent, (entry.position, entry.orientation)
+    """Computes `T_fixed_target = T_fixed_parent * T_parent_target`."""
+    pose_fixed_parent = _pose_tuple_to_pose3(
+      self.get_parent_pose_in_fixed_frame(entry.parent_name)
+    )
+    pose_parent_target = _pose_tuple_to_pose3(
+      (entry.position, entry.orientation)
+    )
+    return _extract_pose_from_transform(
+      pose_fixed_parent.multiply(pose_parent_target)
     )
 
   def _marker_pose_dict(self, entry: PoseEntry) -> dict[str, list[float]]:
-    """Returns `entry`'s pose in `self.fixed_frame` as a JSON-serializable dict."""
+    """Returns `entry`'s pose in `self.fixed_frame` as a JSON-compatible dict."""
     m_pos, m_ori = self.get_entry_pose_in_fixed_frame(entry)
     return {
       "position": [float(m_pos[0]), float(m_pos[1]), float(m_pos[2])],
@@ -496,6 +228,76 @@ class RvizFrameEditorController:
         float(m_ori[3]),
       ],
     }
+
+  def _is_descendant_of(
+    self, candidate: PoseEntry, ancestor: PoseEntry
+  ) -> bool:
+    """Returns True if `candidate`'s parent chain passes through `ancestor`."""
+    if not ancestor.target_name:
+      return False
+    ancestor_keys = {
+      ancestor.target_name,
+      f"{ancestor.parent_name or 'root'}/{ancestor.target_name}",
+    }
+    if ancestor.marker_name:
+      ancestor_keys.add(ancestor.marker_name)
+
+    curr_name = candidate.parent_name
+    visited: set[str] = set()
+    while (
+      curr_name and curr_name != self.fixed_frame and curr_name not in visited
+    ):
+      visited.add(curr_name)
+      if curr_name in ancestor_keys:
+        return True
+      if "/" in curr_name and curr_name.split("/", 1)[0] in ancestor_keys:
+        return True
+
+      matched: PoseEntry | None = None
+      for entry in self.entries_by_marker.values():
+        if (
+          entry.target_name == curr_name
+          or f"{entry.parent_name or 'root'}/{entry.target_name}" == curr_name
+        ):
+          matched = entry
+          break
+      if matched is None and "/" in curr_name:
+        base_obj = curr_name.split("/", 1)[0]
+        for entry in self.entries_by_marker.values():
+          if entry.target_name == base_obj:
+            matched = entry
+            break
+      if matched is None:
+        break
+      if matched.marker_name == ancestor.marker_name:
+        return True
+      curr_name = matched.parent_name or self.fixed_frame
+
+    return False
+
+  def get_descendant_marker_poses(
+    self, parent_marker_name: str
+  ) -> dict[str, dict[str, list[float]]]:
+    """Computes updated `fixed_frame` poses for all descendants of a marker.
+
+    Args:
+      parent_marker_name: Marker name of the parent entry that moved.
+
+    Returns:
+      Mapping from descendant `marker_name` to its `{"position": [...],
+      "orientation": [...]}` dictionary in `self.fixed_frame`.
+    """
+    with self.lock:
+      parent_entry = self.entries_by_marker.get(parent_marker_name)
+      if parent_entry is None:
+        return {}
+      descendant_poses: dict[str, dict[str, list[float]]] = {}
+      for marker_name, entry in self.entries_by_marker.items():
+        if marker_name == parent_marker_name:
+          continue
+        if self._is_descendant_of(entry, parent_entry):
+          descendant_poses[marker_name] = self._marker_pose_dict(entry)
+      return descendant_poses
 
   def get_entries(self) -> list[PoseEntry]:
     """Returns all managed `PoseEntry` items in insertion order."""
@@ -586,8 +388,8 @@ class RvizFrameEditorController:
       now: Optional monotonic timestamp in seconds for drag throttling tests.
 
     Returns:
-      Dictionary describing the action taken, resulting `PoseEntry` dict, and
-      `marker_pose` in `self.fixed_frame`.
+      Dictionary describing the action taken, resulting `PoseEntry` dict,
+      `marker_pose` in `self.fixed_frame`, and any `descendant_marker_poses`.
 
     Raises:
       KeyError: If `marker_name` is not registered.
@@ -601,40 +403,42 @@ class RvizFrameEditorController:
       current_time = time.monotonic() if now is None else float(now)
 
       if position is not None or orientation is not None:
-        t_root_parent = self.get_parent_pose_in_fixed_frame(current.parent_name)
-        t_root_curr = compose_transforms(
-          t_root_parent,
-          (current.position, normalize_quaternion(*current.orientation)),
+        pose_root_parent = _pose_tuple_to_pose3(
+          self.get_parent_pose_in_fixed_frame(current.parent_name)
+        )
+        pose_parent_curr = _pose_tuple_to_pose3(
+          (current.position, current.orientation)
+        )
+        pose_root_curr = pose_root_parent.multiply(pose_parent_curr)
+        curr_pos_fixed, curr_ori_fixed = _extract_pose_from_transform(
+          pose_root_curr
         )
         pos_fixed = (
           (float(position[0]), float(position[1]), float(position[2]))
           if position is not None
-          else t_root_curr[0]
+          else curr_pos_fixed
         )
         ori_fixed = (
-          normalize_quaternion(
-            float(orientation[0]),
-            float(orientation[1]),
-            float(orientation[2]),
-            float(orientation[3]),
-          )
+          _normalize_quaternion(orientation)
           if orientation is not None
-          else t_root_curr[1]
+          else curr_ori_fixed
         )
-        new_pos, new_ori = relative_transform(
-          t_root_parent, (pos_fixed, ori_fixed)
+        pose_root_target = _pose_tuple_to_pose3((pos_fixed, ori_fixed))
+        pose_parent_target = pose_root_parent.multiply_by_inverse(
+          pose_root_target
         )
+        new_pos, new_ori = _extract_pose_from_transform(pose_parent_target)
       else:
         new_pos = current.position
-        new_ori = normalize_quaternion(*current.orientation)
+        new_ori = _normalize_quaternion(current.orientation)
 
       if event_type == FeedbackEventType.POSE_UPDATE:
-        rpy = tuple(round(v, 4) for v in quaternion_to_rpy_deg(*new_ori))
+        rpy = _quaternion_to_rpy_deg(new_ori)
         updated_entry = dataclasses.replace(
           current,
           position=new_pos,
           orientation=new_ori,
-          rpy_deg=(rpy[0], rpy[1], rpy[2]),
+          rpy_deg=rpy,
         )
         self.entries_by_marker[marker_name] = updated_entry
 
@@ -654,6 +458,9 @@ class RvizFrameEditorController:
           "status": "pose_updated",
           "entry": updated_entry.to_dict(),
           "marker_pose": self._marker_pose_dict(updated_entry),
+          "descendant_marker_poses": self.get_descendant_marker_poses(
+            marker_name
+          ),
           "applied_to_world": applied,
           "saved_to_file": False,
         }
@@ -684,6 +491,9 @@ class RvizFrameEditorController:
           "status": "saved_on_mouse_up",
           "entry": updated_entry.to_dict(),
           "marker_pose": self._marker_pose_dict(updated_entry),
+          "descendant_marker_poses": self.get_descendant_marker_poses(
+            marker_name
+          ),
           "applied_to_world": applied,
           "saved_to_file": True,
           "sim_reset": sim_reset,
@@ -711,6 +521,9 @@ class RvizFrameEditorController:
             "status": "saved_now",
             "entry": updated_entry.to_dict(),
             "marker_pose": self._marker_pose_dict(updated_entry),
+            "descendant_marker_poses": self.get_descendant_marker_poses(
+              marker_name
+            ),
             "applied_to_world": applied,
             "saved_to_file": True,
           }
@@ -733,6 +546,9 @@ class RvizFrameEditorController:
             "status": "snapped_to_tool",
             "entry": snapped_entry.to_dict(),
             "marker_pose": self._marker_pose_dict(snapped_entry),
+            "descendant_marker_poses": self.get_descendant_marker_poses(
+              marker_name
+            ),
             "applied_to_world": True,
             "saved_to_file": True,
           }
@@ -775,6 +591,9 @@ class RvizFrameEditorController:
             "status": "reverted_from_file",
             "entry": reverted.to_dict(),
             "marker_pose": self._marker_pose_dict(reverted),
+            "descendant_marker_poses": self.get_descendant_marker_poses(
+              marker_name
+            ),
             "applied_to_world": applied,
             "saved_to_file": False,
           }

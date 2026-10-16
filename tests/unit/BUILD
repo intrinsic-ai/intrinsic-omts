@@ -207,6 +207,7 @@ py_test(
         "@com_google_absl_py//absl/testing:absltest",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
         "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:proto_conversion",
     ],
 )
 

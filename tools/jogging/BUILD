@@ -76,8 +76,10 @@ py_library(
         "//configs:all_world_updates",
     ],
     deps = [
+        "//tools/world:pbtxt_pose_store_lib",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
         "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:proto_conversion",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
     ],
 )

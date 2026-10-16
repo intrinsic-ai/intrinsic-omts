@@ -220,7 +220,7 @@ def extract_joint_updates(
   return joint_updates
 
 
-def _connect_initial_world(solution: Any) -> Any | None:
+def connect_initial_world(solution: Any) -> Any | None:
   """Connects to `init_world` (`EditWorldId.INITIAL`) if available."""
   grpc_channel = getattr(solution, "grpc_channel", None)
   if grpc_channel is None:
@@ -230,6 +230,9 @@ def _connect_initial_world(solution: Any) -> Any | None:
   except Exception as e:  # pylint: disable=broad-exception-caught
     logging.warning("Could not connect to initial world ('init_world'): %s", e)
     return None
+
+
+_connect_initial_world = connect_initial_world
 
 
 def apply_pbtxt_file(
