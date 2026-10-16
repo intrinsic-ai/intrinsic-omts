@@ -24,6 +24,7 @@ from intrinsic.math.python import data_types, proto_conversion
 from intrinsic.solutions import deployments
 from intrinsic.world.proto import object_world_updates_pb2
 
+from src.utils.world_utils import find_file
 from tools.world.pbtxt_pose_store import (
   DEFAULT_PBTXT_HEADER,
   Pose3Tuple,
@@ -31,6 +32,8 @@ from tools.world.pbtxt_pose_store import (
   _extract_pose_from_transform,
   _replace_pose_in_pbtxt_content,
 )
+
+find_scene_updates_file = find_file
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -84,28 +87,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     help="Path to scene.updates.pbtxt file to store frames in.",
   )
   return parser.parse_args(argv)
-
-
-def find_scene_updates_file(filepath: str) -> str:
-  """Resolves path to the scene updates file in workspace or runfiles."""
-  if os.path.isabs(filepath) and os.path.exists(filepath):
-    return filepath
-
-  workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")
-  if workspace_dir:
-    ws_file = os.path.join(workspace_dir, filepath)
-    if os.path.exists(ws_file) or os.path.exists(os.path.dirname(ws_file)):
-      return ws_file
-
-  runfiles_dir = os.environ.get("PYTHON_RUNFILES") or os.environ.get(
-    "TEST_SRCDIR"
-  )
-  if runfiles_dir:
-    r_path = os.path.join(runfiles_dir, "_main", filepath)
-    if os.path.exists(r_path):
-      return r_path
-
-  return filepath
 
 
 def get_current_tool_pose(

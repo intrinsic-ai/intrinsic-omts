@@ -123,7 +123,7 @@ class MoveToJointTest(absltest.TestCase):
     mock_stream.write.assert_called_once()
 
   @mock.patch(
-    "tools.jogging.store_joint_config.worlds.ObjectWorld.connect",
+    "src.utils.world_utils.worlds.ObjectWorld.connect",
     autospec=True,
   )
   @mock.patch("tools.jogging.store_joint_config.deployments.connect")

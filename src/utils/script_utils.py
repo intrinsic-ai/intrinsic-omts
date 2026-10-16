@@ -22,22 +22,15 @@ import types
 from collections.abc import Callable
 from typing import Any
 
+from src.utils.world_utils import find_file
+
 
 def _read_source_from_file(filepath: str) -> str:
-  """Reads file content, checking direct path and Bazel runfiles."""
-  if os.path.exists(filepath):
-    with open(filepath, encoding="utf-8") as f:
+  """Reads file content, checking direct path, workspace, and Bazel runfiles."""
+  resolved_path = find_file(filepath)
+  if os.path.exists(resolved_path):
+    with open(resolved_path, encoding="utf-8") as f:
       return f.read()
-
-  # Check Bazel runfiles
-  runfiles_dir = os.environ.get("PYTHON_RUNFILES") or os.environ.get(
-    "TEST_SRCDIR"
-  )
-  if runfiles_dir:
-    r_path = os.path.join(runfiles_dir, "_main", filepath)
-    if os.path.exists(r_path):
-      with open(r_path, encoding="utf-8") as f:
-        return f.read()
 
   raise FileNotFoundError(f"Could not locate source file: {filepath}")
 

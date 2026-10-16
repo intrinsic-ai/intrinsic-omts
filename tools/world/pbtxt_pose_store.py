@@ -24,10 +24,8 @@ from google.protobuf import text_format
 from intrinsic.math.python import data_types, proto_conversion
 from intrinsic.world.proto import object_world_updates_pb2
 
-from tools.world.apply_scene_updates import (
-  adapt_updates_for_live_world,
-  find_file,
-)
+from src.utils.world_utils import find_file
+from tools.world.apply_scene_updates import adapt_updates_for_live_world
 
 Pose3Tuple = tuple[
   tuple[float, float, float], tuple[float, float, float, float]
@@ -162,25 +160,6 @@ def resolve_safe_pbtxt_path(
         f"Path {filepath!r} resolves outside allowed root {allowed_root!r}"
       )
     return resolved
-
-  if os.path.isabs(filepath):
-    return os.path.realpath(filepath)
-
-  workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")
-  if workspace_dir:
-    ws_candidate = os.path.join(workspace_dir, filepath)
-    if os.path.exists(ws_candidate) or os.path.exists(
-      os.path.dirname(ws_candidate)
-    ):
-      return os.path.realpath(ws_candidate)
-
-  working_dir = os.environ.get("BUILD_WORKING_DIRECTORY")
-  if working_dir:
-    wd_candidate = os.path.join(working_dir, filepath)
-    if os.path.exists(wd_candidate) or os.path.exists(
-      os.path.dirname(wd_candidate)
-    ):
-      return os.path.realpath(wd_candidate)
 
   return os.path.realpath(find_file(filepath))
 

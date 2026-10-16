@@ -23,6 +23,7 @@ py_library(
     name = "apply_scene_updates_lib",
     srcs = ["apply_scene_updates.py"],
     deps = [
+        "//src/utils:world_utils",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:worlds",
@@ -46,6 +47,7 @@ py_library(
     srcs = ["pbtxt_pose_store.py"],
     deps = [
         ":apply_scene_updates_lib",
+        "//src/utils:world_utils",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
         "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
         "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:proto_conversion",
@@ -81,6 +83,7 @@ py_library(
         ":pbtxt_pose_store_lib",
         ":rviz_marker_controller_lib",
         ":rviz_marker_node_lib",
+        "//src/utils:world_utils",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
         "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
         "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:proto_conversion",

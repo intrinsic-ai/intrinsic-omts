@@ -25,9 +25,17 @@ from google.protobuf import text_format
 from intrinsic.math.python import data_types, proto_conversion
 from intrinsic.world.proto import object_world_updates_pb2
 
+from src.utils.world_utils import (
+  connect_initial_world as shared_connect_initial_world,
+)
+from src.utils.world_utils import (
+  find_file as shared_find_file,
+)
 from tools.world.edit_frames_rviz import (
   _configure_zenoh_env,
   _resolve_ros2_python_command,
+  connect_initial_world,
+  find_file,
   parse_args,
 )
 from tools.world.pbtxt_pose_store import (
@@ -163,6 +171,16 @@ class EditFramesRvizPbtxtAndWorldTest(absltest.TestCase):
 
     with self.assertRaises(ValueError):
       resolve_safe_pbtxt_path("notes.txt", allowed_root=self.temp_dir.name)
+
+    self.assertIs(find_file, shared_find_file)
+    self.assertIs(connect_initial_world, shared_connect_initial_world)
+    with mock.patch.dict(
+      os.environ, {"BUILD_WORKSPACE_DIRECTORY": self.temp_dir.name}, clear=True
+    ):
+      self.assertEqual(
+        resolve_safe_pbtxt_path("scene.updates.pbtxt"),
+        os.path.realpath(self.pbtxt_path),
+      )
 
   def test_load_pose_entries_and_update_pose_in_pbtxt(self) -> None:
     """Tests loading and updating create_frame and update_transform entries."""

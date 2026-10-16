@@ -30,11 +30,13 @@ from collections.abc import Sequence
 
 from intrinsic.solutions import deployments
 
+from src.utils.world_utils import (
+  connect_initial_world,
+  find_file,
+)
 from tools.world.apply_scene_updates import (
   DEFAULT_UPDATE_FILES,
   apply_pbtxt_file,
-  connect_initial_world,
-  find_file,
 )
 from tools.world.pbtxt_pose_store import (
   DEFAULT_PBTXT_HEADER,

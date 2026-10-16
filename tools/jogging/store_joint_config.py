@@ -17,10 +17,11 @@
 import argparse
 from collections.abc import Sequence
 
-from intrinsic.solutions import deployments, worlds
+from intrinsic.solutions import deployments
 from intrinsic.world.proto import object_world_updates_pb2
 
 from src.utils.math_utils import normalize_joint_angles
+from src.utils.world_utils import connect_initial_world
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -83,21 +84,19 @@ def main(argv: Sequence[str] | None = None) -> None:
   print(
     f"Storing joint configuration '{args.name}' to initial world ('init_world')..."
   )
-  try:
-    init_world = worlds.ObjectWorld.connect(
-      worlds.EditWorldId.INITIAL,
-      solution.grpc_channel,
-    )
-    init_robot = getattr(init_world, args.robot_name)
-    init_world.update_kinematic_object_joint_configurations(
-      kinematic_object=init_robot,
-      named_joint_configurations_to_set=[named_config],
-    )
-    print(
-      f"Saved named joint configuration '{args.name}' permanently to init_world."
-    )
-  except Exception as e:
-    print(f"Warning: Could not update init_world: {e}")
+  init_world = connect_initial_world(solution)
+  if init_world is not None:
+    try:
+      init_robot = getattr(init_world, args.robot_name)
+      init_world.update_kinematic_object_joint_configurations(
+        kinematic_object=init_robot,
+        named_joint_configurations_to_set=[named_config],
+      )
+      print(
+        f"Saved named joint configuration '{args.name}' permanently to init_world."
+      )
+    except Exception as e:  # pylint: disable=broad-exception-caught
+      print(f"Warning: Could not update init_world: {e}")
 
 
 if __name__ == "__main__":

@@ -137,6 +137,7 @@ py_test(
     deps = [
         "//src/core:config",
         "//src/core:types",
+        "//src/utils:world_utils",
         "//tools/jogging:jog_interactive_lib",
         "//tools/jogging:move_to_joint_lib",
         "//tools/jogging:store_joint_config_lib",
@@ -144,10 +145,16 @@ py_test(
     ],
 )
 
+alias(
+    name = "test_store_joint_config",
+    actual = ":test_move_to_joint",
+)
+
 py_test(
     name = "test_store_frame",
     srcs = ["test_store_frame.py"],
     deps = [
+        "//src/utils:world_utils",
         "//tools/jogging:store_frame_lib",
         "@com_google_absl_py//absl/testing:absltest",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
@@ -193,6 +200,7 @@ py_test(
     name = "test_apply_scene_updates",
     srcs = ["test_apply_scene_updates.py"],
     deps = [
+        "//src/utils:world_utils",
         "//tools/world:apply_scene_updates_lib",
         "//tools/world:inspect_world_lib",
         "@com_google_absl_py//absl/testing:absltest",
@@ -203,6 +211,7 @@ py_test(
     name = "test_edit_frames_rviz",
     srcs = ["test_edit_frames_rviz.py"],
     deps = [
+        "//src/utils:world_utils",
         "//tools/world:edit_frames_rviz_lib",
         "@com_google_absl_py//absl/testing:absltest",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",

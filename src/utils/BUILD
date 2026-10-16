@@ -15,7 +15,16 @@ py_library(
     name = "script_utils",
     srcs = ["script_utils.py"],
     deps = [
+        ":world_utils",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
+    ],
+)
+
+py_library(
+    name = "world_utils",
+    srcs = ["world_utils.py"],
+    deps = [
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:worlds",
     ],
 )
 
@@ -53,5 +62,6 @@ py_library(
         ":math_utils",
         ":random_placement",
         ":script_utils",
+        ":world_utils",
     ],
 )
