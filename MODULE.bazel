@@ -8,13 +8,13 @@ module(name = "omts")
 #
 # When bumping INTRINSIC_CORE_RELEASE, update INTRINSIC_CORE_SHA256 with:
 #   curl -fsSL "https://github.com/intrinsic-ai/intrinsic-core/releases/download/<tag>/intrinsic-core.tar.gz" | sha256sum
-INTRINSIC_CORE_RELEASE = "20260922.0"
+INTRINSIC_CORE_RELEASE = "20261012.0"
 
 INTRINSIC_CORE_URL = "https://github.com/intrinsic-ai/intrinsic-core/releases/download/{tag}/intrinsic-core.tar.gz".format(
     tag = INTRINSIC_CORE_RELEASE,
 )
 
-INTRINSIC_CORE_SHA256 = "0009109250de1bec3b48abdd0a2ac36e7486447738810ebbb7fa216e2d5436f0"
+INTRINSIC_CORE_SHA256 = "41dec7c162c5819495a21f5114c0abd3203cd188b9fbc26b7e62205c98ce53c3"
 
 bazel_dep(name = "intrinsic-core")
 archive_override(
@@ -51,13 +51,7 @@ archive_override(
     ],
 )
 
-bazel_dep(name = "zenoh-c", version = "1.7.2.bcr.1")
-single_version_override(
-    module_name = "zenoh-c",
-    patch_strip = 1,
-    patches = ["//bazel/patches:zenohc.patch"],
-)
-
+bazel_dep(name = "zenoh-c", version = "1.8.0.bcr.1")
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
 bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(name = "abseil-py", version = "2.1.0", repo_name = "com_google_absl_py")
@@ -145,9 +139,9 @@ go_deps.gazelle_override(
 go_deps.gazelle_override(
     build_file_generation = "on",
     directives = [
-        "gazelle:prefix github.com/googlecloudrobotics/core/src",
+        "gazelle:prefix github.com/googlecloudrobotics/core",
     ],
-    path = "github.com/googlecloudrobotics/core/src",
+    path = "github.com/googlecloudrobotics/core",
 )
 
 # Prebuilt asset bundles that are not built from source by this repository.
