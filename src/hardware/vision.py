@@ -196,10 +196,6 @@ class OrbbecVision(VisionInterface):
     )
 
     estimate_action = skills.ai.intrinsic.estimate_pose_multi_view(
-      camera_1=self._camera_resource,
-      camera_2=self._camera_resource,
-      camera_3=self._camera_resource,
-      camera_4=self._camera_resource,
       perception=self._perception_resource,
       pose_estimator=pose_estimator_proto,
       capture_data=[capture_action.result.capture_data],
