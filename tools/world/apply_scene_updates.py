@@ -21,9 +21,14 @@ from collections.abc import Sequence
 from typing import Any
 
 from google.protobuf import text_format
-from intrinsic.solutions import deployments, worlds
+from intrinsic.solutions import deployments
 from intrinsic.world.proto import (
   object_world_updates_pb2,
+)
+
+from src.utils.world_utils import (
+  connect_initial_world,
+  find_file,
 )
 
 DEFAULT_UPDATE_FILES = [
@@ -76,42 +81,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     ),
   )
   return parser.parse_args(argv)
-
-
-def find_file(filepath: str) -> str:
-  """Resolves file path in direct directory, workspace, or runfiles."""
-  if os.path.isabs(filepath) and os.path.exists(filepath):
-    return filepath
-
-  # Check BUILD_WORKING_DIRECTORY first if invoked via 'bazel run'
-  working_dir = os.environ.get("BUILD_WORKING_DIRECTORY")
-  if working_dir:
-    w_path = os.path.join(working_dir, filepath)
-    if os.path.exists(w_path):
-      return w_path
-
-  # Check BUILD_WORKSPACE_DIRECTORY
-  workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")
-  if workspace_dir:
-    ws_path = os.path.join(workspace_dir, filepath)
-    if os.path.exists(ws_path):
-      return ws_path
-
-  if os.path.exists(filepath):
-    return filepath
-
-  runfiles_dir = os.environ.get("PYTHON_RUNFILES") or os.environ.get(
-    "TEST_SRCDIR"
-  )
-  if runfiles_dir:
-    r_path = os.path.join(runfiles_dir, "_main", filepath)
-    if os.path.exists(r_path):
-      return r_path
-    r_path2 = os.path.join(runfiles_dir, filepath)
-    if os.path.exists(r_path2):
-      return r_path2
-
-  return filepath
 
 
 def adapt_updates_for_live_world(
@@ -220,16 +189,7 @@ def extract_joint_updates(
   return joint_updates
 
 
-def _connect_initial_world(solution: Any) -> Any | None:
-  """Connects to `init_world` (`EditWorldId.INITIAL`) if available."""
-  grpc_channel = getattr(solution, "grpc_channel", None)
-  if grpc_channel is None:
-    return None
-  try:
-    return worlds.ObjectWorld.connect(worlds.EditWorldId.INITIAL, grpc_channel)
-  except Exception as e:  # pylint: disable=broad-exception-caught
-    logging.warning("Could not connect to initial world ('init_world'): %s", e)
-    return None
+_connect_initial_world = connect_initial_world
 
 
 def apply_pbtxt_file(
@@ -282,7 +242,7 @@ def main(argv: Sequence[str] | None = None) -> None:
   solution = deployments.connect(address=args.address)
   world = solution.world
   init_world = (
-    _connect_initial_world(solution) if args.update_init_world else None
+    connect_initial_world(solution) if args.update_init_world else None
   )
 
   print(f"\n=== Applying {len(args.files)} World Update File(s) Live ===")

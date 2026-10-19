@@ -72,7 +72,7 @@ py_library(
         "//src/core:config",
         "//src/utils:dynamic_frame_calculator",
         "//src/utils:script_utils",
-        "@intrinsic-core//intrinsic/assets:id_utils_py",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/assets:id_utils_py",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:proto_building",

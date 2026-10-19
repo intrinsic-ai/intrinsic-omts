@@ -20,8 +20,14 @@ from src.utils.math_utils import (
   object_exists_in_world,
   resolve_adio_resource,
 )
+from src.utils.world_utils import (
+  connect_initial_world,
+  find_file,
+)
 
 __all__ = [
+  "connect_initial_world",
+  "find_file",
   "normalize_angle",
   "normalize_joint_angles",
   "object_exists_in_world",

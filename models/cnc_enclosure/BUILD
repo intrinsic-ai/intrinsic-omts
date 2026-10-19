@@ -1,4 +1,4 @@
-load("@intrinsic-core//intrinsic/assets/scene_objects/build_defs:scene_object.bzl", "intrinsic_scene_object")
+load("@intrinsic-core//intrinsic_sdk/intrinsic/assets/scene_objects/build_defs:scene_object.bzl", "intrinsic_scene_object")
 
 package(default_visibility = ["//visibility:public"])
 

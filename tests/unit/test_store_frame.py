@@ -23,6 +23,7 @@ from google.protobuf import text_format
 from intrinsic.math.python import data_types
 from intrinsic.world.proto import object_world_updates_pb2
 
+from src.utils.world_utils import find_file
 from tools.jogging.store_frame import (
   find_scene_updates_file,
   get_current_tool_pose,
@@ -204,6 +205,7 @@ updates: {
     self.assertEqual(args.tool_frame, "tool_frame")
 
   def test_find_scene_updates_file_workspace_dir(self):
+    self.assertIs(find_scene_updates_file, find_file)
     rel_path = "configs/omts/scene.updates.pbtxt"
     expected = os.path.join(self.temp_dir.name, rel_path)
     os.makedirs(os.path.dirname(expected), exist_ok=True)

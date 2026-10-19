@@ -101,9 +101,9 @@ py_test(
         "//src/hardware:vision",
         "@com_google_absl_py//absl/testing:absltest",
         "@com_google_protobuf//:protobuf_python",
-        "@intrinsic-core//intrinsic/assets/build_defs:asset_py_pb2",
         "@intrinsic-core//intrinsic/executive/proto:behavior_tree_py_pb2",
         "@intrinsic-core//intrinsic/world/proto:object_world_service_py_pb2",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/assets/build_defs:asset_py_pb2",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:proto_building",
@@ -137,6 +137,7 @@ py_test(
     deps = [
         "//src/core:config",
         "//src/core:types",
+        "//src/utils:world_utils",
         "//tools/jogging:jog_interactive_lib",
         "//tools/jogging:move_to_joint_lib",
         "//tools/jogging:store_joint_config_lib",
@@ -144,10 +145,16 @@ py_test(
     ],
 )
 
+alias(
+    name = "test_store_joint_config",
+    actual = ":test_move_to_joint",
+)
+
 py_test(
     name = "test_store_frame",
     srcs = ["test_store_frame.py"],
     deps = [
+        "//src/utils:world_utils",
         "//tools/jogging:store_frame_lib",
         "@com_google_absl_py//absl/testing:absltest",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
@@ -193,9 +200,23 @@ py_test(
     name = "test_apply_scene_updates",
     srcs = ["test_apply_scene_updates.py"],
     deps = [
+        "//src/utils:world_utils",
         "//tools/world:apply_scene_updates_lib",
         "//tools/world:inspect_world_lib",
         "@com_google_absl_py//absl/testing:absltest",
+    ],
+)
+
+py_test(
+    name = "test_edit_frames_rviz",
+    srcs = ["test_edit_frames_rviz.py"],
+    deps = [
+        "//src/utils:world_utils",
+        "//tools/world:edit_frames_rviz_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:proto_conversion",
     ],
 )
 
@@ -273,8 +294,8 @@ py_test(
         "@com_google_absl_py//absl/testing:absltest",
         "@com_google_googleapis//google/longrunning:operations_py_proto",
         "@com_google_googleapis//google/rpc:status_py_proto",
-        "@intrinsic-core//intrinsic/assets/proto:installed_assets_py_pb2",
         "@intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_train_service/proto:ioc_pose_estimator_params_py_pb2",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/assets/proto:installed_assets_py_pb2",
         "@intrinsic_apis//intrinsic/assets/proto:view_py_pb2",
         "@intrinsic_apis//intrinsic/perception/proto/v1:train_service_py_pb2",
         "@intrinsic_apis//intrinsic/scene/proto/v1:scene_object_py_pb2",
