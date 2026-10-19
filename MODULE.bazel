@@ -58,22 +58,15 @@ bazel_dep(name = "abseil-py", version = "2.1.0", repo_name = "com_google_absl_py
 bazel_dep(name = "eigen", version = "5.0.1.bcr.2", repo_name = "com_gitlab_libeigen_eigen")
 bazel_dep(name = "grpc", version = "1.74.1", repo_name = "com_github_grpc_grpc")
 bazel_dep(name = "pybind11_bazel", version = "3.0.1")
-bazel_dep(name = "rules_cc", version = "0.2.22")
+bazel_dep(name = "rules_cc", version = "0.2.25")
 bazel_dep(name = "rules_cuda", version = "0.3.0")
-bazel_dep(name = "rules_python", version = "1.9.2")
+bazel_dep(name = "rules_python", version = "2.3.3")
 bazel_dep(name = "toolchains_llvm", version = "1.7.0")
-bazel_dep(name = "googleapis", version = "0.0.0-20260825-d10ac924", repo_name = "com_google_googleapis")
+bazel_dep(name = "googleapis", version = "0.0.0-20260929-28769825", repo_name = "com_google_googleapis")
 bazel_dep(name = "protobuf", version = "32.1", repo_name = "com_google_protobuf")
 single_version_override(
     module_name = "protobuf",
     version = "32.1",
-)
-
-# TODO: Remove this override when updating INTRINSIC_CORE_RELEASE to the next
-# release (not yet available), as this is already fixed on intrinsic-core main.
-single_version_override(
-    module_name = "tinygltf",
-    version = "2.9.6.bcr.1",
 )
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
@@ -127,7 +120,7 @@ use_repo(llvm, "llvm_toolchain")
 
 register_toolchains("@llvm_toolchain//:all")
 
-bazel_dep(name = "gazelle", version = "0.52.2", repo_name = "bazel_gazelle")
+bazel_dep(name = "gazelle", version = "0.54.0", repo_name = "bazel_gazelle")
 
 go_deps = use_extension("@bazel_gazelle//:extensions.bzl", "go_deps")
 go_deps.gazelle_override(
