@@ -6,7 +6,7 @@ validation, SBL Behavior Tree structure, hardware adapters, and CLI tools.
 ## Running Tests
 
 ```bash
-# Run all 21 unit test targets offline (no live cluster or hardware required)
+# Run all 20 unit test targets offline (no live cluster or hardware required)
 bazel test //tests/...
 
 # Run a specific test suite with detailed error output
@@ -36,5 +36,4 @@ bazel test --test_output=errors //tests/unit:test_behaviors
 | `test_calibrate_camera` | `tools/calibration/*.py` | Camera calibration skill parameter wiring. |
 | `test_sample_calibration_poses` | `tools/calibration/sample_calibration_poses.py` | ICON arm part resolution, camera streaming, and manual waypoint recording. |
 | `test_update_robot_kinematics` | `tools/calibration/update_robot_kinematics.py` | Robot kinematic calibration update utilities. |
-| `test_register_using_train_service` | `tools/pose_estimation/register_using_train_service.py` | FoundationPose estimator registration parameters. |
-| `test_run_pose_estimation` | `tools/pose_estimation/run_pose_estimation.py` | Camera/perception resource discovery and multi-view pose estimation pipeline wiring. |
+

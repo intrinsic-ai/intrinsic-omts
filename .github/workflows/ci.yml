@@ -233,6 +233,7 @@ jobs:
             build --nobuild \
             --keep_going \
             --repository_cache= \
+            --@intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:build_full_image=False \
             //...
           df -h /
 

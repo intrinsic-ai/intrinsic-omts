@@ -13,9 +13,11 @@ OMTS strictly separates deployment packaging from application orchestration:
 
 * **Solution Package (`//:omts_solution`)**: Declares hardware modules (Universal
   Robots arm, Robotiq Hand-E / DIO gripper, Orbbec Gemini 335Le camera, ADIO),
-  scene models (`models/`), perception services (FoundationPose + RF-DETR), and
-  cell world updates (`configs/<cell>/*.updates.pbtxt`). Parameterized at build
-  time via `--//:setup=omts` or `--//:setup=lab_bb_01`.
+  scene models (`models/`), the NVIDIA Pose Estimator perception service
+  (`nvidia_pose_estimator_service` — a TensorRT runtime combining SAM 3
+  open-vocabulary text-prompted segmentation, FoundationStereo, and C++/CUDA
+  FoundationPose), and cell world updates (`configs/<cell>/*.updates.pbtxt`).
+  Parameterized at build time via `--//:setup=omts` or `--//:setup=lab_bb_01`.
 * **Application Binary (`//src:omts_app`)**: Connects to the running solution
   over gRPC (`deployments.connect(address=...)`), validates a cell YAML
   configuration (`configs/<cell>/app_config.yaml`), instantiates stateless
@@ -36,7 +38,7 @@ flowchart LR
         EXEC["Executive Service"]
         WORLD["ObjectWorld & Kinematics"]
         ICON["ICON Realtime Control"]
-        PERC["Pose Estimator Service"]
+        PERC["NVIDIA Pose Estimator Service\n(nvidia_pose_estimator_service)"]
         SIM["Gazebo Simulator (sim mode)"]
     end
 
@@ -110,9 +112,11 @@ During vision-guided infeed (`OrbbecVision.build_perception_and_spawn_task`):
 
 1. **`capture_images`**: Captures synchronized RGB and Depth frames from the
    wrist-mounted Orbbec camera (`sensor_ids: [1, 4]`).
-2. **`estimate_pose_multi_view`**: Runs FoundationPose inference via
-   `pose_estimator_service`, returning the 6D part pose in the camera optical
-   frame (`T_camera_target`).
+2. **`estimate_pose_multi_view`**: Runs TensorRT-accelerated SAM 3
+   open-vocabulary text-prompted segmentation, FoundationStereo / hardware depth
+   selection, and C++/CUDA FoundationPose inference via
+   `nvidia_pose_estimator_service`, returning the 6D part pose in the camera
+   optical frame (`T_camera_target`).
 3. **Dynamic Frame Calculator (`bt.PythonScript`)**:
    Injected from [`src/utils/dynamic_frame_calculator.py`](../src/utils/dynamic_frame_calculator.py)
    via [`load_python_script()`](../src/utils/script_utils.py):

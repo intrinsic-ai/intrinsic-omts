@@ -1,21 +1,15 @@
 """Bazel rule to import a pre-packaged asset bundle into Flowstate solutions."""
 
-load("@intrinsic-core//intrinsic/assets/build_defs:asset.bzl", "AssetInfo", "AssetLocalInfo")
+load("@intrinsic-core//intrinsic_sdk/intrinsic/assets/build_defs:asset.bzl", "AssetInfo", "AssetLocalInfo")
 
 def _imported_asset_bundle_impl(ctx):
     asset_info_output = ctx.actions.declare_file(ctx.label.name + ".asset_info.binpb")
     bundle = ctx.file.bundle
 
-    local_info_args = ctx.actions.args().add(
-        "--manifest",
-        ctx.file.manifest,
-    ).add(
-        "--asset_type",
-        ctx.attr.asset_type,
-    ).add(
-        "--output_asset_info",
-        asset_info_output,
-    )
+    local_info_args = ctx.actions.args()
+    local_info_args.add("--manifest", ctx.file.manifest)
+    local_info_args.add("--asset_type", ctx.attr.asset_type)
+    local_info_args.add("--output_asset_info", asset_info_output)
 
     inputs = [ctx.file.manifest]
     if ctx.file.file_descriptor_set:

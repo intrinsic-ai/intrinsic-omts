@@ -44,9 +44,6 @@ from intrinsic.icon.server.config import icon_main_config_pb2
 from intrinsic.perception.proto.v1 import camera_config_pb2
 from intrinsic.perception.skills.calibration import sample_calibration_poses_pb2
 from intrinsic.world.proto import object_world_updates_pb2
-from intrinsic_perception.intrinsic.perception.service.ioc_pose_estimator.proto import (
-  ioc_service_config_pb2,
-)
 
 from src.core.config import load_app_config
 from tools.world.apply_scene_updates import DEFAULT_UPDATE_FILES
@@ -60,7 +57,6 @@ _REGISTERED_ANY_DESCRIPTORS = (
   ur_module_config_pb2.UniversalRobotsModuleConfig.DESCRIPTOR,
   icon_main_config_pb2.IconMainConfig.DESCRIPTOR,
   camera_config_pb2.CameraConfig.DESCRIPTOR,
-  ioc_service_config_pb2.IocPoseEstimatorServiceConfig.DESCRIPTOR,
 )
 
 # Every world update config is expected to be an ObjectWorldUpdates. Configs
@@ -290,10 +286,6 @@ class WorldUpdateConfigsTest(absltest.TestCase):
             cam_cfg = camera_config_pb2.CameraConfig()
             self.assertTrue(any_msg.Unpack(cam_cfg))
             self.assertEqual(cam_cfg.identifier.ros.driver_type, "orbbec")
-          elif path.endswith("pose_estimator_config.textproto"):
-            pe_cfg = ioc_service_config_pb2.IocPoseEstimatorServiceConfig()
-            self.assertTrue(any_msg.Unpack(pe_cfg))
-            self.assertEqual(pe_cfg.inference_service.name, "inference_service")
           else:
             self.fail(f"Unhandled .textproto config file: {path}")
 

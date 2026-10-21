@@ -14,7 +14,6 @@ the machine tending cycle via `solution.executive.run(tree)`.
 | [`behaviors/`](behaviors/) | Composable Behavior Tree subtrees (`pick`, `load_machine`, `machining`, `unload_machine`, `return_infeed`), reusable motion primitives, and master cycle builder (`machine_tending_bt.py`). |
 | [`hardware/`](hardware/) | Stateless hardware adapters wrapping SBL skills (`Robot`, `RobotiqGripper`, `DioGripper`, `DioCncMachine`, `OrbbecVision`), plus the `GraspPlannerInterface` extension point and its `create_grasp_planner` factory. |
 | [`utils/`](utils/) | Runtime helpers: AST script loader (`load_python_script`), in-tree dynamic grasp frame calculator (`dynamic_frame_calculator.py`), kinematics/world utilities, and execution mode mapping. |
-| [`foundationpose/`](foundationpose/) | Triton Inference Server model configuration (`config.pbtxt`) and `intrinsic_mlmodel` Bazel packaging (`//src/foundationpose:foundationpose_mlmodel`). |
 
 ## Running the Application
 

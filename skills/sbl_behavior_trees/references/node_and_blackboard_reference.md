@@ -327,8 +327,7 @@ class ExtendedStatusMatch(bt.Condition):
 ```python
 estimate_task = bt.Task(
   action=solution.skills.ai.intrinsic.estimate_pose_multi_view(
-    camera_1=solution.resources.orbbec_camera,
-    perception=solution.resources.pose_estimator_service,
+    perception=solution.resources.nvidia_pose_estimator_service,
     pose_estimator=pose_estimator_proto,
     capture_data=[capture_task.result.capture_data],
   ),

@@ -71,6 +71,29 @@ common --@rules_cuda//cuda:copts='-std=c++20'
 common --@rules_cuda//cuda:copts='-stdlib=libc++'
 common --@rules_cuda//cuda:copts="-D_ALLOW_UNSUPPORTED_LIBCPP"
 
+# Third-party C++ flags required when building @intrinsic-core solution assets from source.
+build --@@gz-common+//profiler:config=custom
+build --@@opentelemetry-cpp+//api:abi_version_no=2
+build --@@nlopt+//:use_luksan=false
+build --@@postgres+//:with_ssl=boringssl
+build --@@ffmpeg+//:enable_lgplv3=True
+build --@@ffmpeg+//:enable_openssl=False
+build --@@ffmpeg+//:enable_boringssl=True
+build --@@ffmpeg+//:enable_libsvtav1_encoder=True
+build --@@ffmpeg+//:enable_libvpx_vp8_decoder=True
+build --@@ffmpeg+//:enable_libvpx_vp8_encoder=True
+build --@@ffmpeg+//:enable_libvpx_vp9_decoder=True
+build --@@ffmpeg+//:enable_libvpx_vp9_encoder=True
+build --@@ffmpeg+//:enable_libaom_av1_decoder=True
+build --@@ffmpeg+//:enable_libaom_av1_encoder=True
+common --copt='-DPCL_SILENCE_MALLOC_WARNING'
+common --per_file_copt=+external/.*@-Wno-everything
+common --host_per_file_copt=+external/.*@-Wno-everything
+
+# Build the full TensorRT image and download NGC ONNX weights for nvidia_pose_estimator by default.
+build --@intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:build_full_image=True
+build --@intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:download_weights=True
+
 # Hardware setup configurations
 common --flag_alias=setup=//:setup
 common:omts --//:setup=omts

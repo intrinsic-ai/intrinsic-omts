@@ -874,7 +874,7 @@ class FakeSolution:
       ),
       "world_service": ("intrinsic_proto.world.ObjectWorldService",),
       "orbbec_camera": ("CameraConfig",),
-      "pose_estimator_service": (
+      "nvidia_pose_estimator_service": (
         "intrinsic_proto.perception.v1.PoseEstimationService",
       ),
     }
@@ -969,10 +969,6 @@ _INTRINSIC_CORE_SKILL_SPECS: dict[
     "EstimatePoseMultiViewParams",
     "EstimatePoseMultiViewResult",
     {
-      "camera_1": ["CameraConfig"],
-      "camera_2": ["CameraConfig"],
-      "camera_3": ["CameraConfig"],
-      "camera_4": ["CameraConfig"],
       "perception": ["intrinsic_proto.perception.v1.PoseEstimationService"],
     },
   ),

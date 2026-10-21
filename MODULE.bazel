@@ -1,35 +1,44 @@
 module(name = "omts")
 
-# Intrinsic Core, pinned to an intrinsic-ai/intrinsic-core release archive.
+# Intrinsic Core, pinned to an intrinsic-ai/intrinsic-core commit until the next
+# GitHub Release (with pre-materialized Git LFS assets) is published.
 #
-# Intrinsic Core is built from source as part of the OMTS build. Bazel downloads the
-# release archive directly (which already includes materialized Git LFS binary assets),
-# so neither a manual sibling checkout nor `git-lfs` is required to fetch it.
+# Intrinsic Core is built from source as part of the OMTS build. `git_override`
+# is used for `intrinsic-core` so that Git LFS binary assets (meshes, textures)
+# are smudged on checkout (GitHub's auto-generated `/archive/<commit>.tar.gz`
+# endpoint only contains LFS pointer text files). `intrinsic_apis` contains only
+# proto/BUILD text files and uses `archive_override` with `strip_prefix`.
 #
-# When bumping INTRINSIC_CORE_RELEASE, update INTRINSIC_CORE_SHA256 with:
-#   curl -fsSL "https://github.com/intrinsic-ai/intrinsic-core/releases/download/<tag>/intrinsic-core.tar.gz" | sha256sum
-INTRINSIC_CORE_RELEASE = "20261012.0"
+# When bumping INTRINSIC_CORE_COMMIT, update INTRINSIC_CORE_SHA256 with:
+#   curl -fsSL "https://github.com/intrinsic-ai/intrinsic-core/archive/<commit>.tar.gz" | sha256sum
+INTRINSIC_CORE_COMMIT = "14f19c98b8927698c0f99eb2bcf5bcbcd82d22f5"
 
-INTRINSIC_CORE_URL = "https://github.com/intrinsic-ai/intrinsic-core/releases/download/{tag}/intrinsic-core.tar.gz".format(
-    tag = INTRINSIC_CORE_RELEASE,
+INTRINSIC_CORE_URL = "https://github.com/intrinsic-ai/intrinsic-core/archive/{commit}.tar.gz".format(
+    commit = INTRINSIC_CORE_COMMIT,
 )
 
-INTRINSIC_CORE_SHA256 = "41dec7c162c5819495a21f5114c0abd3203cd188b9fbc26b7e62205c98ce53c3"
+INTRINSIC_CORE_SHA256 = "d43416295f44fe4570e353ada301246c9337a44ce9323fc110aa2f333cb51b61"
 
 bazel_dep(name = "intrinsic-core")
-archive_override(
+git_override(
     module_name = "intrinsic-core",
+    commit = INTRINSIC_CORE_COMMIT,
     patch_strip = 1,
-    patches = ["//bazel/patches:robotiq_hande_finger_offset.patch"],
-    sha256 = INTRINSIC_CORE_SHA256,
-    urls = [INTRINSIC_CORE_URL],
+    patches = [
+        # Remove nvidia_pose_estimator_depth_source.patch once the upstream
+        # insrc PR switching default_config.textproto to DEPTH_SOURCE_HARDWARE
+        # is merged and INTRINSIC_CORE_COMMIT is bumped.
+        "//bazel/patches:nvidia_pose_estimator_depth_source.patch",
+        "//bazel/patches:robotiq_hande_finger_offset.patch",
+    ],
+    remote = "https://github.com/intrinsic-ai/intrinsic-core.git",
 )
 
 bazel_dep(name = "intrinsic_apis", version = "0.0.1")
 archive_override(
     module_name = "intrinsic_apis",
     sha256 = INTRINSIC_CORE_SHA256,
-    strip_prefix = "./intrinsic_apis",
+    strip_prefix = "intrinsic-core-{commit}/intrinsic_apis".format(commit = INTRINSIC_CORE_COMMIT),
     urls = [INTRINSIC_CORE_URL],
 )
 
@@ -56,27 +65,75 @@ bazel_dep(name = "bazel_skylib", version = "1.9.2")
 bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(name = "abseil-py", version = "2.1.0", repo_name = "com_google_absl_py")
 bazel_dep(name = "eigen", version = "5.0.1.bcr.2", repo_name = "com_gitlab_libeigen_eigen")
-bazel_dep(name = "grpc", version = "1.74.1", repo_name = "com_github_grpc_grpc")
+bazel_dep(name = "grpc", version = "1.81.1", repo_name = "com_github_grpc_grpc")
 bazel_dep(name = "pybind11_bazel", version = "3.0.1")
 bazel_dep(name = "rules_cc", version = "0.2.25")
 bazel_dep(name = "rules_cuda", version = "0.3.0")
 bazel_dep(name = "rules_python", version = "2.3.3")
-bazel_dep(name = "toolchains_llvm", version = "1.7.0")
+# Bzlmod ignores `single_version_override` directives in non-root modules
+# (@intrinsic-core), so the overrides below are mirrored from
+# @intrinsic-core//MODULE.bazel until the upstream fixes land in the Bazel
+# Central Registry (BCR) and @intrinsic-core bumps its `bazel_dep` versions.
+
+# TODO(b/568016456): Remove this override and
+# //bazel/patches:llvm_header_search_paths.patch once
+# https://github.com/hermeticbuild/hermetic-llvm/pull/806 is released in
+# llvm > 0.8.24 on BCR and @intrinsic-core upgrades `llvm`. Without it,
+# glibc's <error.h> shadows BCR package headers (e.g. @osqp//include/error.h).
+bazel_dep(name = "llvm", version = "0.8.24")
+single_version_override(
+    module_name = "llvm",
+    patch_strip = 1,
+    patches = [
+        "//bazel/patches:llvm_header_search_paths.patch",
+    ],
+    version = "0.8.24",
+)
+
 bazel_dep(name = "googleapis", version = "0.0.0-20260929-28769825", repo_name = "com_google_googleapis")
-bazel_dep(name = "protobuf", version = "32.1", repo_name = "com_google_protobuf")
+
+# TODO(b/388805879): Remove this override once
+# https://github.com/protocolbuffers/protobuf/issues/24084 is resolved in BCR
+# and @intrinsic-core upgrades `protobuf`.
+bazel_dep(name = "protobuf", version = "33.6", repo_name = "com_google_protobuf")
 single_version_override(
     module_name = "protobuf",
-    version = "32.1",
+    patch_cmds = [
+        "sed -i 's|@system_python//:python_headers|@rules_python//python/cc:current_py_cc_headers|g' python/build_targets.bzl python/py_extension.bzl",
+    ],
+    version = "33.6",
+)
+
+# Remove once opencv@4.13+ on BCR carries the webp/Qt6 patches and
+# @intrinsic-core drops its single_version_override on `opencv`.
+single_version_override(
+    module_name = "opencv",
+    version = "4.12.0.bcr.5",
+)
+
+# TODO(b/567681750): Remove once `libxml2-go` on BCR supports libxml2 >= 2.15
+# under Clang 21 and @intrinsic-core drops its override on `libxml2`.
+single_version_override(
+    module_name = "libxml2",
+    version = "2.14.4.bcr.1",
+)
+
+# TODO(b/567681027): Remove this override and
+# //bazel/patches:toybox_dynamic_link.patch once toybox on BCR links against
+# @libxcrypt under hermetic llvm and @intrinsic-core upgrades `toybox`.
+single_version_override(
+    module_name = "toybox",
+    patch_strip = 1,
+    patches = [
+        "//bazel/patches:toybox_dynamic_link.patch",
+    ],
+    version = "0.8.12.bcr.1",
 )
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
     is_default = True,
     python_version = "3.11",
-)
-python.toolchain(
-    is_default = False,
-    python_version = "3.12",
 )
 
 internal_configure = use_extension("@pybind11_bazel//:internal_configure.bzl", "internal_configure_extension")
@@ -101,24 +158,19 @@ use_repo(
     "cuda",
 )
 
-llvm = use_extension("@toolchains_llvm//toolchain/extensions:llvm.bzl", "llvm")
-llvm.toolchain(
-    llvm_version = "19.1.0",
+llvm = use_extension("@llvm//extensions:llvm.bzl", "llvm")
+llvm.version(llvm_version = "21.1.8")
+llvm.configure(
+    targets = [
+        "X86",
+    ],
 )
+use_repo(llvm, "llvm-project")
 
-non_module_deps = use_extension("@intrinsic-core//bazel:non_module_deps.bzl", "non_module_deps_ext")
-use_repo(
-    non_module_deps,
-    "intrinsic_llvm_sysroot",
+register_toolchains(
+    "@llvm//toolchain:all",
+    dev_dependency = True,
 )
-
-llvm.sysroot(
-    label = "@intrinsic_llvm_sysroot//:all_files",
-    targets = ["linux-x86_64"],
-)
-use_repo(llvm, "llvm_toolchain")
-
-register_toolchains("@llvm_toolchain//:all")
 
 bazel_dep(name = "gazelle", version = "0.54.0", repo_name = "bazel_gazelle")
 
@@ -171,14 +223,6 @@ gh.download(
     tag = OMTS_ASSETS_RELEASE,
 )
 gh.download(
-    name = "segmentation_weights_bundle",
-    archive = True,
-    pattern = "segmentation.tar.gz",
-    repo = "intrinsic-ai/intrinsic-omts",
-    sha256 = "b872cd424ad3c81e8a3f719394b459917107e832e868c9f427788156bd97283d",
-    tag = OMTS_ASSETS_RELEASE,
-)
-gh.download(
     name = "moveit_plan_grasp_skill_bundle",
     pattern = "moveit_plan_grasp_skill.bundle.tar",
     repo = "intrinsic-ai/intrinsic-moveit",
@@ -192,29 +236,10 @@ use_repo(
     "hand_e_gripper_service_bundle",
     "moveit_plan_grasp_skill_bundle",
     "orbbec_gemini_driver_bundle",
-    "segmentation_weights_bundle",
-)
-
-foundationpose_deps = use_extension("//third_party/foundationpose:deps.bzl", "foundationpose_deps")
-use_repo(
-    foundationpose_deps,
-    "foundationpose_refine_onnx",
-    "foundationpose_score_onnx",
-    "isaac_ros_pose_estimation",
 )
 
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
-pip.parse(
-    experimental_index_url = "https://pypi.org/simple",
-    hub_name = "foundationpose_pip_deps",
-    python_version = "3.12",
-    requirements_lock = "//third_party/foundationpose:requirements.txt",
-    target_platforms = [
-        "linux_x86_64",
-    ],
-)
 use_repo(
     pip,
     "ai_intrinsic_sdks_pip_deps",
-    "foundationpose_pip_deps",
 )

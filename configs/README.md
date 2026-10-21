@@ -7,7 +7,7 @@ and hardware/service configuration manifests (`.textproto`).
 
 | Directory | Cell / Scope | Description |
 | :--- | :--- | :--- |
-| [`common/`](common/) | Shared across cells | Asset manifests and service configs shared by all cells (`flowstate_ros_bridge`, `hande_gripper_service`, `orbbec_gemini_driver`, `pose_estimator_config`). |
+| [`common/`](common/) | Shared across cells | Asset manifests and service configs shared by all cells (`flowstate_ros_bridge`, `hande_gripper_service`, `orbbec_gemini_driver`). |
 | [`omts/`](omts/) | Production OMTS Cell | UR5e arm, Robotiq Hand-E gripper, Orbbec Gemini 335Le camera, CNC enclosure, and Schunk EGP 64 pneumatic vise. Selected by default (`--//:setup=omts`). |
 | [`lab_bb_01/`](lab_bb_01/) | Lab BB-01 Cell | UR3e arm, Robotiq Hand-E gripper, Orbbec Gemini 335Le camera, CAW enclosure, without CNC machine/vise hardware. Selected via `--//:setup=lab_bb_01`. |
 | [`kr_10/`](kr_10/) | KUKA KR10 (Stub) | Placeholder ICON config for KUKA KR10; not wired into `//:omts_solution`. |

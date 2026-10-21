@@ -15,8 +15,8 @@ gripper:
 
 vision:
   camera_name: "orbbec_camera"
-  perception_service_name: "pose_estimator_service"
-  pose_estimator_id: "ai.intrinsic.raw_stock_2x3x5_estimator"
+  perception_service_name: "nvidia_pose_estimator_service"
+  pose_estimator_id: "ai.intrinsic.raw_stock_2x3x5_estimator_text"
   scene_object_id: "ai.intrinsic.raw_stock_2x3x5"
   sensor_ids: [1, 4]
   min_num_instances: 1

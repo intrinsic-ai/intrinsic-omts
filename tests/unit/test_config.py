@@ -65,6 +65,13 @@ class ConfigTest(absltest.TestCase):
     self.assertEqual(config.frames.transit_frame, "transit")
     self.assertEqual(config.frames.preplace_vise_frame, "vise_pre_place")
     self.assertEqual(config.frames.place_vise_frame, "vise_place")
+    self.assertEqual(
+      config.vision.perception_service_name, "nvidia_pose_estimator_service"
+    )
+    self.assertEqual(
+      config.vision.pose_estimator_id,
+      "ai.intrinsic.raw_stock_2x3x5_estimator_text",
+    )
     self.assertEqual(config.vision.sensor_ids, (1, 4))
     self.assertEqual(config.vision.min_safe_z, 0.95)
     self.assertEqual(config.cycle.workpiece_id, "raw_stock_2x3x5")
@@ -254,7 +261,7 @@ gripper:
     mock_solution = mock.MagicMock()
     mock_solution.resources = {
       "orbbec_camera": mock.MagicMock(),
-      "pose_estimator_service": mock.MagicMock(),
+      "nvidia_pose_estimator_service": mock.MagicMock(),
     }
     mock_connect.return_value = mock_solution
     mock_tree = mock.MagicMock()
@@ -423,7 +430,7 @@ class GraspPlannerSelectionTest(absltest.TestCase):
     mock_solution = mock.MagicMock()
     mock_solution.resources = {
       "orbbec_camera": mock.MagicMock(),
-      "pose_estimator_service": mock.MagicMock(),
+      "nvidia_pose_estimator_service": mock.MagicMock(),
     }
     mock_connect.return_value = mock_solution
     mock_build_bt.return_value = mock.MagicMock()

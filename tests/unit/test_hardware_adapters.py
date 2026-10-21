@@ -488,7 +488,7 @@ class HardwareAdaptersTest(absltest.TestCase):
     ]
     mock_solution.resources = {
       "orbbec_camera": mock_camera_resource,
-      "pose_estimator_service": mock_perception_resource,
+      "nvidia_pose_estimator_service": mock_perception_resource,
     }
     mock_capture_action = mock.MagicMock(spec=bt.ActionBase)
     mock_capture_action.proto = mock.MagicMock()
@@ -502,8 +502,8 @@ class HardwareAdaptersTest(absltest.TestCase):
     )
     vision_config = VisionConfig(
       camera_name="orbbec_camera",
-      perception_service_name="pose_estimator_service",
-      pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator",
+      perception_service_name="nvidia_pose_estimator_service",
+      pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator_text",
       scene_object_id="ai.intrinsic.raw_stock_2x3x5",
       sensor_ids=(1, 4),
       min_num_instances=1,
@@ -756,7 +756,7 @@ class HardwareAdaptersTest(absltest.TestCase):
     mock_solution.proto_builder = real_pb
     mock_solution.resources = {
       "orbbec_camera": mock.MagicMock(types=["CameraConfig"]),
-      "pose_estimator_service": mock.MagicMock(
+      "nvidia_pose_estimator_service": mock.MagicMock(
         types=["intrinsic_proto.perception.v1.PoseEstimationService"]
       ),
     }
@@ -773,8 +773,8 @@ class HardwareAdaptersTest(absltest.TestCase):
 
     vision_cfg = VisionConfig(
       camera_name="orbbec_camera",
-      perception_service_name="pose_estimator_service",
-      pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator",
+      perception_service_name="nvidia_pose_estimator_service",
+      pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator_text",
       scene_object_id="ai.intrinsic.raw_stock_2x3x5",
       sensor_ids=(1, 4),
       min_num_instances=1,

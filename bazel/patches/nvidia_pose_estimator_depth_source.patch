@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-flatbuffers==25.12.19
-numpy==1.26.4
-onnxruntime-gpu==1.29.0
-opencv-python-headless==4.11.0.86
-pillow==12.3.0
-protobuf==7.35.1
-scipy==1.17.1
-trimesh==5.0.0
+--- a/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/configs/default_config.textproto
++++ b/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/configs/default_config.textproto
+@@ -75,7 +75,7 @@
+   # "4"=hardware depth); other cameras may need different ids.
+   sensor_routing {
+     detection_sensor: "1"
+-    depth_source: DEPTH_SOURCE_AUTO
++    depth_source: DEPTH_SOURCE_HARDWARE
+     stereo_sensors: "2"
+     stereo_sensors: "3"
+   }

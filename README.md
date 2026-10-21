@@ -136,7 +136,6 @@ and model weights from this repository's GitHub Releases (configured in
 - `hand_e_gripper_cmd_skill.bundle.tar`: Prebuilt Robotiq Hand-E control skill.
 - `orbbec_gemini_driver.bundle.tar`: Prebuilt driver service of
   [`flowstate_orbbec`](https://github.com/intrinsic-ai/intrinsic-ros-camera-drivers/tree/main/flowstate_orbbec).
-- `segmentation.tar.gz`: Pretrained RF-DETR segmentation model.
 - `moveit_plan_grasp_skill.bundle.tar`: Prebuilt MoveIt grasp planning skill
   (`ai.intrinsic.moveit_plan_grasp_skill`). It is installed into every solution
   so that `--grasp_planner=moveit` works without sideloading, but it only
@@ -189,27 +188,41 @@ bazel run //tools/world:apply_scene_updates -- \
   --reset_sim
 ```
 
-#### 4.3. Register and verify pose estimator (required before running `omts_app`)
+#### 4.3. Configure NVIDIA Pose Estimator and register workpiece estimator (required before running `omts_app`)
 
-Register the FoundationPose estimator for the raw stock workpiece before
-starting the machine tending application:
+Follow the upstream perception READMEs in `intrinsic-core` as the single source
+of truth:
+
+- [`nvidia_pose_estimator` README](https://github.com/intrinsic-ai/intrinsic-core/blob/main/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/README.md):
+  SAM 3 weight export, model `DataAsset` build/installation, and
+  `nvidia_pose_estimator_service` setup (note that [`.bazelrc`](.bazelrc) in
+  OMTS already sets `build_full_image=True` and `download_weights=True` by
+  default).
+- [`ioc_train_service` README](https://github.com/intrinsic-ai/intrinsic-core/blob/main/intrinsic_perception/intrinsic/perception/service/ioc_train_service/README.md)
+  & [`ioc_pose_estimator` README](https://github.com/intrinsic-ai/intrinsic-core/blob/main/intrinsic_perception/intrinsic/perception/service/ioc_pose_estimator/README.md)
+  (see also [`tools/pose_estimation/README.md`](tools/pose_estimation/README.md)):
+  Pose estimator registration and standalone pose estimation CLI tools.
+
+Once the perception service and model `DataAssets` are installed, register and
+optionally verify the OMTS workpiece pose estimator using the CLI tools from
+`@intrinsic-core`:
 
 ```bash
-bazel run //tools/pose_estimation:register_using_train_service -- \
+# Register the text-prompted pose estimator for the raw stock workpiece:
+bazel run @intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_train_service/tools:register_using_ioc_train_service -- \
   --address="localhost:17080" \
   --scene_object_id="ai.intrinsic.raw_stock_2x3x5" \
-  --pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator" \
-  --refinement_iters=3 \
-  --confidence_threshold=0.9 \
-  --visibility_threshold=0.85
-```
+  --pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator_text" \
+  --refinement_iters=5 \
+  --confidence_threshold=0.15 \
+  --visibility_threshold=0.15 \
+  --text_prompt="cuboid"
 
-Optionally verify pose detection directly against the live camera feed:
-
-```bash
-bazel run //tools/pose_estimation:run_pose_estimation -- \
-  --address=localhost:17080 \
-  --pose_estimator_id=ai.intrinsic.raw_stock_2x3x5_estimator
+# Optionally verify pose detection directly against the live camera feed:
+bazel run @intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_pose_estimator:run_pose_estimation -- \
+  --address="localhost:17080" \
+  --service_name="nvidia_pose_estimator_service" \
+  --pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator_text"
 ```
 
 #### 4.4. Run the OMTS application
@@ -307,29 +320,18 @@ Actions CI (`line-length = 80`, `indent-width = 2`):
 
 ### 7. Licensing information for NVIDIA FoundationPose®
 
-OMTS uses the FoundationPose model by NVIDIA for RGB-D pose estimation.
-FoundationPose is packaged into an `MlModelAsset` in
-[`src/foundationpose/BUILD`](src/foundationpose/BUILD) and referenced in the
-[`BUILD`](BUILD) file at build time by the user. The integration comprises two
-components:
-
-1. An orchestration library (`third_party/foundationpose/`) derived from
-   NVIDIA's
-   [Isaac ROS Pose Estimation Repository](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_pose_estimation),
-   licensed under the Apache 2.0 License. See
-   [`src/foundationpose/README.md`](src/foundationpose/README.md) for Bazel
-   build and packaging details.
-2. The FoundationPose model weights (`.onnx` files) are not included in this
-   repository and are not covered by the Apache 2.0 License. They are downloaded
-   at build time directly from NVIDIA's NGC catalog by the user (configured in
-   [`third_party/foundationpose/deps.bzl`](third_party/foundationpose/deps.bzl)):
-   - [refine_model.onnx](https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.0_onnx/files/refine_model.onnx)
-   - [score_model.onnx](https://api.ngc.nvidia.com/v2/models/nvidia/isaac/foundationpose/versions/1.0.0_onnx/files/score_model.onnx)
-   - License: [NVIDIA Open Model License](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/).
-
-By building this project, you download the model weights directly from NVIDIA
-and accept the NVIDIA Open Model License for those weights. Intrinsic does not
-distribute these weights.
+OMTS uses **NVIDIA FoundationPose®**, **NVIDIA FoundationStereo**, and **Meta
+SAM 3** via `nvidia_pose_estimator_service` from
+[Intrinsic Core](https://github.com/intrinsic-ai/intrinsic-core) for RGB-D 6-DoF
+pose estimation. Model weights for FoundationPose and FoundationStereo (governed
+by the
+[NVIDIA Open Model License](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/))
+and SAM 3 (governed by the
+[Meta SAM License](https://huggingface.co/facebook/sam3)) are not distributed in
+this repository; they are fetched or exported directly from their respective
+providers when building the perception model `DataAssets`. See the upstream
+[`nvidia_pose_estimator` README in `intrinsic-core`](https://github.com/intrinsic-ai/intrinsic-core/blob/main/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/README.md)
+for full build and licensing details.
 
 ---
 

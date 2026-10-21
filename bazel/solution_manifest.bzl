@@ -14,7 +14,7 @@
 
 """Starlark rule to extract skill AssetInfo and manifest files without OCI or MLModel runfiles."""
 
-load("@intrinsic-core//intrinsic/assets/build_defs:asset.bzl", "AssetInfo")
+load("@intrinsic-core//intrinsic_sdk/intrinsic/assets/build_defs:asset.bzl", "AssetInfo")
 
 def _solution_manifest_only_impl(ctx):
     skill_asset_infos = [
