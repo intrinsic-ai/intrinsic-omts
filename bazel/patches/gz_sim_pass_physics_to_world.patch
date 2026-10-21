@@ -1,0 +1,17 @@
+diff --git a/src/systems/physics/Physics.cc b/src/systems/physics/Physics.cc
+--- a/src/systems/physics/Physics.cc
++++ b/src/systems/physics/Physics.cc
+@@ -1163,6 +1163,13 @@ void PhysicsPrivate::CreateWorldEntities(const EntityComponentManager &_ecm,
+         sdf::World world;
+         world.SetName(_name->Data());
+         world.SetGravity(_gravity->Data());
++        if (auto physicsComp = _ecm.Component<components::Physics>(_entity))
++        {
++          if (auto *physics = world.PhysicsByIndex(0))
++          {
++            *physics = physicsComp->Data();
++          }
++        }
+         auto worldPtrPhys = this->engine->ConstructWorld(world);
+         this->entityWorldMap.AddEntity(_entity, worldPtrPhys);
+ 

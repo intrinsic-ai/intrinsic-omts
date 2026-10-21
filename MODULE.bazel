@@ -20,7 +20,10 @@ bazel_dep(name = "intrinsic-core")
 archive_override(
     module_name = "intrinsic-core",
     patch_strip = 1,
-    patches = ["//bazel/patches:robotiq_hande_finger_offset.patch"],
+    patches = [
+        "//bazel/patches:robotiq_hande_finger_offset.patch",
+        "//bazel/patches:sdf_world_template_bullet_constraints.patch",
+    ],
     sha256 = INTRINSIC_CORE_SHA256,
     urls = [INTRINSIC_CORE_URL],
 )
@@ -74,6 +77,20 @@ single_version_override(
 single_version_override(
     module_name = "tinygltf",
     version = "2.9.6.bcr.1",
+)
+
+single_version_override(
+    module_name = "gz-physics",
+    patch_strip = 1,
+    patches = ["//bazel/patches:gz_physics_contact_compliance.patch"],
+    version = "9.5.2",
+)
+
+single_version_override(
+    module_name = "gz-sim",
+    patch_strip = 1,
+    patches = ["//bazel/patches:gz_sim_pass_physics_to_world.patch"],
+    version = "10.5.0",
 )
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")

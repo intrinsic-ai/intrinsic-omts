@@ -1,0 +1,37 @@
+diff --git a/intrinsic/simulation/gazebo/world_templates/default.sdf.tpl b/intrinsic/simulation/gazebo/world_templates/default.sdf.tpl
+--- a/intrinsic/simulation/gazebo/world_templates/default.sdf.tpl
++++ b/intrinsic/simulation/gazebo/world_templates/default.sdf.tpl
+@@ -75,6 +75,12 @@
+       <dart>
+         <collision_detector>bullet</collision_detector>
+       </dart>
++      <bullet>
++        <constraints>
++          <cfm>0.005</cfm>
++          <friction_cfm>0.001</friction_cfm>
++        </constraints>
++      </bullet>
+     </physics>
+   </world>
+ </sdf>
+diff --git a/intrinsic/simulation/world/world_to_sdf.cc b/intrinsic/simulation/world/world_to_sdf.cc
+--- a/intrinsic/simulation/world/world_to_sdf.cc
++++ b/intrinsic/simulation/world/world_to_sdf.cc
+@@ -1757,12 +1757,13 @@ absl::StatusOr<double> GetPhysicsMaxStepSizeWithOverride(
+ 
+     // Update the xml element from the DOM.
+     auto original_physics_element = physics->Element();
+-    auto updated_physics_element = physics->ToElement();
+     if (original_physics_element != nullptr) {
+-      sdf_world.Element()->RemoveChild(original_physics_element);
++      original_physics_element->GetElement("max_step_size")
++          ->Set(*max_step_size_sec);
++    } else {
++      sdf_world.Element()->InsertElement(physics->ToElement(),
++                                         /*_setParentToSelf=*/true);
+     }
+-    sdf_world.Element()->InsertElement(updated_physics_element,
+-                                       /*_setParentToSelf=*/true);
+   }
+ 
+   return physics->MaxStepSize();

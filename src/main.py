@@ -17,20 +17,12 @@
 from collections.abc import Sequence
 
 from absl import app, flags, logging
+from intrinsic.solutions import behavior_tree as bt
 from intrinsic.solutions import deployments
 
-from src.behaviors.machine_tending_bt import build_machine_tending_behavior_tree
 from src.core.config import AppConfig, load_app_config
-from src.core.infeed import (
-  InfeedMode,
-  PerceptionInfeedStrategy,
-)
 from src.core.types import GraspPlannerType, SimulationMode
-from src.hardware.grasp_planners import create_grasp_planner
-from src.hardware.gripper import DioGripper, GripperInterface, RobotiqGripper
-from src.hardware.machine import DioCncMachine
 from src.hardware.robot import Robot
-from src.hardware.vision import OrbbecVision
 from src.utils.execution_utils import to_executive_simulation_mode
 
 _CONFIG = flags.DEFINE_string(
@@ -88,79 +80,28 @@ def run_machine_tending_pipeline(
   )
   solution = deployments.connect(address=solution_address)
 
-  gripper: GripperInterface
-  if config.gripper.type == "dio":
-    gripper = DioGripper(
-      solution=solution,
-      config=config.gripper,
-    )
-  else:
-    gripper = RobotiqGripper(
-      solution=solution,
-      config=config.gripper,
-    )
-
   robot = Robot(
     solution=solution,
     config=config.robot,
   )
-  machine = (
-    DioCncMachine(
-      solution=solution,
-      config=config.machine,
-    )
-    if config.machine is not None
-    else None
-  )
-  vision = OrbbecVision(
-    solution=solution,
-    config=config.vision,
-  )
 
-  infeed_mode = InfeedMode(config.vision.infeed_mode)
-  if infeed_mode != InfeedMode.PERCEPTION:
-    raise ValueError(
-      f"Unsupported infeed_mode '{config.vision.infeed_mode}'. Only "
-      f"'{InfeedMode.PERCEPTION.value}' is currently supported."
-    )
-  infeed_strategy = PerceptionInfeedStrategy(
-    config=config.vision,
-    view_frame_name=config.frames.view_frame,
+  timeout_seconds = 120.0
+  touchdown_task = robot.build_move_to_contact_task(
+    direction=config.pick_touchdown.direction,
+    contact_force_newtons=config.pick_touchdown.force_n,
+    timeout_seconds=timeout_seconds,
+    name="Move to Contact",
   )
-
-  planner_type = (
-    grasp_planner_override
-    if grasp_planner_override is not None
-    else config.grasp.planner_type
-  )
-  grasp_planner = create_grasp_planner(
-    planner_type=planner_type,
-    solution=solution,
-    config=config.grasp,
-    tool_object_name=config.robot.tool_object_name,
-  )
-
-  tree = build_machine_tending_behavior_tree(
-    robot=robot,
-    gripper=gripper,
-    machine=machine,
-    vision=vision,
-    infeed_strategy=infeed_strategy,
-    config=config,
-    num_cycles_override=num_cycles_override,
-    grasp_planner=grasp_planner,
+  tree = bt.BehaviorTree(
+    name="Move to Contact",
+    root=touchdown_task,
   )
 
   exec_sim_mode = to_executive_simulation_mode(simulation_mode)
-  num_cycles = (
-    num_cycles_override
-    if num_cycles_override is not None
-    else config.cycle.num_cycles
-  )
   logging.info(
-    "Executing machine tending Behavior Tree (cycles=%d, grasp_planner=%s)...",
-    num_cycles,
-    planner_type.value,
+    "Executing Move to Contact Behavior Tree (force=%.1f N, timeout=%.1f s)...",
+    config.pick_touchdown.force_n,
+    timeout_seconds,
   )
   solution.executive.run(tree, simulation_mode=exec_sim_mode)
 
