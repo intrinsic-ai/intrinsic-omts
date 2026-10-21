@@ -11,13 +11,13 @@ module(name = "omts")
 #
 # When bumping INTRINSIC_CORE_COMMIT, update INTRINSIC_CORE_SHA256 with:
 #   curl -fsSL "https://github.com/intrinsic-ai/intrinsic-core/archive/<commit>.tar.gz" | sha256sum
-INTRINSIC_CORE_COMMIT = "14f19c98b8927698c0f99eb2bcf5bcbcd82d22f5"
+INTRINSIC_CORE_COMMIT = "c40e02aa2e76ef9584ab39259f81eca416391b8e"
 
 INTRINSIC_CORE_URL = "https://github.com/intrinsic-ai/intrinsic-core/archive/{commit}.tar.gz".format(
     commit = INTRINSIC_CORE_COMMIT,
 )
 
-INTRINSIC_CORE_SHA256 = "d43416295f44fe4570e353ada301246c9337a44ce9323fc110aa2f333cb51b61"
+INTRINSIC_CORE_SHA256 = "cdcc0e68a49b807f9712c0e89e0868a4bff7829da339d1a076a346b832a19153"
 
 bazel_dep(name = "intrinsic-core")
 git_override(
@@ -25,10 +25,6 @@ git_override(
     commit = INTRINSIC_CORE_COMMIT,
     patch_strip = 1,
     patches = [
-        # Remove nvidia_pose_estimator_depth_source.patch once the upstream
-        # insrc PR switching default_config.textproto to DEPTH_SOURCE_HARDWARE
-        # is merged and INTRINSIC_CORE_COMMIT is bumped.
-        "//bazel/patches:nvidia_pose_estimator_depth_source.patch",
         "//bazel/patches:robotiq_hande_finger_offset.patch",
     ],
     remote = "https://github.com/intrinsic-ai/intrinsic-core.git",
@@ -66,7 +62,7 @@ bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(name = "abseil-py", version = "2.1.0", repo_name = "com_google_absl_py")
 bazel_dep(name = "eigen", version = "5.0.1.bcr.2", repo_name = "com_gitlab_libeigen_eigen")
 bazel_dep(name = "grpc", version = "1.81.1", repo_name = "com_github_grpc_grpc")
-bazel_dep(name = "pybind11_bazel", version = "3.0.1")
+bazel_dep(name = "pybind11_bazel", version = "3.0.3")
 bazel_dep(name = "rules_cc", version = "0.2.25")
 bazel_dep(name = "rules_cuda", version = "0.3.0")
 bazel_dep(name = "rules_python", version = "2.3.3")
