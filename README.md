@@ -215,6 +215,7 @@ bazel run @intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc
 bazel run @intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_pose_estimator:run_pose_estimation -- \
   --address="localhost:17080" \
   --service_name="nvidia_pose_estimator_service" \
+  --camera_name="orbbec_camera" \
   --pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator_text"
 ```
 
