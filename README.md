@@ -198,8 +198,7 @@ already sets `build_full_image=True` and `download_weights=True` by default).
 
 Once the perception service and model `DataAssets` are installed, register and
 optionally verify the OMTS workpiece pose estimator using the CLI tools from
-`@intrinsic-core` (see also
-[`tools/pose_estimation/README.md`](tools/pose_estimation/README.md)):
+`@intrinsic-core`:
 
 ```bash
 # Register the text-prompted pose estimator for the raw stock workpiece:
