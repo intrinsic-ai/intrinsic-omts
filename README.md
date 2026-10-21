@@ -190,22 +190,16 @@ bazel run //tools/world:apply_scene_updates -- \
 
 #### 4.3. Configure NVIDIA Pose Estimator and register workpiece estimator (required before running `omts_app`)
 
-Follow the upstream perception READMEs in `intrinsic-core` as the single source
-of truth:
-
-- [`nvidia_pose_estimator` README](https://github.com/intrinsic-ai/intrinsic-core/blob/main/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/README.md):
-  SAM 3 weight export, model `DataAsset` build/installation, and
-  `nvidia_pose_estimator_service` setup (note that [`.bazelrc`](.bazelrc) in
-  OMTS already sets `build_full_image=True` and `download_weights=True` by
-  default).
-- [`ioc_train_service` README](https://github.com/intrinsic-ai/intrinsic-core/blob/main/intrinsic_perception/intrinsic/perception/service/ioc_train_service/README.md)
-  & [`ioc_pose_estimator` README](https://github.com/intrinsic-ai/intrinsic-core/blob/main/intrinsic_perception/intrinsic/perception/service/ioc_pose_estimator/README.md)
-  (see also [`tools/pose_estimation/README.md`](tools/pose_estimation/README.md)):
-  Pose estimator registration and standalone pose estimation CLI tools.
+Follow the
+[`nvidia_pose_estimator` README in `intrinsic-core`](https://github.com/intrinsic-ai/intrinsic-core/blob/main/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/README.md)
+for SAM 3 weight export, model `DataAsset` build/installation, and
+`nvidia_pose_estimator_service` setup (note that [`.bazelrc`](.bazelrc) in OMTS
+already sets `build_full_image=True` and `download_weights=True` by default).
 
 Once the perception service and model `DataAssets` are installed, register and
 optionally verify the OMTS workpiece pose estimator using the CLI tools from
-`@intrinsic-core`:
+`@intrinsic-core` (see also
+[`tools/pose_estimation/README.md`](tools/pose_estimation/README.md)):
 
 ```bash
 # Register the text-prompted pose estimator for the raw stock workpiece:
