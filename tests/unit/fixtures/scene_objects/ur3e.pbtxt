@@ -128,6 +128,78 @@ entities {
     }
   }
   link {
+    geometry_component {
+      named_geometries {
+        key: "Intrinsic_Collision"
+        value {
+          named_geometries {
+            key: "shoulder_collision"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          cylinder {
+                            length: 0.10
+                            radius: 0.045
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
     physics_component {
       mass_kg: 1.98
       friction {
@@ -174,6 +246,78 @@ entities {
     }
   }
   link {
+    geometry_component {
+      named_geometries {
+        key: "Intrinsic_Collision"
+        value {
+          named_geometries {
+            key: "upper_arm_collision"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          cylinder {
+                            length: 0.22
+                            radius: 0.04
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 0
+                  values: 0
+                  values: -1
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0.121775
+                  values: 0.12
+                  values: 0
+                  values: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
     physics_component {
       mass_kg: 3.4445
       friction {
@@ -221,6 +365,78 @@ entities {
     }
   }
   link {
+    geometry_component {
+      named_geometries {
+        key: "Intrinsic_Collision"
+        value {
+          named_geometries {
+            key: "forearm_collision"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          cylinder {
+                            length: 0.16
+                            radius: 0.035
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 0
+                  values: 0
+                  values: -1
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0.10
+                  values: 0.027
+                  values: 0
+                  values: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
     physics_component {
       mass_kg: 1.437
       friction {

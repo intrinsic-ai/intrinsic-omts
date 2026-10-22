@@ -84,8 +84,85 @@ std::string StatusToJson(const absl::Status& status) {
   if (status.ok()) {
     return "{\"ok\":true,\"code\":0,\"message\":\"\"}";
   }
+  std::string message(status.message());
+  status.ForEachPayload(
+      [&message](absl::string_view /*type_url*/, const absl::Cord& payload) {
+        std::string flat = std::string(payload);
+        std::string printable;
+        printable.reserve(flat.size());
+        for (unsigned char c : flat) {
+          if (c >= 32 && c < 127) {
+            printable.push_back(static_cast<char>(c));
+          } else {
+            printable.push_back(' ');
+          }
+        }
+        absl::StrAppend(&message, " ", printable);
+      });
   return absl::StrCat("{\"ok\":false,\"code\":", status.raw_code(),
-                      ",\"message\":\"", JsonEscape(status.message()), "\"}");
+                      ",\"message\":\"", JsonEscape(message), "\"}");
+}
+
+bool HasExcludedCollisionRule(
+    const intrinsic_proto::world::CollisionSettings& settings,
+    absl::string_view obj_a, absl::string_view obj_b) {
+  for (const auto& rule : settings.collision_rules()) {
+    if (!rule.collision_action().is_excluded()) {
+      continue;
+    }
+    auto matches = [](const auto& refs, absl::string_view name) {
+      for (const auto& n : refs) {
+        if (n.has_object() && n.object().by_name().object_name() == name) {
+          return true;
+        }
+        if (n.has_object_with_filter() &&
+            n.object_with_filter().reference().by_name().object_name() ==
+                name) {
+          return true;
+        }
+      }
+      return false;
+    };
+    if ((matches(rule.left(), obj_a) && matches(rule.right(), obj_b)) ||
+        (matches(rule.left(), obj_b) && matches(rule.right(), obj_a))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Returns the entity filter to use when attaching an object to `gripper`
+// (matching `GetAttachmentEntityFilter` in
+// `intrinsic/skills/apps/attach_object_to_robot.cc`).
+world::ObjectEntityFilter GetAttachmentEntityFilter(
+    const world::WorldObject& gripper) {
+  std::optional<world::KinematicObject> kinematic_object =
+      world::KinematicObject::FromTransformNode(gripper);
+  if (kinematic_object.has_value() &&
+      !kinematic_object->IsoFlangeFrameIds().empty()) {
+    return world::ObjectEntityFilter().IncludeFinalEntity();
+  }
+  return world::ObjectEntityFilter().IncludeBaseEntity();
+}
+
+// Returns the local name of the entity in `parent` to which `child`'s root
+// entity is directly attached (matching `GetAttachedParentEntityName` in
+// `intrinsic/skills/apps/attach_object_to_robot_test.cc`).
+absl::StatusOr<std::string> GetAttachedParentEntityName(
+    const world::WorldObject& parent, const world::WorldObject& child) {
+  const auto& child_entities = child.Proto().entities();
+  auto child_root_it = child_entities.find(child.Proto().root_entity_id());
+  if (child_root_it == child_entities.end()) {
+    return absl::NotFoundError("Child root entity not found in child proto.");
+  }
+  const std::string& parent_entity_id = child_root_it->second.parent_id();
+  const auto& parent_entities = parent.Proto().entities();
+  auto parent_entity_it = parent_entities.find(parent_entity_id);
+  if (parent_entity_it == parent_entities.end()) {
+    return absl::NotFoundError(absl::StrCat("Parent entity ", parent_entity_id,
+                                            " not found in parent proto."));
+  }
+  return parent_entity_it->second.name();
 }
 
 class InProcessSkillRunner {
@@ -156,8 +233,7 @@ class InProcessSkillRunner {
                         JsonEscape(address), "\"}");
   }
 
-  std::string AttachObject(absl::string_view b64_params,
-                           bool fallback_base_entity) {
+  std::string AttachObject(absl::string_view b64_params) {
     if (!world_client_) {
       return StatusToJson(
           absl::FailedPreconditionError("World not initialized"));
@@ -172,21 +248,44 @@ class InProcessSkillRunner {
           "Failed to parse AttachObjectToRobotParams"));
     }
 
-    absl::Status strict_status =
+    absl::Status status =
         skills::AttachObjectToRobotSkill::ExecuteImpl(params, *world_client_)
             .status();
-    if (strict_status.ok() || !fallback_base_entity) {
-      return StatusToJson(strict_status);
+    if (!status.ok()) {
+      status = ApplyEntityFilterAttach(params);
+      if (!status.ok()) {
+        return StatusToJson(status);
+      }
     }
 
-    absl::Status fallback_status = ApplyBaseEntityAttach(params);
-    if (!fallback_status.ok()) {
-      return StatusToJson(fallback_status);
+    absl::StatusOr<world::WorldObject> gripper =
+        world_client_->GetObject(params.gripper_entity());
+    if (!gripper.ok()) {
+      return StatusToJson(gripper.status());
     }
-    return absl::StrCat(
-        "{\"ok\":true,\"code\":0,\"fallback_applied\":true,\"strict_code\":",
-        strict_status.raw_code(), ",\"strict_message\":\"",
-        JsonEscape(strict_status.message()), "\"}");
+    absl::StatusOr<world::WorldObject> object =
+        world_client_->GetObject(params.object_entity());
+    if (!object.ok()) {
+      return StatusToJson(object.status());
+    }
+    absl::StatusOr<std::string> attached_entity =
+        GetAttachedParentEntityName(*gripper, *object);
+    if (!attached_entity.ok()) {
+      return StatusToJson(attached_entity.status());
+    }
+    absl::StatusOr<intrinsic_proto::world::CollisionSettings>
+        collision_settings = world_client_->GetCollisionSettings();
+    if (!collision_settings.ok()) {
+      return StatusToJson(collision_settings.status());
+    }
+    bool collisions_disabled = HasExcludedCollisionRule(
+        *collision_settings, gripper->Name().value(), object->Name().value());
+
+    return absl::StrCat("{\"ok\":true,\"code\":0,\"parent_object\":\"",
+                        JsonEscape(object->ParentName().value()),
+                        "\",\"parent_entity\":\"", JsonEscape(*attached_entity),
+                        "\",\"collisions_disabled\":",
+                        collisions_disabled ? "true" : "false", "}");
   }
 
   std::string DetachObject(absl::string_view b64_params) {
@@ -205,7 +304,19 @@ class InProcessSkillRunner {
     }
     absl::Status status =
         skills::DetachObjectSkill::ExecuteImpl(params, *world_client_).status();
-    return StatusToJson(status);
+    if (!status.ok()) {
+      return StatusToJson(status);
+    }
+    absl::StatusOr<intrinsic_proto::world::CollisionSettings>
+        collision_settings = world_client_->GetCollisionSettings();
+    if (!collision_settings.ok()) {
+      return StatusToJson(collision_settings.status());
+    }
+    bool collisions_disabled = HasExcludedCollisionRule(
+        *collision_settings, params.gripper_entity().by_name().object_name(),
+        params.object_entity().by_name().object_name());
+    return absl::StrCat("{\"ok\":true,\"code\":0,\"collisions_disabled\":",
+                        collisions_disabled ? "true" : "false", "}");
   }
 
   std::string UpdateWorld(absl::string_view b64_params) {
@@ -267,6 +378,7 @@ class InProcessSkillRunner {
           absl::InternalError("Planned trajectory contained no states"));
     }
 
+    const auto& start_state = plan_result->trajectory.state().at(0);
     const auto& end_state = plan_result->trajectory.state().at(
         plan_result->trajectory.state().size() - 1);
     eigenmath::VectorXd end_state_vec =
@@ -277,15 +389,36 @@ class InProcessSkillRunner {
       return StatusToJson(update_status);
     }
 
-    std::vector<std::string> joint_strs;
-    joint_strs.reserve(end_state.position_size());
-    for (double q : end_state.position()) {
-      joint_strs.push_back(absl::StrCat(q));
+    std::vector<double> min_q(start_state.position().begin(),
+                              start_state.position().end());
+    std::vector<double> max_q(start_state.position().begin(),
+                              start_state.position().end());
+    for (const auto& state : plan_result->trajectory.state()) {
+      for (int i = 0;
+           i < state.position_size() && i < static_cast<int>(min_q.size());
+           ++i) {
+        if (state.position(i) < min_q[i]) {
+          min_q[i] = state.position(i);
+        }
+        if (state.position(i) > max_q[i]) {
+          max_q[i] = state.position(i);
+        }
+      }
     }
-    return absl::StrCat("{\"ok\":true,\"code\":0,\"states\":",
-                        plan_result->trajectory.state_size(),
-                        ",\"end_joints\":[", absl::StrJoin(joint_strs, ","),
-                        "]}");
+
+    auto format_vec = [](const auto& vals) {
+      std::vector<std::string> strs;
+      for (double q : vals) {
+        strs.push_back(absl::StrCat(q));
+      }
+      return absl::StrJoin(strs, ",");
+    };
+    return absl::StrCat(
+        "{\"ok\":true,\"code\":0,\"states\":",
+        plan_result->trajectory.state_size(), ",\"start_joints\":[",
+        format_vec(start_state.position()), "],\"end_joints\":[",
+        format_vec(end_state.position()), "],\"min_joints\":[",
+        format_vec(min_q), "],\"max_joints\":[", format_vec(max_q), "]}");
   }
 
   std::string PreplanMotion(absl::string_view robot_name,
@@ -326,14 +459,14 @@ class InProcessSkillRunner {
   }
 
  private:
-  absl::Status ApplyBaseEntityAttach(
+  absl::Status ApplyEntityFilterAttach(
       const intrinsic_proto::skills::AttachObjectToRobotParams& params) {
     INTR_ASSIGN_OR_RETURN(world::WorldObject gripper,
                           world_client_->GetObject(params.gripper_entity()));
     INTR_ASSIGN_OR_RETURN(world::WorldObject object,
                           world_client_->GetObject(params.object_entity()));
     INTR_RETURN_IF_ERROR(world_client_->ReparentObject(
-        object, gripper, world::ObjectEntityFilter().IncludeBaseEntity()));
+        object, gripper, GetAttachmentEntityFilter(gripper)));
     INTR_RETURN_IF_ERROR(world_client_->DisableCollisions(object, gripper));
     if (params.has_gripper_t_object()) {
       INTR_ASSIGN_OR_RETURN(Pose3d gripper_t_object,
@@ -381,9 +514,8 @@ int main(int argc, char** argv) {
       } else {
         std::cout << intrinsic::StatusToJson(res.status()) << std::endl;
       }
-    } else if (cmd == "ATTACH_OBJECT" && parts.size() >= 3) {
-      bool fallback = (parts[2] == "1");
-      std::cout << runner.AttachObject(parts[1], fallback) << std::endl;
+    } else if (cmd == "ATTACH_OBJECT" && parts.size() >= 2) {
+      std::cout << runner.AttachObject(parts[1]) << std::endl;
     } else if (cmd == "DETACH_OBJECT" && parts.size() >= 2) {
       std::cout << runner.DetachObject(parts[1]) << std::endl;
     } else if (cmd == "UPDATE_WORLD" && parts.size() >= 2) {
