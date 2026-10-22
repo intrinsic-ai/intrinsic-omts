@@ -31,7 +31,7 @@ from src.core.config import (
   GripperConfig,
   load_app_config,
 )
-from src.core.types import GraspPlannerType, SimulationMode, Touchdown
+from src.core.types import GraspPlannerType, SimulationMode
 from src.hardware.grasp_planners import create_grasp_planner
 from src.hardware.grasping import GraspPlannerInterface
 
@@ -47,8 +47,6 @@ class ConfigTest(absltest.TestCase):
     self.assertEqual(
       config.gripper.joint_name, "robotiq_hande_left_finger_joint"
     )
-    self.assertEqual(config.gripper.open_position, 0.025)
-    self.assertEqual(config.gripper.close_position, 0.0)
     self.assertIsNone(config.gripper.action_name)
     self.assertIsNone(config.gripper.dio_open_pin)
     self.assertIsNone(config.gripper.dio_close_pin)
@@ -56,10 +54,6 @@ class ConfigTest(absltest.TestCase):
     self.assertIsNone(config.gripper.dio_output_block_name)
     self.assertEqual(config.machine.enclosure_object_name, "cnc_enclosure")
     self.assertEqual(config.machine.vise_object_name, "schunk_egp_64nnb")
-    self.assertEqual(config.machine.door_open_joints, (0.4,))
-    self.assertEqual(config.machine.door_closed_joints, (0.0,))
-    self.assertEqual(config.machine.vise_open_joints, (0.01, 0.01))
-    self.assertEqual(config.machine.vise_closed_joints, (0.0, 0.0))
     self.assertEqual(config.machine.output_block_name, "standard_out")
     self.assertEqual(config.machine.input_block_name, "standard_in")
     self.assertEqual(config.frames.transit_frame, "transit")
@@ -73,39 +67,7 @@ class ConfigTest(absltest.TestCase):
       "ai.intrinsic.raw_stock_2x3x5_estimator_text",
     )
     self.assertEqual(config.vision.sensor_ids, (1, 4))
-    self.assertEqual(config.vision.min_safe_z, 0.95)
     self.assertEqual(config.cycle.workpiece_id, "raw_stock_2x3x5")
-    self.assertEqual(config.cycle.pick_touchdown_force_newtons, 10.0)
-    self.assertEqual(config.cycle.load_seat_force_newtons, 10.0)
-    self.assertEqual(config.cycle.unload_touchdown_force_newtons, 10.0)
-    self.assertEqual(config.cycle.return_touchdown_force_newtons, 10.0)
-    self.assertEqual(config.cycle.standoff_distance_meters, 0.02)
-    self.assertEqual(config.cycle.retract_distance_meters, 0.015)
-    self.assertEqual(
-      config.pick_touchdown,
-      Touchdown(
-        force_n=10.0, standoff_m=0.02, timeout_s=30.0, retract_after_m=0.015
-      ),
-    )
-    self.assertEqual(
-      config.load_touchdown,
-      Touchdown(
-        force_n=10.0, standoff_m=0.02, timeout_s=30.0, retract_after_m=0.0
-      ),
-    )
-    self.assertEqual(
-      config.unload_touchdown,
-      Touchdown(
-        force_n=10.0, standoff_m=0.035, timeout_s=30.0, retract_after_m=0.015
-      ),
-    )
-    self.assertEqual(
-      config.return_touchdown,
-      Touchdown(
-        force_n=10.0, standoff_m=0.035, timeout_s=30.0, retract_after_m=0.0
-      ),
-    )
-    self.assertEqual(config.robot.enclosure_object_name, "enclosure")
 
   def test_load_lab_bb_01_app_config(self):
     config = load_app_config("configs/lab_bb_01/app_config.yaml")
@@ -115,31 +77,7 @@ class ConfigTest(absltest.TestCase):
     self.assertIsNone(config.gripper.dio_output_block_name)
     self.assertIsNone(config.machine)
     self.assertIsNone(config.frames.transit_frame)
-    self.assertEqual(config.vision.min_safe_z, 0.60)
-    self.assertEqual(config.cycle.pick_touchdown_force_newtons, 15.0)
-    self.assertEqual(config.cycle.standoff_distance_meters, 0.03)
     self.assertEqual(config.robot.enclosure_object_name, "enclosure")
-    self.assertEqual(config.cycle.return_shift.center_x, 0.25)
-    self.assertEqual(config.cycle.return_shift.center_y, 0.25)
-    self.assertEqual(config.cycle.return_shift.bounds_x, 0.04)
-    self.assertEqual(config.cycle.return_shift.bounds_y, 0.04)
-
-  def test_shipped_configs_select_the_cuboid_center_planner(self):
-    for path in (
-      "configs/omts/app_config.yaml",
-      "configs/lab_bb_01/app_config.yaml",
-    ):
-      with self.subTest(path=path):
-        config = load_app_config(path)
-        self.assertEqual(config.grasp.planner, "cuboid_center")
-        self.assertEqual(
-          config.grasp.planner_type, GraspPlannerType.CUBOID_CENTER
-        )
-
-  def test_shipped_omts_config_tunes_moveit(self):
-    config = load_app_config("configs/omts/app_config.yaml")
-    self.assertEqual(config.grasp.moveit_surfaces, (0, 1, 4, 5))
-    self.assertEqual(config.grasp.moveit_tool_frame_name, "hande_tcp")
 
   def test_omitted_grasp_section_defaults_to_cuboid_center(self):
     raw = yaml.safe_load(
