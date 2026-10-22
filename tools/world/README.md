@@ -43,6 +43,12 @@ With your ROS 2 environment sourced in the shell:
 bazel run //tools/world:edit_frames_rviz -- \
   --address=localhost:17080 \
   --zenoh_endpoint=tcp/127.0.0.1:7447
+
+# For the lab_bb_01 cell setup (or pass explicit --files):
+bazel run //tools/world:edit_frames_rviz -- \
+  --setup=lab_bb_01 \
+  --address=localhost:17080 \
+  --zenoh_endpoint=tcp/127.0.0.1:7447
 ```
 
 ### Connecting RViz (Local or Remote over SSH)

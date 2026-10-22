@@ -28,6 +28,7 @@ from src.utils.world_utils import (
 )
 from tools.world.apply_scene_updates import (
   DEFAULT_UPDATE_FILES,
+  LAB_BB_01_UPDATE_FILES,
   adapt_updates_for_live_world,
   apply_pbtxt_file,
   extract_joint_updates,
@@ -43,9 +44,16 @@ class ApplySceneUpdatesTest(absltest.TestCase):
     """Tests default command-line argument values."""
     args = parse_args([])
     self.assertEqual(args.address, "localhost:17080")
+    self.assertEqual(args.setup, "omts")
     self.assertEqual(args.files, DEFAULT_UPDATE_FILES)
     self.assertTrue(args.reset_sim)
     self.assertFalse(args.update_init_world)
+
+  def test_parse_args_setup_lab_bb_01(self) -> None:
+    """Tests selecting lab_bb_01 default update files via --setup."""
+    args = parse_args(["--setup", "lab_bb_01"])
+    self.assertEqual(args.setup, "lab_bb_01")
+    self.assertEqual(args.files, LAB_BB_01_UPDATE_FILES)
 
   def test_parse_args_no_reset_sim(self) -> None:
     """Tests disabling simulation reset via --no-reset_sim flag."""
@@ -321,6 +329,71 @@ class ApplySceneUpdatesTest(absltest.TestCase):
       world=mock_world, updates=raw_updates
     )
     self.assertEqual(len(adapted.updates), 0)
+
+  def test_adapt_updates_skips_missing_objects_without_triggering_getattr_rpc(
+    self,
+  ) -> None:
+    """Tests that missing objects in update_transform/update_object_joints are skipped via list_object_names."""
+
+    class _StrictWorld:
+      """Simulates SBL ObjectWorld raising RpcError on missing attribute access."""
+
+      def __init__(self) -> None:
+        self.root = mock.MagicMock()
+        self.root.list_frames.return_value = []
+        self.enclosure = mock.MagicMock()
+        self.orbbec_camera = mock.MagicMock()
+
+      def list_object_names(self) -> list[str]:
+        return ["root", "enclosure", "orbbec_camera"]
+
+      def __getattr__(self, name: str):
+        raise RuntimeError(f'No object with name "{name}" exists.')
+
+    strict_world = _StrictWorld()
+    pbtxt = """
+    updates {
+      create_frame {
+        parent_object_with_filter {
+          reference { by_name { object_name: "cnc_enclosure" } }
+        }
+        new_frame_name: "vise_frame"
+      }
+    }
+    updates {
+      update_transform {
+        node_a { by_name { object { object_name: "enclosure" } } }
+        node_b { by_name { object { object_name: "cnc_enclosure" } } }
+        node_to_update { by_name { object { object_name: "cnc_enclosure" } } }
+      }
+    }
+    updates {
+      update_transform {
+        node_a { by_name { object { object_name: "camera_mount" } } }
+        node_b { by_name { object { object_name: "orbbec_camera" } } }
+        node_to_update { by_name { object { object_name: "orbbec_camera" } } }
+      }
+    }
+    updates {
+      update_object_joints {
+        object { by_name { object_name: "cnc_enclosure" } }
+        joint_positions: 0.4
+      }
+    }
+    updates {
+      reparent_object {
+        object { by_name { object_name: "orbbec_camera" } }
+        new_parent { reference { by_name { object_name: "camera_mount" } } }
+      }
+    }
+    """
+    raw_updates = object_world_updates_pb2.ObjectWorldUpdates()
+    text_format.Parse(pbtxt, raw_updates)
+
+    adapted = adapt_updates_for_live_world(
+      world=strict_world, updates=raw_updates
+    )
+    self.assertEmpty(adapted.updates)
 
   def test_apply_pbtxt_file(self):
     test_file = os.path.join(self.temp_dir.name, "scene.updates.pbtxt")

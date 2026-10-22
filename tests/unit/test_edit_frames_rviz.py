@@ -33,6 +33,7 @@ from src.utils.world_utils import (
   find_file as shared_find_file,
 )
 from tools.world.edit_frames_rviz import (
+  LAB_BB_01_UPDATE_FILES,
   _configure_zenoh_env,
   _resolve_ros2_python_command,
   _sanitize_sys_path,
@@ -1178,6 +1179,29 @@ updates {
         [bazel_runfiles, bazel_venv, ros_generic, ros_matching],
       )
       self.assertEqual(os.environ.get("PYTHONPATH"), fake_pythonpath)
+
+  def test_parse_args_setup_and_controller_filters_missing_world_objects(
+    self,
+  ) -> None:
+    """Tests --setup=lab_bb_01 and RvizFrameEditorController filtering missing world objects."""
+    args = parse_args(["--setup", "lab_bb_01"])
+    self.assertEqual(args.setup, "lab_bb_01")
+    self.assertEqual(args.files, LAB_BB_01_UPDATE_FILES)
+
+    self.mock_world.list_object_names.return_value = ["root", "enclosure"]
+    controller = RvizFrameEditorController(
+      files=[self.pbtxt_path],
+      world=self.mock_world,
+      init_world=self.mock_init_world,
+      solution=self.mock_solution,
+      allowed_root=self.temp_dir.name,
+    )
+    entries = controller.get_entries()
+    # SAMPLE_PBTXT has "root/view" (create_frame on root) and
+    # "enclosure/cnc_enclosure" (update_transform on cnc_enclosure).
+    # Because "cnc_enclosure" is not in list_object_names(), only "root/view" is kept.
+    self.assertLen(entries, 1)
+    self.assertEqual(entries[0].marker_name, "root/view")
 
 
 if __name__ == "__main__":

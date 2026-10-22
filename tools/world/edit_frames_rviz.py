@@ -104,6 +104,8 @@ from src.utils.world_utils import (  # noqa: E402
 )
 from tools.world.apply_scene_updates import (  # noqa: E402
   DEFAULT_UPDATE_FILES,
+  LAB_BB_01_UPDATE_FILES,
+  SETUP_UPDATE_FILES,
   apply_pbtxt_file,
 )
 from tools.world.pbtxt_pose_store import (  # noqa: E402
@@ -139,7 +141,10 @@ _connect_initial_world = connect_initial_world
 __all__ = [
   "AXIS_CONTROL_SPECS",
   "DEFAULT_PBTXT_HEADER",
+  "DEFAULT_UPDATE_FILES",
+  "LAB_BB_01_UPDATE_FILES",
   "MENU_LABELS",
+  "SETUP_UPDATE_FILES",
   "ControlInteractionMode",
   "ControlOrientationMode",
   "FeedbackEventType",
@@ -281,9 +286,19 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     help="Solution gRPC address to connect to (default: localhost:17080).",
   )
   parser.add_argument(
+    "--setup",
+    type=str,
+    choices=tuple(SETUP_UPDATE_FILES.keys()),
+    default="omts",
+    help=(
+      "Cell setup whose default .pbtxt files to load when --files is omitted "
+      "(default: omts)."
+    ),
+  )
+  parser.add_argument(
     "--files",
     nargs="*",
-    default=DEFAULT_UPDATE_FILES,
+    default=None,
     help="Path(s) to .pbtxt ObjectWorldUpdates files to load and edit.",
   )
   parser.add_argument(
@@ -367,7 +382,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
       "editing transforms."
     ),
   )
-  return parser.parse_args(argv)
+  args = parser.parse_args(argv)
+  if args.files is None:
+    args.files = list(SETUP_UPDATE_FILES[args.setup])
+  return args
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -384,9 +402,6 @@ def main(argv: Sequence[str] | None = None) -> None:
       world = solution.world
       if args.update_init_world:
         init_world = connect_initial_world(solution)
-      if args.apply_on_start:
-        for fpath in args.files:
-          apply_pbtxt_file(world=world, filepath=fpath, init_world=init_world)
     except Exception as e:  # pylint: disable=broad-exception-caught
       print(
         f"[-] Warning: Could not connect to {args.address} ({e}). "
@@ -395,6 +410,13 @@ def main(argv: Sequence[str] | None = None) -> None:
       solution = None
       world = None
       init_world = None
+
+    if world is not None and args.apply_on_start:
+      for fpath in args.files:
+        try:
+          apply_pbtxt_file(world=world, filepath=fpath, init_world=init_world)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+          print(f"[-] Warning: Failed to apply {fpath} on startup ({e}).")
 
   controller = RvizFrameEditorController(
     files=args.files,
