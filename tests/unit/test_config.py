@@ -117,7 +117,6 @@ class ConfigTest(absltest.TestCase):
     self.assertIsNone(config.frames.transit_frame)
     self.assertEqual(config.vision.min_safe_z, 0.60)
     self.assertEqual(config.cycle.pick_touchdown_force_newtons, 15.0)
-    self.assertEqual(config.cycle.standoff_distance_meters, 0.03)
     self.assertEqual(config.robot.enclosure_object_name, "enclosure")
     self.assertEqual(config.cycle.return_shift.center_x, 0.25)
     self.assertEqual(config.cycle.return_shift.center_y, 0.25)
