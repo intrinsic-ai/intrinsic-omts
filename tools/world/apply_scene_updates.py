@@ -31,28 +31,22 @@ from src.utils.world_utils import (
   find_file,
 )
 
-DEFAULT_UPDATE_FILES = [
-  "configs/omts/ur_module.limits.updates.pbtxt",
-  "configs/omts/ur_module.attachments.updates.pbtxt",
-  "configs/omts/scene.updates.pbtxt",
-  "configs/omts/align_robot.updates.pbtxt",
-  "configs/omts/cnc_enclosure.updates.pbtxt",
-  "configs/omts/schunk.updates.pbtxt",
-  "configs/omts/camera_mount.updates.pbtxt",
-  "configs/omts/orbbec_gemini.updates.pbtxt",
-]
 
-LAB_BB_01_UPDATE_FILES = [
-  "configs/lab_bb_01/ur_module.attachments.updates.pbtxt",
-  "configs/lab_bb_01/scene.updates.pbtxt",
-  "configs/lab_bb_01/align_robot.updates.pbtxt",
-  "configs/lab_bb_01/orbbec_gemini.updates.pbtxt",
-]
+def discover_setup_update_files(setup: str = "omts") -> list[str]:
+  """Discovers all `configs/<setup>/*.updates.pbtxt` files in sorted order."""
+  rel_dir = os.path.join("configs", setup)
+  resolved_dir = find_file(rel_dir)
+  if not os.path.isdir(resolved_dir):
+    return []
+  filenames = sorted(
+    fname
+    for fname in os.listdir(resolved_dir)
+    if fname.endswith(".updates.pbtxt")
+  )
+  return [os.path.join("configs", setup, fname) for fname in filenames]
 
-SETUP_UPDATE_FILES: dict[str, list[str]] = {
-  "omts": DEFAULT_UPDATE_FILES,
-  "lab_bb_01": LAB_BB_01_UPDATE_FILES,
-}
+
+DEFAULT_UPDATE_FILES = discover_setup_update_files("omts")
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -71,11 +65,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   parser.add_argument(
     "--setup",
     type=str,
-    choices=tuple(SETUP_UPDATE_FILES.keys()),
     default="omts",
     help=(
-      "Cell setup whose default .pbtxt files to apply when --files is omitted"
-      " (default: omts)."
+      "Cell setup directory under configs/<setup>/ whose *.updates.pbtxt"
+      " files to apply when --files is omitted (default: omts)."
     ),
   )
   parser.add_argument(
@@ -104,7 +97,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   )
   args = parser.parse_args(argv)
   if args.files is None:
-    args.files = list(SETUP_UPDATE_FILES[args.setup])
+    args.files = discover_setup_update_files(args.setup)
   return args
 
 

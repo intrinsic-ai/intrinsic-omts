@@ -22,6 +22,9 @@ py_binary(
 py_library(
     name = "apply_scene_updates_lib",
     srcs = ["apply_scene_updates.py"],
+    data = [
+        "//configs:all_world_updates",
+    ],
     deps = [
         "//src/utils:world_utils",
         "@intrinsic-core//intrinsic/world/proto:object_world_updates_py_pb2",

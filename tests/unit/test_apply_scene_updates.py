@@ -28,9 +28,9 @@ from src.utils.world_utils import (
 )
 from tools.world.apply_scene_updates import (
   DEFAULT_UPDATE_FILES,
-  LAB_BB_01_UPDATE_FILES,
   adapt_updates_for_live_world,
   apply_pbtxt_file,
+  discover_setup_update_files,
   extract_joint_updates,
   main,
   parse_args,
@@ -49,11 +49,29 @@ class ApplySceneUpdatesTest(absltest.TestCase):
     self.assertTrue(args.reset_sim)
     self.assertFalse(args.update_init_world)
 
-  def test_parse_args_setup_lab_bb_01(self) -> None:
-    """Tests selecting lab_bb_01 default update files via --setup."""
+  def test_parse_args_setup_discovers_setup_directory_files(self) -> None:
+    """Tests --setup dynamically discovers configs/<setup>/*.updates.pbtxt files."""
     args = parse_args(["--setup", "lab_bb_01"])
     self.assertEqual(args.setup, "lab_bb_01")
-    self.assertEqual(args.files, LAB_BB_01_UPDATE_FILES)
+    self.assertEqual(args.files, discover_setup_update_files("lab_bb_01"))
+    self.assertIn("configs/lab_bb_01/scene.updates.pbtxt", args.files)
+    self.assertNotIn("configs/omts/cnc_enclosure.updates.pbtxt", args.files)
+
+    cnc_dir = os.path.join(self.temp_dir.name, "configs", "cnc")
+    os.makedirs(cnc_dir, exist_ok=True)
+    with open(
+      os.path.join(cnc_dir, "fixture.updates.pbtxt"), "w", encoding="utf-8"
+    ) as f:
+      f.write("updates {}")
+    with open(
+      os.path.join(cnc_dir, "ignored_waypoints.pbtxt"), "w", encoding="utf-8"
+    ) as f:
+      f.write("")
+    with mock.patch.dict(
+      os.environ, {"BUILD_WORKING_DIRECTORY": self.temp_dir.name}
+    ):
+      args_cnc = parse_args(["--setup", "cnc"])
+      self.assertEqual(args_cnc.files, ["configs/cnc/fixture.updates.pbtxt"])
 
   def test_parse_args_no_reset_sim(self) -> None:
     """Tests disabling simulation reset via --no-reset_sim flag."""

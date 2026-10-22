@@ -104,9 +104,8 @@ from src.utils.world_utils import (  # noqa: E402
 )
 from tools.world.apply_scene_updates import (  # noqa: E402
   DEFAULT_UPDATE_FILES,
-  LAB_BB_01_UPDATE_FILES,
-  SETUP_UPDATE_FILES,
   apply_pbtxt_file,
+  discover_setup_update_files,
 )
 from tools.world.pbtxt_pose_store import (  # noqa: E402
   DEFAULT_PBTXT_HEADER,
@@ -142,9 +141,7 @@ __all__ = [
   "AXIS_CONTROL_SPECS",
   "DEFAULT_PBTXT_HEADER",
   "DEFAULT_UPDATE_FILES",
-  "LAB_BB_01_UPDATE_FILES",
   "MENU_LABELS",
-  "SETUP_UPDATE_FILES",
   "ControlInteractionMode",
   "ControlOrientationMode",
   "FeedbackEventType",
@@ -160,6 +157,7 @@ __all__ = [
   "build_6dof_interactive_marker",
   "build_marker_from_dict",
   "connect_initial_world",
+  "discover_setup_update_files",
   "load_pose_entries",
   "load_pose_entries_from_file",
   "main",
@@ -288,11 +286,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   parser.add_argument(
     "--setup",
     type=str,
-    choices=tuple(SETUP_UPDATE_FILES.keys()),
     default="omts",
     help=(
-      "Cell setup whose default .pbtxt files to load when --files is omitted "
-      "(default: omts)."
+      "Cell setup directory under configs/<setup>/ whose *.updates.pbtxt "
+      "files to load when --files is omitted (default: omts)."
     ),
   )
   parser.add_argument(
@@ -384,7 +381,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   )
   args = parser.parse_args(argv)
   if args.files is None:
-    args.files = list(SETUP_UPDATE_FILES[args.setup])
+    args.files = discover_setup_update_files(args.setup)
   return args
 
 

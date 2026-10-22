@@ -33,11 +33,11 @@ from src.utils.world_utils import (
   find_file as shared_find_file,
 )
 from tools.world.edit_frames_rviz import (
-  LAB_BB_01_UPDATE_FILES,
   _configure_zenoh_env,
   _resolve_ros2_python_command,
   _sanitize_sys_path,
   connect_initial_world,
+  discover_setup_update_files,
   find_file,
   parse_args,
 )
@@ -1186,7 +1186,8 @@ updates {
     """Tests --setup=lab_bb_01 and RvizFrameEditorController filtering missing world objects."""
     args = parse_args(["--setup", "lab_bb_01"])
     self.assertEqual(args.setup, "lab_bb_01")
-    self.assertEqual(args.files, LAB_BB_01_UPDATE_FILES)
+    self.assertEqual(args.files, discover_setup_update_files("lab_bb_01"))
+    self.assertIn("configs/lab_bb_01/scene.updates.pbtxt", args.files)
 
     self.mock_world.list_object_names.return_value = ["root", "enclosure"]
     controller = RvizFrameEditorController(
