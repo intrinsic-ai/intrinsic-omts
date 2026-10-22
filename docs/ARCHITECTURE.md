@@ -209,7 +209,71 @@ sequenceDiagram
 
 ---
 
-## 5. Runtime Diagnostics & Troubleshooting
+## 5. Hardware layout
+
+```mermaid
+flowchart TB
+    subgraph Compute["Compute & Networking Layer"]
+        IPC["Industrial PC (IPC - IC Performance)\nx86-64, NVIDIA RTX GPU, Ubuntu PREEMPT_RT"]
+        Switch[" 8-Port PoE Switch"]
+        USBAdapter["USB-to-RS-485 Serial Adapter"]
+    end
+
+    subgraph PowerSafety["Power & Safety Distribution"]
+        PSU["24V DC Industrial Power Supply"]
+        EStop["Hardwired E-Stop & Door Safety Interlock"]
+    end
+
+    subgraph RobotSystem["Robot Manipulator System"]
+        URCtrl["Universal Robots UR5e Controller\n(e-Series / PolyScope, IP: 192.170.10.1)"]
+        URArm["Universal Robots UR5e 6-DoF Arm"]
+        InternalFT["Built-in Wrist F/T Sensor"]
+    end
+
+    subgraph EOAT["Wrist & End-of-Arm Tooling (ISO 9409-1-50-4-M6 Flange)"]
+        Camera["Orbbec Gemini 335Le 3D Camera\n(Wrist-Mounted, IP: 192.168.10.50)"]
+        Gripper["Robotiq Hand-E Adaptive Pinch Gripper"]
+    end
+
+    subgraph MockCNC["Mini CNC Mock Cell Enclosure & Peripherals"]
+        CNCDoor["CNC Access Door Solenoid / Actuator"]
+        SchunkVise["Schunk 2-Finger EPB 64 Vise\n(Fixture Clamp)"]
+        CNCCycle["Mini CNC Controller / Cycle Relay"]
+        Sensors["Part Seated Optical & Pressure Sensors"]
+    end
+
+    %% Compute & Network Connections
+    IPC <-->|"Gigabit Ethernet (Cat6, RJ45)\nControl & LAN"| Switch
+    IPC <-->|"Gigabit Ethernet (Cat6A, MTU 9000)\nCamera Subnet 192.168.10.0/24"| Switch
+    Switch <-->|"Gigabit Ethernet (Cat6, TCP :30004)\n500 Hz RTDE Real-Time Control"| URCtrl
+    Switch <-->|"Gigabit Ethernet + 802.3at PoE+\n(Cat6A RJ45 to M12 X-Coded, TCP :8080)"| Camera
+
+    %% Robot Controller to Arm & EOAT
+    URCtrl <-->|"UR Multi-Core Robot Cable\n(48V DC Motor Power + Internal Bus)"| URArm
+    URArm ---|"Integrated Flange Bus\n(Streamed via 500 Hz RTDE)"| InternalFT
+    URArm -->|"Mechanical Mount\n(ISO 9409-1-50-4-M6 + Wrist Bracket)"| Camera
+    URArm -->|"Mechanical Mount\n(ISO 9409-1-50-4-M6)"| Gripper
+
+    %% Gripper Control Path (USB to RS-485)
+    IPC <-->|"USB 2.0 \nVirtual Serial Port (/dev/ttyUSB0)"| USBAdapter
+    USBAdapter <-->|"RS-485 Differential Serial (Modbus RTU)\nvia M12 / M8 8-Pin Coupler Cable"| Gripper
+
+    %% Digital I/O to Mini CNC Enclosure
+    URCtrl -->|"24V DC Digital Out (standard_out[0])\nvia Terminal Block / M8 I/O"| CNCDoor
+    URCtrl -->|"24V DC Digital Out (standard_out[1])\nvia Terminal Block / M8 I/O"| SchunkVise
+    URCtrl -->|"24V DC Digital Out (standard_out[2])\nvia Terminal Block"| CNCCycle
+    Sensors -->|"24V DC Digital In (standard_in[0..2])\nPart Seated, Cycle Done, Air Pressure"| URCtrl
+
+    %% Power & Safety Connections
+    PSU -->|"24V DC Power Rail"| URCtrl
+    PSU -->|"24V DC Power Rail (via Splitter / Coupler)"| Gripper
+    PSU -->|"24V DC Power Rail"| MockCNC
+    EStop -->|"Dual-Channel 24V Safety I/O\n(Dry Contact Interlock)"| URCtrl
+```
+
+---
+
+## 6. Runtime Diagnostics & Troubleshooting
 
 | Error Code / Symptom | Root Cause | Resolution |
 | :--- | :--- | :--- |
