@@ -17,6 +17,7 @@
 import io
 import math
 import os
+import sys
 import tempfile
 from unittest import mock
 
@@ -34,7 +35,9 @@ from src.utils.world_utils import (
 from tools.world.edit_frames_rviz import (
   _configure_zenoh_env,
   _resolve_ros2_python_command,
+  _sanitize_sys_path,
   connect_initial_world,
+  discover_setup_update_files,
   find_file,
   parse_args,
 )
@@ -1136,6 +1139,70 @@ updates {
         "could not import `rclpy` and `interactive_markers`",
       ):
         _resolve_ros2_python_command()
+
+  def test_sanitize_sys_path_removes_foreign_version_and_demotes_pythonpath(
+    self,
+  ) -> None:
+    """Tests _sanitize_sys_path filters mismatched pythonX.Y paths and demotes PYTHONPATH."""
+    current_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
+    foreign_ver = "3.99" if current_ver != "3.99" else "3.98"
+    ros_generic = "/opt/ros/jazzy/lib/python/site-packages"
+    ros_foreign = f"/opt/ros/jazzy/lib/python{foreign_ver}/site-packages"
+    ros_matching = f"/opt/ros/jazzy/lib/python{current_ver}/site-packages"
+    bazel_runfiles = (
+      "/cache/bazel/execroot/_main/edit_frames_rviz.runfiles/_main"
+    )
+    bazel_venv = (
+      f"/cache/bazel/execroot/_main/edit_frames_rviz.runfiles/"
+      f"_main/tools/world/_edit_frames_rviz.venv/lib/python{current_ver}/site-packages"
+    )
+    fake_pythonpath = os.pathsep.join([ros_generic, ros_foreign, ros_matching])
+
+    with (
+      mock.patch.dict(os.environ, {"PYTHONPATH": fake_pythonpath}, clear=False),
+      mock.patch.object(
+        sys,
+        "path",
+        [
+          ros_generic,
+          ros_foreign,
+          ros_matching,
+          bazel_runfiles,
+          bazel_venv,
+        ],
+      ),
+    ):
+      _sanitize_sys_path()
+      self.assertNotIn(ros_foreign, sys.path)
+      self.assertEqual(
+        sys.path,
+        [bazel_runfiles, bazel_venv, ros_generic, ros_matching],
+      )
+      self.assertEqual(os.environ.get("PYTHONPATH"), fake_pythonpath)
+
+  def test_parse_args_setup_and_controller_filters_missing_world_objects(
+    self,
+  ) -> None:
+    """Tests --setup=lab_bb_01 and RvizFrameEditorController filtering missing world objects."""
+    args = parse_args(["--setup", "lab_bb_01"])
+    self.assertEqual(args.setup, "lab_bb_01")
+    self.assertEqual(args.files, discover_setup_update_files("lab_bb_01"))
+    self.assertIn("configs/lab_bb_01/scene.updates.pbtxt", args.files)
+
+    self.mock_world.list_object_names.return_value = ["root", "enclosure"]
+    controller = RvizFrameEditorController(
+      files=[self.pbtxt_path],
+      world=self.mock_world,
+      init_world=self.mock_init_world,
+      solution=self.mock_solution,
+      allowed_root=self.temp_dir.name,
+    )
+    entries = controller.get_entries()
+    # SAMPLE_PBTXT has "root/view" (create_frame on root) and
+    # "enclosure/cnc_enclosure" (update_transform on cnc_enclosure).
+    # Because "cnc_enclosure" is not in list_object_names(), only "root/view" is kept.
+    self.assertLen(entries, 1)
+    self.assertEqual(entries[0].marker_name, "root/view")
 
 
 if __name__ == "__main__":

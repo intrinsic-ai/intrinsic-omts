@@ -28,7 +28,9 @@ from intrinsic.world.proto import object_world_updates_pb2
 
 from tools.world.apply_scene_updates import (
   DEFAULT_UPDATE_FILES,
+  adapt_updates_for_live_world,
   extract_joint_updates,
+  get_world_object_names,
 )
 from tools.world.pbtxt_pose_store import (
   Pose3Tuple,
@@ -122,11 +124,12 @@ class RvizFrameEditorController:
     self.last_drag_update_time: dict[str, float] = {}
     self.lock = threading.RLock()
 
-    initial_entries = (
+    raw_entries = (
       list(entries)
       if entries is not None
       else load_pose_entries(self.files, allowed_root=self.allowed_root)
     )
+    initial_entries = self._filter_entries_for_world(raw_entries)
     for entry in initial_entries:
       marker_key = (
         entry.marker_name
@@ -138,6 +141,42 @@ class RvizFrameEditorController:
       self.fixed_orientation.setdefault(
         marker_key, self.default_fixed_orientation
       )
+
+  def _filter_entries_for_world(
+    self, entries: Sequence[PoseEntry]
+  ) -> list[PoseEntry]:
+    """Filters out `PoseEntry` items referencing objects absent from `self.world`."""
+    known_objects = get_world_object_names(self.world)
+    if known_objects is None:
+      return list(entries)
+
+    created_frames = {
+      e.target_name for e in entries if e.entry_type == "create_frame"
+    }
+    filtered: list[PoseEntry] = []
+    for entry in entries:
+      parent_obj = (entry.parent_name or "root").split("/", 1)[0]
+      if parent_obj not in known_objects:
+        logging.info(
+          "Skipping marker %s: parent object %r not in active world.",
+          entry.marker_name or entry.target_name,
+          parent_obj,
+        )
+        continue
+      if entry.entry_type == "update_transform":
+        target_obj = entry.target_name.split("/", 1)[0]
+        if (
+          target_obj not in known_objects
+          and entry.target_name not in created_frames
+        ):
+          logging.info(
+            "Skipping marker %s: target object %r not in active world.",
+            entry.marker_name or entry.target_name,
+            target_obj,
+          )
+          continue
+      filtered.append(entry)
+    return filtered
 
   def get_parent_pose_in_fixed_frame(self, parent_name: str) -> Pose3Tuple:
     """Resolves `T_fixed_parent` (`((x, y, z), (qx, qy, qz, qw))`).
@@ -307,7 +346,9 @@ class RvizFrameEditorController:
   def reload_entries(self) -> list[PoseEntry]:
     """Reloads all `PoseEntry` items from `self.files`."""
     with self.lock:
-      loaded = load_pose_entries(self.files, allowed_root=self.allowed_root)
+      loaded = self._filter_entries_for_world(
+        load_pose_entries(self.files, allowed_root=self.allowed_root)
+      )
       self.entries_by_marker.clear()
       for entry in loaded:
         self.entries_by_marker[entry.marker_name] = entry
@@ -355,7 +396,9 @@ class RvizFrameEditorController:
               with open(resolved, encoding="utf-8") as f:
                 raw = object_world_updates_pb2.ObjectWorldUpdates()
                 text_format.Parse(f.read(), raw)
-              extracted = extract_joint_updates(raw)
+              extracted = adapt_updates_for_live_world(
+                self.world, extract_joint_updates(raw)
+              )
               joint_updates.updates.extend(extracted.updates)
           except Exception:  # pylint: disable=broad-exception-caught
             continue

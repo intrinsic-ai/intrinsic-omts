@@ -24,21 +24,90 @@ automatically persists the updated pose to the source `.updates.pbtxt` file.
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
+import sys
 from collections.abc import Sequence
 
-from intrinsic.solutions import deployments
+_PYTHON_VERSION_RE = re.compile(r"(?:^|[/\\])python(\d+\.\d+)(?:$|[/\\])")
 
-from src.utils.world_utils import (
+
+def _sanitize_sys_path() -> None:
+  """Filters mismatched `pythonX.Y` paths and demotes external `PYTHONPATH` entries.
+
+  When `bazel run //tools/world:edit_frames_rviz` is invoked from an activated
+  ROS 2 / Pixi / Conda shell, `PYTHONPATH` entries from that shell (often built
+  for a different Python minor version such as 3.12) can be placed at the front
+  of `sys.path` ahead of Bazel's `.runfiles` site-packages by the `.venv`
+  interpreter startup, causing C-extension ABI errors (e.g. when importing
+  `numpy`). This function removes `sys.path` entries targeting a different
+  `pythonX.Y` version and moves external `PYTHONPATH` entries after internal
+  interpreter / `.runfiles` paths, while leaving `os.environ["PYTHONPATH"]`
+  intact for the child `rviz_marker_node.py` ROS 2 process.
+  """
+  current_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
+  raw_pythonpath = os.environ.get("PYTHONPATH", "")
+  pythonpath_entries = {
+    norm_fn(p)
+    for p in raw_pythonpath.split(os.pathsep)
+    if p
+    for norm_fn in (os.path.normpath, os.path.realpath)
+  }
+  internal_prefixes = tuple(
+    norm_fn(p)
+    for p in (sys.prefix, sys.base_prefix)
+    if p
+    for norm_fn in (os.path.normpath, os.path.realpath)
+  )
+  in_bazel_runfiles = ".runfiles" in os.path.abspath(__file__)
+
+  primary_paths: list[str] = []
+  demoted_paths: list[str] = []
+  for entry in sys.path:
+    match = _PYTHON_VERSION_RE.search(entry)
+    if match and match.group(1) != current_ver:
+      continue
+    norm_entry = os.path.normpath(entry) if entry else ""
+    real_entry = os.path.realpath(entry) if entry else ""
+    is_internal = (
+      ".runfiles" in norm_entry
+      or ".runfiles" in real_entry
+      or (
+        bool(norm_entry)
+        and (
+          norm_entry.startswith(internal_prefixes)
+          or real_entry.startswith(internal_prefixes)
+        )
+      )
+    )
+    is_external_pythonpath = (
+      norm_entry in pythonpath_entries
+      or real_entry in pythonpath_entries
+      or (in_bazel_runfiles and not is_internal)
+    )
+    if is_external_pythonpath and not is_internal:
+      demoted_paths.append(entry)
+    else:
+      primary_paths.append(entry)
+
+  sys.path[:] = primary_paths + demoted_paths
+
+
+_sanitize_sys_path()
+
+from intrinsic.solutions import deployments  # noqa: E402
+
+from src.utils.world_utils import (  # noqa: E402
   connect_initial_world,
   find_file,
 )
-from tools.world.apply_scene_updates import (
+from tools.world.apply_scene_updates import (  # noqa: E402
   DEFAULT_UPDATE_FILES,
   apply_pbtxt_file,
+  discover_setup_update_files,
 )
-from tools.world.pbtxt_pose_store import (
+from tools.world.pbtxt_pose_store import (  # noqa: E402
   DEFAULT_PBTXT_HEADER,
   Pose3Tuple,
   PoseEntry,
@@ -50,8 +119,10 @@ from tools.world.pbtxt_pose_store import (
   snap_entry_to_tool_pose,
   update_pose_in_pbtxt,
 )
-from tools.world.rviz_marker_controller import RvizFrameEditorController
-from tools.world.rviz_marker_node import (
+from tools.world.rviz_marker_controller import (  # noqa: E402
+  RvizFrameEditorController,
+)
+from tools.world.rviz_marker_node import (  # noqa: E402
   AXIS_CONTROL_SPECS,
   MENU_LABELS,
   ControlInteractionMode,
@@ -69,6 +140,7 @@ _connect_initial_world = connect_initial_world
 __all__ = [
   "AXIS_CONTROL_SPECS",
   "DEFAULT_PBTXT_HEADER",
+  "DEFAULT_UPDATE_FILES",
   "MENU_LABELS",
   "ControlInteractionMode",
   "ControlOrientationMode",
@@ -79,11 +151,13 @@ __all__ = [
   "RvizFrameEditorController",
   "_configure_zenoh_env",
   "_resolve_ros2_python_command",
+  "_sanitize_sys_path",
   "add_frame_to_pbtxt",
   "apply_pose_entry_to_world",
   "build_6dof_interactive_marker",
   "build_marker_from_dict",
   "connect_initial_world",
+  "discover_setup_update_files",
   "load_pose_entries",
   "load_pose_entries_from_file",
   "main",
@@ -210,9 +284,18 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     help="Solution gRPC address to connect to (default: localhost:17080).",
   )
   parser.add_argument(
+    "--setup",
+    type=str,
+    default="omts",
+    help=(
+      "Cell setup directory under configs/<setup>/ whose *.updates.pbtxt "
+      "files to load when --files is omitted (default: omts)."
+    ),
+  )
+  parser.add_argument(
     "--files",
     nargs="*",
-    default=DEFAULT_UPDATE_FILES,
+    default=None,
     help="Path(s) to .pbtxt ObjectWorldUpdates files to load and edit.",
   )
   parser.add_argument(
@@ -296,7 +379,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
       "editing transforms."
     ),
   )
-  return parser.parse_args(argv)
+  args = parser.parse_args(argv)
+  if args.files is None:
+    args.files = discover_setup_update_files(args.setup)
+  return args
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -313,9 +399,6 @@ def main(argv: Sequence[str] | None = None) -> None:
       world = solution.world
       if args.update_init_world:
         init_world = connect_initial_world(solution)
-      if args.apply_on_start:
-        for fpath in args.files:
-          apply_pbtxt_file(world=world, filepath=fpath, init_world=init_world)
     except Exception as e:  # pylint: disable=broad-exception-caught
       print(
         f"[-] Warning: Could not connect to {args.address} ({e}). "
@@ -324,6 +407,13 @@ def main(argv: Sequence[str] | None = None) -> None:
       solution = None
       world = None
       init_world = None
+
+    if world is not None and args.apply_on_start:
+      for fpath in args.files:
+        try:
+          apply_pbtxt_file(world=world, filepath=fpath, init_world=init_world)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+          print(f"[-] Warning: Failed to apply {fpath} on startup ({e}).")
 
   controller = RvizFrameEditorController(
     files=args.files,

@@ -31,16 +31,22 @@ from src.utils.world_utils import (
   find_file,
 )
 
-DEFAULT_UPDATE_FILES = [
-  "configs/omts/ur_module.limits.updates.pbtxt",
-  "configs/omts/ur_module.attachments.updates.pbtxt",
-  "configs/omts/scene.updates.pbtxt",
-  "configs/omts/align_robot.updates.pbtxt",
-  "configs/omts/cnc_enclosure.updates.pbtxt",
-  "configs/omts/schunk.updates.pbtxt",
-  "configs/omts/camera_mount.updates.pbtxt",
-  "configs/omts/orbbec_gemini.updates.pbtxt",
-]
+
+def discover_setup_update_files(setup: str = "omts") -> list[str]:
+  """Discovers all `configs/<setup>/*.updates.pbtxt` files in sorted order."""
+  rel_dir = os.path.join("configs", setup)
+  resolved_dir = find_file(rel_dir)
+  if not os.path.isdir(resolved_dir):
+    return []
+  filenames = sorted(
+    fname
+    for fname in os.listdir(resolved_dir)
+    if fname.endswith(".updates.pbtxt")
+  )
+  return [os.path.join("configs", setup, fname) for fname in filenames]
+
+
+DEFAULT_UPDATE_FILES = discover_setup_update_files("omts")
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -57,9 +63,18 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     help="Solution address to connect to (default: localhost:17080).",
   )
   parser.add_argument(
+    "--setup",
+    type=str,
+    default="omts",
+    help=(
+      "Cell setup directory under configs/<setup>/ whose *.updates.pbtxt"
+      " files to apply when --files is omitted (default: omts)."
+    ),
+  )
+  parser.add_argument(
     "--files",
     nargs="*",
-    default=DEFAULT_UPDATE_FILES,
+    default=None,
     help="Path(s) to .pbtxt ObjectWorldUpdates files to apply in order.",
   )
   parser.add_argument(
@@ -80,32 +95,128 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
       " they persist across world resets (default: False)."
     ),
   )
-  return parser.parse_args(argv)
+  args = parser.parse_args(argv)
+  if args.files is None:
+    args.files = discover_setup_update_files(args.setup)
+  return args
+
+
+def get_world_object_names(world: Any) -> set[str] | None:
+  """Returns the set of existing object names in `world`, or `None` if unknown.
+
+  Queries `world.list_object_names()` or `world.list_objects()` without calling
+  `hasattr(world, <object_name>)`, which would invoke `ObjectWorld.__getattr__`
+  and raise `grpc.RpcError` (`StatusCode.NOT_FOUND`) on missing objects.
+  """
+  if world is None:
+    return None
+  try:
+    list_names_fn = getattr(world, "list_object_names", None)
+    if callable(list_names_fn):
+      names = list_names_fn()
+      if isinstance(names, (list, tuple, set)):
+        valid_names = {str(n) for n in names if isinstance(n, str) and n}
+        return valid_names | {"root"}
+  except Exception:  # pylint: disable=broad-exception-caught
+    pass
+
+  try:
+    list_objs_fn = getattr(world, "list_objects", None)
+    if callable(list_objs_fn):
+      objs = list_objs_fn()
+      if isinstance(objs, (list, tuple, set)):
+        extracted: set[str] = {"root"}
+        for obj in objs:
+          if isinstance(obj, str) and obj:
+            extracted.add(obj)
+          else:
+            name = getattr(obj, "name", None) or getattr(obj, "id", None)
+            if isinstance(name, str) and name:
+              extracted.add(name)
+        return extracted
+  except Exception:  # pylint: disable=broad-exception-caught
+    pass
+
+  return None
+
+
+def world_object_exists(
+  world: Any,
+  obj_name: str | None,
+  known_objects: set[str] | None = None,
+) -> bool:
+  """Returns `True` if `obj_name` (or the object prefix of `obj/frame`) exists in `world`."""
+  if not obj_name:
+    return False
+  base_obj = obj_name.split("/", 1)[0]
+  if base_obj == "root":
+    return True
+  if known_objects is None:
+    known_objects = get_world_object_names(world)
+  if known_objects is not None:
+    return base_obj in known_objects
+  try:
+    return getattr(world, base_obj, None) is not None
+  except Exception:  # pylint: disable=broad-exception-caught
+    return False
+
+
+def _extract_node_object_name(node: Any) -> str | None:
+  """Extracts the referenced object name from a `TransformNodeReference`."""
+  if not node.HasField("by_name"):
+    return None
+  if node.by_name.HasField("object") and node.by_name.object.object_name:
+    return node.by_name.object.object_name
+  if node.by_name.HasField("frame") and node.by_name.frame.object_name:
+    return node.by_name.frame.object_name
+  return None
 
 
 def adapt_updates_for_live_world(
   world: Any, updates: object_world_updates_pb2.ObjectWorldUpdates
 ) -> object_world_updates_pb2.ObjectWorldUpdates:
-  """Converts create_frame into update_transform if frames exist."""
+  """Converts `create_frame` into `update_transform` if frames exist and skips rules for missing objects."""
   adapted = object_world_updates_pb2.ObjectWorldUpdates()
+  known_objects = get_world_object_names(world)
 
   for update in updates.updates:
     if update.HasField("create_frame"):
       cf = update.create_frame
-      parent_name = "root"
-      if cf.parent_object_with_filter.reference.by_name.object_name:
-        parent_name = cf.parent_object_with_filter.reference.by_name.object_name
-
+      parent_name = (
+        cf.parent_object_with_filter.reference.by_name.object_name or "root"
+      )
       frame_name = cf.new_frame_name
 
-      # Check if parent object and frame already exist in world
-      parent_obj = getattr(world, parent_name, None)
+      if not world_object_exists(world, parent_name, known_objects):
+        logging.info(
+          "Skipping create_frame %s for missing parent object: %s",
+          frame_name,
+          parent_name,
+        )
+        continue
+
+      try:
+        parent_obj = getattr(world, parent_name, None)
+      except Exception:  # pylint: disable=broad-exception-caught
+        parent_obj = None
+
       frame_exists = False
       if parent_obj is not None:
-        if hasattr(parent_obj, "list_frames"):
-          frame_exists = frame_name in parent_obj.list_frames()
-        else:
-          frame_exists = hasattr(parent_obj, frame_name)
+        try:
+          if hasattr(parent_obj, "list_frames"):
+            frames = parent_obj.list_frames()
+            if isinstance(frames, (list, tuple, set)):
+              frame_names = {
+                f if isinstance(f, str) else getattr(f, "name", None)
+                for f in frames
+              }
+              frame_exists = frame_name in frame_names
+            else:
+              frame_exists = getattr(parent_obj, frame_name, None) is not None
+          else:
+            frame_exists = getattr(parent_obj, frame_name, None) is not None
+        except Exception:  # pylint: disable=broad-exception-caught
+          frame_exists = False
 
       if frame_exists:
         # Frame already exists; convert create_frame to update_transform
@@ -122,43 +233,71 @@ def adapt_updates_for_live_world(
         adapted.updates.add().CopyFrom(update)
     elif update.HasField("update_transform"):
       ut = update.update_transform
-      target_obj_name = None
+      referenced_objs = [
+        obj_name
+        for obj_name in (
+          _extract_node_object_name(ut.node_a),
+          _extract_node_object_name(ut.node_b),
+          _extract_node_object_name(ut.node_to_update),
+        )
+        if obj_name is not None
+      ]
+      missing_obj = next(
+        (
+          obj_name
+          for obj_name in referenced_objs
+          if not world_object_exists(world, obj_name, known_objects)
+        ),
+        None,
+      )
+      if missing_obj is not None:
+        logging.info(
+          "Skipping update_transform for missing object: %s", missing_obj
+        )
+        continue
+
+      adapted.updates.add().CopyFrom(update)
+    elif update.HasField("update_object_joints"):
+      obj_name = update.update_object_joints.object.by_name.object_name
+      if obj_name and not world_object_exists(world, obj_name, known_objects):
+        logging.info(
+          "Skipping update_object_joints for missing object: %s", obj_name
+        )
+        continue
+      adapted.updates.add().CopyFrom(update)
+    elif update.HasField("update_object_joint"):
+      obj_name = update.update_object_joint.object.by_name.object_name
+      if obj_name and not world_object_exists(world, obj_name, known_objects):
+        logging.info(
+          "Skipping update_object_joint for missing object: %s", obj_name
+        )
+        continue
+      adapted.updates.add().CopyFrom(update)
+    elif update.HasField("reparent_object"):
+      child_obj = update.reparent_object.object.by_name.object_name
+      parent_obj_name = (
+        update.reparent_object.new_parent.reference.by_name.object_name
+      )
       if (
-        ut.node_to_update.HasField("by_name")
-        and ut.node_to_update.by_name.HasField("object")
-        and ut.node_to_update.by_name.object.object_name
+        child_obj and not world_object_exists(world, child_obj, known_objects)
+      ) or (
+        parent_obj_name
+        and not world_object_exists(world, parent_obj_name, known_objects)
       ):
-        target_obj_name = ut.node_to_update.by_name.object.object_name
-      elif (
-        ut.node_b.HasField("by_name")
-        and ut.node_b.by_name.HasField("object")
-        and ut.node_b.by_name.object.object_name
-      ):
-        target_obj_name = ut.node_b.by_name.object.object_name
-
-      if target_obj_name is not None and target_obj_name != "root":
-        obj_exists = False
-        if hasattr(world, "list_objects"):
-          try:
-            objs = world.list_objects()
-            existing = {
-              o
-              if isinstance(o, str)
-              else (getattr(o, "name", None) or getattr(o, "id", None))
-              for o in objs
-            }
-            obj_exists = target_obj_name in existing
-          except Exception:  # pylint: disable=broad-exception-caught
-            obj_exists = hasattr(world, target_obj_name)
-        else:
-          obj_exists = hasattr(world, target_obj_name)
-
-        if not obj_exists:
-          logging.info(
-            "Skipping update_transform for missing object: %s", target_obj_name
-          )
-          continue
-
+        logging.info(
+          "Skipping reparent_object for missing object: %s -> %s",
+          child_obj,
+          parent_obj_name,
+        )
+        continue
+      adapted.updates.add().CopyFrom(update)
+    elif update.HasField("update_object_properties"):
+      obj_name = update.update_object_properties.object.by_name.object_name
+      if obj_name and not world_object_exists(world, obj_name, known_objects):
+        logging.info(
+          "Skipping update_object_properties for missing object: %s", obj_name
+        )
+        continue
       adapted.updates.add().CopyFrom(update)
     else:
       adapted.updates.add().CopyFrom(update)
@@ -214,6 +353,13 @@ def apply_pbtxt_file(
     world=world, updates=raw_updates
   )
 
+  if not adapted_updates.updates:
+    print(
+      f"    Skipping {filepath}: no update rules apply to objects in the active"
+      " world."
+    )
+    return adapted_updates
+
   print(
     f"    Applying {len(adapted_updates.updates)} update rule(s) to live"
     " world..."
@@ -225,7 +371,8 @@ def apply_pbtxt_file(
       adapted_init_updates = adapt_updates_for_live_world(
         world=init_world, updates=raw_updates
       )
-      init_world.batch_update(adapted_init_updates)
+      if adapted_init_updates.updates:
+        init_world.batch_update(adapted_init_updates)
     except Exception as e:  # pylint: disable=broad-exception-caught
       logging.warning(
         "Failed to apply %s to initial world ('init_world'): %s", filepath, e
@@ -272,7 +419,8 @@ def main(argv: Sequence[str] | None = None) -> None:
 
   print("\n=== Current Active World State Verification ===")
   try:
-    if hasattr(world, "root"):
+    known_objects = get_world_object_names(world)
+    if world_object_exists(world, "root", known_objects):
       print("Frames on 'root':")
       if hasattr(world.root, "list_frames"):
         for f in world.root.list_frames():
@@ -281,12 +429,16 @@ def main(argv: Sequence[str] | None = None) -> None:
             f" {world.get_transform(world.root, getattr(world.root, f))}"
           )
 
-    if hasattr(world, "ur_module") and hasattr(world.ur_module, "flange"):
+    if world_object_exists(world, "ur_module", known_objects) and hasattr(
+      world.ur_module, "flange"
+    ):
       print(
         "Flange in root:"
         f" {world.get_transform(world.root, world.ur_module.flange)}"
       )
-    if hasattr(world, "gripper") and hasattr(world.gripper, "tool_frame"):
+    if world_object_exists(world, "gripper", known_objects) and hasattr(
+      world.gripper, "tool_frame"
+    ):
       print(
         "Tool Frame in root:"
         f" {world.get_transform(world.root, world.gripper.tool_frame)}"
