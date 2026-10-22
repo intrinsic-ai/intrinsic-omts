@@ -15,6 +15,7 @@
 """RViz 6-DoF InteractiveMarker feedback controller."""
 
 import dataclasses
+import fnmatch
 import logging
 import os
 import threading
@@ -28,7 +29,9 @@ from intrinsic.world.proto import object_world_updates_pb2
 
 from tools.world.apply_scene_updates import (
   DEFAULT_UPDATE_FILES,
+  adapt_updates_for_live_world,
   extract_joint_updates,
+  get_world_object_names,
 )
 from tools.world.pbtxt_pose_store import (
   Pose3Tuple,
@@ -95,6 +98,7 @@ class RvizFrameEditorController:
     tool_frame: str = "tool_frame",
     entries: Sequence[PoseEntry] | None = None,
     fixed_frame: str = "root",
+    frame_filter: Sequence[str] | None = None,
   ) -> None:
     """Initializes the RViz interactive marker controller."""
     self.files: list[str] = list(files)
@@ -104,6 +108,11 @@ class RvizFrameEditorController:
     self.allowed_root: str | None = allowed_root
     self.marker_scale: float = float(marker_scale)
     self.fixed_frame: str = fixed_frame or "root"
+    self.frame_filter: list[str] | None = (
+      self._normalize_frame_filter(frame_filter)
+      if frame_filter is not None
+      else None
+    )
     if isinstance(fixed_orientation, bool):
       self.default_fixed_orientation: bool = fixed_orientation
       self.fixed_orientation: dict[str, bool] = {}
@@ -118,26 +127,151 @@ class RvizFrameEditorController:
     self.reset_sim_on_release: bool = bool(reset_sim_on_release)
     self.tool_object: str = tool_object
     self.tool_frame: str = tool_frame
+    self._all_world_entries: list[PoseEntry] = []
     self.entries_by_marker: dict[str, PoseEntry] = {}
     self.last_drag_update_time: dict[str, float] = {}
     self.lock = threading.RLock()
 
-    initial_entries = (
+    raw_entries = (
       list(entries)
       if entries is not None
       else load_pose_entries(self.files, allowed_root=self.allowed_root)
     )
-    for entry in initial_entries:
-      marker_key = (
-        entry.marker_name
-        or f"{entry.parent_name or 'root'}/{entry.target_name}"
+    initial_entries = [
+      dataclasses.replace(
+        entry,
+        marker_name=(
+          entry.marker_name
+          or f"{entry.parent_name or 'root'}/{entry.target_name}"
+        ),
       )
-      if not entry.marker_name:
-        entry = dataclasses.replace(entry, marker_name=marker_key)
-      self.entries_by_marker[marker_key] = entry
+      for entry in self._filter_entries_for_world(raw_entries)
+    ]
+    self._all_world_entries = list(initial_entries)
+    for entry in self._filter_entries_by_frame(initial_entries):
+      self.entries_by_marker[entry.marker_name] = entry
       self.fixed_orientation.setdefault(
-        marker_key, self.default_fixed_orientation
+        entry.marker_name, self.default_fixed_orientation
       )
+
+  @staticmethod
+  def _normalize_frame_filter(
+    frame_filter: Sequence[str] | None,
+  ) -> list[str] | None:
+    """Normalizes comma-separated and sequence frame filter tokens."""
+    if frame_filter is None:
+      return None
+    tokens: list[str] = []
+    for raw in frame_filter:
+      for part in str(raw).split(","):
+        tok = part.strip()
+        if tok:
+          tokens.append(tok)
+    return tokens or None
+
+  @staticmethod
+  def _entry_exact_matches_token(entry: PoseEntry, token: str) -> bool:
+    """Returns True if `token` exactly matches `entry`'s target or marker name."""
+    full_name = f"{entry.parent_name or 'root'}/{entry.target_name}"
+    return token in (entry.target_name, entry.marker_name, full_name)
+
+  def _filter_entries_by_frame(
+    self, initial_entries: Sequence[PoseEntry]
+  ) -> list[PoseEntry]:
+    """Filters `initial_entries` against `self.frame_filter` when configured."""
+    if not self.frame_filter:
+      return list(initial_entries)
+
+    tokens_with_exact_match = {
+      tok
+      for tok in self.frame_filter
+      if not any(ch in tok for ch in ("*", "?", "["))
+      and any(
+        self._entry_exact_matches_token(entry, tok) for entry in initial_entries
+      )
+    }
+
+    matched_entries: list[PoseEntry] = []
+    for entry in initial_entries:
+      full_name = f"{entry.parent_name or 'root'}/{entry.target_name}"
+      marker_name = entry.marker_name or full_name
+      matched = False
+      for tok in self.frame_filter:
+        if any(ch in tok for ch in ("*", "?", "[")):
+          if (
+            fnmatch.fnmatchcase(entry.target_name, tok)
+            or fnmatch.fnmatchcase(marker_name, tok)
+            or fnmatch.fnmatchcase(full_name, tok)
+          ):
+            matched = True
+            break
+        elif tok in tokens_with_exact_match:
+          if self._entry_exact_matches_token(entry, tok):
+            matched = True
+            break
+        elif tok in entry.target_name or tok in marker_name:
+          matched = True
+          break
+      if matched:
+        matched_entries.append(entry)
+    return matched_entries
+
+  def _filter_entries_for_world(
+    self, entries: Sequence[PoseEntry]
+  ) -> list[PoseEntry]:
+    """Filters out `PoseEntry` items referencing objects absent from `self.world`."""
+    known_objects = get_world_object_names(self.world)
+    if known_objects is None:
+      return list(entries)
+
+    created_frames = {
+      e.target_name for e in entries if e.entry_type == "create_frame"
+    }
+    filtered: list[PoseEntry] = []
+    for entry in entries:
+      parent_obj = (entry.parent_name or "root").split("/", 1)[0]
+      if parent_obj not in known_objects:
+        logging.info(
+          "Skipping marker %s: parent object %r not in active world.",
+          entry.marker_name or entry.target_name,
+          parent_obj,
+        )
+        continue
+      if entry.entry_type == "update_transform":
+        target_obj = entry.target_name.split("/", 1)[0]
+        if (
+          target_obj not in known_objects
+          and entry.target_name not in created_frames
+        ):
+          logging.info(
+            "Skipping marker %s: target object %r not in active world.",
+            entry.marker_name or entry.target_name,
+            target_obj,
+          )
+          continue
+      filtered.append(entry)
+    return filtered
+
+  def _find_parent_entry(self, curr_name: str) -> PoseEntry | None:
+    """Finds the `PoseEntry` defining `curr_name`, checking active markers first."""
+    candidate_pools = (
+      tuple(self.entries_by_marker.values()),
+      tuple(self._all_world_entries),
+    )
+    for pool in candidate_pools:
+      for candidate in pool:
+        if (
+          candidate.target_name == curr_name
+          or f"{candidate.parent_name or 'root'}/{candidate.target_name}"
+          == curr_name
+        ):
+          return candidate
+      if "/" in curr_name:
+        base_obj = curr_name.split("/", 1)[0]
+        for candidate in pool:
+          if candidate.target_name == base_obj:
+            return candidate
+    return None
 
   def get_parent_pose_in_fixed_frame(self, parent_name: str) -> Pose3Tuple:
     """Resolves `T_fixed_parent` (`((x, y, z), (qx, qy, qz, qw))`).
@@ -165,21 +299,7 @@ class RvizFrameEditorController:
       curr_name and curr_name != self.fixed_frame and curr_name not in visited
     ):
       visited.add(curr_name)
-      matched: PoseEntry | None = None
-      for candidate in self.entries_by_marker.values():
-        if (
-          candidate.target_name == curr_name
-          or f"{candidate.parent_name or 'root'}/{candidate.target_name}"
-          == curr_name
-        ):
-          matched = candidate
-          break
-      if matched is None and "/" in curr_name:
-        base_obj = curr_name.split("/", 1)[0]
-        for candidate in self.entries_by_marker.values():
-          if candidate.target_name == base_obj:
-            matched = candidate
-            break
+      matched = self._find_parent_entry(curr_name)
       if matched is None:
         break
       matched_any = True
@@ -253,20 +373,7 @@ class RvizFrameEditorController:
       if "/" in curr_name and curr_name.split("/", 1)[0] in ancestor_keys:
         return True
 
-      matched: PoseEntry | None = None
-      for entry in self.entries_by_marker.values():
-        if (
-          entry.target_name == curr_name
-          or f"{entry.parent_name or 'root'}/{entry.target_name}" == curr_name
-        ):
-          matched = entry
-          break
-      if matched is None and "/" in curr_name:
-        base_obj = curr_name.split("/", 1)[0]
-        for entry in self.entries_by_marker.values():
-          if entry.target_name == base_obj:
-            matched = entry
-            break
+      matched = self._find_parent_entry(curr_name)
       if matched is None:
         break
       if matched.marker_name == ancestor.marker_name:
@@ -307,9 +414,21 @@ class RvizFrameEditorController:
   def reload_entries(self) -> list[PoseEntry]:
     """Reloads all `PoseEntry` items from `self.files`."""
     with self.lock:
-      loaded = load_pose_entries(self.files, allowed_root=self.allowed_root)
+      loaded = [
+        dataclasses.replace(
+          entry,
+          marker_name=(
+            entry.marker_name
+            or f"{entry.parent_name or 'root'}/{entry.target_name}"
+          ),
+        )
+        for entry in self._filter_entries_for_world(
+          load_pose_entries(self.files, allowed_root=self.allowed_root)
+        )
+      ]
+      self._all_world_entries = list(loaded)
       self.entries_by_marker.clear()
-      for entry in loaded:
+      for entry in self._filter_entries_by_frame(loaded):
         self.entries_by_marker[entry.marker_name] = entry
         self.fixed_orientation.setdefault(
           entry.marker_name, self.default_fixed_orientation
@@ -355,7 +474,9 @@ class RvizFrameEditorController:
               with open(resolved, encoding="utf-8") as f:
                 raw = object_world_updates_pb2.ObjectWorldUpdates()
                 text_format.Parse(f.read(), raw)
-              extracted = extract_joint_updates(raw)
+              extracted = adapt_updates_for_live_world(
+                self.world, extract_joint_updates(raw)
+              )
               joint_updates.updates.extend(extracted.updates)
           except Exception:  # pylint: disable=broad-exception-caught
             continue

@@ -30,6 +30,7 @@ from tools.world.apply_scene_updates import (
   DEFAULT_UPDATE_FILES,
   adapt_updates_for_live_world,
   apply_pbtxt_file,
+  discover_setup_update_files,
   extract_joint_updates,
   main,
   parse_args,
@@ -43,9 +44,34 @@ class ApplySceneUpdatesTest(absltest.TestCase):
     """Tests default command-line argument values."""
     args = parse_args([])
     self.assertEqual(args.address, "localhost:17080")
+    self.assertEqual(args.setup, "omts")
     self.assertEqual(args.files, DEFAULT_UPDATE_FILES)
     self.assertTrue(args.reset_sim)
     self.assertFalse(args.update_init_world)
+
+  def test_parse_args_setup_discovers_setup_directory_files(self) -> None:
+    """Tests --setup dynamically discovers configs/<setup>/*.updates.pbtxt files."""
+    args = parse_args(["--setup", "lab_bb_01"])
+    self.assertEqual(args.setup, "lab_bb_01")
+    self.assertEqual(args.files, discover_setup_update_files("lab_bb_01"))
+    self.assertIn("configs/lab_bb_01/scene.updates.pbtxt", args.files)
+    self.assertNotIn("configs/omts/cnc_enclosure.updates.pbtxt", args.files)
+
+    cnc_dir = os.path.join(self.temp_dir.name, "configs", "cnc")
+    os.makedirs(cnc_dir, exist_ok=True)
+    with open(
+      os.path.join(cnc_dir, "fixture.updates.pbtxt"), "w", encoding="utf-8"
+    ) as f:
+      f.write("updates {}")
+    with open(
+      os.path.join(cnc_dir, "ignored_waypoints.pbtxt"), "w", encoding="utf-8"
+    ) as f:
+      f.write("")
+    with mock.patch.dict(
+      os.environ, {"BUILD_WORKING_DIRECTORY": self.temp_dir.name}
+    ):
+      args_cnc = parse_args(["--setup", "cnc"])
+      self.assertEqual(args_cnc.files, ["configs/cnc/fixture.updates.pbtxt"])
 
   def test_parse_args_no_reset_sim(self) -> None:
     """Tests disabling simulation reset via --no-reset_sim flag."""
@@ -94,6 +120,7 @@ class ApplySceneUpdatesTest(absltest.TestCase):
       world=mock_solution.world,
       filepath="test.pbtxt",
       init_world=None,
+      is_simulated=True,
     )
     mock_solution.world.batch_update.assert_called_once_with(updates)
     mock_solution.simulator.reset.assert_called_once()
@@ -122,6 +149,7 @@ class ApplySceneUpdatesTest(absltest.TestCase):
       world=mock_solution.world,
       filepath="test.pbtxt",
       init_world=mock_init_world,
+      is_simulated=False,
     )
 
   @mock.patch("tools.world.apply_scene_updates.connect_initial_world")
@@ -146,6 +174,7 @@ class ApplySceneUpdatesTest(absltest.TestCase):
       world=mock_solution.world,
       filepath="test.pbtxt",
       init_world=None,
+      is_simulated=True,
     )
     mock_solution.simulator.reset.assert_not_called()
 
@@ -171,6 +200,7 @@ class ApplySceneUpdatesTest(absltest.TestCase):
       world=mock_solution.world,
       filepath="test.pbtxt",
       init_world=None,
+      is_simulated=False,
     )
 
   def setUp(self):
@@ -322,6 +352,71 @@ class ApplySceneUpdatesTest(absltest.TestCase):
     )
     self.assertEqual(len(adapted.updates), 0)
 
+  def test_adapt_updates_skips_missing_objects_without_triggering_getattr_rpc(
+    self,
+  ) -> None:
+    """Tests that missing objects in update_transform/update_object_joints are skipped via list_object_names."""
+
+    class _StrictWorld:
+      """Simulates SBL ObjectWorld raising RpcError on missing attribute access."""
+
+      def __init__(self) -> None:
+        self.root = mock.MagicMock()
+        self.root.list_frames.return_value = []
+        self.enclosure = mock.MagicMock()
+        self.orbbec_camera = mock.MagicMock()
+
+      def list_object_names(self) -> list[str]:
+        return ["root", "enclosure", "orbbec_camera"]
+
+      def __getattr__(self, name: str):
+        raise RuntimeError(f'No object with name "{name}" exists.')
+
+    strict_world = _StrictWorld()
+    pbtxt = """
+    updates {
+      create_frame {
+        parent_object_with_filter {
+          reference { by_name { object_name: "cnc_enclosure" } }
+        }
+        new_frame_name: "vise_frame"
+      }
+    }
+    updates {
+      update_transform {
+        node_a { by_name { object { object_name: "enclosure" } } }
+        node_b { by_name { object { object_name: "cnc_enclosure" } } }
+        node_to_update { by_name { object { object_name: "cnc_enclosure" } } }
+      }
+    }
+    updates {
+      update_transform {
+        node_a { by_name { object { object_name: "camera_mount" } } }
+        node_b { by_name { object { object_name: "orbbec_camera" } } }
+        node_to_update { by_name { object { object_name: "orbbec_camera" } } }
+      }
+    }
+    updates {
+      update_object_joints {
+        object { by_name { object_name: "cnc_enclosure" } }
+        joint_positions: 0.4
+      }
+    }
+    updates {
+      reparent_object {
+        object { by_name { object_name: "orbbec_camera" } }
+        new_parent { reference { by_name { object_name: "camera_mount" } } }
+      }
+    }
+    """
+    raw_updates = object_world_updates_pb2.ObjectWorldUpdates()
+    text_format.Parse(pbtxt, raw_updates)
+
+    adapted = adapt_updates_for_live_world(
+      world=strict_world, updates=raw_updates
+    )
+    self.assertEmpty(adapted.updates)
+
   def test_apply_pbtxt_file(self):
     test_file = os.path.join(self.temp_dir.name, "scene.updates.pbtxt")
     with open(test_file, "w", encoding="utf-8") as f:
@@ -358,6 +453,166 @@ class ApplySceneUpdatesTest(absltest.TestCase):
     mock_world.batch_update.assert_called_once()
     mock_init_world.batch_update.assert_called_once()
     self.assertLen(applied.updates, 1)
+
+  def test_adapt_updates_skips_joint_updates_on_real_hardware(self) -> None:
+    """Tests adapt_updates_for_live_world skips joint updates when is_simulated is False."""
+    mock_world = mock.MagicMock()
+    mock_root = mock.MagicMock()
+    mock_root.list_frames.return_value = []
+    mock_world.root = mock_root
+    mock_world.list_object_names.return_value = [
+      "root",
+      "ur_module",
+      "gripper",
+    ]
+
+    pbtxt = """
+    updates {
+      update_object_joints {
+        object { by_name { object_name: "ur_module" } }
+        joint_positions: 1.5707
+        joint_positions: -1.5707
+        joint_positions: 1.5707
+        joint_positions: -1.5707
+        joint_positions: -1.5707
+        joint_positions: 3.140
+      }
+    }
+    updates {
+      update_object_joint {
+        object { by_name { object_name: "ur_module" } }
+        joint_name: "shoulder_pan_joint"
+        joint_position: 1.5707
+      }
+    }
+    updates {
+      create_frame {
+        parent_object_with_filter {
+          reference { by_name { object_name: "root" } }
+        }
+        new_frame_name: "view"
+        parent_t_new_frame {
+          position { x: 0.1 y: 0.2 z: 0.3 }
+          orientation { x: 0.0 y: 0.0 z: 0.0 w: 1.0 }
+        }
+      }
+    }
+    updates {
+      update_transform {
+        node_a { by_name { frame { object_name: "ur_module" frame_name: "flange" } } }
+        node_b { by_name { object { object_name: "gripper" } } }
+        node_to_update { by_name { object { object_name: "gripper" } } }
+        a_t_b {
+          position { x: 0.0 y: 0.0 z: 0.064 }
+          orientation { x: 0.0 y: 0.0 z: 0.0 w: 1.0 }
+        }
+      }
+    }
+    updates {
+      reparent_object {
+        object { by_name { object_name: "gripper" } }
+        new_parent { reference { by_name { object_name: "ur_module" } } }
+      }
+    }
+    """
+    raw_updates = object_world_updates_pb2.ObjectWorldUpdates()
+    text_format.Parse(pbtxt, raw_updates)
+
+    adapted_real = adapt_updates_for_live_world(
+      world=mock_world, updates=raw_updates, is_simulated=False
+    )
+    self.assertLen(adapted_real.updates, 3)
+    self.assertTrue(adapted_real.updates[0].HasField("create_frame"))
+    self.assertTrue(adapted_real.updates[1].HasField("update_transform"))
+    self.assertTrue(adapted_real.updates[2].HasField("reparent_object"))
+
+    adapted_sim = adapt_updates_for_live_world(
+      world=mock_world, updates=raw_updates, is_simulated=True
+    )
+    self.assertLen(adapted_sim.updates, 5)
+    self.assertTrue(adapted_sim.updates[0].HasField("update_object_joints"))
+    self.assertTrue(adapted_sim.updates[1].HasField("update_object_joint"))
+
+  def test_apply_pbtxt_file_preserves_real_robot_joints_in_world_and_init_world(
+    self,
+  ) -> None:
+    """Tests apply_pbtxt_file omits joint rules for both world and init_world when is_simulated=False."""
+    test_file = os.path.join(
+      self.temp_dir.name, "ur_module.attachments.updates.pbtxt"
+    )
+    with open(test_file, "w", encoding="utf-8") as f:
+      f.write("""
+      updates {
+        update_object_joints {
+          object { by_name { object_name: "ur_module" } }
+          joint_positions: 1.5707
+        }
+      }
+      updates {
+        update_object_joint {
+          object { by_name { object_name: "ur_module" } }
+          joint_name: "shoulder_pan_joint"
+          joint_position: 1.5707
+        }
+      }
+      updates {
+        update_transform {
+          node_a { by_name { frame { object_name: "ur_module" frame_name: "flange" } } }
+          node_b { by_name { object { object_name: "gripper" } } }
+          node_to_update { by_name { object { object_name: "gripper" } } }
+          a_t_b {
+            position { x: 0.0 y: 0.0 z: 0.064 }
+            orientation { x: 0.0 y: 0.0 z: 0.0 w: 1.0 }
+          }
+        }
+      }
+      updates {
+        reparent_object {
+          object { by_name { object_name: "gripper" } }
+          new_parent { reference { by_name { object_name: "ur_module" } } }
+        }
+      }
+      """)
+
+    mock_world = mock.MagicMock()
+    mock_world.list_object_names.return_value = [
+      "root",
+      "ur_module",
+      "gripper",
+    ]
+    mock_init_world = mock.MagicMock()
+    mock_init_world.list_object_names.return_value = [
+      "root",
+      "ur_module",
+      "gripper",
+    ]
+
+    applied_real = apply_pbtxt_file(
+      world=mock_world,
+      filepath=test_file,
+      init_world=mock_init_world,
+      is_simulated=False,
+    )
+    self.assertLen(applied_real.updates, 2)
+    self.assertTrue(applied_real.updates[0].HasField("update_transform"))
+    self.assertTrue(applied_real.updates[1].HasField("reparent_object"))
+    mock_world.batch_update.assert_called_once_with(applied_real)
+    mock_init_world.batch_update.assert_called_once_with(applied_real)
+
+    mock_world.batch_update.reset_mock()
+    mock_init_world.batch_update.reset_mock()
+
+    applied_sim = apply_pbtxt_file(
+      world=mock_world,
+      filepath=test_file,
+      init_world=mock_init_world,
+      is_simulated=True,
+    )
+    self.assertLen(applied_sim.updates, 4)
+    self.assertTrue(applied_sim.updates[0].HasField("update_object_joints"))
+    self.assertTrue(applied_sim.updates[1].HasField("update_object_joint"))
+    mock_world.batch_update.assert_called_once_with(applied_sim)
+    mock_init_world.batch_update.assert_called_once_with(applied_sim)
 
   def test_extract_joint_updates_filters_only_joint_rules(self):
     pbtxt = """
