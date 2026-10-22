@@ -1,5 +1,5 @@
 load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
-load("@intrinsic-core//bazel:python.bzl", "py_test")
+load("@intrinsic-core//bazel:python.bzl", "py_library", "py_test")
 load("@rules_cc//cc:defs.bzl", "cc_binary")
 
 package(default_visibility = ["//visibility:public"])
@@ -393,11 +393,12 @@ cc_binary(
     ],
 )
 
-py_test(
-    name = "test_inprocess_core_integration",
+py_library(
+    name = "inprocess_core_test_harness",
+    testonly = True,
     srcs = [
+        "inprocess_core_test_harness.py",
         "test_behaviors.py",
-        "test_inprocess_core_integration.py",
     ],
     data = [
         ":inprocess_skill_runner",
@@ -405,7 +406,6 @@ py_test(
         "//:omts_solution_manifest",
         "//configs:all_configs",
     ],
-    main = "test_inprocess_core_integration.py",
     deps = [
         "//src/behaviors:machine_tending_bt",
         "//src/core:config",
@@ -439,5 +439,24 @@ py_test(
         "@intrinsic_apis//intrinsic/resources/proto:resource_handle_py_pb2",
         "@intrinsic_apis//intrinsic/skills/proto:equipment_py_pb2",
         "@intrinsic_apis//intrinsic/skills/proto:skill_manifest_py_pb2",
+    ],
+)
+
+py_test(
+    name = "test_inprocess_world_and_skills",
+    srcs = ["test_inprocess_world_and_skills.py"],
+    deps = [
+        ":inprocess_core_test_harness",
+        "//src/core:config",
+        "@com_google_absl_py//absl/testing:absltest",
+    ],
+)
+
+py_test(
+    name = "test_inprocess_bt_and_motion_planning",
+    srcs = ["test_inprocess_bt_and_motion_planning.py"],
+    deps = [
+        ":inprocess_core_test_harness",
+        "@com_google_absl_py//absl/testing:absltest",
     ],
 )

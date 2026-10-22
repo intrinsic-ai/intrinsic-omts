@@ -6,7 +6,7 @@ validation, SBL Behavior Tree structure, hardware adapters, and CLI tools.
 ## Running Tests
 
 ```bash
-# Run all 22 unit/integration test targets offline (no live cluster or hardware required)
+# Run all 24 unit/integration test targets offline (no live cluster or hardware required)
 bazel test --build_tests_only //tests/...
 
 # Run a specific test suite with detailed error output
@@ -19,7 +19,8 @@ bazel test --test_output=errors //tests/unit:test_behaviors
 | :--- | :--- | :--- |
 | `test_config` | `src/core/config.py` | Strict YAML loading (`omts`, `lab_bb_01`), missing key rejection, optional `machine` section handling. |
 | `test_behaviors` | `src/behaviors/*.py` | Master BT assembly (`bt.Loop` single/finite/continuous), optional `machine=None` node omission, segment-scoped collision rules, compliant touchdowns, and linear retracts across all 5 subtrees. |
-| `test_inprocess_core_integration` | `src/behaviors/*.py`, `configs/**/*.updates.pbtxt`, `@intrinsic-core` C++ world & skills | In-process `@intrinsic-core` C++ `FakeWorldService`, `ComposeResourceInstancesIntoWorld`, `MotionPlannerServiceInProcess`, `MoveRobot::PlanTrajectory`, `PreplanMotionSkill`, `AttachObjectToRobotSkill`, `DetachObjectSkill`, and `ObjectWorldClient` execution across full 5-phase `omts` and `lab_bb_01` cycles. |
+| `test_inprocess_world_and_skills` | `src/behaviors/*.py`, `configs/**/*.updates.pbtxt`, `@intrinsic-core` C++ world & skills | In-process `@intrinsic-core` C++ `FakeWorldService`, `ComposeResourceInstancesIntoWorld`, `UpdateWorldSkill`, `AttachObjectToRobotSkill`, `DetachObjectSkill`, and `ObjectWorldClient` entity-filter and collision invariants for `omts` and `lab_bb_01`. |
+| `test_inprocess_bt_and_motion_planning` | `src/behaviors/*.py`, `@intrinsic-core` C++ motion planner & skills | Full 5-phase `omts` and `lab_bb_01` BT execution against `MotionPlannerServiceInProcess`, `MoveRobot::PlanTrajectory`, and `PreplanMotionSkill`, including start-state continuity, application joint limits, and per-segment collision rules. |
 | `test_hardware_adapters` | `src/hardware/*.py` | `Robot`, `RobotiqGripper`, `DioGripper`, `DioCncMachine`, and `OrbbecVision` skill generation, ADIO capability resolution, and belief-world joint synchronization. |
 | `test_infeed` | `src/core/infeed.py` | `PerceptionInfeedStrategy` and `GridInfeedStrategy` part acquisition lifecycle. |
 | `test_tray` | `src/core/tray.py` | Row-major slot iteration, pitch offset math, and slot occupancy transitions. |
