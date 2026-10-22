@@ -30,10 +30,13 @@ updates {
       position {
         x: 0.15
         y: 0.25
-        z: 0.80
+        z: 0.8
       }
       orientation {
         x: 1.0
+        y: 0.0
+        z: 0.0
+        w: 0.0
       }
     }
     parent_object_with_filter {
@@ -119,15 +122,15 @@ updates {
     new_frame_name: "view"
     parent_t_new_frame {
       position {
-        x: 0.3433
-        y: 0.3786
-        z: 0.88
+        x: 0.2844
+        y: 0.42
+        z: 0.9717
       }
       orientation {
-        x: -0.2667
-        y: -0.9585
-        z: 0.1
-        w: 0.0092
+        x: -0.1946203020064546
+        y: -0.943719580601225
+        z: 0.25625036928558315
+        w: 0.07649862402531679
       }
     }
     parent_object_with_filter {
