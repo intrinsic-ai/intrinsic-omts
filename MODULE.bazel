@@ -182,8 +182,8 @@ gh.download(
     name = "moveit_plan_grasp_skill_bundle",
     pattern = "moveit_plan_grasp_skill.bundle.tar",
     repo = "intrinsic-ai/intrinsic-moveit",
-    sha256 = "34b1187754fa87528b6d240ea1d407c756808d23997829e3a1776d6095e2524e",
-    tag = "v0.0.3",
+    sha256 = "a3863f1c518d44109dc0fc619e650fb34f50759acb4edb8a9605e47110bb7769",
+    tag = "v0.0.4",
 )
 use_repo(
     gh,
