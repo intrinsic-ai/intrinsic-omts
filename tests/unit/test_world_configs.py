@@ -169,6 +169,36 @@ class WorldUpdateConfigsTest(absltest.TestCase):
         self.assertLen(joint_updates, 1)
         self.assertAlmostEqual(joint_updates[0].joint_positions[0], expected_j0)
 
+  def test_align_robot_is_single_source_of_ur_module_base_transform(self):
+    """Only align_robot.updates.pbtxt may update the enclosure -> ur_module base transform."""
+    for cell in ("omts", "lab_bb_01"):
+      with self.subTest(cell=cell):
+        align_path = f"configs/{cell}/align_robot.updates.pbtxt"
+        align_updates = _load_updates_proto(align_path)
+        self.assertIsNotNone(align_updates)
+        align_targets = [
+          u.update_transform.node_to_update.by_name.object.object_name
+          for u in align_updates.updates
+          if u.HasField("update_transform")
+        ]
+        self.assertEqual(align_targets, ["ur_module"])
+
+        attachments_path = f"configs/{cell}/ur_module.attachments.updates.pbtxt"
+        attachments_updates = _load_updates_proto(attachments_path)
+        self.assertIsNotNone(attachments_updates)
+        attachment_obj_targets = [
+          u.update_transform.node_to_update.by_name.object.object_name
+          for u in attachments_updates.updates
+          if u.HasField("update_transform")
+          and u.update_transform.node_to_update.by_name.HasField("object")
+        ]
+        self.assertNotIn(
+          "ur_module",
+          attachment_obj_targets,
+          f"{attachments_path} must not duplicate the ur_module base transform "
+          f"from {align_path}.",
+        )
+
   def test_ur_module_application_limits(self):
     """wrist_3_joint of the omts UR5e is limited to [-210 deg, +220 deg]."""
     path = "configs/omts/ur_module.limits.updates.pbtxt"

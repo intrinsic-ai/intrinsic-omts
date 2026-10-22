@@ -49,6 +49,11 @@ bazel run //tools/world:edit_frames_rviz -- \
   --setup=lab_bb_01 \
   --address=localhost:17080 \
   --zenoh_endpoint=tcp/127.0.0.1:7447
+
+# Enable interactive markers only for specific frames/transforms (--frame / --frames):
+bazel run //tools/world:edit_frames_rviz -- \
+  --setup=lab_bb_01 \
+  --frame view place_vise
 ```
 
 ### Connecting RViz (Local or Remote over SSH)

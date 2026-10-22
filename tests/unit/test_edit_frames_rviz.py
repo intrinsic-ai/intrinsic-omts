@@ -39,6 +39,7 @@ from tools.world.edit_frames_rviz import (
   connect_initial_world,
   discover_setup_update_files,
   find_file,
+  main,
   parse_args,
 )
 from tools.world.pbtxt_pose_store import (
@@ -1045,6 +1046,7 @@ updates {
     """Tests CLI argument defaults for edit_frames_rviz."""
     args = parse_args([])
     self.assertEqual(args.address, "localhost:17080")
+    self.assertIsNone(args.frames)
     self.assertEqual(args.topic_ns, "omts_frame_editor")
     self.assertEqual(args.fixed_frame, "root")
     self.assertAlmostEqual(args.marker_scale, 0.18)
@@ -1053,8 +1055,98 @@ updates {
     self.assertEqual(args.ros_python, "python3")
     self.assertFalse(args.offline)
     self.assertTrue(args.update_init_world)
-    self.assertTrue(args.apply_on_start)
+    self.assertFalse(args.apply_on_start)
     self.assertFalse(args.reset_sim_on_release)
+
+  def test_parse_args_frame_filter_and_controller_filtering(self) -> None:
+    """Tests --frame / --frames CLI parsing and RvizFrameEditorController frame_filter."""
+    self.assertEqual(parse_args(["--frame", "view"]).frames, ["view"])
+    self.assertEqual(
+      parse_args(["--frame=view,place_vise"]).frames,
+      ["view", "place_vise"],
+    )
+    self.assertEqual(
+      parse_args(["--frames", "root/view", "enclosure/cnc_enclosure"]).frames,
+      ["root/view", "enclosure/cnc_enclosure"],
+    )
+
+    view_controller = RvizFrameEditorController(
+      files=[self.pbtxt_path],
+      world=None,
+      allowed_root=self.temp_dir.name,
+      frame_filter=["view"],
+    )
+    self.assertEqual(
+      list(view_controller.entries_by_marker.keys()), ["root/view"]
+    )
+    self.assertLen(view_controller._all_world_entries, 2)
+
+    schunk_pbtxt = self._write_schunk_pbtxt()
+    add_frame_to_pbtxt(
+      filepath=schunk_pbtxt,
+      frame_name="place_vise",
+      parent_name="cnc_enclosure",
+      position=(-0.0725, 0.005, 0.0),
+      orientation=(0.0, 0.0, 0.0, 1.0),
+      allowed_root=self.temp_dir.name,
+    )
+    add_frame_to_pbtxt(
+      filepath=schunk_pbtxt,
+      frame_name="preplace_vise",
+      parent_name="cnc_enclosure",
+      position=(-0.0725, 0.005, 0.10),
+      orientation=(0.0, 0.0, 0.0, 1.0),
+      allowed_root=self.temp_dir.name,
+    )
+
+    place_controller = RvizFrameEditorController(
+      files=[self.pbtxt_path, schunk_pbtxt],
+      world=None,
+      allowed_root=self.temp_dir.name,
+      frame_filter=["place_vise"],
+    )
+    self.assertEqual(
+      list(place_controller.entries_by_marker.keys()),
+      ["cnc_enclosure/place_vise"],
+    )
+    self.assertNotIn(
+      "cnc_enclosure/preplace_vise", place_controller.entries_by_marker
+    )
+    self.assertNotIn(
+      "enclosure/cnc_enclosure", place_controller.entries_by_marker
+    )
+
+    # Filtered child frame still resolves parent pose in 'root' via _all_world_entries:
+    markers = place_controller.build_markers()
+    self.assertEqual(list(markers.keys()), ["cnc_enclosure/place_vise"])
+    place_marker = markers["cnc_enclosure/place_vise"]
+    self.assertAlmostEqual(place_marker.pose.position.x, -0.575, places=4)
+    self.assertAlmostEqual(place_marker.pose.position.y, -0.1725, places=4)
+    self.assertAlmostEqual(place_marker.pose.position.z, 1.02, places=4)
+
+    # Glob filter matches both place_vise and preplace_vise:
+    glob_controller = RvizFrameEditorController(
+      files=[self.pbtxt_path, schunk_pbtxt],
+      world=None,
+      allowed_root=self.temp_dir.name,
+      frame_filter=["*vise*"],
+    )
+    self.assertEqual(
+      list(glob_controller.entries_by_marker.keys()),
+      ["cnc_enclosure/place_vise", "cnc_enclosure/preplace_vise"],
+    )
+
+    # Substring fallback when token does not exact-match any entry:
+    sub_controller = RvizFrameEditorController(
+      files=[self.pbtxt_path],
+      world=None,
+      allowed_root=self.temp_dir.name,
+      frame_filter=["cnc"],
+    )
+    self.assertEqual(
+      list(sub_controller.entries_by_marker.keys()),
+      ["enclosure/cnc_enclosure"],
+    )
 
   def test_configure_zenoh_env(self) -> None:
     """Tests _configure_zenoh_env sets RMW_IMPLEMENTATION and client-mode ZENOH_CONFIG_OVERRIDE."""
@@ -1203,6 +1295,91 @@ updates {
     # Because "cnc_enclosure" is not in list_object_names(), only "root/view" is kept.
     self.assertLen(entries, 1)
     self.assertEqual(entries[0].marker_name, "root/view")
+
+  @mock.patch("tools.world.edit_frames_rviz.run_ros2_interactive_marker_loop")
+  @mock.patch("tools.world.edit_frames_rviz.connect_initial_world")
+  @mock.patch("tools.world.edit_frames_rviz.deployments.connect")
+  def test_main_does_not_apply_on_start_by_default_and_respects_is_simulated(
+    self,
+    mock_connect: mock.MagicMock,
+    mock_connect_init: mock.MagicMock,
+    mock_run_loop: mock.MagicMock,
+  ) -> None:
+    """Tests edit_frames_rviz.main skips startup apply by default and respects is_simulated with --apply_on_start."""
+    self.mock_world.list_object_names.return_value = [
+      "root",
+      "enclosure",
+      "cnc_enclosure",
+    ]
+    self.mock_init_world.list_object_names.return_value = [
+      "root",
+      "enclosure",
+      "cnc_enclosure",
+    ]
+    self.mock_solution.world = self.mock_world
+    mock_connect.return_value = self.mock_solution
+    mock_connect_init.return_value = self.mock_init_world
+
+    # 1. Default invocation (--apply_on_start is False by default): connects to
+    # world and init_world without pushing any .pbtxt files on startup.
+    self.mock_solution.is_simulated = False
+    with mock.patch.dict(
+      os.environ, {"BUILD_WORKSPACE_DIRECTORY": self.temp_dir.name}
+    ):
+      main(["--files", self.pbtxt_path])
+
+    mock_run_loop.assert_called_once()
+    self.mock_world.batch_update.assert_not_called()
+    self.mock_init_world.batch_update.assert_not_called()
+
+    # 2. Explicit --apply_on_start on real hardware (is_simulated = False):
+    # joint updates must be skipped for both world and init_world while frames
+    # and transforms are applied.
+    mock_run_loop.reset_mock()
+    with mock.patch.dict(
+      os.environ, {"BUILD_WORKSPACE_DIRECTORY": self.temp_dir.name}
+    ):
+      main(["--apply_on_start", "--files", self.pbtxt_path])
+
+    mock_run_loop.assert_called_once()
+    self.mock_world.batch_update.assert_called_once()
+    self.mock_init_world.batch_update.assert_called_once()
+
+    real_world_arg = self.mock_world.batch_update.call_args[0][0]
+    real_init_arg = self.mock_init_world.batch_update.call_args[0][0]
+    self.assertLen(real_world_arg.updates, 2)
+    self.assertLen(real_init_arg.updates, 2)
+    for applied in (real_world_arg, real_init_arg):
+      self.assertFalse(
+        any(
+          u.HasField("update_object_joints")
+          or u.HasField("update_object_joint")
+          for u in applied.updates
+        )
+      )
+
+    # 3. Explicit --apply_on_start on simulated solution (is_simulated = True):
+    # joint updates are applied.
+    self.mock_world.batch_update.reset_mock()
+    self.mock_init_world.batch_update.reset_mock()
+    mock_run_loop.reset_mock()
+    self.mock_solution.is_simulated = True
+
+    with mock.patch.dict(
+      os.environ, {"BUILD_WORKSPACE_DIRECTORY": self.temp_dir.name}
+    ):
+      main(["--apply_on_start", "--files", self.pbtxt_path])
+
+    mock_run_loop.assert_called_once()
+    self.mock_world.batch_update.assert_called_once()
+    self.mock_init_world.batch_update.assert_called_once()
+
+    sim_world_arg = self.mock_world.batch_update.call_args[0][0]
+    sim_init_arg = self.mock_init_world.batch_update.call_args[0][0]
+    self.assertLen(sim_world_arg.updates, 3)
+    self.assertLen(sim_init_arg.updates, 3)
+    self.assertTrue(sim_world_arg.updates[2].HasField("update_object_joints"))
+    self.assertTrue(sim_init_arg.updates[2].HasField("update_object_joints"))
 
 
 if __name__ == "__main__":

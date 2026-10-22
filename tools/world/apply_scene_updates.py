@@ -173,9 +173,22 @@ def _extract_node_object_name(node: Any) -> str | None:
 
 
 def adapt_updates_for_live_world(
-  world: Any, updates: object_world_updates_pb2.ObjectWorldUpdates
+  world: Any,
+  updates: object_world_updates_pb2.ObjectWorldUpdates,
+  is_simulated: bool = True,
 ) -> object_world_updates_pb2.ObjectWorldUpdates:
-  """Converts `create_frame` into `update_transform` if frames exist and skips rules for missing objects."""
+  """Converts `create_frame` into `update_transform` if frames exist and skips rules for missing objects.
+
+  Args:
+    world: Target SBL `ObjectWorld` instance.
+    updates: Raw `ObjectWorldUpdates` message to adapt.
+    is_simulated: Whether the connected solution is simulated. When `False`
+      (real hardware), `update_object_joints` and `update_object_joint` rules
+      are skipped so live robot joint states from ICON are preserved.
+
+  Returns:
+    Adapted `ObjectWorldUpdates` containing only rules valid for `world`.
+  """
   adapted = object_world_updates_pb2.ObjectWorldUpdates()
   known_objects = get_world_object_names(world)
 
@@ -258,6 +271,11 @@ def adapt_updates_for_live_world(
 
       adapted.updates.add().CopyFrom(update)
     elif update.HasField("update_object_joints"):
+      if not is_simulated:
+        logging.info(
+          "Skipping update_object_joints on real hardware deployment."
+        )
+        continue
       obj_name = update.update_object_joints.object.by_name.object_name
       if obj_name and not world_object_exists(world, obj_name, known_objects):
         logging.info(
@@ -266,6 +284,11 @@ def adapt_updates_for_live_world(
         continue
       adapted.updates.add().CopyFrom(update)
     elif update.HasField("update_object_joint"):
+      if not is_simulated:
+        logging.info(
+          "Skipping update_object_joint on real hardware deployment."
+        )
+        continue
       obj_name = update.update_object_joint.object.by_name.object_name
       if obj_name and not world_object_exists(world, obj_name, known_objects):
         logging.info(
@@ -332,9 +355,23 @@ _connect_initial_world = connect_initial_world
 
 
 def apply_pbtxt_file(
-  world: Any, filepath: str, init_world: Any | None = None
+  world: Any,
+  filepath: str,
+  init_world: Any | None = None,
+  is_simulated: bool = True,
 ) -> object_world_updates_pb2.ObjectWorldUpdates:
-  """Loads a .pbtxt file and pushes its updates to the active and initial worlds."""
+  """Loads a .pbtxt file and pushes its updates to the active and initial worlds.
+
+  Args:
+    world: Active belief `ObjectWorld` instance.
+    filepath: Path to the `.pbtxt` `ObjectWorldUpdates` file.
+    init_world: Optional initial `ObjectWorld` (`EditWorldId.INITIAL`).
+    is_simulated: Whether the connected solution is simulated. When `False`,
+      joint updates are skipped for both `world` and `init_world`.
+
+  Returns:
+    The adapted `ObjectWorldUpdates` applied to `world`.
+  """
   resolved_path = find_file(filepath)
   if not os.path.exists(resolved_path):
     print(
@@ -350,7 +387,7 @@ def apply_pbtxt_file(
   text_format.Parse(pbtxt_content, raw_updates)
 
   adapted_updates = adapt_updates_for_live_world(
-    world=world, updates=raw_updates
+    world=world, updates=raw_updates, is_simulated=is_simulated
   )
 
   if not adapted_updates.updates:
@@ -369,7 +406,7 @@ def apply_pbtxt_file(
   if init_world is not None:
     try:
       adapted_init_updates = adapt_updates_for_live_world(
-        world=init_world, updates=raw_updates
+        world=init_world, updates=raw_updates, is_simulated=is_simulated
       )
       if adapted_init_updates.updates:
         init_world.batch_update(adapted_init_updates)
@@ -388,6 +425,7 @@ def main(argv: Sequence[str] | None = None) -> None:
   print(f"Connecting to solution at {args.address}...")
   solution = deployments.connect(address=args.address)
   world = solution.world
+  is_simulated = bool(getattr(solution, "is_simulated", False))
   init_world = (
     connect_initial_world(solution) if args.update_init_world else None
   )
@@ -396,9 +434,14 @@ def main(argv: Sequence[str] | None = None) -> None:
   joint_updates = object_world_updates_pb2.ObjectWorldUpdates()
   for fpath in args.files:
     applied = apply_pbtxt_file(
-      world=world, filepath=fpath, init_world=init_world
+      world=world,
+      filepath=fpath,
+      init_world=init_world,
+      is_simulated=is_simulated,
     )
-    if isinstance(applied, object_world_updates_pb2.ObjectWorldUpdates):
+    if is_simulated and isinstance(
+      applied, object_world_updates_pb2.ObjectWorldUpdates
+    ):
       extracted = extract_joint_updates(applied)
       joint_updates.updates.extend(extracted.updates)
 

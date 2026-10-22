@@ -299,6 +299,17 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     help="Path(s) to .pbtxt ObjectWorldUpdates files to load and edit.",
   )
   parser.add_argument(
+    "--frame",
+    "--frames",
+    dest="frames",
+    nargs="*",
+    default=None,
+    help=(
+      "Optional frame or marker name filter(s) to enable in RViz "
+      "(e.g. --frame view place_vise or --frame=view,place_vise)."
+    ),
+  )
+  parser.add_argument(
     "--topic_ns",
     type=str,
     default="omts_frame_editor",
@@ -364,10 +375,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   parser.add_argument(
     "--apply_on_start",
     action=argparse.BooleanOptionalAction,
-    default=True,
+    default=False,
     help=(
       "Apply all configured .pbtxt files to the live world on startup "
-      "(default: True)."
+      "(default: False)."
     ),
   )
   parser.add_argument(
@@ -382,6 +393,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   args = parser.parse_args(argv)
   if args.files is None:
     args.files = discover_setup_update_files(args.setup)
+  if args.frames is not None:
+    normalized_frames: list[str] = []
+    for raw_frame in args.frames:
+      for part in raw_frame.split(","):
+        stripped = part.strip()
+        if stripped:
+          normalized_frames.append(stripped)
+    args.frames = normalized_frames or None
   return args
 
 
@@ -409,9 +428,15 @@ def main(argv: Sequence[str] | None = None) -> None:
       init_world = None
 
     if world is not None and args.apply_on_start:
+      is_simulated = bool(getattr(solution, "is_simulated", False))
       for fpath in args.files:
         try:
-          apply_pbtxt_file(world=world, filepath=fpath, init_world=init_world)
+          apply_pbtxt_file(
+            world=world,
+            filepath=fpath,
+            init_world=init_world,
+            is_simulated=is_simulated,
+          )
         except Exception as e:  # pylint: disable=broad-exception-caught
           print(f"[-] Warning: Failed to apply {fpath} on startup ({e}).")
 
@@ -424,6 +449,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     default_fixed_orientation=args.fixed_orientation,
     reset_sim_on_release=args.reset_sim_on_release,
     fixed_frame=args.fixed_frame,
+    frame_filter=args.frames,
   )
   run_ros2_interactive_marker_loop(
     controller=controller,
