@@ -11,13 +11,13 @@ module(name = "omts")
 #
 # When bumping INTRINSIC_CORE_COMMIT, update INTRINSIC_CORE_SHA256 with:
 #   curl -fsSL "https://github.com/intrinsic-ai/intrinsic-core/archive/<commit>.tar.gz" | sha256sum
-INTRINSIC_CORE_COMMIT = "c40e02aa2e76ef9584ab39259f81eca416391b8e"
+INTRINSIC_CORE_COMMIT = "50927e35c5c85992b2a4d0b91dabb9cf4172b2d5"
 
 INTRINSIC_CORE_URL = "https://github.com/intrinsic-ai/intrinsic-core/archive/{commit}.tar.gz".format(
     commit = INTRINSIC_CORE_COMMIT,
 )
 
-INTRINSIC_CORE_SHA256 = "cdcc0e68a49b807f9712c0e89e0868a4bff7829da339d1a076a346b832a19153"
+INTRINSIC_CORE_SHA256 = "3cd4921366ac2ad4786c44bb992f4f22b5e866f0bf9180cb5b11d5e39bdf2718"
 
 bazel_dep(name = "intrinsic-core")
 git_override(
