@@ -637,8 +637,7 @@ def build_attach_and_detach_tasks(solution):
      `$EXT/intrinsic-core+/intrinsic_perception/intrinsic/perception/skills/multi_view/estimate_pose_multi_view.proto`
      and `$EXT/intrinsic_apis+/intrinsic/perception/proto/v1/pose_estimate_in_root.proto`
      (`@intrinsic-core//intrinsic_perception/intrinsic/perception/skills/multi_view:estimate_pose_multi_view`)
-   - **Equipment Slots**: `camera_1`, `camera_2`, `camera_3`, `camera_4`
-     (`CameraConfig`), `perception` (`PoseEstimationServiceConfig`)
+   - **Equipment**: `perception` (`PoseEstimationService`)
    - **Params / Result**: `pose_estimator=PoseEstimatorId(id=..., package="ai.intrinsic")`
      (field 1), `capture_data=[capture_action.result.capture_data]`,
      `min_num_instances`, `log_debug_data` ->
@@ -674,13 +673,9 @@ def build_perception_and_spawn_sequence(solution, camera_res, perception_res):
     log_debug_data=False,
   )
   estimate_action = estimate_skill(
-    camera_1=camera_res,
-    camera_2=camera_res,
-    camera_3=camera_res,
-    camera_4=camera_res,
     perception=perception_res,
     pose_estimator=pose_estimator_id_pb2.PoseEstimatorId(
-      id="foundationpose_workpiece_pose_estimator",
+      id="raw_stock_2x3x5_estimator_text",
       package="ai.intrinsic",
     ),
     capture_data=[capture_action.result.capture_data],
