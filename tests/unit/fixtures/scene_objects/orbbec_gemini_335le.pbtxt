@@ -1,0 +1,331 @@
+name: "orbbec_gemini_335le_sdf"
+entities {
+  name: "body"
+  link {
+    geometry_component {
+      named_geometries {
+        key: "Intrinsic_Collision"
+        value {
+          named_geometries {
+            key: "collision"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.05
+                              y: 0.124
+                              z: 0.029
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 0
+                  values: 2.2204460492503131e-16
+                  values: 1
+                  values: 0
+                  values: -1
+                  values: 2.2204460492503131e-16
+                  values: 0
+                  values: 0
+                  values: -2.2204460492503131e-16
+                  values: -1
+                  values: 2.2204460492503131e-16
+                  values: 0
+                  values: 0.023749999999999997
+                  values: 1.7347234759768071e-18
+                  values: -0.022
+                  values: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    physics_component {
+      mass_kg: 0.22
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+          x: 0.023749999999999997
+          y: 1.7347234759768071e-18
+          z: -0.022
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 6.1251666666666682e-05
+        values: 5.9169336097397709e-20
+        values: -1.6158172183233216e-35
+        values: 5.9169336097397709e-20
+        values: 0.00032772666666666667
+        values: -6.7534866587948308e-21
+        values: -1.6158172183233216e-35
+        values: -6.7534866587948308e-21
+        values: 0.00029731166666666667
+      }
+    }
+  }
+}
+entities {
+  name: "sensor_link"
+  parent_name: "body"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      w: 1
+    }
+  }
+  link {
+    geometry_component {
+    }
+    physics_component {
+      mass_kg: 0.001
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 1e-06
+        values: 0
+        values: 0
+        values: 0
+        values: 1e-06
+        values: 0
+        values: 0
+        values: 0
+        values: 1e-06
+      }
+    }
+  }
+}
+entities {
+  name: "rgb"
+  parent_name: "sensor_link"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      y: 1.1102230246251565e-16
+      z: -5.5511151231257827e-17
+      w: 1
+    }
+  }
+  sensor {
+    sensor_component {
+      update_rate: 2
+      camera {
+        properties {
+          horizontal_fov: 1.6406
+          image {
+            width: 1280
+            height: 800
+            format: FORMAT_R8G8B8
+          }
+          clip {
+            near: 0.05
+            far: 6
+          }
+          intrinsics {
+            fx: 597
+            fy: 593
+            cx: 640
+            cy: 400
+          }
+          distortion {
+          }
+          visibility_mask: 65535
+        }
+      }
+    }
+  }
+}
+entities {
+  name: "ir_left"
+  parent_name: "sensor_link"
+  parent_t_this {
+    position {
+      x: -0.02375
+    }
+    orientation {
+      y: 1.1102230246251565e-16
+      z: -5.5511151231257827e-17
+      w: 1
+    }
+  }
+  sensor {
+    sensor_component {
+      update_rate: 2
+      camera {
+        properties {
+          horizontal_fov: 1.58825
+          image {
+            width: 1280
+            height: 800
+            format: FORMAT_L8
+          }
+          clip {
+            near: 0.1
+            far: 6
+          }
+          intrinsics {
+            fx: 629
+            fy: 628
+            cx: 640
+            cy: 400
+          }
+          distortion {
+          }
+          visibility_mask: 131071
+        }
+      }
+    }
+  }
+}
+entities {
+  name: "ir_right"
+  parent_name: "sensor_link"
+  parent_t_this {
+    position {
+      x: 0.07125
+    }
+    orientation {
+      y: 1.1102230246251565e-16
+      z: -5.5511151231257827e-17
+      w: 1
+    }
+  }
+  sensor {
+    sensor_component {
+      update_rate: 2
+      camera {
+        properties {
+          horizontal_fov: 1.58825
+          image {
+            width: 1280
+            height: 800
+            format: FORMAT_L8
+          }
+          clip {
+            near: 0.1
+            far: 6
+          }
+          intrinsics {
+            fx: 629
+            fy: 628
+            cx: 640
+            cy: 400
+          }
+          distortion {
+          }
+          visibility_mask: 131071
+        }
+      }
+    }
+  }
+}
+entities {
+  name: "depth"
+  parent_name: "sensor_link"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      y: 1.1102230246251565e-16
+      z: -5.5511151231257827e-17
+      w: 1
+    }
+  }
+  sensor {
+    sensor_component {
+      update_rate: 2
+      depth_camera {
+        properties {
+          horizontal_fov: 1.570796
+          image {
+            width: 1280
+            height: 800
+            format: FORMAT_R8G8B8
+          }
+          clip {
+            near: 0.25
+            far: 20
+          }
+          intrinsics {
+            fx: 640
+            fy: 628
+            cx: 640
+            cy: 400
+          }
+          distortion {
+          }
+          visibility_mask: 65535
+        }
+      }
+    }
+  }
+}

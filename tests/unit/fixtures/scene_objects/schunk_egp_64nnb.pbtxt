@@ -1,0 +1,1104 @@
+name: "schunk_egp_64nnb_scene_object"
+entities {
+  name: "jaw_r_frame"
+  parent_name: "base_link"
+  parent_t_this {
+    position {
+      x: 0.022
+      z: 0.12255
+    }
+    orientation {
+      w: 1
+    }
+  }
+  frame {
+  }
+}
+entities {
+  name: "jaw_l_frame"
+  parent_name: "base_link"
+  parent_t_this {
+    position {
+      x: -0.022
+      z: 0.12255
+    }
+    orientation {
+      z: 0.999999999999985
+      w: -1.7320510330969933e-07
+    }
+  }
+  frame {
+  }
+}
+entities {
+  name: "base_link"
+  link {
+    geometry_component {
+      named_geometries {
+        key: "Intrinsic_Collision"
+        value {
+          named_geometries {
+            key: "schunk-5522664 gehaeuse egp 64_collider_box"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.0648
+                              y: 0.035
+                              z: 0.1147
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0.0004
+                  values: 0
+                  values: 0.05735
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "schunk-9700901 halter fuer nhs du 4001_collider_box"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.0075
+                              y: 0.012
+                              z: 0.012
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0.03425
+                  values: -0.008
+                  values: 0.08045
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "schunk-9700901 halter fuer nhs du 4_collider_box"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.0075
+                              y: 0.012
+                              z: 0.012
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0.03425
+                  values: 0.008
+                  values: 0.08045
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "schunk-snt016581 stecker egp_collider_cylinder"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          cylinder {
+                            length: 0.01
+                            radius: 0.005774
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: -0.9999999999999466
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0.9999999999999466
+                  values: 0
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: 0.0367
+                  values: 0
+                  values: 0.0319
+                  values: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    physics_component {
+      mass_kg: 1
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 1
+        values: 0
+        values: 0
+        values: 0
+        values: 1
+        values: 0
+        values: 0
+        values: 0
+        values: 1
+      }
+    }
+  }
+}
+entities {
+  name: "jaw_l_link"
+  parent_name: "jaw_l_link_joint_prismatic"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      w: 1
+    }
+  }
+  link {
+    geometry_component {
+      named_geometries {
+        key: "Intrinsic_Collision"
+        value {
+          named_geometries {
+            key: "schunk-5510836 huelse mpg 64_collider_cylinder"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          cylinder {
+                            length: 0.019
+                            radius: 0.00275
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: -0.9999999999999466
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0.9999999999999466
+                  values: 0
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: 0.0365
+                  values: 0.006
+                  values: 0.10445
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "schunk-5522661 finger egp 64002_collider_box.001"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.01
+                              y: 0.0215
+                              z: 0.0158
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: -0.017
+                  values: 0.00075
+                  values: 0.12265
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "schunk-5522668 halter-5522668004_collider_box"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.0564
+                              y: 0.011405
+                              z: 0.0192
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0.005
+                  values: 0.005798
+                  values: 0.10505
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "schunk-9965220-scheibe d5_5003_collider_cylinder"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          cylinder {
+                            length: 0.004
+                            radius: 0.00275
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: -0.9999999999999466
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0.9999999999999466
+                  values: 0
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: -0.0252
+                  values: 0.006
+                  values: 0.10445
+                  values: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    physics_component {
+      mass_kg: 1
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 1
+        values: 0
+        values: 0
+        values: 0
+        values: 1
+        values: 0
+        values: 0
+        values: 0
+        values: 1
+      }
+    }
+  }
+}
+entities {
+  name: "jaw_r_link"
+  parent_name: "jaw_r_link_joint_prismatic"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      w: 1
+    }
+  }
+  link {
+    geometry_component {
+      named_geometries {
+        key: "Intrinsic_Collision"
+        value {
+          named_geometries {
+            key: "schunk-5522661 finger egp 64002_collider_box"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.01
+                              y: 0.02
+                              z: 0.0158
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0.017
+                  values: 0
+                  values: 0.12265
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "schunk-5522668 halter-5522668005_collider_box"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.0564
+                              y: 0.01135
+                              z: 0.0192
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: -0.005
+                  values: -0.005825
+                  values: 0.10505
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "schunk-9965220-scheibe d5_5001_collider_cylinder"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          cylinder {
+                            length: 0.004
+                            radius: 0.00275
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: -0.9999999999999466
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0.9999999999999466
+                  values: 0
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: -0.0352
+                  values: -0.006
+                  values: 0.10445
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "schunk-9965220-scheibe d5_5_collider_cylinder"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          cylinder {
+                            length: 0.004
+                            radius: 0.00275
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: -0.9999999999999466
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0.9999999999999466
+                  values: 0
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: 0.0252
+                  values: -0.006
+                  values: 0.10445
+                  values: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    physics_component {
+      mass_kg: 1
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 1
+        values: 0
+        values: 0
+        values: 0
+        values: 1
+        values: 0
+        values: 0
+        values: 0
+        values: 1
+      }
+    }
+  }
+}
+entities {
+  name: "jaw_l_link_joint_prismatic"
+  parent_name: "base_link"
+  parent_t_this {
+    position {
+      x: -0.01
+    }
+    orientation {
+      w: 1
+    }
+  }
+  joint {
+    kinematics_component {
+      motion_type: MOTION_TYPE_PRISMATIC
+      raw_value: 0
+      system_limits {
+        velocity: inf
+        acceleration: inf
+        jerk: inf
+        fixed_limits {
+          upper: 0.01
+        }
+        effort: inf
+      }
+      parent_t_inboard {
+        position {
+          x: -0.01
+        }
+        orientation {
+          w: 1
+        }
+      }
+      axis {
+        x: -1
+      }
+      application_limits {
+        velocity: inf
+        acceleration: inf
+        jerk: inf
+        fixed_limits {
+          upper: 0.01
+        }
+        effort: inf
+      }
+      outboard_t_child {
+        position {
+          x: -0
+          y: -0
+          z: -0
+        }
+        orientation {
+          x: -0
+          y: -0
+          z: -0
+          w: 1
+        }
+      }
+    }
+  }
+}
+entities {
+  name: "jaw_r_link_joint_prismatic"
+  parent_name: "base_link"
+  parent_t_this {
+    position {
+      x: 0.01
+    }
+    orientation {
+      w: 1
+    }
+  }
+  joint {
+    kinematics_component {
+      motion_type: MOTION_TYPE_PRISMATIC
+      raw_value: 0
+      system_limits {
+        velocity: inf
+        acceleration: inf
+        jerk: inf
+        fixed_limits {
+          upper: 0.01
+        }
+        effort: inf
+      }
+      parent_t_inboard {
+        position {
+          x: 0.01
+        }
+        orientation {
+          w: 1
+        }
+      }
+      axis {
+        x: 1
+      }
+      application_limits {
+        velocity: inf
+        acceleration: inf
+        jerk: inf
+        fixed_limits {
+          upper: 0.01
+        }
+        effort: inf
+      }
+      outboard_t_child {
+        position {
+          x: -0
+          y: -0
+          z: -0
+        }
+        orientation {
+          x: -0
+          y: -0
+          z: -0
+          w: 1
+        }
+      }
+    }
+  }
+}

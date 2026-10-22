@@ -1,0 +1,1017 @@
+name: "robotiq_gripper"
+entities {
+  name: "tool_frame"
+  parent_name: "gripper_body"
+  parent_t_this {
+    position {
+      z: 0.128
+    }
+    orientation {
+      w: 1
+    }
+  }
+  frame {
+  }
+}
+entities {
+  name: "gripper_body"
+  link {
+    geometry_component {
+      named_geometries {
+        key: "Intrinsic_Collision"
+        value {
+          named_geometries {
+            key: "collision_body"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          cylinder {
+                            length: 0.09574
+                            radius: 0.037544
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 3.2679489669895645e-07
+                  values: -0.9999999999999466
+                  values: 0
+                  values: 0
+                  values: 0.9999999999999466
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0.06177
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collision_io_coupler"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          cylinder {
+                            length: 0.0169
+                            radius: 0.0379
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0.00545
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collision_io_coupler_box1"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.011817
+                              y: 0.025604
+                              z: 0.010486
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: -0.9999999999999466
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0.9999999999999466
+                  values: 0
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: -0.000733
+                  values: 0.054862
+                  values: 0.005695
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collision_io_coupler_box2"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.005041
+                              y: 0.011557
+                              z: 0.0095
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: -0.000739
+                  values: 0.037415
+                  values: 0.00575
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collision_io_coupler_cyl"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          cylinder {
+                            length: 0.008147
+                            radius: 0.005
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: -0.9999999999999466
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0.9999999999999466
+                  values: 0
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: 0.009816
+                  values: 0.061755
+                  values: 0.005695
+                  values: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    physics_component {
+      mass_kg: 1
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 0.1
+        values: 0
+        values: 0
+        values: 0
+        values: 0.1
+        values: 0
+        values: 0
+        values: 0
+        values: 0.1
+      }
+    }
+  }
+}
+entities {
+  name: "gripper_finger1"
+  parent_name: "finger1"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      w: 1
+    }
+  }
+  link {
+    geometry_component {
+      named_geometries {
+        key: "Intrinsic_Collision"
+        value {
+          named_geometries {
+            key: "collision1"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          sphere {
+                            radius: 0.003
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0.028
+                  values: 0
+                  values: 0.15
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collision2"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.005
+                              y: 0.02
+                              z: 0.02
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0.033
+                  values: 0
+                  values: 0.127
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collision_rack"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.005967
+                              y: 0.043104
+                              z: 0.0164
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 3.2679489669895645e-07
+                  values: -0.9999999999999466
+                  values: 0
+                  values: 0
+                  values: 0.9999999999999466
+                  values: 3.2679489669895645e-07
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0.013949
+                  values: -0.01425
+                  values: 0.1033
+                  values: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    physics_component {
+      mass_kg: 0.2
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 0.0001
+        values: 0
+        values: 0
+        values: 0
+        values: 9e-05
+        values: 0
+        values: 0
+        values: 0
+        values: 3e-05
+      }
+    }
+  }
+}
+entities {
+  name: "gripper_finger2"
+  parent_name: "finger2"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      w: 1
+    }
+  }
+  link {
+    geometry_component {
+      named_geometries {
+        key: "Intrinsic_Collision"
+        value {
+          named_geometries {
+            key: "collision1"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          sphere {
+                            radius: 0.003
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: -0.028
+                  values: 0
+                  values: 0.15
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collision2"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.005
+                              y: 0.02
+                              z: 0.02
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: -0.033
+                  values: 0
+                  values: 0.127
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collision_rack"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.005967
+                              y: 0.04339
+                              z: 0.0164
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1.9615309931886316e-08
+                  values: 0.99999999999999989
+                  values: 0
+                  values: 0
+                  values: -0.99999999999999989
+                  values: 1.9615309931886316e-08
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: -0.014107
+                  values: 0.01425
+                  values: 0.1033
+                  values: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    physics_component {
+      mass_kg: 0.2
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 0.0001
+        values: 0
+        values: 0
+        values: 0
+        values: 9e-05
+        values: 0
+        values: 0
+        values: 0
+        values: 3e-05
+      }
+    }
+  }
+}
+entities {
+  name: "finger1"
+  parent_name: "gripper_body"
+  parent_t_this {
+    position {
+      x: 0.005
+    }
+    orientation {
+      w: 1
+    }
+  }
+  joint {
+    kinematics_component {
+      motion_type: MOTION_TYPE_PRISMATIC
+      raw_value: 0
+      system_limits {
+        velocity: inf
+        acceleration: inf
+        jerk: inf
+        fixed_limits {
+          upper: 0.025
+        }
+        effort: inf
+      }
+      parent_t_inboard {
+        position {
+          x: 0.005
+        }
+        orientation {
+          w: 1
+        }
+      }
+      axis {
+        x: -1
+      }
+      application_limits {
+        velocity: inf
+        acceleration: inf
+        jerk: inf
+        fixed_limits {
+          upper: 0.025
+        }
+        effort: inf
+      }
+      outboard_t_child {
+        position {
+          x: -0
+          y: -0
+          z: -0
+        }
+        orientation {
+          x: -0
+          y: -0
+          z: -0
+          w: 1
+        }
+      }
+    }
+  }
+}
+entities {
+  name: "finger2"
+  parent_name: "gripper_body"
+  parent_t_this {
+    position {
+      x: -0.005
+    }
+    orientation {
+      w: 1
+    }
+  }
+  joint {
+    kinematics_component {
+      motion_type: MOTION_TYPE_PRISMATIC
+      raw_value: 0
+      system_limits {
+        velocity: inf
+        acceleration: inf
+        jerk: inf
+        fixed_limits {
+          upper: 0.025
+        }
+        effort: inf
+      }
+      parent_t_inboard {
+        position {
+          x: -0.005
+        }
+        orientation {
+          w: 1
+        }
+      }
+      axis {
+        x: 1
+      }
+      application_limits {
+        velocity: inf
+        acceleration: inf
+        jerk: inf
+        fixed_limits {
+          upper: 0.025
+        }
+        effort: inf
+      }
+      outboard_t_child {
+        position {
+          x: -0
+          y: -0
+          z: -0
+        }
+        orientation {
+          x: -0
+          y: -0
+          z: -0
+          w: 1
+        }
+      }
+    }
+  }
+}

@@ -5,6 +5,10 @@ common --enable_workspace=false
 # Disable empty glob check
 common --incompatible_disallow_empty_glob=false
 
+# Allow test targets to link internal @intrinsic-core skill C++ libraries for
+# hermetic in-process integration testing without patching @intrinsic-core.
+common --nocheck_visibility
+
 # Build optimized (-O2 -DNDEBUG) by default.
 # Override on the command line with `-c dbg` / `-c fastbuild`.
 build --compilation_mode=opt

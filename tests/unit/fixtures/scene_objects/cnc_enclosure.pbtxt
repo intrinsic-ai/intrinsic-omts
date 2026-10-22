@@ -1,0 +1,1650 @@
+name: "cnc_enclosure"
+entities {
+  name: "enclosure_link"
+  link {
+    geometry_component {
+      named_geometries {
+        key: "Intrinsic_Collision"
+        value {
+          named_geometries {
+            key: "collider_box"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.0564
+                              y: 0.0564
+                              z: 0.0766
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: -0.99999999999325384
+                  values: 0
+                  values: -0.99999999998650768
+                  values: -3.6732051036381108e-06
+                  values: 3.6732051033605551e-06
+                  values: 0
+                  values: -3.6732051033605551e-06
+                  values: 0.99999999999325384
+                  values: 1.3492318373664602e-11
+                  values: 0
+                  values: 0.38027
+                  values: 0.0793
+                  values: 0.59
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.001"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.04501
+                              y: 0.04501
+                              z: 0.53
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -0.99999999999647926
+                  values: 2.65358979335273e-06
+                  values: 0
+                  values: 0
+                  values: -2.65358979335273e-06
+                  values: -0.99999999999647926
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: -0.43252
+                  values: -0.1605
+                  values: 0.31
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.002"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.04501
+                              y: 0.04501
+                              z: 0.53
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -0.99999999999647926
+                  values: 2.65358979335273e-06
+                  values: 0
+                  values: 0
+                  values: -2.65358979335273e-06
+                  values: -0.99999999999647926
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0.43247
+                  values: -0.1605
+                  values: 0.31
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.003"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.04501
+                              y: 0.04501
+                              z: 0.364
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -0.9999999999964797
+                  values: 2.6535897933527304e-06
+                  values: 0
+                  values: 0
+                  values: 9.7471795712960111e-12
+                  values: 3.6732051031940216e-06
+                  values: -0.999999999993254
+                  values: 0
+                  values: -2.6535897933348288e-06
+                  values: -0.99999999998973321
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: 0.43247
+                  values: -0.001
+                  values: 0.5975
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.004"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.04501
+                              y: 0.04501
+                              z: 0.53
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -0.99999999999647926
+                  values: 2.65358979335273e-06
+                  values: 0
+                  values: 0
+                  values: -2.65358979335273e-06
+                  values: -0.99999999999647926
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0.43247
+                  values: 0.15449
+                  values: 0.31
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.005"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.045
+                              y: 0.045
+                              z: 0.364
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -0.9999999999964797
+                  values: 2.6535897933527304e-06
+                  values: 0
+                  values: 0
+                  values: 9.7471795712960111e-12
+                  values: 3.6732051031940216e-06
+                  values: 0.999999999993254
+                  values: 0
+                  values: 2.6535897933348288e-06
+                  values: 0.99999999998973321
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: 0.43248
+                  values: -0.001
+                  values: 0.0225
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.006"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.04501
+                              y: 0.04501
+                              z: 0.364
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -0.9999999999964797
+                  values: 2.6535897933527304e-06
+                  values: 0
+                  values: 0
+                  values: 9.7471795712960111e-12
+                  values: 3.6732051031940216e-06
+                  values: -0.999999999993254
+                  values: 0
+                  values: -2.6535897933348288e-06
+                  values: -0.99999999998973321
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: -0.43252
+                  values: -0.001
+                  values: 0.5975
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.007"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.04501
+                              y: 0.04501
+                              z: 0.53
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -0.99999999999647926
+                  values: 2.65358979335273e-06
+                  values: 0
+                  values: 0
+                  values: -2.65358979335273e-06
+                  values: -0.99999999999647926
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: -0.43252
+                  values: 0.15449
+                  values: 0.31
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.008"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.0452
+                              y: 0.0452
+                              z: 0.36158
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: -3.6732051036381108e-06
+                  values: 0.999999999993254
+                  values: 0
+                  values: 0
+                  values: -0.999999999993254
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: -0.43262
+                  values: -0.00221
+                  values: 0.0224
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.009"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.045
+                              y: 0.36
+                              z: 0.82
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: -0.999999999993254
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0.999999999993254
+                  values: 0
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: -2e-05
+                  values: -0.003
+                  values: 0.0225
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.010"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.00312
+                              y: 0.07
+                              z: 0.623
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -3.6732051036381108e-06
+                  values: -0.999999999993254
+                  values: 0
+                  values: 0
+                  values: 0.999999999993254
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: -0
+                  values: 1
+                  values: 0
+                  values: -0.42002
+                  values: -0.18456
+                  values: 0.3115
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.011"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.00312
+                              y: 0.465
+                              z: 0.623
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -3.6732051036381108e-06
+                  values: -0.999999999993254
+                  values: 0
+                  values: 0
+                  values: 0.999999999993254
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: -0
+                  values: 1
+                  values: 0
+                  values: 0.22248
+                  values: -0.18456
+                  values: 0.3115
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.012"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.36313
+                              y: 0.465
+                              z: 0.00153
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -3.6732051036381108e-06
+                  values: -0.999999999993254
+                  values: 0
+                  values: 0
+                  values: 0.999999999993254
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: -0
+                  values: 1
+                  values: 0
+                  values: 0.22248
+                  values: -0.00456
+                  values: 0.62223
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.013"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.36313
+                              y: 0.07
+                              z: 0.003
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -3.6732051036381108e-06
+                  values: -0.999999999993254
+                  values: 0
+                  values: 0
+                  values: 0.999999999993254
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: -0
+                  values: 1
+                  values: 0
+                  values: -0.42002
+                  values: -0.00456
+                  values: 0.6215
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.014"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.045
+                              y: 0.91
+                              z: 0.003
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -3.6732051036381108e-06
+                  values: -0.999999999993254
+                  values: 0
+                  values: 0
+                  values: 0.999999999993254
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: -2e-05
+                  values: 0.1545
+                  values: 0.6215
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.015"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.00312
+                              y: 0.91
+                              z: 0.09009
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -3.6732051036381108e-06
+                  values: -0.999999999993254
+                  values: 0
+                  values: 0
+                  values: 0.999999999993254
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: -0
+                  values: 1
+                  values: 0
+                  values: -2e-05
+                  values: -0.18456
+                  values: 0.04505
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.016"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.16782
+                              y: 0.233
+                              z: 0.04082
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: -3.6732051036381108e-06
+                  values: 0.999999999993254
+                  values: 0
+                  values: 0
+                  values: -0.999999999993254
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: 0.1554
+                  values: -0.21057
+                  values: 0.38901
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.019"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.8201
+                              y: 0.05445
+                              z: 0.08
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -0.9999999999964797
+                  values: 2.6535897933527304e-06
+                  values: 0
+                  values: 0
+                  values: 9.7471795712960111e-12
+                  values: 3.6732051031940216e-06
+                  values: 0.999999999993254
+                  values: 0
+                  values: 2.6535897933348288e-06
+                  values: 0.99999999998973321
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: 3e-05
+                  values: -0.143
+                  values: 0.07222
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.020"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.09751
+                              y: 0.91
+                              z: 0.05083
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -3.6732051036381108e-06
+                  values: -0.999999999993254
+                  values: 0
+                  values: 0
+                  values: 0.999999999993254
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: -2e-05
+                  values: 0.12287
+                  values: 0.58522
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_cylinder"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          cylinder {
+                            length: 0.09297
+                            radius: 0.01862
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0.39517
+                  values: -0.12619
+                  values: 0.6692
+                  values: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    physics_component {
+      mass_kg: 1
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 1
+        values: 0
+        values: 0
+        values: 0
+        values: 1
+        values: 0
+        values: 0
+        values: 0
+        values: 1
+      }
+    }
+  }
+}
+entities {
+  name: "door_link"
+  parent_name: "door_joint_prismatic"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      w: 1
+    }
+  }
+  link {
+    geometry_component {
+      named_geometries {
+        key: "Intrinsic_Collision"
+        value {
+          named_geometries {
+            key: "collider_box.017"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.00476
+                              y: 0.39
+                              z: 0.567
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -3.6732051036381108e-06
+                  values: -0.999999999993254
+                  values: 0
+                  values: 0
+                  values: 0.999999999993254
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: -0
+                  values: 1
+                  values: 0
+                  values: -0.19752
+                  values: -0.17559
+                  values: 0.33215
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "collider_box.018"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.354
+                              y: 0.39
+                              z: 0.00476
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: -3.6732051036381108e-06
+                  values: -0.999999999993254
+                  values: 0
+                  values: 0
+                  values: 0.999999999993254
+                  values: -3.6732051036381108e-06
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: -0
+                  values: 1
+                  values: 0
+                  values: -0.19752
+                  values: -0.00098
+                  values: 0.61327
+                  values: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    physics_component {
+      mass_kg: 1
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 1
+        values: 0
+        values: 0
+        values: 0
+        values: 1
+        values: 0
+        values: 0
+        values: 0
+        values: 1
+      }
+    }
+  }
+}
+entities {
+  name: "door_joint_prismatic"
+  parent_name: "enclosure_link"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      w: 1
+    }
+  }
+  joint {
+    kinematics_component {
+      motion_type: MOTION_TYPE_PRISMATIC
+      raw_value: 0
+      system_limits {
+        velocity: inf
+        acceleration: inf
+        jerk: inf
+        fixed_limits {
+          upper: 0.4
+        }
+        effort: inf
+      }
+      parent_t_inboard {
+        position {
+        }
+        orientation {
+          w: 1
+        }
+      }
+      axis {
+        x: 1
+      }
+      application_limits {
+        velocity: inf
+        acceleration: inf
+        jerk: inf
+        fixed_limits {
+          upper: 0.4
+        }
+        effort: inf
+      }
+      outboard_t_child {
+        position {
+          x: -0
+          y: -0
+          z: -0
+        }
+        orientation {
+          x: -0
+          y: -0
+          z: -0
+          w: 1
+        }
+      }
+    }
+  }
+}

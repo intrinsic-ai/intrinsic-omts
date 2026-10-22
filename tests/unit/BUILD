@@ -1,5 +1,6 @@
 load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 load("@intrinsic-core//bazel:python.bzl", "py_test")
+load("@rules_cc//cc:defs.bzl", "cc_binary")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -338,5 +339,105 @@ py_test(
     deps = [
         "//tools/pose_estimation:run_pose_estimation_lib",
         "@com_google_absl_py//absl/testing:absltest",
+    ],
+)
+
+filegroup(
+    name = "scene_object_fixtures",
+    srcs = glob(["fixtures/scene_objects/*.pbtxt"]),
+)
+
+cc_binary(
+    name = "inprocess_skill_runner",
+    testonly = True,
+    srcs = ["inprocess_skill_runner.cc"],
+    deps = [
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_protobuf//:protobuf",
+        "@intrinsic-core//incode/motion_planning/skills:move_robot",
+        "@intrinsic-core//incode/motion_planning/skills:preplan_motion",
+        "@intrinsic-core//incode/motion_planning/skills:preplan_motion_cc_proto",
+        "@intrinsic-core//intrinsic/resources/proto:geometric_resource_data_cc_proto",
+        "@intrinsic-core//intrinsic/skills/apps:attach_object_to_robot",
+        "@intrinsic-core//intrinsic/skills/apps:attach_object_to_robot_cc_proto",
+        "@intrinsic-core//intrinsic/skills/apps:detach_object",
+        "@intrinsic-core//intrinsic/skills/apps:detach_object_cc_proto",
+        "@intrinsic-core//intrinsic/skills/apps:update_world_cc_proto",
+        "@intrinsic-core//intrinsic/world/proto:object_world_service_cc_grpc_proto",
+        "@intrinsic-core//intrinsic/world/service:world_service_cc_grpc_proto",
+        "@intrinsic-core//intrinsic/world/service/test:world_service_fake",
+        "@intrinsic-core//intrinsic/world/util:compose_world_util",
+        "@intrinsic-core//intrinsic_motion_planning/intrinsic/motion_planning/proto/v1:motion_planner_service_cc_grpc_proto",
+        "@intrinsic-core//intrinsic_motion_planning/intrinsic/motion_planning/service:motion_planner_service_in_process",
+        "@intrinsic-core//intrinsic_motion_planning/intrinsic/motion_planning/skills:move_robot_cc_proto",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/eigenmath",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/geometry/storage:in_memory_storage",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math:pose3",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math:proto_conversion",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/motion_planning:motion_planner_client",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/skills/cc:equipment_pack",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/skills/cc:skill_interface",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/skills/proto:skill_service_cc_proto",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/skills/testing:skill_test_utils_cc",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/util:eigen",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/util/proto:parse_text_proto",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/util/status:status_macros",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/world/objects:kinematic_object",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/world/objects:object_entity_filter",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/world/objects:object_world_client",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/world/objects:object_world_ids",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/world/objects:world_object",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/world/proto:object_world_updates_cc_proto",
+        "@intrinsic_apis//intrinsic/resources/proto:resource_handle_cc_proto",
+        "@intrinsic_apis//intrinsic/scene/proto/v1:scene_object_cc_proto",
+    ],
+)
+
+py_test(
+    name = "test_inprocess_core_integration",
+    srcs = [
+        "test_behaviors.py",
+        "test_inprocess_core_integration.py",
+    ],
+    data = [
+        ":inprocess_skill_runner",
+        ":scene_object_fixtures",
+        "//:omts_solution_manifest",
+        "//configs:all_configs",
+    ],
+    main = "test_inprocess_core_integration.py",
+    deps = [
+        "//src/behaviors:machine_tending_bt",
+        "//src/core:config",
+        "//src/core:infeed",
+        "//src/core:types",
+        "//src/core:workpiece",
+        "//src/hardware:grasping",
+        "//src/hardware:gripper",
+        "//src/hardware:machine",
+        "//src/hardware:robot",
+        "//src/hardware:vision",
+        "//src/utils:dynamic_frame_calculator",
+        "//src/utils:random_placement",
+        "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@com_google_protobuf//:protobuf_python",
+        "@intrinsic-core//intrinsic/executive/proto:behavior_tree_py_pb2",
+        "@intrinsic-core//intrinsic/world/proto:object_world_service_py_pb2",
+        "@intrinsic-core//intrinsic/world/proto:object_world_service_py_pb2_grpc",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/assets/build_defs:asset_py_pb2",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:proto_building",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:provided",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/world/python:object_world_client",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/world/python:object_world_ids",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/world/python:object_world_resources",
+        "@intrinsic_apis//intrinsic/assets/proto:asset_type_py_pb2",
+        "@intrinsic_apis//intrinsic/assets/proto:id_py_pb2",
+        "@intrinsic_apis//intrinsic/executive/proto:proto_builder_py_pb2",
+        "@intrinsic_apis//intrinsic/resources/proto:resource_handle_py_pb2",
+        "@intrinsic_apis//intrinsic/skills/proto:equipment_py_pb2",
+        "@intrinsic_apis//intrinsic/skills/proto:skill_manifest_py_pb2",
     ],
 )

@@ -1,0 +1,838 @@
+name: "ur3e_scene_object"
+properties {
+  kinematics {
+    limits {
+      min_translational_velocity: -inf
+      min_translational_velocity: -inf
+      min_translational_velocity: -inf
+      max_translational_velocity: inf
+      max_translational_velocity: inf
+      max_translational_velocity: inf
+      min_translational_acceleration: -inf
+      min_translational_acceleration: -inf
+      min_translational_acceleration: -inf
+      max_translational_acceleration: inf
+      max_translational_acceleration: inf
+      max_translational_acceleration: inf
+      min_translational_jerk: -inf
+      min_translational_jerk: -inf
+      min_translational_jerk: -inf
+      max_translational_jerk: inf
+      max_translational_jerk: inf
+      max_translational_jerk: inf
+      min_translational_position: -5
+      min_translational_position: -5
+      min_translational_position: -5
+      max_translational_position: 5
+      max_translational_position: 5
+      max_translational_position: 5
+      max_rotational_velocity: inf
+      max_rotational_acceleration: inf
+      max_rotational_jerk: inf
+    }
+    ik_solvers {
+      ik_solver: "ur"
+    }
+    named_configurations {
+      name: "home"
+      joint_positions {
+        key: "elbow_joint"
+        value: -1.5707
+      }
+      joint_positions {
+        key: "shoulder_lift_joint"
+        value: -1.5707
+      }
+      joint_positions {
+        key: "shoulder_pan_joint"
+        value: -1.5707
+      }
+      joint_positions {
+        key: "wrist_1_joint"
+        value: -1.5707
+      }
+      joint_positions {
+        key: "wrist_2_joint"
+        value: 1.5707
+      }
+      joint_positions {
+        key: "wrist_3_joint"
+        value: 1.5707
+      }
+    }
+  }
+}
+entities {
+  name: "flange"
+  parent_name: "wrist_3_link"
+  parent_t_this {
+    position {
+      y: -1.3877787807814457e-17
+    }
+    orientation {
+      y: -2.7117093616972281e-30
+      z: 2.1693674893577825e-30
+      w: 1
+    }
+  }
+  frame {
+    is_attachment_frame: true
+  }
+}
+entities {
+  name: "base_link"
+  link {
+    physics_component {
+      mass_kg: 4
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 0.019392333333333331
+        values: 0
+        values: 0
+        values: 0
+        values: 0.019392333333333331
+        values: 0
+        values: 0
+        values: 0
+        values: 0.032768
+      }
+    }
+  }
+}
+entities {
+  name: "shoulder_link"
+  parent_name: "shoulder_pan_joint"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      w: 1
+    }
+  }
+  link {
+    physics_component {
+      mass_kg: 1.98
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 0.00283701
+        values: 0
+        values: 0
+        values: 0
+        values: 0.003640065
+        values: 0
+        values: 0
+        values: 0
+        values: 0.002112825
+      }
+    }
+  }
+}
+entities {
+  name: "upper_arm_link"
+  parent_name: "shoulder_lift_joint"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      w: 1
+    }
+  }
+  link {
+    physics_component {
+      mass_kg: 3.4445
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+          y: 0.12
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 0.033749500912083341
+        values: 0
+        values: 0
+        values: 0
+        values: 0.032483070208333339
+        values: 0
+        values: 0
+        values: 0
+        values: 0.006339031037083334
+      }
+    }
+  }
+}
+entities {
+  name: "forearm_link"
+  parent_name: "elbow_joint"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      w: 1
+    }
+  }
+  link {
+    physics_component {
+      mass_kg: 1.437
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+          z: 0.27
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 0.0107173855
+        values: 0
+        values: 0
+        values: 0
+        values: 0.0102642515
+        values: 0
+        values: 0
+        values: 0
+        values: 0.0018003215
+      }
+    }
+  }
+}
+entities {
+  name: "wrist_1_link"
+  parent_name: "wrist_1_joint"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      w: 1
+    }
+  }
+  link {
+    physics_component {
+      mass_kg: 0.871
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+          z: 0.027
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 0.0012197629166666669
+        values: 0
+        values: 0
+        values: 0
+        values: 0.00098023791666666674
+        values: 0
+        values: 0
+        values: 0
+        values: 0.00083412766666666658
+      }
+    }
+  }
+}
+entities {
+  name: "wrist_2_link"
+  parent_name: "wrist_2_joint"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      w: 1
+    }
+  }
+  link {
+    physics_component {
+      mass_kg: 0.805
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+          z: 0.08535
+        }
+        orientation {
+          x: 6.1232339957374e-17
+          y: 1
+          z: 6.1232339957374e-17
+          w: -1.034115535551072e-13
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 0.00094138041666666679
+        values: 0
+        values: 0
+        values: 0
+        values: 0.00058496666666666677
+        values: 0
+        values: 0
+        values: 0
+        values: 0.00090596041666666681
+      }
+    }
+  }
+}
+entities {
+  name: "wrist_3_link"
+  parent_name: "wrist_3_joint"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      w: 1
+    }
+  }
+  link {
+    physics_component {
+      mass_kg: 0.261
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+          z: 0.029
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 0.0002981670525
+        values: 0
+        values: 0
+        values: 0
+        values: 0.0002981670525
+        values: 0
+        values: 0
+        values: 0
+        values: 0.00051960010500000007
+      }
+    }
+  }
+}
+entities {
+  name: "shoulder_pan_joint"
+  parent_name: "base_link"
+  parent_t_this {
+    position {
+      z: 0.15185
+    }
+    orientation {
+      z: 0.74849942196609676
+      w: 0.66313544266342672
+    }
+  }
+  joint {
+    kinematics_component {
+      motion_type: MOTION_TYPE_REVOLUTE
+      raw_value: -1.45
+      system_limits {
+        velocity: 3.1415927
+        acceleration: 10
+        jerk: 12500
+        fixed_limits {
+          lower: -6.2831853
+          upper: 6.2831853
+        }
+        effort: 100
+      }
+      parent_t_inboard {
+        position {
+          z: 0.15185
+        }
+        orientation {
+          z: 1
+          w: 1.0308992902517189e-13
+        }
+      }
+      application_limits {
+        velocity: 2.984
+        acceleration: 5
+        jerk: 10000
+        fixed_limits {
+          lower: -6.2203534
+          upper: 6.2203534
+        }
+        effort: 100
+      }
+      outboard_t_child {
+        position {
+          x: -0
+          y: -0
+          z: -0
+        }
+        orientation {
+          x: -0
+          y: -0
+          z: -0
+          w: 1
+        }
+      }
+    }
+  }
+}
+entities {
+  name: "shoulder_lift_joint"
+  parent_name: "shoulder_link"
+  parent_t_this {
+    position {
+    }
+    orientation {
+      y: -0.55636102291278378
+      w: 0.83094067910016356
+    }
+  }
+  joint {
+    kinematics_component {
+      motion_type: MOTION_TYPE_REVOLUTE
+      raw_value: -1.18
+      system_limits {
+        velocity: 3.1415927
+        acceleration: 10
+        jerk: 12500
+        fixed_limits {
+          lower: -4.1
+          upper: 0.96
+        }
+        effort: 100
+      }
+      parent_t_inboard {
+        position {
+        }
+        orientation {
+          w: 1
+        }
+      }
+      axis {
+        y: 1
+      }
+      application_limits {
+        velocity: 2.984
+        acceleration: 5
+        jerk: 10000
+        fixed_limits {
+          lower: -4.059
+          upper: 0.9504
+        }
+        effort: 100
+      }
+      outboard_t_child {
+        position {
+          x: -0
+          y: -0
+          z: -0
+        }
+        orientation {
+          x: -0
+          y: -0
+          z: -0
+          w: 1
+        }
+      }
+    }
+  }
+}
+entities {
+  name: "elbow_joint"
+  parent_name: "upper_arm_link"
+  parent_t_this {
+    position {
+      x: 0.24355
+    }
+    orientation {
+      y: 0.879590150433789
+      w: -0.47573224324178875
+    }
+  }
+  joint {
+    kinematics_component {
+      motion_type: MOTION_TYPE_REVOLUTE
+      raw_value: -2.15
+      system_limits {
+        velocity: 3.1415927
+        acceleration: 10
+        jerk: 12500
+        fixed_limits {
+          lower: -2.8
+          upper: 2.8
+        }
+        effort: 100
+      }
+      parent_t_inboard {
+        position {
+          x: 0.24355
+        }
+        orientation {
+          w: 1
+        }
+      }
+      axis {
+        y: 1
+      }
+      application_limits {
+        velocity: 2.984
+        acceleration: 5
+        jerk: 10000
+        fixed_limits {
+          lower: -2.772
+          upper: 2.772
+        }
+        effort: 100
+      }
+      outboard_t_child {
+        position {
+          x: -0
+          y: -0
+          z: -0
+        }
+        orientation {
+          x: -0
+          y: -0
+          z: -0
+          w: 1
+        }
+      }
+    }
+  }
+}
+entities {
+  name: "wrist_1_joint"
+  parent_name: "forearm_link"
+  parent_t_this {
+    position {
+      x: 0.2132
+    }
+    orientation {
+      y: -0.6248973167277
+      w: 0.78070695113244681
+    }
+  }
+  joint {
+    kinematics_component {
+      motion_type: MOTION_TYPE_REVOLUTE
+      raw_value: -1.35
+      system_limits {
+        velocity: 6.2831853
+        acceleration: 10
+        jerk: 12500
+        fixed_limits {
+          lower: -6.2831853
+          upper: 6.2831853
+        }
+        effort: 100
+      }
+      parent_t_inboard {
+        position {
+          x: 0.2132
+        }
+        orientation {
+          w: 1
+        }
+      }
+      axis {
+        y: 1
+      }
+      application_limits {
+        velocity: 5.969
+        acceleration: 5
+        jerk: 10000
+        fixed_limits {
+          lower: -6.2203534
+          upper: 6.2203534
+        }
+        effort: 100
+      }
+      outboard_t_child {
+        position {
+          x: -0
+          y: -0
+          z: -0
+        }
+        orientation {
+          x: -0
+          y: -0
+          z: -0
+          w: 1
+        }
+      }
+    }
+  }
+}
+entities {
+  name: "wrist_2_joint"
+  parent_name: "wrist_1_link"
+  parent_t_this {
+    position {
+      x: 2.7711361802750454e-17
+      y: 0.13105000000000006
+      z: -0.08535
+    }
+    orientation {
+      x: -0
+      z: -0.70682518110536585
+      w: 0.70738826916719977
+    }
+  }
+  joint {
+    kinematics_component {
+      motion_type: MOTION_TYPE_REVOLUTE
+      raw_value: 1.57
+      system_limits {
+        velocity: 6.2831853
+        acceleration: 10
+        jerk: 12500
+        fixed_limits {
+          lower: -6.2831853
+          upper: 6.2831853
+        }
+        effort: 100
+      }
+      parent_t_inboard {
+        position {
+          y: 0.13105
+          z: -0.08535
+        }
+        orientation {
+          w: 1
+        }
+      }
+      axis {
+        z: -1
+      }
+      application_limits {
+        velocity: 5.969
+        acceleration: 5
+        jerk: 10000
+        fixed_limits {
+          lower: -6.2203534
+          upper: 6.2203534
+        }
+        effort: 100
+      }
+      outboard_t_child {
+        position {
+          x: -5.5511151231257827e-17
+          y: 2.7755575615628914e-17
+          z: -0
+        }
+        orientation {
+          x: -0
+          y: -0
+          z: -0
+          w: 1
+        }
+      }
+    }
+  }
+}
+entities {
+  name: "wrist_3_joint"
+  parent_name: "wrist_2_link"
+  parent_t_this {
+    position {
+      x: 4.885778533686406e-17
+      y: 0.092099999999999987
+      z: 1.2178904577754168e-17
+    }
+    orientation {
+      x: -0.17494101728163089
+      y: 0.68512454376917231
+      z: 0.68512454376581744
+      w: 0.17494101728077427
+    }
+  }
+  joint {
+    kinematics_component {
+      motion_type: MOTION_TYPE_REVOLUTE
+      raw_value: -0.5
+      system_limits {
+        velocity: 6.2831853
+        acceleration: 10
+        jerk: 12500
+        fixed_limits {
+          lower: -inf
+          upper: inf
+        }
+        effort: 100
+      }
+      parent_t_inboard {
+        position {
+          x: 5.5511151231257827e-17
+          y: 0.092099999999999987
+        }
+        orientation {
+          x: 7.3123010771673112e-14
+          y: 0.70710678118827874
+          z: 0.70710678118481629
+          w: -7.3123010772031166e-14
+        }
+      }
+      application_limits {
+        velocity: 5.969
+        acceleration: 5
+        jerk: 10000
+        fixed_limits {
+          lower: -inf
+          upper: inf
+        }
+        effort: 100
+      }
+      outboard_t_child {
+        position {
+          x: 6.0212043388956984e-47
+          y: 1.3877787807814457e-17
+          z: -1.6327756174475434e-76
+        }
+        orientation {
+          x: -0
+          y: 2.7117093616972281e-30
+          z: -2.1693674893577825e-30
+          w: 1
+        }
+      }
+    }
+  }
+}
+entities {
+  name: "InternalForceTorqueSensor"
+  parent_name: "wrist_3_joint"
+  parent_t_this {
+    position {
+      y: -1.3877787807814457e-17
+    }
+    orientation {
+      y: -2.7117093616972281e-30
+      z: 2.1693674893577825e-30
+      w: 1
+    }
+  }
+  sensor {
+    sensor_component {
+      always_on: true
+      force_torque {
+        frame: FRAME_CHILD
+        measure_direction: MEASURE_DIRECTION_CHILD_TO_PARENT
+        force_noise {
+          x {
+            type: TYPE_GAUSSIAN
+            stddev: 0.2
+          }
+          y {
+            type: TYPE_GAUSSIAN
+            stddev: 0.2
+          }
+          z {
+            type: TYPE_GAUSSIAN
+            stddev: 0.2
+          }
+        }
+        torque_noise {
+          x {
+            type: TYPE_GAUSSIAN
+            stddev: 0.05
+          }
+          y {
+            type: TYPE_GAUSSIAN
+            stddev: 0.05
+          }
+          z {
+            type: TYPE_GAUSSIAN
+            stddev: 0.05
+          }
+        }
+      }
+      topic: "/internal/wrench"
+    }
+  }
+}

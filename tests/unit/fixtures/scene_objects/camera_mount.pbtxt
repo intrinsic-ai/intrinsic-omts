@@ -1,0 +1,179 @@
+name: "camera_mount_scene_object"
+entities {
+  name: "base_link"
+  link {
+    geometry_component {
+      named_geometries {
+        key: "Intrinsic_Collision"
+        value {
+          named_geometries {
+            key: "box_collision"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          box {
+                            size {
+                              x: 0.12
+                              y: 0.06
+                              z: 0.1
+                            }
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: -0.09
+                  values: 0.04
+                  values: 1
+                }
+              }
+            }
+          }
+          named_geometries {
+            key: "cylinder_collision"
+            value {
+              geometry {
+                inline_geometry_data {
+                  exact_geometry {
+                    primitive_set {
+                      primitives {
+                        shape {
+                          cylinder {
+                            length: 0.064
+                            radius: 0.06
+                          }
+                        }
+                        ref_t_shape {
+                          matrix4d {
+                            rows: 4
+                            cols: 4
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 0
+                            values: 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ref_t_shape {
+                matrix4d {
+                  rows: 4
+                  cols: 4
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 1
+                  values: 0
+                  values: 0
+                  values: 0
+                  values: 0.032
+                  values: 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    physics_component {
+      mass_kg: 1
+      friction {
+        mu: 1
+        mu2: 1
+      }
+      torsional {
+        coefficient: 1
+        use_patch_radius: true
+      }
+      contact_kp: 1000000000000
+      contact_kd: 1
+      this_t_center_of_mass {
+        position {
+        }
+        orientation {
+          w: 1
+        }
+      }
+      inertia {
+        rows: 3
+        cols: 3
+        values: 1
+        values: 0
+        values: 0
+        values: 0
+        values: 1
+        values: 0
+        values: 0
+        values: 0
+        values: 1
+      }
+    }
+  }
+}
