@@ -291,6 +291,120 @@ class HardwareAdaptersTest(absltest.TestCase):
       action_name="/custom/action",
     )
 
+  def _robotiq_config(
+    self, allow_world_joint_fallback: bool = False
+  ) -> GripperConfig:
+    """Returns a Robotiq GripperConfig with the given fallback setting."""
+    return GripperConfig(
+      type="robotiq",
+      joint_name="robotiq_hande_left_finger_joint",
+      open_position=0.025,
+      close_position=0.0,
+      allow_world_joint_fallback=allow_world_joint_fallback,
+    )
+
+  def _solution_without_gripper_cmd_skill(
+    self, is_simulated: bool
+  ) -> tuple[mock.MagicMock, mock.MagicMock]:
+    """Returns a mock solution lacking gripper_cmd_skill and its update_world."""
+    mock_solution = mock.MagicMock()
+    mock_solution.is_simulated = is_simulated
+    mock_solution.skills.ai.intrinsic.gripper_cmd_skill = None
+    mock_update_world = mock.MagicMock()
+    mock_update_world.return_value = bt.PythonScript(function_body="pass")
+    mock_solution.skills.ai.intrinsic.update_world = mock_update_world
+    return mock_solution, mock_update_world
+
+  def test_robotiq_gripper_world_joint_fallback_when_enabled_in_sim(self):
+    mock_solution, mock_update_world = self._solution_without_gripper_cmd_skill(
+      is_simulated=True
+    )
+
+    with self.assertLogs(level="WARNING") as logs:
+      gripper = RobotiqGripper(
+        solution=mock_solution,
+        config=self._robotiq_config(allow_world_joint_fallback=True),
+      )
+    self.assertIn("allow_world_joint_fallback", logs.output[0])
+
+    open_task = gripper.build_open_task()
+    self.assertEqual(open_task.name, "Open Robotiq Gripper")
+    mock_update_world.assert_called_once()
+    open_update = mock_update_world.call_args.kwargs["update"]
+    self.assertEqual(
+      open_update.update_object_joints.object.by_name.object_name, "gripper"
+    )
+    self.assertEqual(
+      list(open_update.update_object_joints.joint_positions), [0.025, 0.025]
+    )
+
+    mock_update_world.reset_mock()
+    close_task = gripper.build_close_task()
+    self.assertEqual(close_task.name, "Close Robotiq Gripper")
+    mock_update_world.assert_called_once()
+    close_update = mock_update_world.call_args.kwargs["update"]
+    self.assertEqual(
+      list(close_update.update_object_joints.joint_positions), [0.0, 0.0]
+    )
+
+  def test_robotiq_gripper_missing_skill_fails_by_default(self):
+    mock_solution, mock_update_world = self._solution_without_gripper_cmd_skill(
+      is_simulated=True
+    )
+
+    with self.assertRaisesRegex(RuntimeError, "gripper_cmd_skill"):
+      RobotiqGripper(
+        solution=mock_solution,
+        config=self._robotiq_config(),
+      )
+    mock_update_world.assert_not_called()
+
+  def test_robotiq_gripper_fallback_rejected_when_not_simulated(self):
+    mock_solution, mock_update_world = self._solution_without_gripper_cmd_skill(
+      is_simulated=False
+    )
+
+    with self.assertRaisesRegex(RuntimeError, "not simulated"):
+      RobotiqGripper(
+        solution=mock_solution,
+        config=self._robotiq_config(allow_world_joint_fallback=True),
+      )
+    mock_update_world.assert_not_called()
+
+  def test_robotiq_gripper_fallback_fails_without_update_world(self):
+    mock_solution, _ = self._solution_without_gripper_cmd_skill(
+      is_simulated=True
+    )
+    mock_solution.skills.ai.intrinsic.update_world = None
+
+    with self.assertRaisesRegex(RuntimeError, "update_world"):
+      RobotiqGripper(
+        solution=mock_solution,
+        config=self._robotiq_config(allow_world_joint_fallback=True),
+      )
+
+  def test_robotiq_gripper_prefers_gripper_cmd_skill_with_fallback_enabled(
+    self,
+  ):
+    mock_solution = mock.MagicMock()
+    mock_solution.is_simulated = True
+    gripper_cmd_mock = mock.MagicMock()
+    gripper_cmd_mock.return_value = bt.PythonScript(function_body="pass")
+    mock_solution.skills.ai.intrinsic.gripper_cmd_skill = gripper_cmd_mock
+    mock_update_world = mock.MagicMock()
+    mock_solution.skills.ai.intrinsic.update_world = mock_update_world
+
+    with self.assertNoLogs(level="WARNING"):
+      gripper = RobotiqGripper(
+        solution=mock_solution,
+        config=self._robotiq_config(allow_world_joint_fallback=True),
+      )
+    gripper.build_open_task()
+    gripper.build_close_task()
+
+    self.assertEqual(gripper_cmd_mock.call_count, 2)
+    mock_update_world.assert_not_called()
+
   def test_dio_cnc_machine_with_world_joint_sync(self):
     mock_solution = mock.MagicMock()
     mock_solution.skills.ai.intrinsic.dio_set_output.return_value = (

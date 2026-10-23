@@ -1099,14 +1099,18 @@ def _parse_build_solution_instances(
   sol_body = sol_match.group(1)
 
   inst_block_match = re.search(
-    r"instances\s*=\s*\[(.*?)\]\s*\+\s*select\(\{\s*\":is_lab_bb_01\"\s*:\s*\[(.*?)\]\s*,\s*\"//conditions:default\"\s*:\s*\[(.*?)\]",
+    r"instances\s*=\s*\[(.*?)\]\s*"
+    r"(?:\+\s*select\(\{\s*\"@platforms//cpu:aarch64\"\s*:\s*\[.*?\]\s*,\s*\"//conditions:default\"\s*:\s*\[(.*?)\]\s*,?\s*\}\)\s*)?"
+    r"\+\s*select\(\{\s*\":is_lab_bb_01\"\s*:\s*\[(.*?)\]\s*,\s*\"//conditions:default\"\s*:\s*\[(.*?)\]",
     sol_body,
     flags=re.DOTALL,
   )
   if not inst_block_match:
     raise AssertionError("Could not parse instances block of omts_solution")
 
-  def _extract_names(block: str) -> list[str]:
+  def _extract_names(block: str | None) -> list[str]:
+    if not block:
+      return []
     resolved = []
     for label in re.findall(r"\"(:[^\"]+)\"", block):
       if label not in instance_names:
@@ -1116,9 +1120,13 @@ def _parse_build_solution_instances(
       resolved.append(instance_names[label])
     return resolved
 
-  common = ["root"] + _extract_names(inst_block_match.group(1))
-  lab_extra = _extract_names(inst_block_match.group(2))
-  omts_extra = _extract_names(inst_block_match.group(3))
+  common = (
+    ["root"]
+    + _extract_names(inst_block_match.group(1))
+    + _extract_names(inst_block_match.group(2))
+  )
+  lab_extra = _extract_names(inst_block_match.group(3))
+  omts_extra = _extract_names(inst_block_match.group(4))
 
   return {
     "omts": tuple(common + omts_extra),
