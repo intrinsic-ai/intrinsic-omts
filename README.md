@@ -219,20 +219,7 @@ bazel run //:omts_solution -c opt --//:setup=lab_bb_01 -- --address=localhost:17
 > switching a running cluster between `real` and `sim`, stop the active solution
 > first (`inctl solution stop --address=localhost:17080`).
 
-#### 4.3. Apply scene updates (simulation / fresh deployment)
-
-Push kinematic attachments, robot base alignment, and scene frames to the live
-`ObjectWorld`. When the solution is deployed with `--operation_mode=sim`,
-`--reset_sim` (enabled by default) calls `solution.simulator.reset()` to clone
-the updated Belief World (`world`) into Gazebo's `sim_world`:
-
-```bash
-bazel run //tools/world:apply_scene_updates -- \
-  --address=localhost:17080 \
-  --reset_sim
-```
-
-#### 4.4. Register and verify workpiece pose estimator (required before running `omts_app`)
+#### 4.3. Register and verify workpiece pose estimator (required before running `omts_app`)
 
 Register and optionally verify the OMTS workpiece pose estimator using the CLI
 tools from `@intrinsic-core`:
@@ -256,7 +243,7 @@ bazel run @intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc
   --pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator_text"
 ```
 
-#### 4.5. Run the OMTS application
+#### 4.4. Run the OMTS application
 
 Connect to the running deployment and execute the machine tending Behavior Tree:
 
