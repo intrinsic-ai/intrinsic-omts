@@ -27,9 +27,9 @@ config_setting(
     },
 )
 
+# The `@platforms//cpu:aarch64` selects below omit the imported prebuilt
+# bundles (gripper, MoveIt, ROS bridge, Orbbec driver), which are amd64-only.
 _OMTS_SKILL_ASSETS = [
-    ":hand_e_gripper_cmd_skill_asset",
-    ":moveit_plan_grasp_skill_asset",
     "@intrinsic-core//intrinsic_control/intrinsic/icon/skills:dio_read_input_skill",
     "@intrinsic-core//intrinsic_control/intrinsic/icon/skills:dio_set_output_skill",
     "@intrinsic-core//intrinsic_perception/intrinsic/perception/skills:capture_images_skill",
@@ -46,7 +46,13 @@ _OMTS_SKILL_ASSETS = [
     "@intrinsic-core//intrinsic/skills/apps:detach_object_skill",
     "@intrinsic-core//intrinsic/skills/apps:update_world_skill",
     "@intrinsic-core//intrinsic/world/skills/create_object:create_object_skill",
-]
+] + select({
+    "@platforms//cpu:aarch64": [],
+    "//conditions:default": [
+        ":hand_e_gripper_cmd_skill_asset",
+        ":moveit_plan_grasp_skill_asset",
+    ],
+})
 
 # Solution deployment definition
 intrinsic_solution(
@@ -64,11 +70,15 @@ intrinsic_solution(
         "@intrinsic-core//intrinsic_control/intrinsic/icon/machines/common:generic_icon_mainloop_type",
         "@intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:nvidia_pose_estimator_service_asset",
         "@intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_train_service:ioc_train_service_asset",
-        ":flowstate_ros_bridge_asset",
-        ":hand_e_gripper_service_asset",
-        ":orbbec_gemini_driver_asset",
         "//models/raw_stock_2x3x5",
     ] + select({
+        "@platforms//cpu:aarch64": [],
+        "//conditions:default": [
+            ":flowstate_ros_bridge_asset",
+            ":hand_e_gripper_service_asset",
+            ":orbbec_gemini_driver_asset",
+        ],
+    }) + select({
         ":is_lab_bb_01": [
             "@intrinsic-core//intrinsic/apps/bluebird_caw/resources:caw_enclosure",
             "@intrinsic-core//intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_core",
@@ -93,13 +103,17 @@ intrinsic_solution(
         ":icon",
         ":ur_module",
         ":orbbec_camera",
-        ":orbbec_gemini_driver",
         ":motion_planner_service",
         ":nvidia_pose_estimator_service",
         ":train_service",
-        ":flowstate_ros_bridge",
-        ":hand_e_gripper_service",
     ] + select({
+        "@platforms//cpu:aarch64": [],
+        "//conditions:default": [
+            ":orbbec_gemini_driver",
+            ":flowstate_ros_bridge",
+            ":hand_e_gripper_service",
+        ],
+    }) + select({
         ":is_lab_bb_01": [
         ],
         "//conditions:default": [
@@ -304,9 +318,13 @@ solution_manifest_only(
     name = "omts_solution_manifest",
     extra_manifests = [
         ":BUILD",
-        ":hand_e_gripper_cmd_skill_manifest",
-        ":moveit_plan_grasp_skill_manifest",
-    ],
+    ] + select({
+        "@platforms//cpu:aarch64": [],
+        "//conditions:default": [
+            ":hand_e_gripper_cmd_skill_manifest",
+            ":moveit_plan_grasp_skill_manifest",
+        ],
+    }),
     skills = _OMTS_SKILL_ASSETS,
 )
 

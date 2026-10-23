@@ -52,6 +52,14 @@ class GripperConfig:
       open_position: Open stroke position in meters for `RobotiqGripper`.
       close_position: Closed stroke position in meters for `RobotiqGripper`.
       action_name: Optional action resource name for `RobotiqGripper`.
+      allow_world_joint_fallback: Optional for `RobotiqGripper`, defaults to
+          `False`. When `True`, the solution is simulated, and
+          `gripper_cmd_skill` is not installed, finger motion is emulated by
+          setting the gripper joints in the belief world through the
+          `update_world` skill. This does not actuate a gripper and is
+          intended for platforms without a gripper service (e.g. linux/arm64,
+          where the prebuilt amd64 gripper bundle is omitted). Otherwise a
+          missing `gripper_cmd_skill` is an error.
       dio_open_pin: Digital output index to open `DioGripper`.
       dio_close_pin: Digital output index to close `DioGripper`.
       dio_device_name: Optional ADIO device resource name for `DioGripper`.
@@ -63,12 +71,18 @@ class GripperConfig:
   open_position: float | None = None
   close_position: float | None = None
   action_name: str | None = None
+  allow_world_joint_fallback: bool = False
   dio_open_pin: int | None = None
   dio_close_pin: int | None = None
   dio_device_name: str | None = None
   dio_output_block_name: str | None = None
 
   def __post_init__(self) -> None:
+    if not isinstance(self.allow_world_joint_fallback, bool):
+      raise TypeError(
+        "Gripper field 'allow_world_joint_fallback' must be a boolean, got "
+        f"{self.allow_world_joint_fallback!r}"
+      )
     if self.type == "robotiq":
       required = ("joint_name", "open_position", "close_position")
     elif self.type == "dio":
