@@ -173,6 +173,31 @@ gripper:
     ):
       load_app_config(tmp_path)
 
+  def test_robotiq_world_joint_fallback_defaults_to_false(self):
+    config = GripperConfig(
+      type="robotiq",
+      joint_name="robotiq_hande_left_finger_joint",
+      open_position=0.025,
+      close_position=0.0,
+    )
+    self.assertIs(config.allow_world_joint_fallback, False)
+
+  def test_robotiq_world_joint_fallback_must_be_boolean(self):
+    with self.assertRaisesRegex(TypeError, "must be a boolean"):
+      GripperConfig(
+        type="robotiq",
+        joint_name="robotiq_hande_left_finger_joint",
+        open_position=0.025,
+        close_position=0.0,
+        allow_world_joint_fallback="false",  # pytype: disable=wrong-arg-types
+      )
+
+  def test_world_joint_fallback_enabled_only_for_omts_cell(self):
+    omts_cfg = load_app_config("configs/omts/app_config.yaml")
+    lab_cfg = load_app_config("configs/lab_bb_01/app_config.yaml")
+    self.assertIs(omts_cfg.gripper.allow_world_joint_fallback, True)
+    self.assertIs(lab_cfg.gripper.allow_world_joint_fallback, False)
+
   def test_missing_dio_gripper_fields_and_invalid_yaml_root(self):
     with self.assertRaisesRegex(
       KeyError, "Missing required configuration field.*dio_output_block_name"
