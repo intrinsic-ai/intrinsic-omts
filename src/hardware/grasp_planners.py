@@ -14,9 +14,9 @@
 
 """Construction of the configured grasp planner.
 
-This is the only first-party module that knows the `intrinsic-moveit`
-integration exists. Everything downstream depends on `GraspPlannerInterface`
-alone, so adding a backend is a change to this file plus a config value.
+This is the only first-party module that knows which grasp planner backends
+exist. Everything downstream depends on `GraspPlannerInterface` alone, so
+adding a backend is a change to this file plus a config value.
 """
 
 from intrinsic.solutions import deployments
@@ -24,6 +24,7 @@ from intrinsic.solutions import deployments
 from src.core.config import GraspConfig
 from src.core.types import GraspPlannerType
 from src.hardware.grasping import GraspPlannerInterface
+from src.hardware.mesh_grasp_planner import MeshGraspPlanner
 from third_party.intrinsic_moveit.moveit_grasp_planner import MoveItGraspPlanner
 
 
@@ -32,6 +33,8 @@ def create_grasp_planner(
   solution: deployments.Solution,
   config: GraspConfig,
   tool_object_name: str,
+  tool_frame_name: str = "tool_frame",
+  robot_object_name: str = "",
 ) -> GraspPlannerInterface | None:
   """Builds the grasp planner selected for this run.
 
@@ -41,6 +44,8 @@ def create_grasp_planner(
         skills. Unused by `CUBOID_CENTER`.
       config: Grasp planner configuration for the cell.
       tool_object_name: Object World object owning the gripper tool frame.
+      tool_frame_name: Gripper tool frame that `MESH` plans the grasp for.
+      robot_object_name: Robot arm that `MESH` checks the grasp with.
 
   Returns:
       Grasp planner to run after perception, or None for
@@ -53,6 +58,10 @@ def create_grasp_planner(
   """
   if planner_type is GraspPlannerType.CUBOID_CENTER:
     return None
+  if planner_type is GraspPlannerType.MESH:
+    return MeshGraspPlanner(
+      solution, config, robot_object_name, tool_object_name, tool_frame_name
+    )
   if planner_type is GraspPlannerType.MOVEIT:
     return MoveItGraspPlanner(
       solution=solution,

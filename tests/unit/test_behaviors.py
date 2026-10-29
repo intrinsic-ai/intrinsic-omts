@@ -179,6 +179,37 @@ class BehaviorsTest(absltest.TestCase):
     self.assertIsInstance(tree.root, bt.Sequence)
     self.assertEqual(len(tree.root.children), 5)
 
+  def test_mesh_pick_uses_linear_contacts_not_touchdown_or_preclose_retract(
+    self,
+  ):
+    planner = _FakeGraspPlanner()
+    planner.uses_contact_touchdown = False
+    tree = build_pick_from_infeed_subtree(
+      self.robot,
+      self.gripper,
+      self.vision,
+      self.infeed_strategy,
+      self.config,
+      grasp_planner=planner,
+    )
+    self.vision.build_perception_and_spawn_task.assert_called_once()
+    self.assertFalse(
+      self.vision.build_perception_and_spawn_task.call_args.kwargs[
+        "publish_grasp_frames"
+      ]
+    )
+    self.robot.build_move_to_contact_task.assert_not_called()
+    self.robot.build_move_relative_cartesian_task.assert_not_called()
+    names = [node.name for node in tree.children]
+    # The planner checks the open jaws, so they open before planning.
+    self.assertLess(
+      names.index("Open Gripper"), names.index(_FAKE_PLANNER_TASK_NAME)
+    )
+    self.assertLess(
+      names.index("Approach Mesh Contact Pose"),
+      names.index("Close Gripper (Grasp Part)"),
+    )
+
   def test_build_master_behavior_tree_repeat_cycles(self):
     tree = self._build_master_tree(num_cycles=4)
     self.assertIsInstance(tree.root, bt.Loop)
@@ -1098,8 +1129,10 @@ def _parse_build_solution_instances(
     )
   sol_body = sol_match.group(1)
 
+  # The first select swaps the lab_bb_01 workpiece; its default applies to
+  # both cells.
   inst_block_match = re.search(
-    r"instances\s*=\s*\[(.*?)\]\s*\+\s*select\(\{\s*\":is_lab_bb_01\"\s*:\s*\[(.*?)\]\s*,\s*\"//conditions:default\"\s*:\s*\[(.*?)\]",
+    r"instances\s*=\s*\[(.*?)\]\s*\+\s*select\(\{[^)]*?\"//conditions:default\"\s*:\s*\[(.*?)\]\s*,?\s*\}\)\s*\+\s*select\(\{\s*\":is_lab_bb_01\"\s*:\s*\[(.*?)\]\s*,\s*\"//conditions:default\"\s*:\s*\[(.*?)\]",
     sol_body,
     flags=re.DOTALL,
   )
@@ -1116,9 +1149,13 @@ def _parse_build_solution_instances(
       resolved.append(instance_names[label])
     return resolved
 
-  common = ["root"] + _extract_names(inst_block_match.group(1))
-  lab_extra = _extract_names(inst_block_match.group(2))
-  omts_extra = _extract_names(inst_block_match.group(3))
+  common = (
+    ["root"]
+    + _extract_names(inst_block_match.group(1))
+    + _extract_names(inst_block_match.group(2))
+  )
+  lab_extra = _extract_names(inst_block_match.group(3))
+  omts_extra = _extract_names(inst_block_match.group(4))
 
   return {
     "omts": tuple(common + omts_extra),

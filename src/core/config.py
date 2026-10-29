@@ -229,7 +229,13 @@ class GraspConfig:
   ignored otherwise.
 
   Attributes:
-      planner: Grasp planner backend (`'cuboid_center'` or `'moveit'`).
+      planner: Grasp planner backend (`'cuboid_center'`, `'moveit'`, or `'mesh'`).
+      mesh_simulation_only: Required acknowledgement that the `'mesh'` planner
+        runs against a simulated deployment.
+      mesh_pregrasp_distance_m: Distance in meters between the planned grasp
+        and pre-grasp frames.
+      mesh_max_approach_tilt_deg: Maximum deviation of the approach from
+        vertical, in degrees.
       moveit_tool_frame_name: MoveIt robot model link used as the grasp TCP.
         This is an SRDF link name, not an Object World frame.
       moveit_group_name: MoveIt planning group for the arm.
@@ -254,6 +260,9 @@ class GraspConfig:
   moveit_retract_dist_m: float = 0.05
   moveit_timeout_ms: float = 15000.0
   moveit_settle_seconds: float = 0.3
+  mesh_simulation_only: bool = False
+  mesh_pregrasp_distance_m: float = 0.1
+  mesh_max_approach_tilt_deg: float = 2.0
 
   def __post_init__(self) -> None:
     valid = sorted(member.value for member in GraspPlannerType)
@@ -286,6 +295,21 @@ class GraspConfig:
         f"moveit_settle_seconds must not be negative, got "
         f"{self.moveit_settle_seconds}."
       )
+    if self.planner == GraspPlannerType.MESH.value:
+      if not self.mesh_simulation_only:
+        raise ValueError(
+          "The mesh grasp planner requires mesh_simulation_only: true."
+        )
+      if self.mesh_pregrasp_distance_m <= 0.0:
+        raise ValueError(
+          f"mesh_pregrasp_distance_m must be positive, got "
+          f"{self.mesh_pregrasp_distance_m}."
+        )
+      if not 0.0 <= self.mesh_max_approach_tilt_deg < 90.0:
+        raise ValueError(
+          f"mesh_max_approach_tilt_deg must be in [0, 90), got "
+          f"{self.mesh_max_approach_tilt_deg}."
+        )
 
   @property
   def planner_type(self) -> GraspPlannerType:

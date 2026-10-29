@@ -14,6 +14,7 @@
 
 """Main application entrypoint for the Open Machine Tending Solution."""
 
+import dataclasses
 from collections.abc import Sequence
 
 from absl import app, flags, logging
@@ -60,6 +61,13 @@ _GRASP_PLANNER = flags.DEFINE_enum_class(
   GraspPlannerType,
   "Optional override for the grasp planner backend, taking precedence over "
   "the 'grasp' section of the cell config.",
+)
+
+_MESH_SIMULATION_ONLY = flags.DEFINE_bool(
+  "mesh_simulation_only",
+  False,
+  "Acknowledges that the deployment is simulated, as required by the 'mesh' "
+  "grasp planner.",
 )
 
 
@@ -138,6 +146,8 @@ def run_machine_tending_pipeline(
     solution=solution,
     config=config.grasp,
     tool_object_name=config.robot.tool_object_name,
+    tool_frame_name=config.robot.tool_frame_name,
+    robot_object_name=config.robot.arm_part_name,
   )
 
   tree = build_machine_tending_behavior_tree(
@@ -177,6 +187,11 @@ def main(argv: Sequence[str]) -> None:
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
   config = load_app_config(_CONFIG.value)
+  if _MESH_SIMULATION_ONLY.value:
+    config = dataclasses.replace(
+      config,
+      grasp=dataclasses.replace(config.grasp, mesh_simulation_only=True),
+    )
   run_machine_tending_pipeline(
     solution_address=_ADDRESS.value,
     config=config,

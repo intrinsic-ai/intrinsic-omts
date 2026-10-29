@@ -63,6 +63,7 @@ class GraspPlannerType(enum.Enum):
 
   CUBOID_CENTER = "cuboid_center"
   MOVEIT = "moveit"
+  MESH = "mesh"
 
 
 class SimulationMode(enum.Enum):

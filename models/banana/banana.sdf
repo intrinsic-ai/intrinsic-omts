@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<sdf xmlns:intrinsic="https://intrinsic.ai/" version="1.9">
+  <model name="banana">
+    <link name="base_link">
+      <visual name="banana_visual">
+        <geometry><mesh><uri>banana.glb</uri></mesh></geometry>
+      </visual>
+      <collision name="banana_collision">
+        <geometry><mesh><uri>banana.glb</uri></mesh></geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>

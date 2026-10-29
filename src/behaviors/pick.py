@@ -53,7 +53,9 @@ def build_pick_from_infeed_subtree(
   5. Move tool to dynamic `pre_grasp` frame (`ANY`).
   6. Approach `grasp` standoff (`LINEAR`), perform compliant touchdown along
      tool +Z (`config.pick_touchdown`), and execute relative linear retract
-     along tool -Z (`create_seated_approach_tasks`).
+     along tool -Z (`create_seated_approach_tasks`). Planners without
+     `uses_contact_touchdown` open the gripper before planning (step 3) and
+     instead move linearly to `grasp`.
   7. Close gripper to grasp part and attach workpiece entity to gripper in the
      belief world.
   8. Retract arm linearly back up to `pre_grasp` (`LINEAR`).
@@ -132,6 +134,13 @@ def build_pick_from_infeed_subtree(
       ]
     )
 
+  open_task = gripper.build_open_task(name="Open Gripper")
+  contact_planner = (
+    grasp_planner is not None and not grasp_planner.uses_contact_touchdown
+  )
+  if contact_planner:
+    # The planner checks the open jaws against the part, so open them first.
+    tasks.append(open_task)
   if grasp_planner is not None:
     tasks.append(
       grasp_planner.build_plan_grasp_task(
@@ -141,8 +150,8 @@ def build_pick_from_infeed_subtree(
         pregrasp_frame_name=pregrasp_frame_name,
       )
     )
-
-  tasks.append(gripper.build_open_task(name="Open Gripper"))
+  if not contact_planner:
+    tasks.append(open_task)
 
   tool_to_workpiece_collision_pair = (
     config.robot.tool_object_name,
@@ -170,17 +179,29 @@ def build_pick_from_infeed_subtree(
     )
   )
 
-  tasks.extend(
-    create_seated_approach_tasks(
-      robot=robot,
-      frame_name=grasp_frame_name,
-      parent_object=parent_object,
-      touchdown=config.pick_touchdown,
-      config=config,
-      label="Infeed Pick",
-      excluded_collision_pairs=approach_collision_pairs,
+  if contact_planner:
+    tasks.append(
+      create_move_to_frame_task(
+        robot=robot,
+        frame_name=grasp_frame_name,
+        parent_object=parent_object,
+        motion_type="LINEAR",
+        excluded_collision_pairs=approach_collision_pairs,
+        task_name="Approach Mesh Contact Pose",
+      )
     )
-  )
+  else:
+    tasks.extend(
+      create_seated_approach_tasks(
+        robot=robot,
+        frame_name=grasp_frame_name,
+        parent_object=parent_object,
+        touchdown=config.pick_touchdown,
+        config=config,
+        label="Infeed Pick",
+        excluded_collision_pairs=approach_collision_pairs,
+      )
+    )
 
   tasks.extend(
     [

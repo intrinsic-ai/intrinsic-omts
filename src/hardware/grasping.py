@@ -20,6 +20,11 @@ from intrinsic.solutions import behavior_tree as bt
 class GraspPlannerInterface(abc.ABC):
   """Update grasp and pre-grasp frames for an already-localized workpiece."""
 
+  # Whether the pick seats the gripper with a force-controlled touchdown at the
+  # grasp frame. Planners that place the jaws on exact contacts set False, and
+  # the pick moves linearly to the grasp frame instead.
+  uses_contact_touchdown: bool = True
+
   @abc.abstractmethod
   def build_plan_grasp_task(
     self,
