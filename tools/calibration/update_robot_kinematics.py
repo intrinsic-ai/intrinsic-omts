@@ -18,6 +18,7 @@ from collections.abc import Sequence
 
 import grpc
 from absl import app, flags, logging
+from intrinsic.solutions import deployments, worlds
 from intrinsic.world.service.robot_calibration import (
   robot_update_service_pb2,
   robot_update_service_pb2_grpc,
@@ -48,6 +49,13 @@ _TIMEOUT = flags.DEFINE_float(
   "timeout",
   60.0,
   "Timeout in seconds for the calibration update RPC.",
+)
+_IK_SOLVER = flags.DEFINE_string(
+  "ik_solver",
+  "rt_calibrated_ur5e",
+  "IK solver key to set when updating kinematics (e.g."
+  " 'rt_calibrated_ur5e', 'rt_calibrated_ur3e'). Pass an empty string to"
+  " skip setting an explicit IK solver.",
 )
 
 
@@ -86,12 +94,17 @@ def update_robot_kinematics(
   resource_id: str,
   world_id: str,
   timeout: float = 60.0,
+  ik_solver: str | None = "rt_calibrated_ur5e",
 ) -> None:
   """Requests the RobotUpdateService to fetch calibration from hardware and update the world."""
   request = robot_update_service_pb2.RobotKinematicsUpdateRequest(
     resource_id=resource_id,
     world_id=world_id,
   )
+  if ik_solver:
+    request.user_specified_update.set_ik_solvers_update.ik_solvers.add(
+      ik_solver=ik_solver
+    )
   try:
     stub.UpdateRobotKinematics(request, timeout=timeout)
     logging.info(
@@ -104,6 +117,25 @@ def update_robot_kinematics(
     raise
 
 
+def check_ik_solver(address: str, world_id: str, resource_id: str) -> None:
+  """Checks which IK solver the robot module is using."""
+  try:
+    solution = deployments.connect(address=address)
+    world = worlds.ObjectWorld.connect(world_id, solution.grpc_channel)
+    robot = world.get_kinematic_object(resource_id)
+    ik_solver_key = robot.proto.kinematic_object_component.ik_solvers[
+      0
+    ].kinematic_solver_key
+    logging.info(
+      "Robot '%s' in world '%s' is using IK solver: '%s'",
+      resource_id,
+      world_id,
+      ik_solver_key,
+    )
+  except Exception as e:
+    logging.error("Failed to check IK solver for '%s': %s", resource_id, e)
+
+
 def main(argv: Sequence[str]) -> None:
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
@@ -113,6 +145,7 @@ def main(argv: Sequence[str]) -> None:
   world_id = _WORLD_ID.value
   check_only = _CHECK_ONLY.value
   timeout = _TIMEOUT.value
+  ik_solver = _IK_SOLVER.value
 
   logging.info("Connecting to RobotUpdateService at %s...", address)
   channel, stub = create_robot_update_stub(address)
@@ -141,6 +174,7 @@ def main(argv: Sequence[str]) -> None:
         resource_id,
       )
       if check_only:
+        check_ik_solver(address, world_id, resource_id)
         return
     else:
       logging.warning(
@@ -151,6 +185,7 @@ def main(argv: Sequence[str]) -> None:
       )
 
     if check_only:
+      check_ik_solver(address, world_id, resource_id)
       raise app.UsageError(
         f"World kinematics do not match hardware for {resource_id}."
       )
@@ -160,7 +195,13 @@ def main(argv: Sequence[str]) -> None:
       resource_id,
     )
     try:
-      update_robot_kinematics(stub, resource_id, world_id, timeout=timeout)
+      update_robot_kinematics(
+        stub,
+        resource_id,
+        world_id,
+        timeout=timeout,
+        ik_solver=ik_solver,
+      )
     except grpc.RpcError as e:
       if hasattr(e, "code") and e.code() == grpc.StatusCode.FAILED_PRECONDITION:
         logging.warning(
