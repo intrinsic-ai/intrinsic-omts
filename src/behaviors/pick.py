@@ -135,10 +135,10 @@ def build_pick_from_infeed_subtree(
     )
 
   open_task = gripper.build_open_task(name="Open Gripper")
-  contact_planner = (
+  exact_contacts = (
     grasp_planner is not None and not grasp_planner.uses_contact_touchdown
   )
-  if contact_planner:
+  if exact_contacts:
     # The planner checks the open jaws against the part, so open them first.
     tasks.append(open_task)
   if grasp_planner is not None:
@@ -150,7 +150,7 @@ def build_pick_from_infeed_subtree(
         pregrasp_frame_name=pregrasp_frame_name,
       )
     )
-  if not contact_planner:
+  if not exact_contacts:
     tasks.append(open_task)
 
   tool_to_workpiece_collision_pair = (
@@ -179,7 +179,7 @@ def build_pick_from_infeed_subtree(
     )
   )
 
-  if contact_planner:
+  if exact_contacts:
     tasks.append(
       create_move_to_frame_task(
         robot=robot,

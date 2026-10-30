@@ -72,7 +72,6 @@ py_test(
         "//models/raw_stock_2x3x5:raw_stock_2x3x5_filegroup",
     ],
     deps = [
-        "//src/core:config",
         "//src/grasping:candidates",
         "@ai_intrinsic_sdks_pip_deps//numpy",
         "@com_google_absl_py//absl/testing:absltest",

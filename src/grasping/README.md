@@ -36,20 +36,34 @@ grasp:
   mesh_max_approach_tilt_deg: 2.0 # default
 ```
 
+Or select it for one run with `--grasp_planner=mesh --mesh_simulation_only`.
+
 The skill plans on the workpiece's visual mesh, the `.glb` its SDF names, which
 it reads from the Object World. That mesh must be closed and outward facing,
 with at most 10,000 triangles.
 
 ## Demo workpieces (Lab BB-01)
 
-| Workpiece | Deploy with | App config |
-| :--- | :--- | :--- |
-| `raw_stock_2x3x5` | `--//:setup=lab_bb_01` | `configs/lab_bb_01/app_config.yaml` plus `--grasp_planner=mesh --mesh_simulation_only` |
-| `banana` | `--//:setup=lab_bb_01 --//:workpiece=banana` | `configs/lab_bb_01_banana/app_config.yaml` |
-| `bracket` | `--//:setup=lab_bb_01 --//:workpiece=bracket` | `configs/lab_bb_01_bracket/app_config.yaml` |
+The lab cell runs `raw_stock_2x3x5` (the default), `banana` or `bracket`. Name
+the workpiece when deploying, and again when running the app:
 
-Register a text-prompted pose estimator for each workpiece's scene object as
-for the raw stock in the top-level README.
+```bash
+bazel run //:omts_solution -c opt --//:setup=lab_bb_01 --//:workpiece=banana -- \
+  --address=localhost:17080 \
+  --operation_mode=sim
+
+bazel run //src:omts_app -- \
+  --address=localhost:17080 \
+  --config=configs/lab_bb_01/app_config.yaml \
+  --workpiece=banana \
+  --grasp_planner=mesh \
+  --mesh_simulation_only
+```
+
+`--workpiece` sets the workpiece's scene object, `ai.intrinsic.<workpiece>`,
+and its pose estimator, `ai.intrinsic.<workpiece>_estimator_text`. Register that
+estimator as for the raw stock in the top-level README. The demo parts are
+placed by `configs/lab_bb_01_objects/`.
 
 ## Limits
 

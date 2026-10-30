@@ -25,24 +25,23 @@ from google.protobuf import text_format
 from intrinsic.math.python import data_types
 from intrinsic.world.proto import object_world_updates_pb2
 
-from src.core.config import load_app_config
 from src.grasping import candidates
 
-# (config, scene updates placing the workpiece, its visual mesh)
+# (workpiece, scene updates placing it, its visual mesh)
 _WORKPIECES = (
   (
-    "configs/lab_bb_01/app_config.yaml",
+    "raw_stock_2x3x5",
     "configs/lab_bb_01/scene.updates.pbtxt",
     "models/raw_stock_2x3x5/base_visual.glb",
   ),
   (
-    "configs/lab_bb_01_banana/app_config.yaml",
-    "configs/lab_bb_01_banana/scene.updates.pbtxt",
+    "banana",
+    "configs/lab_bb_01_objects/banana.updates.pbtxt",
     "models/banana/banana.glb",
   ),
   (
-    "configs/lab_bb_01_bracket/app_config.yaml",
-    "configs/lab_bb_01_bracket/scene.updates.pbtxt",
+    "bracket",
+    "configs/lab_bb_01_objects/bracket.updates.pbtxt",
     "models/bracket/bracket.glb",
   ),
 )
@@ -100,19 +99,11 @@ def _scene_pose(scene_path, object_name):
 
 
 class MeshWorkpiecesTest(absltest.TestCase):
-  def test_configured_workpieces_have_grasp_candidates(self):
-    for config_path, scene_path, mesh_path in _WORKPIECES:
-      with self.subTest(config=config_path):
-        config = load_app_config(config_path)
-        workpiece = config.cycle.workpiece_id
-        self.assertEqual(
-          config.vision.scene_object_id, f"ai.intrinsic.{workpiece}"
-        )
+  def test_workpieces_have_grasp_candidates(self):
+    for workpiece, scene_path, mesh_path in _WORKPIECES:
+      with self.subTest(workpiece=workpiece):
         found = candidates.top_down_grasps(
-          *_read_glb(mesh_path),
-          _scene_pose(scene_path, workpiece),
-          pregrasp_distance_m=config.grasp.mesh_pregrasp_distance_m,
-          max_tilt_deg=config.grasp.mesh_max_approach_tilt_deg,
+          *_read_glb(mesh_path), _scene_pose(scene_path, workpiece)
         )
         self.assertNotEmpty(found)
         for candidate in found:

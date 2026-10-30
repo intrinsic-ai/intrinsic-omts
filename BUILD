@@ -28,7 +28,7 @@ config_setting(
 )
 
 # Flag to swap the lab_bb_01 workpiece for a mesh grasping demo part.
-# The demo parts are simulation only; see configs/lab_bb_01_<workpiece>/.
+# The demo parts are simulation only; see configs/lab_bb_01_objects/.
 string_flag(
     name = "workpiece",
     build_setting_default = "raw_stock_2x3x5",
@@ -148,14 +148,14 @@ intrinsic_solution(
         ":is_lab_banana": [
             "//configs:lab_bb_01/ur_module.attachments.updates.pbtxt",
             "//configs:lab_bb_01_objects/waypoints.updates.pbtxt",
-            "//configs:lab_bb_01_banana/scene.updates.pbtxt",
+            "//configs:lab_bb_01_objects/banana.updates.pbtxt",
             "//configs:lab_bb_01/align_robot.updates.pbtxt",
             "//configs:lab_bb_01/orbbec_gemini.updates.pbtxt",
         ],
         ":is_lab_bracket": [
             "//configs:lab_bb_01/ur_module.attachments.updates.pbtxt",
             "//configs:lab_bb_01_objects/waypoints.updates.pbtxt",
-            "//configs:lab_bb_01_bracket/scene.updates.pbtxt",
+            "//configs:lab_bb_01_objects/bracket.updates.pbtxt",
             "//configs:lab_bb_01/align_robot.updates.pbtxt",
             "//configs:lab_bb_01/orbbec_gemini.updates.pbtxt",
         ],

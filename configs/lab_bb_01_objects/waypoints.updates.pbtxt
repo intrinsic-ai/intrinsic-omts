@@ -1,7 +1,8 @@
 # proto-file: intrinsic/world/public/proto/object_world_updates.proto
 # proto-message: intrinsic_proto.world.ObjectWorldUpdates
-# Lab waypoints shared by the mesh grasping demo workpieces. The grasp frames
-# are placeholders; the mesh grasp planner overwrites them.
+# Lab waypoints for the mesh grasping demo workpieces, which replace the raw
+# stock that configs/lab_bb_01/scene.updates.pbtxt places. The grasp frames are
+# placeholders; the grasp planner overwrites them.
 updates {
   create_frame {
     new_frame_name: "grasp"

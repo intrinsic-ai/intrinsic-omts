@@ -295,21 +295,16 @@ class GraspConfig:
         f"moveit_settle_seconds must not be negative, got "
         f"{self.moveit_settle_seconds}."
       )
-    if self.planner == GraspPlannerType.MESH.value:
-      if not self.mesh_simulation_only:
-        raise ValueError(
-          "The mesh grasp planner requires mesh_simulation_only: true."
-        )
-      if self.mesh_pregrasp_distance_m <= 0.0:
-        raise ValueError(
-          f"mesh_pregrasp_distance_m must be positive, got "
-          f"{self.mesh_pregrasp_distance_m}."
-        )
-      if not 0.0 <= self.mesh_max_approach_tilt_deg < 90.0:
-        raise ValueError(
-          f"mesh_max_approach_tilt_deg must be in [0, 90), got "
-          f"{self.mesh_max_approach_tilt_deg}."
-        )
+    if self.mesh_pregrasp_distance_m <= 0.0:
+      raise ValueError(
+        f"mesh_pregrasp_distance_m must be positive, got "
+        f"{self.mesh_pregrasp_distance_m}."
+      )
+    if not 0.0 <= self.mesh_max_approach_tilt_deg < 90.0:
+      raise ValueError(
+        f"mesh_max_approach_tilt_deg must be in [0, 90), got "
+        f"{self.mesh_max_approach_tilt_deg}."
+      )
 
   @property
   def planner_type(self) -> GraspPlannerType:
@@ -508,4 +503,22 @@ def load_app_config(path: str | pathlib.Path) -> AppConfig:
     frames=_construct_section(FramesConfig, raw_data, "frames", file_path),
     cycle=_construct_section(CycleConfig, raw_data, "cycle", file_path),
     grasp=grasp_config,
+  )
+
+
+def with_workpiece(config: AppConfig, workpiece_id: str) -> AppConfig:
+  """Returns `config` with another workpiece in the same cell.
+
+  The workpiece's scene object and text-prompted pose estimator are named as
+  for `raw_stock_2x3x5`: `ai.intrinsic.<workpiece_id>` and
+  `ai.intrinsic.<workpiece_id>_estimator_text`.
+  """
+  return dataclasses.replace(
+    config,
+    vision=dataclasses.replace(
+      config.vision,
+      pose_estimator_id=f"ai.intrinsic.{workpiece_id}_estimator_text",
+      scene_object_id=f"ai.intrinsic.{workpiece_id}",
+    ),
+    cycle=dataclasses.replace(config.cycle, workpiece_id=workpiece_id),
   )

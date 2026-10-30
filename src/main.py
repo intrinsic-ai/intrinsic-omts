@@ -21,7 +21,7 @@ from absl import app, flags, logging
 from intrinsic.solutions import deployments
 
 from src.behaviors.machine_tending_bt import build_machine_tending_behavior_tree
-from src.core.config import AppConfig, load_app_config
+from src.core.config import AppConfig, load_app_config, with_workpiece
 from src.core.infeed import (
   InfeedMode,
   PerceptionInfeedStrategy,
@@ -68,6 +68,14 @@ _MESH_SIMULATION_ONLY = flags.DEFINE_bool(
   False,
   "Acknowledges that the deployment is simulated, as required by the 'mesh' "
   "grasp planner.",
+)
+
+_WORKPIECE = flags.DEFINE_string(
+  "workpiece",
+  None,
+  "Optional override for the workpiece, such as 'banana', deployed with the "
+  "matching --//:workpiece build flag. Sets the workpiece and its scene "
+  "object and pose estimator IDs.",
 )
 
 
@@ -187,6 +195,8 @@ def main(argv: Sequence[str]) -> None:
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
   config = load_app_config(_CONFIG.value)
+  if _WORKPIECE.value:
+    config = with_workpiece(config, _WORKPIECE.value)
   if _MESH_SIMULATION_ONLY.value:
     config = dataclasses.replace(
       config,

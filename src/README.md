@@ -46,7 +46,7 @@ bazel run //src:omts_app -- \
 ```
 
 ```bash
-# Plan Hand-E grasps on the workpiece CAD mesh (simulation only, Lab BB-01).
+# Plan Hand-E grasps on the workpiece mesh (simulation only, Lab BB-01).
 bazel run //src:omts_app -- \
   --address=localhost:17080 \
   --config=configs/lab_bb_01/app_config.yaml \

@@ -30,6 +30,7 @@ from src.core.config import (
   GraspConfig,
   GripperConfig,
   load_app_config,
+  with_workpiece,
 )
 from src.core.types import GraspPlannerType, SimulationMode
 from src.hardware.grasp_planners import create_grasp_planner
@@ -359,6 +360,22 @@ class GraspPlannerFactoryTest(absltest.TestCase):
         config=GraspConfig(),
         tool_object_name="gripper",
       )
+
+
+class WithWorkpieceTest(absltest.TestCase):
+  def test_names_the_workpiece_and_its_estimator(self):
+    lab = load_app_config("configs/lab_bb_01/app_config.yaml")
+    banana = with_workpiece(lab, "banana")
+    self.assertEqual(banana.cycle.workpiece_id, "banana")
+    self.assertEqual(banana.vision.scene_object_id, "ai.intrinsic.banana")
+    self.assertEqual(
+      banana.vision.pose_estimator_id, "ai.intrinsic.banana_estimator_text"
+    )
+    self.assertEqual(banana.frames, lab.frames)
+
+  def test_shipped_raw_stock_follows_the_naming(self):
+    lab = load_app_config("configs/lab_bb_01/app_config.yaml")
+    self.assertEqual(with_workpiece(lab, "raw_stock_2x3x5"), lab)
 
 
 class GraspPlannerSelectionTest(absltest.TestCase):
