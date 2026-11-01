@@ -126,7 +126,7 @@ class MeshPlanGrasp(skill_interface.Skill):
       triangles,
       world_t_object,
       pregrasp_distance_m=_value(params, "pregrasp_distance_m", 0.1),
-      max_tilt_deg=_value(params, "max_approach_tilt_deg", 2.0),
+      max_tilt_deg=_value(params, "max_approach_tilt_deg", 10.0),
       preferred_jaw_axis=world_t_tool[:3, 0],
     )
     settings = collision_settings_pb2.CollisionSettings(

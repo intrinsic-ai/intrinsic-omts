@@ -112,7 +112,7 @@ def top_down_grasps(
   gripper=HANDE,
   *,
   pregrasp_distance_m=0.1,
-  max_tilt_deg=2.0,
+  max_tilt_deg=10.0,
   friction_cone_deg=15.0,
   num_samples=2000,
   max_candidates=20,
@@ -131,7 +131,8 @@ def top_down_grasps(
     world_t_object: 4x4 pose of the object in the world.
     gripper: Jaw geometry.
     pregrasp_distance_m: Height of the pregrasp above the grasp.
-    max_tilt_deg: Largest angle between the jaw axis and the horizontal plane.
+    max_tilt_deg: Largest angle between a contact face's normal and the
+      horizontal plane, which also absorbs tilt in `world_t_object`.
     friction_cone_deg: Largest angle between the jaw axis and either normal.
     num_samples: Surface points to sample.
     max_candidates: Maximum number of distinct candidates to return.

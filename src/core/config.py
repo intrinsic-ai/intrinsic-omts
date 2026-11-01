@@ -234,8 +234,9 @@ class GraspConfig:
         runs against a simulated deployment.
       mesh_pregrasp_distance_m: Distance in meters between the planned grasp
         and pre-grasp frames.
-      mesh_max_approach_tilt_deg: Maximum deviation of the approach from
-        vertical, in degrees.
+      mesh_max_approach_tilt_deg: Largest angle, in degrees, between a contact
+        face's normal and the horizontal plane. It also absorbs tilt in the
+        estimated workpiece pose.
       moveit_tool_frame_name: MoveIt robot model link used as the grasp TCP.
         This is an SRDF link name, not an Object World frame.
       moveit_group_name: MoveIt planning group for the arm.
@@ -262,7 +263,7 @@ class GraspConfig:
   moveit_settle_seconds: float = 0.3
   mesh_simulation_only: bool = False
   mesh_pregrasp_distance_m: float = 0.1
-  mesh_max_approach_tilt_deg: float = 2.0
+  mesh_max_approach_tilt_deg: float = 10.0
 
   def __post_init__(self) -> None:
     valid = sorted(member.value for member in GraspPlannerType)

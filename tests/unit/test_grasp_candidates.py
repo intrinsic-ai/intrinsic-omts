@@ -113,6 +113,22 @@ class TopDownGraspsTest(absltest.TestCase):
       candidates.top_down_grasps(*_centered_box((0.08, 0.1, 0.03)), np.eye(4))
     )
 
+  def test_small_pose_estimate_tilt_keeps_the_grasps(self):
+    # A few degrees of perception error tilts the gripped faces.
+    tilt = math.radians(3)
+    world_t_object = np.eye(4)
+    world_t_object[:3, :3] = [
+      [math.cos(tilt), 0, math.sin(tilt)],
+      [0, 1, 0],
+      [-math.sin(tilt), 0, math.cos(tilt)],
+    ]
+
+    self.assertNotEmpty(
+      candidates.top_down_grasps(
+        *_centered_box((0.04, 0.1, 0.03)), world_t_object
+      )
+    )
+
   def test_tilted_side_faces_have_no_top_down_grasp(self):
     tilt = math.radians(20)
     world_t_object = np.eye(4)

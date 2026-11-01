@@ -37,7 +37,7 @@ message MeshPlanGraspParams {
   string pregrasp_frame = 6;
   // Height of the pregrasp above the grasp.
   optional double pregrasp_distance_m = 7;
-  // Largest angle between the jaw axis and the horizontal plane.
+  // Largest angle between a contact face's normal and the horizontal plane.
   optional double max_approach_tilt_deg = 8;
   // Clearance required by the collision checks.
   optional double collision_margin_m = 9;

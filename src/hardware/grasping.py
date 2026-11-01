@@ -21,8 +21,9 @@ class GraspPlannerInterface(abc.ABC):
   """Update grasp and pre-grasp frames for an already-localized workpiece."""
 
   # Whether the pick seats the gripper with a force-controlled touchdown at the
-  # grasp frame. Planners that place the jaws on exact contacts set False, and
-  # the pick moves linearly to the grasp frame instead.
+  # grasp frame. Planners that place the jaws on exact contacts set False; the
+  # pick then moves linearly to the grasp frame, and the unload re-plans the
+  # grasp on the placed part instead of touching down.
   uses_contact_touchdown: bool = True
 
   @abc.abstractmethod

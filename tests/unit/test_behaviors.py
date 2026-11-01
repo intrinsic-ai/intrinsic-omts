@@ -422,6 +422,51 @@ class BehaviorsTest(absltest.TestCase):
     )
     self.assertEqual(self.robot.build_move_blended_cartesian_task.call_count, 2)
 
+  def test_mesh_unload_plans_the_repick_instead_of_touching_down(self):
+    planner = _FakeGraspPlanner()
+    planner.uses_contact_touchdown = False
+    unload_subtree = build_unload_machine_subtree(
+      robot=self.robot,
+      gripper=self.gripper,
+      machine=self.machine,
+      config=self.config,
+      grasp_planner=planner,
+    )
+
+    self.robot.build_move_to_contact_task.assert_not_called()
+    self.assertEqual(
+      planner.calls,
+      [
+        {
+          "workpiece_object_name": "raw_stock_2x3x5",
+          "parent_object": self.config.frames.parent_object,
+          "grasp_frame_name": self.config.frames.grasp_frame,
+          "pregrasp_frame_name": self.config.frames.pregrasp_frame,
+        }
+      ],
+    )
+    names = [c.name for c in unload_subtree.children]
+    self.assertLess(
+      names.index("Open Gripper for Unload"), names.index("Plan Unload Grasp")
+    )
+    self.assertLess(
+      names.index("Approach Unload Contact Pose"),
+      names.index("Grasp Machined Part"),
+    )
+
+  def test_touchdown_planner_keeps_the_unload_touchdown(self):
+    planner = _FakeGraspPlanner()
+    build_unload_machine_subtree(
+      robot=self.robot,
+      gripper=self.gripper,
+      machine=self.machine,
+      config=self.config,
+      grasp_planner=planner,
+    )
+
+    self.assertEmpty(planner.calls)
+    self.robot.build_move_to_contact_task.assert_called()
+
   def test_build_return_to_infeed_subtree_steps_and_detachment(self):
     return_subtree = build_return_to_infeed_subtree(
       robot=self.robot,

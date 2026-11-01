@@ -24,7 +24,8 @@ runs the [`mesh_plan_grasp`](../skills/mesh_plan_grasp/) skill, which:
    frames. If none passes, the skill fails.
 
 The pick then moves linearly to the grasp pose instead of touching down with
-force control first, closes the gripper and lifts.
+force control first, closes the gripper and lifts. The unload does the same: it
+plans a new grasp on the part where the robot placed it.
 
 ## Configuration
 
@@ -33,7 +34,7 @@ grasp:
   planner: "mesh"
   mesh_simulation_only: true
   mesh_pregrasp_distance_m: 0.1   # default
-  mesh_max_approach_tilt_deg: 2.0 # default
+  mesh_max_approach_tilt_deg: 10.0 # default
 ```
 
 Or select it for one run with `--grasp_planner=mesh --mesh_simulation_only`.
