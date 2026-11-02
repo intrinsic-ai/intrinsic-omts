@@ -1,0 +1,51 @@
+# Configuration for the managed Gemini Code Assist GitHub App.
+# Reference: https://developers.google.com/gemini-code-assist/docs/customize-repo-review
+
+# Disable poems and jokes in pull request output.
+have_fun: false
+
+# Glob patterns for files that Gemini Code Assist skips during review.
+# Policy: add only dependency lockfiles and generated outputs, never source directories.
+# List both root and "**/" patterns so files match at the repo root and in subdirectories.
+ignore_patterns:
+  # keep-sorted start
+  - "**/*-lock.json"
+  - "**/*-lock.yaml"
+  - "**/*.lock"
+  - "**/*.lock.json"
+  - "**/go.sum"
+  - "*-lock.json"
+  - "*-lock.yaml"
+  - "*.lock"
+  - "*.lock.json"
+  - "go.sum"
+  # keep-sorted end
+
+# Keep repository-wide persistent memory active across reviews.
+memory_config:
+  disable: false
+
+code_review:
+  # Keep false so Gemini Code Assist can review pull requests.
+  disable: false
+
+  # Post only high-impact findings. Options: LOW, MEDIUM, HIGH, CRITICAL.
+  comment_severity_threshold: "HIGH"
+
+  # Cap inline comments per review so large pull requests highlight top issues first.
+  max_review_comments: 10
+
+  # Events triggered when a pull request opens or leaves draft status.
+  pull_request_opened:
+    # Skip the automatic welcome comment.
+    help: false
+
+    # Skip the separate pull request summary comment on open.
+    summary: false
+
+    # Run one automatic review when a pull request opens or becomes ready for review.
+    code_review: true
+
+    # Skip automatic review on draft pull requests.
+    # Authors can still comment `/gemini review` on a draft pull request.
+    include_drafts: false
