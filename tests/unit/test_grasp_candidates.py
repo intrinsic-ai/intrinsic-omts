@@ -165,6 +165,39 @@ class TopDownGraspsTest(absltest.TestCase):
 
 
 class ValidateMeshTest(absltest.TestCase):
+  def test_rejects_an_open_mesh(self):
+    vertices, triangles = _centered_box((0.04, 0.1, 0.03))
+    with self.assertRaisesRegex(ValueError, "closed"):
+      candidates.validate_mesh(vertices, np.delete(triangles, [2, 3], axis=0))
+
+  def test_rejects_inconsistent_winding(self):
+    vertices, triangles = _centered_box((0.04, 0.1, 0.03))
+    triangles[4] = triangles[4, ::-1]
+    with self.assertRaisesRegex(ValueError, "outward"):
+      candidates.validate_mesh(vertices, triangles)
+
+  def test_rejects_a_nonmanifold_edge(self):
+    vertices, triangles = _centered_box((0.04, 0.1, 0.03))
+    with self.assertRaisesRegex(ValueError, "closed"):
+      candidates.validate_mesh(vertices, np.vstack([triangles, triangles[0]]))
+
+  def test_rejects_a_degenerate_triangle(self):
+    vertices, triangles = _centered_box((0.04, 0.1, 0.03))
+    with self.assertRaisesRegex(ValueError, "degenerate"):
+      candidates.validate_mesh(vertices, np.vstack([triangles, [0, 0, 1]]))
+
+  def test_accepts_duplicated_vertices_at_mesh_seams(self):
+    vertices, triangles = _centered_box((0.04, 0.1, 0.03))
+    split_vertices = vertices[triangles].reshape(-1, 3)
+    split_triangles = np.arange(len(split_vertices)).reshape(-1, 3)
+
+    actual_vertices, actual_triangles = candidates.validate_mesh(
+      split_vertices, split_triangles
+    )
+
+    np.testing.assert_array_equal(actual_vertices, split_vertices)
+    np.testing.assert_array_equal(actual_triangles, split_triangles)
+
   def test_rejects_inward_facing_triangles(self):
     vertices, triangles = _centered_box((0.04, 0.1, 0.03))
     with self.assertRaisesRegex(ValueError, "outward"):

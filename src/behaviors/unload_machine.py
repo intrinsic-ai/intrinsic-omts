@@ -47,8 +47,8 @@ def build_unload_machine_subtree(
      machined part along tool +Z (`config.unload_touchdown`), and execute
      relative linear retract (`create_seated_approach_tasks`). Planners without
      `uses_contact_touchdown` instead open the gripper, plan a grasp on the
-     placed part, and move to it through `pre_grasp`, lifting back to
-     `pre_grasp` before the retract.
+     placed part into separate unload frames, and move to it through the
+     unload pregrasp, lifting back to that pregrasp before the retract.
   4. Close gripper to grasp machined part and attach workpiece entity to
      gripper in the belief world.
   5. If `machine` is provided, open CNC vise to unclamp the grasped part.
@@ -104,6 +104,9 @@ def build_unload_machine_subtree(
     grasp_planner is not None and not grasp_planner.uses_contact_touchdown
   )
   if exact_contacts:
+    # Preserve the infeed targets used by the return subtree.
+    grasp_frame_name = f"{grasp_frame_name}_unload"
+    pregrasp_frame_name = f"{pregrasp_frame_name}_unload"
     # As in the infeed pick: plan with open jaws, then move to the contacts.
     tasks.extend(
       [

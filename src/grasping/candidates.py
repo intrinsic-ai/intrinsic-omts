@@ -78,6 +78,22 @@ def validate_mesh(vertices, triangles):
   if not np.isfinite(vertices).all():
     raise ValueError("vertices must be finite.")
   corners = vertices[triangles]
+  if np.any(
+    np.linalg.norm(
+      np.cross(corners[:, 1] - corners[:, 0], corners[:, 2] - corners[:, 0]),
+      axis=1,
+    )
+    == 0
+  ):
+    raise ValueError("The mesh contains a degenerate triangle.")
+  # GLB seams can store the same point with different vertex indices.
+  _, welded = np.unique(vertices, axis=0, return_inverse=True)
+  faces = welded[triangles]
+  edges = np.concatenate([faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]])
+  _, counts = np.unique(np.sort(edges, axis=1), axis=0, return_counts=True)
+  # Every edge must occur exactly twice, once in each direction.
+  if np.any(counts != 2) or len(np.unique(edges, axis=0)) != len(edges):
+    raise ValueError("The mesh must be closed with outward-facing triangles.")
   volume = np.einsum(
     "ij,ij->i", corners[:, 0], np.cross(corners[:, 1], corners[:, 2])
   ).sum()

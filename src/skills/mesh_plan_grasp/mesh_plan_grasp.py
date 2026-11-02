@@ -22,6 +22,10 @@ from intrinsic.icon.proto import joint_space_pb2
 from intrinsic.math.python import data_types, proto_conversion
 from intrinsic.motion_planning import motion_planner_client
 from intrinsic.motion_planning.proto import motion_target_pb2
+from intrinsic.motion_planning.proto.v1 import (
+  motion_specification_pb2,
+  robot_specification_pb2,
+)
 from intrinsic.skills.proto import footprint_pb2
 from intrinsic.skills.python import skill_interface
 from intrinsic.world.proto import collision_settings_pb2
@@ -147,11 +151,17 @@ class MeshPlanGrasp(skill_interface.Skill):
         (params.grasp_frame, candidate.grasp),
         (params.pregrasp_frame, candidate.pregrasp),
       ):
-        world.update_transform(
-          node_a=root,
-          node_b=world.get_frame(frame, "root"),
-          a_t_b=data_types.Pose3.from_matrix4x4(pose),
-        )
+        transform = data_types.Pose3.from_matrix4x4(pose)
+        if frame in root.frame_names:
+          world.update_transform(
+            node_a=root,
+            node_b=world.get_frame(frame, "root"),
+            a_t_b=transform,
+          )
+        else:
+          world.create_frame(
+            frame_name=frame, parent=root, parent_t_frame=transform
+          )
       logging.info(
         "Selected mesh grasp %d of %d (width %.4f m).",
         index,
@@ -170,7 +180,7 @@ class MeshPlanGrasp(skill_interface.Skill):
     )
 
   def _feasible(self, planner, params, candidate, settings):
-    """IK with collision checks at both poses, then the approach between."""
+    """Checks both poses and plans the Cartesian-linear approach between them."""
     tool = create_transform_node_ref(params.tool_object, params.tool_frame)
     root = create_transform_node_ref("root")
     joints = []
@@ -202,9 +212,25 @@ class MeshPlanGrasp(skill_interface.Skill):
       if not result.solutions:
         return False
       joints.append(result.solutions[0])
-    response = planner.check_collisions(
-      params.robot_object,
-      [joint_space_pb2.JointVec(joints=q) for q in joints],
-      motion_planner_client.CheckCollisionsOptions(collision_settings=settings),
+    robot = robot_specification_pb2.RobotSpecification(
+      start_configuration=joint_space_pb2.JointVec(joints=joints[0])
     )
-    return not response.has_collision
+    robot.robot_reference.object_id.by_name.object_name = params.robot_object
+    segment = motion_specification_pb2.MotionSegment(
+      motion_type=motion_specification_pb2.MotionSegment.LINEAR,
+      collision_settings=settings,
+    )
+    segment.target.cartesian_pose.moving_frame.CopyFrom(tool)
+    segment.target.cartesian_pose.target_frame.CopyFrom(root)
+    segment.target.cartesian_pose.target_frame_offset.CopyFrom(target.offset)
+    try:
+      response = planner.plan_path(
+        robot,
+        motion_specification_pb2.MotionSpecification(motion_segments=[segment]),
+      )
+    except grpc.RpcError as error:
+      logging.info(
+        "Mesh grasp approach failed: %s %s", error.code(), error.details()
+      )
+      return False
+    return bool(response.path.waypoints)

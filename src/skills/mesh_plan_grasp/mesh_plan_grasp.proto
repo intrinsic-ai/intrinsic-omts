@@ -20,9 +20,9 @@ import "intrinsic/assets/proto/field_metadata.proto";
 import "intrinsic/assets/proto/v1/resolved_dependency.proto";
 
 // Plans a top-down parallel-jaw grasp on a workpiece's visual mesh and
-// writes it to two existing frames. Each candidate is checked with the motion
-// planner: inverse kinematics with collision checking at the pregrasp and
-// grasp poses, then a collision check of the approach between them.
+// writes it to two frames on root, creating them if missing. Each candidate is
+// checked with the motion planner: collision-checked IK at the pregrasp and
+// grasp poses, then a Cartesian-linear approach plan with collision checking.
 message MeshPlanGraspParams {
   // Object World name of the workpiece. Its current pose and its visual mesh,
   // which must be closed and outward facing, are used.
@@ -32,7 +32,7 @@ message MeshPlanGraspParams {
   // Moving frame used for the grasp, such as the gripper's tool frame.
   string tool_object = 3;
   string tool_frame = 4;
-  // Frames updated with the result. They must already exist on `root`.
+  // Frames updated with the result, created on `root` if missing.
   string grasp_frame = 5;
   string pregrasp_frame = 6;
   // Height of the pregrasp above the grasp.

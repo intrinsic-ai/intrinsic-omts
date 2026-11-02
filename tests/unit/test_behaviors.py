@@ -440,8 +440,8 @@ class BehaviorsTest(absltest.TestCase):
         {
           "workpiece_object_name": "raw_stock_2x3x5",
           "parent_object": self.config.frames.parent_object,
-          "grasp_frame_name": self.config.frames.grasp_frame,
-          "pregrasp_frame_name": self.config.frames.pregrasp_frame,
+          "grasp_frame_name": f"{self.config.frames.grasp_frame}_unload",
+          "pregrasp_frame_name": f"{self.config.frames.pregrasp_frame}_unload",
         }
       ],
     )
@@ -453,6 +453,34 @@ class BehaviorsTest(absltest.TestCase):
       names.index("Approach Unload Contact Pose"),
       names.index("Grasp Machined Part"),
     )
+    self.assertEqual(
+      self.robot.build_move_cartesian_task.call_args.kwargs[
+        "target_frame_name"
+      ],
+      f"{self.config.frames.grasp_frame}_unload",
+    )
+    retract = self.robot.build_move_blended_cartesian_task.call_args.kwargs
+    self.assertEqual(
+      retract["target_frames"][0],
+      (
+        self.config.frames.parent_object,
+        f"{self.config.frames.pregrasp_frame}_unload",
+      ),
+    )
+
+    # Return still targets the infeed frames, even with placement shifting off.
+    self.config = dataclasses.replace(
+      self.config,
+      cycle=dataclasses.replace(self.config.cycle, return_shift=None),
+    )
+    self.robot.reset_mock()
+    build_return_to_infeed_subtree(self.robot, self.gripper, self.config)
+    targets = {
+      call.kwargs["target_frame_name"]
+      for call in self.robot.build_move_cartesian_task.call_args_list
+    }
+    self.assertIn(self.config.frames.grasp_frame, targets)
+    self.assertNotIn(f"{self.config.frames.grasp_frame}_unload", targets)
 
   def test_touchdown_planner_keeps_the_unload_touchdown(self):
     planner = _FakeGraspPlanner()

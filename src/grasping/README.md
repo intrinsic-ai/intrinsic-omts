@@ -18,14 +18,17 @@ runs the [`mesh_plan_grasp`](../skills/mesh_plan_grasp/) skill, which:
    closest to the part's centroid come first.
 2. Checks candidates in that order with Core's motion planner: inverse
    kinematics with collision checking at the pregrasp and the grasp (jaws open),
-   then a collision check of the approach between them. This uses Core's own
-   collision models of the gripper, the part, the table and the enclosure.
+   then a Cartesian-linear approach plan with collision checking. This uses
+   Core's own collision models of the gripper, the part, the table and the
+   enclosure.
 3. Writes the first candidate that passes to the `grasp` and `pre_grasp`
-   frames. If none passes, the skill fails.
+   frames, creating missing frames on `root`. If none passes, the skill fails.
 
 The pick then moves linearly to the grasp pose instead of touching down with
 force control first, closes the gripper and lifts. The unload does the same: it
-plans a new grasp on the part where the robot placed it.
+plans a new grasp on the part where the robot placed it, using separate
+`grasp_unload` and `pre_grasp_unload` frames so the infeed return targets stay
+unchanged (the suffix follows the configured grasp frame names).
 
 ## Configuration
 
@@ -41,7 +44,9 @@ Or select it for one run with `--grasp_planner=mesh --mesh_simulation_only`.
 
 The skill plans on the workpiece's visual mesh, the `.glb` its SDF names, which
 it reads from the Object World. That mesh must be closed and outward facing,
-with at most 10,000 triangles.
+with at most 10,000 triangles. Validation rejects open edges, inconsistent
+winding, nonmanifold edges and degenerate triangles; duplicated seam vertices
+are matched by their coordinates.
 
 ## Demo workpieces (Lab BB-01)
 
