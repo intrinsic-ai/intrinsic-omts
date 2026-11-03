@@ -22,7 +22,7 @@ archive_override(
     patch_strip = 1,
     patches = [
         "//bazel/patches:robotiq_hande_finger_offset.patch",
-        "//bazel/patches:sdf_world_template_bullet_constraints.patch",
+        "//bazel/patches:sdf_bullet_contact_kp_kd.patch",
     ],
     sha256 = INTRINSIC_CORE_SHA256,
     urls = [INTRINSIC_CORE_URL],
@@ -84,13 +84,6 @@ single_version_override(
     patch_strip = 1,
     patches = ["//bazel/patches:gz_physics_contact_compliance.patch"],
     version = "9.5.2",
-)
-
-single_version_override(
-    module_name = "gz-sim",
-    patch_strip = 1,
-    patches = ["//bazel/patches:gz_sim_pass_physics_to_world.patch"],
-    version = "10.5.0",
 )
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")

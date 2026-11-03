@@ -1,0 +1,39 @@
+diff --git a/intrinsic_sdk/intrinsic/world/conversion/sdf/collision_surface_conversion.cc b/intrinsic_sdk/intrinsic/world/conversion/sdf/collision_surface_conversion.cc
+--- a/intrinsic_sdk/intrinsic/world/conversion/sdf/collision_surface_conversion.cc
++++ b/intrinsic_sdk/intrinsic/world/conversion/sdf/collision_surface_conversion.cc
+@@ -134,6 +134,19 @@ absl::StatusOr<ParseContactResult> ParseContact(const ::sdf::Contact& contact) {
+     }
+   }
+ 
++  if (contact.Element()->HasElement("bullet")) {
++    INTR_ASSIGN_OR_RETURN(auto bullet,
++                          GetChildWithTag(contact.Element(), "bullet"));
++
++    if (auto kp = ParseChildAs<double>(bullet, "kp"); kp.ok()) {
++      contact_result.kp = *kp;
++    }
++
++    if (auto kd = ParseChildAs<double>(bullet, "kd"); kd.ok()) {
++      contact_result.kd = *kd;
++    }
++  }
++
+   if (auto collide_without_contact =
+           ParseChildAs<bool>(contact.Element(), "collide_without_contact");
+       collide_without_contact.ok()) {
+diff --git a/intrinsic/simulation/world/world_to_sdf.cc b/intrinsic/simulation/world/world_to_sdf.cc
+--- a/intrinsic/simulation/world/world_to_sdf.cc
++++ b/intrinsic/simulation/world/world_to_sdf.cc
+@@ -1320,7 +1320,11 @@ class WorldToSdfConverter {
+             absl::Substitute("<ode><kp>$0</kp><kd>$1</kd></ode>",
+                              FullPrecision(physics->GetContactKp()),
+                              FullPrecision(physics->GetContactKd()));
+-        absl::StrAppend(&contact, ode);
++        std::string bullet =
++            absl::Substitute("<bullet><kp>$0</kp><kd>$1</kd></bullet>",
++                             FullPrecision(physics->GetContactKp()),
++                             FullPrecision(physics->GetContactKd()));
++        absl::StrAppend(&contact, ode, bullet);
+ 
+         // If this entity has a collision component, then we should use it to
+         // see if we have a collision response

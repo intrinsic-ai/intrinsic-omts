@@ -14,7 +14,7 @@
 
 --- a/intrinsic_control/intrinsic/models/assets/standard_tooling/robotiq_hande/robotiq_hande/robotiq_hande.sdf
 +++ b/intrinsic_control/intrinsic/models/assets/standard_tooling/robotiq_hande/robotiq_hande/robotiq_hande.sdf
-@@ -104,6 +104,7 @@
+@@ -106,6 +106,7 @@
  
      <!-- Fingers and their prismatic joints -->
      <link name="gripper_finger1">
@@ -22,7 +22,48 @@
        <inertial>
          <mass>0.2</mass>
          <!-- Approximately set assuming a box of uniform density of size 0.015 0.04 0.07 -->
-@@ -160,6 +161,7 @@
+@@ -140,6 +141,14 @@
+             <radius>0.003</radius>
+           </sphere>
+         </geometry>
++        <surface>
++          <contact>
++            <bullet>
++              <kp>100000</kp>
++              <kd>1</kd>
++            </bullet>
++          </contact>
++        </surface>
+       </collision>
+       <collision name="collision2">
+         <pose>0.033 0 0.127 0 0 0</pose>
+@@ -148,6 +157,14 @@
+             <size>0.005 0.02 0.02</size>
+           </box>
+         </geometry>
++        <surface>
++          <contact>
++            <bullet>
++              <kp>100000</kp>
++              <kd>1</kd>
++            </bullet>
++          </contact>
++        </surface>
+       </collision>
+       <!-- Rack collider from CAD export (Hand-e/model.sdf) shifted by +0.0139 m in Z. -->
+       <collision name="collision_rack">
+@@ -157,9 +174,18 @@
+             <size>0.005967 0.043104 0.0164</size>
+           </box>
+         </geometry>
++        <surface>
++          <contact>
++            <bullet>
++              <kp>100000</kp>
++              <kd>1</kd>
++            </bullet>
++          </contact>
++        </surface>
        </collision>
      </link>
      <link name="gripper_finger2">
@@ -30,3 +71,49 @@
        <inertial>
          <mass>0.2</mass>
          <!-- Approximately set assuming a box of uniform density of size 0.015 0.04 0.07 -->
+@@ -196,6 +222,14 @@
+             <radius>0.003</radius>
+           </sphere>
+         </geometry>
++        <surface>
++          <contact>
++            <bullet>
++              <kp>100000</kp>
++              <kd>1</kd>
++            </bullet>
++          </contact>
++        </surface>
+       </collision>
+       <collision name="collision2">
+         <pose>-0.033 0 0.127 0 0 0</pose>
+@@ -204,6 +238,14 @@
+             <size>0.005 0.02 0.02</size>
+           </box>
+         </geometry>
++        <surface>
++          <contact>
++            <bullet>
++              <kp>100000</kp>
++              <kd>1</kd>
++            </bullet>
++          </contact>
++        </surface>
+       </collision>
+       <collision name="collision_rack">
+         <pose>-0.014107 0.01425 0.1033 0 0 -4.712389</pose>
+@@ -212,6 +254,14 @@
+             <size>0.005967 0.04339 0.0164</size>
+           </box>
+         </geometry>
++        <surface>
++          <contact>
++            <bullet>
++              <kp>100000</kp>
++              <kd>1</kd>
++            </bullet>
++          </contact>
++        </surface>
+       </collision>
+     </link>
+ 
+     <joint name="finger1" type="prismatic">

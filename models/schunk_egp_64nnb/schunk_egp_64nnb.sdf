@@ -101,6 +101,14 @@ limitations under the License.
             <size>0.01 0.0215 0.0158</size>
           </box>
         </geometry>
+        <surface>
+          <contact>
+            <bullet>
+              <kp>100000</kp>
+              <kd>1</kd>
+            </bullet>
+          </contact>
+        </surface>
       </collision>
     </link>
     <link name="jaw_r_link">
@@ -145,6 +153,14 @@ limitations under the License.
             <size>0.01 0.02 0.0158</size>
           </box>
         </geometry>
+        <surface>
+          <contact>
+            <bullet>
+              <kp>100000</kp>
+              <kd>1</kd>
+            </bullet>
+          </contact>
+        </surface>
       </collision>
     </link>
     <joint name="jaw_l_link_joint_prismatic" type="prismatic">
