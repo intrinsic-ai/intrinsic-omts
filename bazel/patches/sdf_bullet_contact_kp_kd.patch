@@ -24,16 +24,18 @@ diff --git a/intrinsic_sdk/intrinsic/world/conversion/sdf/collision_surface_conv
 diff --git a/intrinsic/simulation/world/world_to_sdf.cc b/intrinsic/simulation/world/world_to_sdf.cc
 --- a/intrinsic/simulation/world/world_to_sdf.cc
 +++ b/intrinsic/simulation/world/world_to_sdf.cc
-@@ -1320,7 +1320,11 @@ class WorldToSdfConverter {
+@@ -1320,7 +1320,14 @@ class WorldToSdfConverter {
              absl::Substitute("<ode><kp>$0</kp><kd>$1</kd></ode>",
                               FullPrecision(physics->GetContactKp()),
                               FullPrecision(physics->GetContactKd()));
--        absl::StrAppend(&contact, ode);
-+        std::string bullet =
-+            absl::Substitute("<bullet><kp>$0</kp><kd>$1</kd></bullet>",
-+                             FullPrecision(physics->GetContactKp()),
-+                             FullPrecision(physics->GetContactKd()));
-+        absl::StrAppend(&contact, ode, bullet);
+         absl::StrAppend(&contact, ode);
++        if (physics->GetContactKp() != 1e12 || physics->GetContactKd() != 1.0) {
++          absl::StrAppend(
++              &contact,
++              absl::Substitute("<bullet><kp>$0</kp><kd>$1</kd></bullet>",
++                               FullPrecision(physics->GetContactKp()),
++                               FullPrecision(physics->GetContactKd())));
++        }
  
          // If this entity has a collision component, then we should use it to
          // see if we have a collision response
