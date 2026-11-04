@@ -100,10 +100,10 @@ def build_unload_machine_subtree(
   if machine is not None:
     tasks.append(machine.build_open_door_task(name="Open CNC Door"))
 
-  exact_contacts = (
+  use_direct_grasp_approach = (
     grasp_planner is not None and not grasp_planner.uses_contact_touchdown
   )
-  if exact_contacts:
+  if use_direct_grasp_approach:
     # Preserve the infeed targets used by the return subtree.
     grasp_frame_name = f"{grasp_frame_name}_unload"
     pregrasp_frame_name = f"{pregrasp_frame_name}_unload"
@@ -172,7 +172,7 @@ def build_unload_machine_subtree(
     machine_approach_frame_name,
   ]
   exit_motion_types = ["LINEAR", "ANY"]
-  if exact_contacts:
+  if use_direct_grasp_approach:
     # Lift straight up off the planned contacts first.
     exit_frames.insert(0, pregrasp_frame_name)
     exit_motion_types.insert(0, "LINEAR")

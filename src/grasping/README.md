@@ -16,9 +16,9 @@ runs the [`mesh_plan_grasp`](../skills/mesh_plan_grasp/) skill, which:
    10 to 60 mm jaw opening, whose normals oppose each other within 15 degrees,
    and whose closing fingers do not cross another part of the mesh. Candidates
    closest to the part's centroid come first.
-2. Checks candidates in that order with Core's motion planner: inverse
-   kinematics with collision checking at the pregrasp and the grasp (jaws open),
-   then a Cartesian-linear approach plan with collision checking. This uses
+2. Checks candidates in that order with Core's motion planner: collision-checked
+   inverse kinematics at the pregrasp (jaws open), then a collision-checked
+   Cartesian-linear plan to the grasp. This uses
    Core's own collision models of the gripper, the part, the table and the
    enclosure.
 3. Writes the first candidate that passes to the `grasp` and `pre_grasp`

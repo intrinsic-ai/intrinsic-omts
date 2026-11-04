@@ -181,14 +181,13 @@ def top_down_grasps(
   )
   inward = -normals[faces]
 
-  distances = np.concatenate(
-    [
-      _ray_hits(points[i : i + 64], inward[i : i + 64], corners)
-      for i in range(0, num_samples, 64)
-    ]
-  )
-  first = np.argmin(distances, axis=1)
-  width = distances[np.arange(num_samples), first]
+  first = np.empty(num_samples, dtype=int)
+  width = np.empty(num_samples)
+  for i in range(0, num_samples, 64):
+    distances = _ray_hits(points[i : i + 64], inward[i : i + 64], corners)
+    nearest = np.argmin(distances, axis=1)
+    first[i : i + 64] = nearest
+    width[i : i + 64] = distances[np.arange(len(nearest)), nearest]
   # The far face of a good pair faces along the ray, away from the near face.
   opposing = np.einsum("ij,ij->i", normals[first], inward)
   keep = (

@@ -180,40 +180,31 @@ class MeshPlanGrasp(skill_interface.Skill):
     )
 
   def _feasible(self, planner, params, candidate, settings):
-    """Checks both poses and plans the Cartesian-linear approach between them."""
+    """Solves pregrasp IK and plans the collision-checked linear grasp approach."""
     tool = create_transform_node_ref(params.tool_object, params.tool_frame)
     root = create_transform_node_ref("root")
-    joints = []
-    for pose in (candidate.pregrasp, candidate.grasp):
-      target = motion_target_pb2.CartesianMotionTarget(
-        tool=tool,
-        frame=root,
-        offset=proto_conversion.pose_to_proto(
-          data_types.Pose3.from_matrix4x4(pose)
+    target = motion_target_pb2.CartesianMotionTarget(
+      tool=tool,
+      frame=root,
+      offset=proto_conversion.pose_to_proto(
+        data_types.Pose3.from_matrix4x4(candidate.pregrasp)
+      ),
+    )
+    try:
+      result = planner.compute_ik(
+        params.robot_object,
+        target,
+        options=motion_planner_client.IKOptions(
+          max_num_solutions=1, collision_settings=settings
         ),
       )
-      options = motion_planner_client.IKOptions(
-        max_num_solutions=1,
-        collision_settings=settings,
-        ensure_same_branch=bool(joints),
-      )
-      try:
-        result = planner.compute_ik(
-          params.robot_object,
-          target,
-          starting_joints=joints[-1] if joints else None,
-          options=options,
-        )
-      except grpc.RpcError as error:
-        logging.info(
-          "Mesh grasp IK failed: %s %s", error.code(), error.details()
-        )
-        return False
-      if not result.solutions:
-        return False
-      joints.append(result.solutions[0])
+    except grpc.RpcError as error:
+      logging.info("Mesh grasp IK failed: %s %s", error.code(), error.details())
+      return False
+    if not result.solutions:
+      return False
     robot = robot_specification_pb2.RobotSpecification(
-      start_configuration=joint_space_pb2.JointVec(joints=joints[0])
+      start_configuration=joint_space_pb2.JointVec(joints=result.solutions[0])
     )
     robot.robot_reference.object_id.by_name.object_name = params.robot_object
     segment = motion_specification_pb2.MotionSegment(
@@ -222,7 +213,11 @@ class MeshPlanGrasp(skill_interface.Skill):
     )
     segment.target.cartesian_pose.moving_frame.CopyFrom(tool)
     segment.target.cartesian_pose.target_frame.CopyFrom(root)
-    segment.target.cartesian_pose.target_frame_offset.CopyFrom(target.offset)
+    segment.target.cartesian_pose.target_frame_offset.CopyFrom(
+      proto_conversion.pose_to_proto(
+        data_types.Pose3.from_matrix4x4(candidate.grasp)
+      )
+    )
     try:
       response = planner.plan_path(
         robot,

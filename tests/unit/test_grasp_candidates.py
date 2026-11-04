@@ -15,6 +15,8 @@
 """Tests for top-down mesh grasp candidates."""
 
 import math
+import weakref
+from unittest import mock
 
 import numpy as np
 from absl.testing import absltest
@@ -162,6 +164,26 @@ class TopDownGraspsTest(absltest.TestCase):
     self.assertEqual(len(first), len(second))
     for a, b in zip(first, second, strict=True):
       np.testing.assert_array_equal(a.grasp, b.grasp)
+
+  def test_ray_batches_are_released_after_reducing_their_hits(self):
+    batches = []
+    ray_hits = candidates._ray_hits
+
+    def tracked_ray_hits(*args):
+      self.assertLessEqual(sum(batch() is not None for batch in batches), 1)
+      hits = ray_hits(*args)
+      batches.append(weakref.ref(hits))
+      return hits
+
+    with mock.patch.object(
+      candidates, "_ray_hits", side_effect=tracked_ray_hits
+    ):
+      found = candidates.top_down_grasps(
+        *_centered_box((0.04, 0.1, 0.03)), np.eye(4), num_samples=130
+      )
+
+    self.assertNotEmpty(found)
+    self.assertGreater(len(batches), 2)
 
 
 class ValidateMeshTest(absltest.TestCase):

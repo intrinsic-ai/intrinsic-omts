@@ -21,8 +21,8 @@ import "intrinsic/assets/proto/v1/resolved_dependency.proto";
 
 // Plans a top-down parallel-jaw grasp on a workpiece's visual mesh and
 // writes it to two frames on root, creating them if missing. Each candidate is
-// checked with the motion planner: collision-checked IK at the pregrasp and
-// grasp poses, then a Cartesian-linear approach plan with collision checking.
+// checked with the motion planner: collision-checked IK at the pregrasp,
+// then a collision-checked Cartesian-linear plan to the grasp.
 message MeshPlanGraspParams {
   // Object World name of the workpiece. Its current pose and its visual mesh,
   // which must be closed and outward facing, are used.

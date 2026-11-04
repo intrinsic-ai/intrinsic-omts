@@ -199,10 +199,16 @@ def _execute(
 class MeshPlanGraspSkillTest(absltest.TestCase):
   def test_checks_a_cartesian_linear_approach_from_the_pregrasp(self):
     planner = _Planner()
+    planner.compute_ik = mock.Mock(wraps=planner.compute_ik)
     planner.check_collisions = mock.Mock(wraps=planner.check_collisions)
 
     _, world = _execute(planner)
 
+    planner.compute_ik.assert_called_once()
+    pregrasp = planner.compute_ik.call_args.args[1].offset.position
+    np.testing.assert_allclose(
+      [pregrasp.x, pregrasp.y, pregrasp.z], world.updates["pre_grasp"][:3, 3]
+    )
     self.assertLen(planner.paths, 1)
     robot, specification = planner.paths[0]
     self.assertEqual(
