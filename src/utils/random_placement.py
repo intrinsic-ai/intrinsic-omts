@@ -86,3 +86,32 @@ def randomize_placement_frame(context: Any, params: Any) -> None:
       world.update_transform(
         node_a=parent_obj, node_b=grasp_node, a_t_b=grasp_pose
       )
+
+
+def update_mesh_return_frames(context: Any, params: Any) -> None:
+  """Solves return tool poses from the desired part pose and current grip (SI)."""
+  from intrinsic.math.python import data_types
+
+  world = context.object_world
+  workpiece = world.get_object(params.workpiece_object_name)
+  tool = world.get_frame(params.tool_frame_name, params.tool_object_name)
+  target = world.get_frame(f"{params.grasp_frame_name}_workpiece", "root")
+  # world_T_tool = desired_world_T_part * current_part_T_tool.
+  world_t_tool = world.get_transform(world.root, target) * world.get_transform(
+    workpiece, tool
+  )
+  pregrasp = world_t_tool * data_types.Pose3(
+    translation=[0, 0, -params.pregrasp_distance_m]
+  )
+  for name, pose in (
+    (f"{params.grasp_frame_name}_return", world_t_tool),
+    (f"{params.pregrasp_frame_name}_return", pregrasp),
+  ):
+    if name in world.root.frame_names:
+      world.update_transform(
+        node_a=world.root, node_b=world.get_frame(name, "root"), a_t_b=pose
+      )
+    else:
+      world.create_frame(
+        frame_name=name, parent=world.root, parent_t_frame=pose
+      )

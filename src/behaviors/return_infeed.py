@@ -14,6 +14,7 @@
 
 """Infeed return / outfeed placement subtree."""
 
+import dataclasses
 from unittest import mock
 
 from intrinsic.solutions import behavior_tree as bt
@@ -24,20 +25,58 @@ from src.behaviors.motions import (
   create_seated_approach_tasks,
 )
 from src.core.config import AppConfig
+from src.hardware.grasping import GraspPlannerInterface
 from src.hardware.gripper import GripperInterface
 from src.hardware.robot import Robot
 from src.utils.script_utils import load_python_script
+
+
+def _python_script_task(
+  robot: Robot,
+  function_name: str,
+  fields: list[tuple[str, str, object]],
+) -> bt.PythonScript:
+  """Builds a `random_placement` script task with `(type, name, arg)` params.
+
+  The signature is left unset for mocked solutions (unit tests).
+  """
+  signature = None
+  solution = getattr(robot, "_solution", None)
+  if (
+    solution
+    and hasattr(solution, "proto_builder")
+    and not isinstance(solution.proto_builder, mock.MagicMock)
+  ):
+    signature = solution.proto_builder.create_signature_with_args(
+      parameters=pb.MessageSpec(
+        fields=[
+          pb.FieldSpec(type=type_name, name=name, number=number, arg=arg)
+          for number, (type_name, name, arg) in enumerate(fields, 1)
+        ]
+      )
+    )
+  return bt.PythonScript(
+    signature_with_args=signature,
+    function_body=load_python_script(
+      "src.utils.random_placement", function_name=function_name
+    ),
+  )
 
 
 def build_return_to_infeed_subtree(
   robot: Robot,
   gripper: GripperInterface,
   config: AppConfig,
+  grasp_planner: GraspPlannerInterface | None = None,
 ) -> bt.Node:
   """Builds the Behavior Tree subtree for returning the finished part to infeed.
 
   Sequence:
   1. Calculate random XY shift for placement position based on config.
+     For mesh planners (no contact touchdown at pick), then solve
+     `<grasp>_return` / `<pregrasp>_return` tool targets that place the part
+     at its saved infeed pose given its current pose in the gripper, and
+     use the plain cycle standoff (no 15 mm pick-retract compensation).
   2. Approach infeed `pregrasp_frame` (`ANY`), blending through `transit_frame`
      if configured.
   3. Approach `grasp_frame` standoff (`LINEAR`) and perform compliant touchdown
@@ -52,6 +91,7 @@ def build_return_to_infeed_subtree(
       robot: Robot controller adapter.
       gripper: End-effector gripper adapter.
       config: Validated application configuration dataclass.
+      grasp_planner: Optional planner selecting grip-corrected mesh placement.
 
   Returns:
       Behavior tree sequence node executing infeed return.
@@ -80,80 +120,59 @@ def build_return_to_infeed_subtree(
   tasks: list[bt.Node] = []
 
   if config.cycle.return_shift is not None:
-    solution = getattr(robot, "_solution", None)
-    if (
-      solution
-      and hasattr(solution, "proto_builder")
-      and not isinstance(solution.proto_builder, mock.MagicMock)
-    ):
-      signature = solution.proto_builder.create_signature_with_args(
-        parameters=pb.MessageSpec(
-          fields=[
-            pb.FieldSpec(
-              type="string",
-              name="parent_object",
-              number=1,
-              arg=parent_object,
-            ),
-            pb.FieldSpec(
-              type="string",
-              name="frame_name",
-              number=2,
-              arg=pregrasp_frame_name,
-            ),
-            pb.FieldSpec(
-              type="float",
-              name="return_center_x",
-              number=3,
-              arg=config.cycle.return_shift.center_x,
-            ),
-            pb.FieldSpec(
-              type="float",
-              name="return_center_y",
-              number=4,
-              arg=config.cycle.return_shift.center_y,
-            ),
-            pb.FieldSpec(
-              type="float",
-              name="return_bounds_x",
-              number=5,
-              arg=config.cycle.return_shift.bounds_x,
-            ),
-            pb.FieldSpec(
-              type="float",
-              name="return_bounds_y",
-              number=6,
-              arg=config.cycle.return_shift.bounds_y,
-            ),
-            pb.FieldSpec(
-              type="float",
-              name="return_bounds_rz_degrees",
-              number=7,
-              arg=config.cycle.return_shift.bounds_rz_degrees,
-            ),
-            pb.FieldSpec(
-              type="string",
-              name="grasp_frame_name",
-              number=8,
-              arg=grasp_frame_name,
-            ),
-          ]
-        )
-      )
-    else:
-      signature = None
-
-    script_body = load_python_script(
-      "src.utils.random_placement",
-      function_name="randomize_placement_frame",
-    )
-
-    shift_task = bt.PythonScript(
-      signature_with_args=signature,
-      function_body=script_body,
-    )
+    shift = config.cycle.return_shift
     tasks.append(
-      bt.Task(action=shift_task, name="0. Shift Return Placement Frame")
+      bt.Task(
+        name="0. Shift Return Placement Frame",
+        action=_python_script_task(
+          robot,
+          "randomize_placement_frame",
+          [
+            ("string", "parent_object", parent_object),
+            ("string", "frame_name", pregrasp_frame_name),
+            ("float", "return_center_x", shift.center_x),
+            ("float", "return_center_y", shift.center_y),
+            ("float", "return_bounds_x", shift.bounds_x),
+            ("float", "return_bounds_y", shift.bounds_y),
+            ("float", "return_bounds_rz_degrees", shift.bounds_rz_degrees),
+            ("string", "grasp_frame_name", grasp_frame_name),
+          ],
+        ),
+      )
+    )
+
+  touchdown = config.return_touchdown
+  if grasp_planner is not None and not grasp_planner.uses_contact_touchdown:
+    # Mesh re-picks change how the part sits in the gripper, so the tool target
+    # is solved from the part pose saved at the infeed pick (see
+    # `update_mesh_return_frames`).
+    tasks.append(
+      bt.Task(
+        name="Update Mesh Return Frames",
+        action=_python_script_task(
+          robot,
+          "update_mesh_return_frames",
+          [
+            ("string", "workpiece_object_name", workpiece_object_name),
+            ("string", "tool_object_name", config.robot.tool_object_name),
+            ("string", "tool_frame_name", config.robot.tool_frame_name),
+            ("string", "grasp_frame_name", grasp_frame_name),
+            ("string", "pregrasp_frame_name", pregrasp_frame_name),
+            (
+              "double",
+              "pregrasp_distance_m",
+              config.grasp.mesh_pregrasp_distance_m,
+            ),
+          ],
+        ),
+      )
+    )
+    grasp_frame_name += "_return"
+    pregrasp_frame_name += "_return"
+    # Mesh picks close at the planned pose, without the legacy pre-close
+    # retract, so the return needs no extra standoff or fallback offset.
+    touchdown = dataclasses.replace(
+      touchdown, standoff_m=config.cycle.standoff_distance_meters
     )
 
   entry_frames = [pregrasp_frame_name]
@@ -182,7 +201,7 @@ def build_return_to_infeed_subtree(
       robot=robot,
       frame_name=grasp_frame_name,
       parent_object=parent_object,
-      touchdown=config.return_touchdown,
+      touchdown=touchdown,
       config=config,
       label="Return Infeed",
       excluded_collision_pairs=detach_collision_pairs,

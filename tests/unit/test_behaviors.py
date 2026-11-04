@@ -495,6 +495,35 @@ class BehaviorsTest(absltest.TestCase):
     self.assertEmpty(planner.calls)
     self.robot.build_move_to_contact_task.assert_called()
 
+  def test_mesh_return_corrects_the_grip_after_shift_without_retract_offset(
+    self,
+  ):
+    self.config = load_app_config("configs/lab_bb_01/app_config.yaml")
+    planner = _FakeGraspPlanner()
+    planner.uses_contact_touchdown = False
+    with mock.patch(
+      "src.behaviors.return_infeed.create_seated_approach_tasks",
+      wraps=create_seated_approach_tasks,
+    ) as seating:
+      tree = build_return_to_infeed_subtree(
+        self.robot, self.gripper, self.config, grasp_planner=planner
+      )
+    self.assertEqual(tree.children[0].name, "0. Shift Return Placement Frame")
+    self.assertIn(
+      "update_mesh_return_frames(context, params)",
+      tree.children[1].proto.task.execute_code.python_code.function_body,
+    )
+    args = seating.call_args.kwargs
+    self.assertEqual(args["frame_name"], "grasp_return")
+    self.assertAlmostEqual(args["touchdown"].standoff_m, 0.05)
+    self.assertEqual(args["touchdown"].force_n, 5.0)
+    self.assertEqual(args["touchdown"].timeout_s, 20.0)
+    self.assertAlmostEqual(self.config.return_touchdown.standoff_m, 0.065)
+    fallback = self.robot.build_move_cartesian_task.call_args.kwargs
+    self.assertEqual(fallback["target_frame_name"], "grasp_return")
+    # Legacy returns seat 15 mm above the frame; the solved mesh frame needs none.
+    self.assertIsNone(fallback["target_frame_offset"])
+
   def test_build_return_to_infeed_subtree_steps_and_detachment(self):
     return_subtree = build_return_to_infeed_subtree(
       robot=self.robot,

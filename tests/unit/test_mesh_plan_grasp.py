@@ -123,7 +123,7 @@ class _World:
     self.updates[node_b[2]] = a_t_b.matrix4x4()
 
   def create_frame(self, frame_name, parent, parent_t_frame):
-    assert parent is self.root
+    assert parent is self.root or parent[2] in self.root.frame_names
     assert frame_name not in self.root.frame_names
     self.root.frame_names.append(frame_name)
     self.created.append(frame_name)
@@ -197,6 +197,15 @@ def _execute(
 
 
 class MeshPlanGraspSkillTest(absltest.TestCase):
+  def test_preserves_the_workpiece_pose_relative_to_the_planned_grasp(self):
+    _, world = _execute(_Planner())
+    self.assertIn("grasp_workpiece", world.updates)
+    np.testing.assert_allclose(
+      world.updates["grasp"] @ world.updates["grasp_workpiece"],
+      world.object_pose.matrix4x4(),
+      atol=1e-9,
+    )
+
   def test_checks_a_cartesian_linear_approach_from_the_pregrasp(self):
     planner = _Planner()
     planner.compute_ik = mock.Mock(wraps=planner.compute_ik)
@@ -253,7 +262,15 @@ class MeshPlanGraspSkillTest(absltest.TestCase):
       np.testing.assert_allclose(
         world.updates["grasp_unload"][:2, 3], position[:2], atol=0.01
       )
-    self.assertCountEqual(world.created, ["grasp_unload", "pre_grasp_unload"])
+    self.assertCountEqual(
+      world.created,
+      [
+        "grasp_workpiece",
+        "grasp_unload",
+        "pre_grasp_unload",
+        "grasp_unload_workpiece",
+      ],
+    )
 
   def test_writes_the_first_feasible_candidate(self):
     result, world = _execute(_Planner())

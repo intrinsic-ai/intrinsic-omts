@@ -112,6 +112,7 @@ def build_machine_tending_behavior_tree(
     robot=robot,
     gripper=gripper,
     config=config,
+    grasp_planner=grasp_planner,
   )
 
   cycle_sequence = bt.Sequence(

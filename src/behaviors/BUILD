@@ -74,6 +74,7 @@ py_library(
     deps = [
         ":motions",
         "//src/core:config",
+        "//src/hardware:grasping",
         "//src/hardware:gripper",
         "//src/hardware:robot",
         "//src/utils:random_placement",

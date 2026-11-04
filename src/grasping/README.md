@@ -30,6 +30,15 @@ plans a new grasp on the part where the robot placed it, using separate
 `grasp_unload` and `pre_grasp_unload` frames so the infeed return targets stay
 unchanged (the suffix follows the configured grasp frame names).
 
+Because the unload grasp can hold the part differently from the infeed pick, the
+skill also saves the part's pose relative to the pick in a `grasp_workpiece`
+frame (a child of `grasp`, so it follows the random return shift). Before the
+return, the tool target becomes `world_T_tool = world_T_grasp_workpiece *
+part_T_tool`, using the current grip, in `grasp_return` and `pre_grasp_return`.
+The return then seats the part at its original table pose. It uses the plain
+cycle standoff and no fallback offset, because mesh picks do not retract
+15 mm before closing.
+
 ## Configuration
 
 ```yaml

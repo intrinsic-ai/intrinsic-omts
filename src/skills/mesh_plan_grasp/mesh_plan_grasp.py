@@ -147,20 +147,31 @@ class MeshPlanGrasp(skill_interface.Skill):
     for index, candidate in enumerate(checked, 1):
       if not self._feasible(planner, params, candidate, settings):
         continue
-      for frame, pose in (
-        (params.grasp_frame, candidate.grasp),
-        (params.pregrasp_frame, candidate.pregrasp),
+      grasp = data_types.Pose3.from_matrix4x4(candidate.grasp)
+      for frame, parent_frame, transform in (
+        (params.grasp_frame, None, grasp),
+        (
+          params.pregrasp_frame,
+          None,
+          data_types.Pose3.from_matrix4x4(candidate.pregrasp),
+        ),
+        # Parenting to the grasp preserves the intended part pose under return shifts.
+        (
+          f"{params.grasp_frame}_workpiece",
+          params.grasp_frame,
+          grasp.inverse() * data_types.Pose3.from_matrix4x4(world_t_object),
+        ),
       ):
-        transform = data_types.Pose3.from_matrix4x4(pose)
+        parent = world.get_frame(parent_frame, "root") if parent_frame else root
         if frame in root.frame_names:
           world.update_transform(
-            node_a=root,
+            node_a=parent,
             node_b=world.get_frame(frame, "root"),
             a_t_b=transform,
           )
         else:
           world.create_frame(
-            frame_name=frame, parent=root, parent_t_frame=transform
+            frame_name=frame, parent=parent, parent_t_frame=transform
           )
       logging.info(
         "Selected mesh grasp %d of %d (width %.4f m).",
