@@ -14,9 +14,10 @@
 
 """Construction of the configured grasp planner.
 
-This is the only first-party module that knows which grasp planner backends
-exist. Everything downstream depends on `GraspPlannerInterface` alone, so
-adding a backend is a change to this file plus a config value.
+Supports CUBOID_CENTER (frames supplied by perception), MOVEIT
+(intrinsic-moveit), and MESH (OMTS mesh-based planning).
+Constructs backend adapters here so downstream behavior code uses
+GraspPlannerInterface rather than concrete planner classes.
 """
 
 from intrinsic.solutions import deployments
