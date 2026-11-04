@@ -343,6 +343,12 @@ class MeshGraspPlannerTest(absltest.TestCase):
         mock.MagicMock(), GraspConfig(), "ur_module", "gripper", "tool_frame"
       )
 
+  def test_requires_the_robot_object(self):
+    # `create_grasp_planner` defaults it to "" for the other backends.
+    config = GraspConfig(planner="mesh", mesh_simulation_only=True)
+    with self.assertRaisesRegex(ValueError, "robot object"):
+      MeshGraspPlanner(mock.MagicMock(), config, "", "gripper", "tool_frame")
+
   @mock.patch("src.hardware.mesh_grasp_planner.bt.Task")
   def test_builds_the_skill_task(self, unused_task):
     solution = mock.MagicMock()

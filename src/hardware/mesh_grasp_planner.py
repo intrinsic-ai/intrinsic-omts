@@ -46,6 +46,8 @@ class MeshGraspPlanner(GraspPlannerInterface):
         "The mesh grasp planner is for simulation only; set "
         "mesh_simulation_only (or pass --mesh_simulation_only)."
       )
+    if not robot_object_name:
+      raise ValueError("The mesh grasp planner needs the robot object name.")
     self._skill = solution.skills.ai.intrinsic.mesh_plan_grasp
     self._config = config
     self._robot_object_name = robot_object_name
