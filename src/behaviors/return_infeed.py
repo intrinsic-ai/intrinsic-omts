@@ -25,7 +25,7 @@ from src.behaviors.motions import (
   create_seated_approach_tasks,
 )
 from src.core.config import AppConfig
-from src.hardware.grasping import GraspPlannerInterface
+from src.hardware.grasping import GraspPlannerInterface, plans_exact_contacts
 from src.hardware.gripper import GripperInterface
 from src.hardware.robot import Robot
 from src.utils.script_utils import load_python_script
@@ -142,7 +142,7 @@ def build_return_to_infeed_subtree(
     )
 
   touchdown = config.return_touchdown
-  if grasp_planner is not None and not grasp_planner.uses_contact_touchdown:
+  if plans_exact_contacts(grasp_planner):
     # Mesh re-picks change how the part sits in the gripper, so the tool target
     # is solved from the part pose saved at the infeed pick (see
     # `update_mesh_return_frames`).

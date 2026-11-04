@@ -22,7 +22,7 @@ from src.behaviors.motions import (
 )
 from src.core.config import AppConfig
 from src.core.infeed import InfeedMode, InfeedStrategy, PerceptionInfeedStrategy
-from src.hardware.grasping import GraspPlannerInterface
+from src.hardware.grasping import GraspPlannerInterface, plans_exact_contacts
 from src.hardware.gripper import GripperInterface
 from src.hardware.machine import CncMachineInterface
 from src.hardware.robot import Robot
@@ -135,9 +135,7 @@ def build_pick_from_infeed_subtree(
     )
 
   open_task = gripper.build_open_task(name="Open Gripper")
-  use_direct_grasp_approach = (
-    grasp_planner is not None and not grasp_planner.uses_contact_touchdown
-  )
+  use_direct_grasp_approach = plans_exact_contacts(grasp_planner)
   if use_direct_grasp_approach:
     # The planner checks the open jaws against the part, so open them first.
     tasks.append(open_task)

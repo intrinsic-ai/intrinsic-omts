@@ -22,7 +22,7 @@ from src.behaviors.motions import (
   create_seated_approach_tasks,
 )
 from src.core.config import AppConfig
-from src.hardware.grasping import GraspPlannerInterface
+from src.hardware.grasping import GraspPlannerInterface, plans_exact_contacts
 from src.hardware.gripper import GripperInterface
 from src.hardware.machine import CncMachineInterface
 from src.hardware.robot import Robot
@@ -100,9 +100,7 @@ def build_unload_machine_subtree(
   if machine is not None:
     tasks.append(machine.build_open_door_task(name="Open CNC Door"))
 
-  use_direct_grasp_approach = (
-    grasp_planner is not None and not grasp_planner.uses_contact_touchdown
-  )
+  use_direct_grasp_approach = plans_exact_contacts(grasp_planner)
   if use_direct_grasp_approach:
     # Preserve the infeed targets used by the return subtree.
     grasp_frame_name = f"{grasp_frame_name}_unload"
