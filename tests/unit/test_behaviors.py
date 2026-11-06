@@ -179,6 +179,37 @@ class BehaviorsTest(absltest.TestCase):
     self.assertIsInstance(tree.root, bt.Sequence)
     self.assertEqual(len(tree.root.children), 5)
 
+  def test_mesh_pick_uses_linear_contacts_not_touchdown_or_preclose_retract(
+    self,
+  ):
+    planner = _FakeGraspPlanner()
+    planner.uses_contact_touchdown = False
+    tree = build_pick_from_infeed_subtree(
+      self.robot,
+      self.gripper,
+      self.vision,
+      self.infeed_strategy,
+      self.config,
+      grasp_planner=planner,
+    )
+    self.vision.build_perception_and_spawn_task.assert_called_once()
+    self.assertFalse(
+      self.vision.build_perception_and_spawn_task.call_args.kwargs[
+        "publish_grasp_frames"
+      ]
+    )
+    self.robot.build_move_to_contact_task.assert_not_called()
+    self.robot.build_move_relative_cartesian_task.assert_not_called()
+    names = [node.name for node in tree.children]
+    # The planner checks the open jaws, so they open before planning.
+    self.assertLess(
+      names.index("Open Gripper"), names.index(_FAKE_PLANNER_TASK_NAME)
+    )
+    self.assertLess(
+      names.index("Approach Mesh Contact Pose"),
+      names.index("Close Gripper (Grasp Part)"),
+    )
+
   def test_build_master_behavior_tree_repeat_cycles(self):
     tree = self._build_master_tree(num_cycles=4)
     self.assertIsInstance(tree.root, bt.Loop)
@@ -390,6 +421,108 @@ class BehaviorsTest(absltest.TestCase):
       name="Unload Vise: Linear Retract (1.5 cm, -Z Tool)",
     )
     self.assertEqual(self.robot.build_move_blended_cartesian_task.call_count, 2)
+
+  def test_mesh_unload_plans_the_repick_instead_of_touching_down(self):
+    planner = _FakeGraspPlanner()
+    planner.uses_contact_touchdown = False
+    unload_subtree = build_unload_machine_subtree(
+      robot=self.robot,
+      gripper=self.gripper,
+      machine=self.machine,
+      config=self.config,
+      grasp_planner=planner,
+    )
+
+    self.robot.build_move_to_contact_task.assert_not_called()
+    self.assertEqual(
+      planner.calls,
+      [
+        {
+          "workpiece_object_name": "raw_stock_2x3x5",
+          "parent_object": self.config.frames.parent_object,
+          "grasp_frame_name": f"{self.config.frames.grasp_frame}_unload",
+          "pregrasp_frame_name": f"{self.config.frames.pregrasp_frame}_unload",
+        }
+      ],
+    )
+    names = [c.name for c in unload_subtree.children]
+    self.assertLess(
+      names.index("Open Gripper for Unload"), names.index("Plan Unload Grasp")
+    )
+    self.assertLess(
+      names.index("Approach Unload Contact Pose"),
+      names.index("Grasp Machined Part"),
+    )
+    self.assertEqual(
+      self.robot.build_move_cartesian_task.call_args.kwargs[
+        "target_frame_name"
+      ],
+      f"{self.config.frames.grasp_frame}_unload",
+    )
+    retract = self.robot.build_move_blended_cartesian_task.call_args.kwargs
+    self.assertEqual(
+      retract["target_frames"][0],
+      (
+        self.config.frames.parent_object,
+        f"{self.config.frames.pregrasp_frame}_unload",
+      ),
+    )
+
+    # Return still targets the infeed frames, even with placement shifting off.
+    self.config = dataclasses.replace(
+      self.config,
+      cycle=dataclasses.replace(self.config.cycle, return_shift=None),
+    )
+    self.robot.reset_mock()
+    build_return_to_infeed_subtree(self.robot, self.gripper, self.config)
+    targets = {
+      call.kwargs["target_frame_name"]
+      for call in self.robot.build_move_cartesian_task.call_args_list
+    }
+    self.assertIn(self.config.frames.grasp_frame, targets)
+    self.assertNotIn(f"{self.config.frames.grasp_frame}_unload", targets)
+
+  def test_touchdown_planner_keeps_the_unload_touchdown(self):
+    planner = _FakeGraspPlanner()
+    build_unload_machine_subtree(
+      robot=self.robot,
+      gripper=self.gripper,
+      machine=self.machine,
+      config=self.config,
+      grasp_planner=planner,
+    )
+
+    self.assertEmpty(planner.calls)
+    self.robot.build_move_to_contact_task.assert_called()
+
+  def test_mesh_return_corrects_the_grip_after_shift_without_retract_offset(
+    self,
+  ):
+    self.config = load_app_config("configs/lab_bb_01/app_config.yaml")
+    planner = _FakeGraspPlanner()
+    planner.uses_contact_touchdown = False
+    with mock.patch(
+      "src.behaviors.return_infeed.create_seated_approach_tasks",
+      wraps=create_seated_approach_tasks,
+    ) as seating:
+      tree = build_return_to_infeed_subtree(
+        self.robot, self.gripper, self.config, grasp_planner=planner
+      )
+    self.assertEqual(tree.children[0].name, "0. Shift Return Placement Frame")
+    self.assertIn(
+      "update_mesh_return_frames(context, params)",
+      tree.children[1].proto.task.execute_code.python_code.function_body,
+    )
+    args = seating.call_args.kwargs
+    self.assertEqual(args["frame_name"], "grasp_return")
+    self.assertAlmostEqual(args["touchdown"].standoff_m, 0.05)
+    self.assertEqual(args["touchdown"].force_n, 5.0)
+    self.assertEqual(args["touchdown"].timeout_s, 20.0)
+    self.assertAlmostEqual(self.config.return_touchdown.standoff_m, 0.065)
+    fallback = self.robot.build_move_cartesian_task.call_args.kwargs
+    self.assertEqual(fallback["target_frame_name"], "grasp_return")
+    # Legacy returns seat 15 mm above the frame; the solved mesh frame needs none.
+    self.assertIsNone(fallback["target_frame_offset"])
 
   def test_build_return_to_infeed_subtree_steps_and_detachment(self):
     return_subtree = build_return_to_infeed_subtree(
@@ -1098,8 +1231,10 @@ def _parse_build_solution_instances(
     )
   sol_body = sol_match.group(1)
 
+  # The first select swaps the lab_bb_01 workpiece; its default applies to
+  # both cells.
   inst_block_match = re.search(
-    r"instances\s*=\s*\[(.*?)\]\s*\+\s*select\(\{\s*\":is_lab_bb_01\"\s*:\s*\[(.*?)\]\s*,\s*\"//conditions:default\"\s*:\s*\[(.*?)\]",
+    r"instances\s*=\s*\[(.*?)\]\s*\+\s*select\(\{[^)]*?\"//conditions:default\"\s*:\s*\[(.*?)\]\s*,?\s*\}\)\s*\+\s*select\(\{\s*\":is_lab_bb_01\"\s*:\s*\[(.*?)\]\s*,\s*\"//conditions:default\"\s*:\s*\[(.*?)\]",
     sol_body,
     flags=re.DOTALL,
   )
@@ -1116,9 +1251,13 @@ def _parse_build_solution_instances(
       resolved.append(instance_names[label])
     return resolved
 
-  common = ["root"] + _extract_names(inst_block_match.group(1))
-  lab_extra = _extract_names(inst_block_match.group(2))
-  omts_extra = _extract_names(inst_block_match.group(3))
+  common = (
+    ["root"]
+    + _extract_names(inst_block_match.group(1))
+    + _extract_names(inst_block_match.group(2))
+  )
+  lab_extra = _extract_names(inst_block_match.group(3))
+  omts_extra = _extract_names(inst_block_match.group(4))
 
   return {
     "omts": tuple(common + omts_extra),

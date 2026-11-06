@@ -1,0 +1,61 @@
+// Copyright 2026 Intrinsic Innovation LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package omts.skills;
+
+import "intrinsic/assets/proto/field_metadata.proto";
+import "intrinsic/assets/proto/v1/resolved_dependency.proto";
+
+// Plans a top-down parallel-jaw grasp on a workpiece's visual mesh and
+// writes it to two frames on root, creating them if missing. Each candidate is
+// checked with the motion planner: collision-checked IK at the pregrasp,
+// then a collision-checked Cartesian-linear plan to the grasp.
+message MeshPlanGraspParams {
+  // Object World name of the workpiece. Its current pose and its visual mesh,
+  // which must be closed and outward facing, are used.
+  string workpiece_object = 1;
+  // Object World name of the robot arm.
+  string robot_object = 2;
+  // Moving frame used for the grasp, such as the gripper's tool frame.
+  string tool_object = 3;
+  string tool_frame = 4;
+  // Frames updated with the result, created on `root` if missing.
+  string grasp_frame = 5;
+  string pregrasp_frame = 6;
+  // Height of the pregrasp above the grasp.
+  optional double pregrasp_distance_m = 7;
+  // Largest angle between a contact face's normal and the horizontal plane.
+  optional double max_approach_tilt_deg = 8;
+  // Clearance required by the collision checks.
+  optional double collision_margin_m = 9;
+  // Candidates checked with the motion planner before giving up.
+  optional int32 max_checked_candidates = 10;
+  // The motion planner service, resolved by the solution.
+  intrinsic_proto.assets.v1.ResolvedDependency
+      motion_planner_service = 11 [(intrinsic_proto.assets.field_metadata)
+                                       .dependency = {
+    requires: "grpc://intrinsic_proto.motion_planning.v1.MotionPlannerService",
+    skill_annotations: { always_provide_connection_info: true }
+  }];
+}
+
+message MeshPlanGraspResult {
+  // Contact width of the selected grasp.
+  double width_m = 1;
+  // Candidates found, and how many were checked before one passed.
+  int32 num_candidates = 2;
+  int32 num_checked = 3;
+}

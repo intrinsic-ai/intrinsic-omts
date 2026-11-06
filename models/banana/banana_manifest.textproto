@@ -1,0 +1,7 @@
+# proto-file: intrinsic/assets/scene_objects/proto/scene_object_manifest.proto
+# proto-message: intrinsic_proto.scene_objects.SceneObjectManifest
+metadata {
+  id { name: "banana" package: "ai.intrinsic" }
+  vendor { display_name: "OMTS simulation" }
+  display_name: "Rigid tapered banana"
+}
