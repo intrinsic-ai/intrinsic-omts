@@ -59,26 +59,61 @@ are matched by their coordinates.
 
 ## Demo workpieces (Lab BB-01)
 
-The lab cell runs `raw_stock_2x3x5` (the default), `banana` or `bracket`. Name
-the workpiece when deploying, and again when running the app:
+The lab cell runs `raw_stock_2x3x5` (the default), `banana` or `bracket`. The
+demo parts are placed by `configs/lab_bb_01_objects/`. Perception finds the
+part in the image from a text prompt, then fits its mesh, from the scene
+object `ai.intrinsic.$WORKPIECE`, to get the pose. Registering saves the
+prompt and the mesh as the pose estimator
+`ai.intrinsic.${WORKPIECE}_estimator_text`, which the app uses:
 
-```bash
-bazel run //:omts_solution -c opt --//:setup=lab_bb_01 --//:workpiece=banana -- \
-  --address=localhost:17080 \
-  --operation_mode=sim
+| `WORKPIECE` | `TEXT_PROMPT` |
+| :--- | :--- |
+| `banana` | `yellow banana` |
+| `bracket` | `U-shaped metal bracket` |
 
-bazel run //src:omts_app -- \
-  --address=localhost:17080 \
-  --config=configs/lab_bb_01/app_config.yaml \
-  --workpiece=banana \
-  --grasp_planner=mesh \
-  --mesh_simulation_only
-```
+Set both variables once, then run the steps below in the same shell.
 
-`--workpiece` sets the workpiece's scene object, `ai.intrinsic.<workpiece>`,
-and its pose estimator, `ai.intrinsic.<workpiece>_estimator_text`. Register that
-estimator as for the raw stock in the top-level README. The demo parts are
-placed by `configs/lab_bb_01_objects/`.
+1. Choose the workpiece:
+
+   ```bash
+   WORKPIECE=banana
+   TEXT_PROMPT="yellow banana"
+   ```
+
+2. Deploy the lab cell with the workpiece in simulation:
+
+   ```bash
+   bazel run //:omts_solution -c opt \
+     --//:setup=lab_bb_01 --//:workpiece="$WORKPIECE" -- \
+     --address=localhost:17080 \
+     --operation_mode=sim
+   ```
+
+3. Register the workpiece's pose estimator. This needs the pose estimator
+   models from section 4.1 of the top-level README. Repeat it after every
+   deploy.
+
+   ```bash
+   bazel run @intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_train_service/tools:register_using_ioc_train_service -- \
+     --address=localhost:17080 \
+     --scene_object_id="ai.intrinsic.$WORKPIECE" \
+     --pose_estimator_id="ai.intrinsic.${WORKPIECE}_estimator_text" \
+     --refinement_iters=5 \
+     --confidence_threshold=0.15 \
+     --visibility_threshold=0.15 \
+     --text_prompt="$TEXT_PROMPT"
+   ```
+
+4. Run one cycle with the mesh planner:
+
+   ```bash
+   bazel run //src:omts_app -- \
+     --address=localhost:17080 \
+     --config=configs/lab_bb_01/app_config.yaml \
+     --workpiece="$WORKPIECE" \
+     --grasp_planner=mesh \
+     --mesh_simulation_only
+   ```
 
 ## Limits
 
