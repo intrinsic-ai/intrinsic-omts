@@ -12,6 +12,10 @@ gripper:
   joint_name: "robotiq_hande_left_finger_joint"
   open_position: 0.025
   close_position: 0.0
+  # Emulate the gripper via update_world when gripper_cmd_skill is not
+  # installed (linux/arm64 omits the amd64 gripper bundle). Applies to
+  # simulated solutions only and logs a warning when used.
+  allow_world_joint_fallback: true
 
 machine:
   door_open_pin: 2

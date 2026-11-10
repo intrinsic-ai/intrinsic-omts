@@ -15,12 +15,36 @@
 """Gripper hardware interfaces and implementations."""
 
 import abc
+import logging
 from typing import Any
 
 from intrinsic.solutions import behavior_tree as bt
+from intrinsic.world.proto import (
+  object_world_refs_pb2,
+  object_world_updates_pb2,
+)
 
 from src.core.config import GripperConfig
 from src.utils.math_utils import resolve_adio_resource
+
+# Belief-world object whose finger joints the update_world fallback sets.
+_WORLD_FALLBACK_GRIPPER_OBJECT = "gripper"
+
+
+def _find_skill(solution: Any, skill_name: str) -> Any | None:
+  """Returns the `ai.intrinsic.<skill_name>` skill class, or None if absent.
+
+  Args:
+      solution: Connected SBL deployment instance.
+      skill_name: Skill name within the `ai.intrinsic` package.
+
+  Returns:
+      The skill class, or None if the solution does not provide it.
+  """
+  try:
+    return getattr(solution.skills.ai.intrinsic, skill_name, None)
+  except (AttributeError, KeyError):
+    return None
 
 
 class GripperInterface(abc.ABC):
@@ -124,7 +148,14 @@ class DioGripper(GripperInterface):
 
 
 class RobotiqGripper(GripperInterface):
-  """Robotiq adaptive gripper controlled via gripper_cmd_skill."""
+  """Robotiq adaptive gripper controlled via gripper_cmd_skill.
+
+  If `GripperConfig.allow_world_joint_fallback` is `True`, the solution is
+  simulated, and it does not provide `gripper_cmd_skill`, finger motion is
+  emulated by setting the gripper joints in the belief world through the
+  `update_world` skill. This is a simulation-only fallback for platforms
+  without a gripper service.
+  """
 
   def __init__(
     self,
@@ -139,6 +170,9 @@ class RobotiqGripper(GripperInterface):
 
     Raises:
         ValueError: If required Robotiq fields are missing from `config`.
+        RuntimeError: If `gripper_cmd_skill` is not installed and the
+          `update_world` fallback is disabled, the solution is not simulated,
+          or `update_world` is unavailable.
     """
     if (
       config.joint_name is None
@@ -154,30 +188,72 @@ class RobotiqGripper(GripperInterface):
     self._open_position: float = config.open_position
     self._close_position: float = config.close_position
     self._action_name: str | None = config.action_name
-    self._gripper_cmd_skill = solution.skills.ai.intrinsic.gripper_cmd_skill
+    self._gripper_cmd_skill = _find_skill(solution, "gripper_cmd_skill")
+    self._update_world_skill = None
+    if self._gripper_cmd_skill is not None:
+      return
+
+    if not config.allow_world_joint_fallback:
+      raise RuntimeError(
+        "Skill 'ai.intrinsic.gripper_cmd_skill' is not installed in the "
+        "solution. Install the gripper service, or set "
+        "'gripper.allow_world_joint_fallback: true' to emulate the gripper "
+        "via update_world in simulation."
+      )
+    if getattr(solution, "is_simulated", False) is not True:
+      raise RuntimeError(
+        "Skill 'ai.intrinsic.gripper_cmd_skill' is not installed and the "
+        "solution is not simulated. 'gripper.allow_world_joint_fallback' only "
+        "applies to simulated solutions; install the gripper service."
+      )
+    self._update_world_skill = _find_skill(solution, "update_world")
+    if self._update_world_skill is None:
+      raise RuntimeError(
+        "'gripper.allow_world_joint_fallback' is enabled, but neither "
+        "'ai.intrinsic.gripper_cmd_skill' nor 'ai.intrinsic.update_world' is "
+        "installed in the solution."
+      )
+    logging.warning(
+      "Skill 'ai.intrinsic.gripper_cmd_skill' is not installed; "
+      "'gripper.allow_world_joint_fallback' is enabled, so the gripper is "
+      "emulated by setting joints of '%s' through update_world. No gripper "
+      "hardware or gripper service is commanded.",
+      _WORLD_FALLBACK_GRIPPER_OBJECT,
+    )
+
+  def _build_joint_task(self, position: float, task_name: str) -> bt.Node:
+    if self._gripper_cmd_skill is not None:
+      command = self._gripper_cmd_skill.ai.intrinsic.JointState(
+        name=[self._joint_name],
+        position=[position],
+      )
+      kwargs: dict[str, Any] = {"command": command}
+      if self._action_name is not None:
+        kwargs["action_name"] = self._action_name
+      action = self._gripper_cmd_skill(**kwargs)
+      return bt.Task(action=action, name=task_name)
+
+    update_proto = object_world_updates_pb2.ObjectWorldUpdate(
+      update_object_joints=object_world_updates_pb2.UpdateObjectJointsRequest(
+        object=object_world_refs_pb2.ObjectReference(
+          by_name=object_world_refs_pb2.ObjectReferenceByName(
+            object_name=_WORLD_FALLBACK_GRIPPER_OBJECT
+          )
+        ),
+        joint_positions=[float(position), float(position)],
+      )
+    )
+    return bt.Task(
+      action=self._update_world_skill(update=update_proto),
+      name=task_name,
+    )
 
   def build_open_task(self, name: str | None = None) -> bt.Node:
     """Builds a behavior tree task to open the gripper."""
     task_name = name or "Open Robotiq Gripper"
-    command = self._gripper_cmd_skill.ai.intrinsic.JointState(
-      name=[self._joint_name],
-      position=[self._open_position],
-    )
-    kwargs: dict[str, Any] = {"command": command}
-    if self._action_name is not None:
-      kwargs["action_name"] = self._action_name
-    action = self._gripper_cmd_skill(**kwargs)
-    return bt.Task(action=action, name=task_name)
+    return self._build_joint_task(self._open_position, task_name)
 
   def build_close_task(self, name: str | None = None) -> bt.Node:
     """Builds a behavior tree task to close/grasp with the gripper."""
     task_name = name or "Close Robotiq Gripper"
-    command = self._gripper_cmd_skill.ai.intrinsic.JointState(
-      name=[self._joint_name],
-      position=[self._close_position],
-    )
-    kwargs: dict[str, Any] = {"command": command}
-    if self._action_name is not None:
-      kwargs["action_name"] = self._action_name
-    action = self._gripper_cmd_skill(**kwargs)
-    return bt.Task(action=action, name=task_name)
+    return self._build_joint_task(self._close_position, task_name)

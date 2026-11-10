@@ -1,0 +1,149 @@
+diff -ruN a/cuda/extensions.bzl b/cuda/extensions.bzl
+--- a/cuda/extensions.bzl
++++ b/cuda/extensions.bzl
+@@ -100,9 +100,12 @@
+     mapping = {}
+     for spec in component_specs:
+         repo_name = redist_json_helper.get_repo_name(module_ctx, spec)
+-        mapping[spec["component_name"]] = "@" + repo_name
++        key = spec["component_name"]
++        if spec.get("arch") and spec["arch"] != "x86_64":
++            key += "_" + spec["arch"]
++        mapping[key] = "@" + repo_name
+ 
+-        attr = {key: value for key, value in spec.items()}
++        attr = {k: v for k, v in spec.items() if k != "arch"}
+         attr["name"] = repo_name
+         cuda_component(**attr)
+     return redist_ver, mapping
+diff -ruN a/cuda/private/redist_json_helper.bzl b/cuda/private/redist_json_helper.bzl
+--- a/cuda/private/redist_json_helper.bzl
++++ b/cuda/private/redist_json_helper.bzl
+@@ -87,28 +87,31 @@
+     elif _is_windows(ctx):
+         os = "windows"
+ 
+-    arch = "x86_64"  # TODO: support cross compiling
+-    platform = "{os}-{arch}".format(os = os, arch = arch)
+-    all_components_on_platform = [k for k, v in FULL_COMPONENT_NAME.items() if v in redist and platform in redist[v]]
+-    components = attr.components if attr.components else all_components_on_platform
+-
+-    for c in components:
+-        c_full = FULL_COMPONENT_NAME[c]
+-
+-        payload = redist[c_full][platform]
+-        payload_relative_path = payload["relative_path"]
+-        payload_url = the_url.rsplit("/", 1)[0] + "/" + payload_relative_path
+-        archive_name = payload_relative_path.rsplit("/", 1)[1].split("-archive.")[0] + "-archive"
+-        desc_name = redist[c_full].get("name", c_full)
+-
+-        specs.append({
+-            "component_name": c,
+-            "descriptive_name": desc_name,
+-            "urls": [payload_url],
+-            "sha256": payload["sha256"],
+-            "strip_prefix": archive_name,
+-            "version": redist[c_full]["version"],
+-        })
++    archs = ["x86_64", "sbsa"] if _is_linux(ctx) else (["x86_64"] if _is_windows(ctx) else [])
++    for arch in archs:
++        platform = "{os}-{arch}".format(os = os, arch = arch)
++        all_components_on_platform = [k for k, v in FULL_COMPONENT_NAME.items() if v in redist and platform in redist[v]]
++        components = attr.components if attr.components else all_components_on_platform
++
++        for c in components:
++            c_full = FULL_COMPONENT_NAME[c]
++            if platform not in redist.get(c_full, {}):
++                continue
++            payload = redist[c_full][platform]
++            payload_relative_path = payload["relative_path"]
++            payload_url = the_url.rsplit("/", 1)[0] + "/" + payload_relative_path
++            archive_name = payload_relative_path.rsplit("/", 1)[1].split("-archive.")[0] + "-archive"
++            desc_name = redist[c_full].get("name", c_full)
++
++            specs.append({
++                "component_name": c,
++                "arch": arch,
++                "descriptive_name": desc_name,
++                "urls": [payload_url],
++                "sha256": payload["sha256"],
++                "strip_prefix": archive_name,
++                "version": redist[c_full]["version"],
++            })
+ 
+     return specs
+ 
+@@ -121,6 +124,8 @@
+     """
+ 
+     repo_name = "cuda_" + spec["component_name"]
++    if spec.get("arch") and spec["arch"] != "x86_64":
++        repo_name += "_" + spec["arch"]
+     version = spec.get("version", None)
+     if version != None:
+         repo_name = repo_name + "_v" + version
+diff -ruN a/cuda/private/repositories.bzl b/cuda/private/repositories.bzl
+--- a/cuda/private/repositories.bzl
++++ b/cuda/private/repositories.bzl
+@@ -112,7 +112,9 @@
+         if rc not in repository_ctx.attr.components_mapping:
+             fail('component "{}" is required.'.format(rc))
+ 
+-    nvcc_repo = repository_ctx.attr.components_mapping["nvcc"]
++    is_host_arm64 = repository_ctx.os.arch in ["aarch64", "arm64"]
++    nvcc_key = "nvcc_sbsa" if (is_host_arm64 and "nvcc_sbsa" in repository_ctx.attr.components_mapping) else "nvcc"
++    nvcc_repo = repository_ctx.attr.components_mapping[nvcc_key]
+ 
+     bin_ext = ".exe" if _is_windows(repository_ctx) else ""
+     nvcc = "{}//:nvcc/bin/nvcc{}".format(nvcc_repo, bin_ext)
+diff -ruN a/cuda/private/template_helper.bzl b/cuda/private/template_helper.bzl
+--- a/cuda/private/template_helper.bzl
++++ b/cuda/private/template_helper.bzl
+@@ -28,13 +28,14 @@
+ def _expand_dctk_cuda(repository_ctx, components):
+     tpl_label = Label("//cuda/private:templates/BUILD.dctk_cuda")
+ 
+-    all_files_srcs_line = [comp + "_all_files" for comp in components.keys()]
++    base_comps = [comp for comp in components.keys() if not comp.endswith("_sbsa")]
++    all_files_srcs_line = [comp + "_all_files" for comp in base_comps]
+     all_files_srcs_line = "srcs = " + repr(all_files_srcs_line)
+ 
+-    license_srcs_line = [comp + "_license" for comp in components.keys()]
++    license_srcs_line = [comp + "_license" for comp in base_comps]
+     license_srcs_line = "srcs = " + repr(license_srcs_line)
+ 
+-    headers_deps_line = [comp + "_headers" for comp in components.keys()]
++    headers_deps_line = [comp + "_headers" for comp in base_comps]
+     headers_deps_line = "deps = " + repr(headers_deps_line)
+ 
+     substitutions = {
+@@ -80,10 +81,28 @@
+             template_content.append(repository_ctx.read(frag))
+ 
+     if is_cuda_repo and is_deliverable:  # generate `@cuda//BUILD` for CTK with deliverables
++        is_host_arm64 = repository_ctx.os.arch in ["aarch64", "arm64"]
+         for comp in components:
++            if comp.endswith("_sbsa"):
++                continue
++            comp_sbsa = comp + "_sbsa"
+             for target in REGISTRY[comp]:
+                 repo = components[comp]
+-                line = 'alias(name = "{target}", actual = "{repo}//:{target}")'.format(target = target, repo = repo)
++                if comp_sbsa in components:
++                    repo_sbsa = components[comp_sbsa]
++                    if target in ["compiler_root", "compiler_deps", "ptxas", "nvlink", "bin2c", "fatbinary", "cicc"]:
++                        host_repo = repo_sbsa if is_host_arm64 else repo
++                        line = 'alias(name = "{target}", actual = "{repo}//:{target}")'.format(target = target, repo = host_repo)
++                    else:
++                        line = '''alias(
++    name = "{target}",
++    actual = select({{
++        "@platforms//cpu:aarch64": "{repo_sbsa}//:{target}",
++        "//conditions:default": "{repo}//:{target}",
++    }}),
++)'''.format(target = target, repo = repo, repo_sbsa = repo_sbsa)
++                else:
++                    line = 'alias(name = "{target}", actual = "{repo}//:{target}")'.format(target = target, repo = repo)
+                 template_content.append(line)
+ 
+             # add an empty line to separate aliased targets from different components

@@ -58,6 +58,7 @@ archive_override(
 
 bazel_dep(name = "zenoh-c", version = "1.8.0.bcr.1")
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
+bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(name = "abseil-py", version = "2.1.0", repo_name = "com_google_absl_py")
 bazel_dep(name = "eigen", version = "5.0.1.bcr.2", repo_name = "com_gitlab_libeigen_eigen")
@@ -124,6 +125,26 @@ single_version_override(
         "//bazel/patches:toybox_dynamic_link.patch",
     ],
     version = "0.8.12.bcr.1",
+)
+
+# linux/arm64 (Jetson AGX Orin) support. Remove once rules_cuda on BCR fetches
+# the `linux-sbsa` CUDA redistributables for aarch64 targets.
+single_version_override(
+    module_name = "rules_cuda",
+    patch_strip = 1,
+    patches = [
+        "//bazel/patches:rules_cuda_arm64.patch",
+    ],
+)
+
+# linux/arm64 (Jetson AGX Orin) support. Remove once ogre-next on BCR includes
+# OgreMathlib.h in its NEON OgreBooleanMask.h.
+single_version_override(
+    module_name = "ogre-next",
+    patch_strip = 1,
+    patches = [
+        "//bazel/patches:ogre_next_arm64.patch",
+    ],
 )
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
