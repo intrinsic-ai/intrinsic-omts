@@ -27,9 +27,38 @@ config_setting(
     },
 )
 
+# Flag to swap the lab_bb_01 workpiece for a mesh grasping demo part.
+# The demo parts are simulation only; see configs/lab_bb_01_objects/.
+string_flag(
+    name = "workpiece",
+    build_setting_default = "raw_stock_2x3x5",
+    values = [
+        "raw_stock_2x3x5",
+        "banana",
+        "bracket",
+    ],
+)
+
+config_setting(
+    name = "is_lab_banana",
+    flag_values = {
+        ":setup": "lab_bb_01",
+        ":workpiece": "banana",
+    },
+)
+
+config_setting(
+    name = "is_lab_bracket",
+    flag_values = {
+        ":setup": "lab_bb_01",
+        ":workpiece": "bracket",
+    },
+)
+
 _OMTS_SKILL_ASSETS = [
     ":hand_e_gripper_cmd_skill_asset",
     ":moveit_plan_grasp_skill_asset",
+    "//src/skills/mesh_plan_grasp:mesh_plan_grasp_skill",
     "@intrinsic-core//intrinsic_control/intrinsic/icon/skills:dio_read_input_skill",
     "@intrinsic-core//intrinsic_control/intrinsic/icon/skills:dio_set_output_skill",
     "@intrinsic-core//intrinsic_perception/intrinsic/perception/skills:capture_images_skill",
@@ -69,6 +98,10 @@ intrinsic_solution(
         ":orbbec_gemini_driver_asset",
         "//models/raw_stock_2x3x5",
     ] + select({
+        ":is_lab_banana": ["//models/banana"],
+        ":is_lab_bracket": ["//models/bracket"],
+        "//conditions:default": [],
+    }) + select({
         ":is_lab_bb_01": [
             "@intrinsic-core//intrinsic/apps/bluebird_caw/resources:caw_enclosure",
             "@intrinsic-core//intrinsic_control/intrinsic/icon/hardware_modules/universal_robots:ur3e_hardware_module_core",
@@ -85,7 +118,6 @@ intrinsic_solution(
     instances = [
         ":enclosure",
         ":robotiq_pinch_gripper",
-        ":raw_stock_2x3x5",
         ":gazebo_simulator",
         ":charuco_9x12_30mm_22mm_dict_5x5",
         ":charuco_9x14_20mm_15mm_dict_5x5",
@@ -100,6 +132,10 @@ intrinsic_solution(
         ":flowstate_ros_bridge",
         ":hand_e_gripper_service",
     ] + select({
+        ":is_lab_banana": [":banana"],
+        ":is_lab_bracket": [":bracket"],
+        "//conditions:default": [":raw_stock_2x3x5"],
+    }) + select({
         ":is_lab_bb_01": [
         ],
         "//conditions:default": [
@@ -109,6 +145,20 @@ intrinsic_solution(
         ],
     }),
     object_world_updates = select({
+        ":is_lab_banana": [
+            "//configs:lab_bb_01/ur_module.attachments.updates.pbtxt",
+            "//configs:lab_bb_01_objects/waypoints.updates.pbtxt",
+            "//configs:lab_bb_01_objects/banana.updates.pbtxt",
+            "//configs:lab_bb_01/align_robot.updates.pbtxt",
+            "//configs:lab_bb_01/orbbec_gemini.updates.pbtxt",
+        ],
+        ":is_lab_bracket": [
+            "//configs:lab_bb_01/ur_module.attachments.updates.pbtxt",
+            "//configs:lab_bb_01_objects/waypoints.updates.pbtxt",
+            "//configs:lab_bb_01_objects/bracket.updates.pbtxt",
+            "//configs:lab_bb_01/align_robot.updates.pbtxt",
+            "//configs:lab_bb_01/orbbec_gemini.updates.pbtxt",
+        ],
         ":is_lab_bb_01": [
             "//configs:lab_bb_01/ur_module.attachments.updates.pbtxt",
             "//configs:lab_bb_01/scene.updates.pbtxt",
@@ -167,6 +217,16 @@ intrinsic_asset_instance(
 intrinsic_asset_instance(
     name = "raw_stock_2x3x5",
     asset = "ai.intrinsic.raw_stock_2x3x5",
+)
+
+intrinsic_asset_instance(
+    name = "banana",
+    asset = "ai.intrinsic.banana",
+)
+
+intrinsic_asset_instance(
+    name = "bracket",
+    asset = "ai.intrinsic.bracket",
 )
 
 intrinsic_asset_instance(

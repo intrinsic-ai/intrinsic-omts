@@ -1,0 +1,26 @@
+# proto-file: intrinsic/skills/proto/skill_manifest.proto
+# proto-message: intrinsic_proto.skills.SkillManifest
+id {
+  package: "ai.intrinsic"
+  name: "mesh_plan_grasp"
+}
+display_name: "Mesh plan grasp"
+vendor {
+  display_name: "OMTS"
+}
+documentation {
+  description: "Plans a top-down parallel-jaw grasp on a workpiece mesh and writes it to grasp and pregrasp frames. Simulation only: the gripper model is not calibrated against hardware."
+}
+options {
+  python_config {
+    skill_module: "src.skills.mesh_plan_grasp.mesh_plan_grasp"
+    proto_module: "src.skills.mesh_plan_grasp.mesh_plan_grasp_pb2"
+    create_skill: "src.skills.mesh_plan_grasp.mesh_plan_grasp.MeshPlanGrasp"
+  }
+}
+parameter {
+  message_full_name: "omts.skills.MeshPlanGraspParams"
+}
+return_type {
+  message_full_name: "omts.skills.MeshPlanGraspResult"
+}

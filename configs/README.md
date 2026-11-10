@@ -10,6 +10,7 @@ and hardware/service configuration manifests (`.textproto`).
 | [`common/`](common/) | Shared across cells | Asset manifests and service configs shared by all cells (`flowstate_ros_bridge`, `hande_gripper_service`, `orbbec_gemini_driver`). |
 | [`omts/`](omts/) | Production OMTS Cell | UR5e arm, Robotiq Hand-E gripper, Orbbec Gemini 335Le camera, CNC enclosure, and Schunk EGP 64 pneumatic vise. Selected by default (`--//:setup=omts`). |
 | [`lab_bb_01/`](lab_bb_01/) | Lab BB-01 Cell | UR3e arm, Robotiq Hand-E gripper, Orbbec Gemini 335Le camera, CAW enclosure, without CNC machine/vise hardware. Selected via `--//:setup=lab_bb_01`. |
+| [`lab_bb_01_objects/`](lab_bb_01_objects/) | Lab BB-01 mesh grasping demo | Scene updates for the simulation-only `banana` and `bracket` workpieces, which replace the raw stock (`--//:workpiece`). See [`src/grasping/`](../src/grasping/README.md). |
 | [`kr_10/`](kr_10/) | KUKA KR10 (Stub) | Placeholder ICON config for KUKA KR10; not wired into `//:omts_solution`. |
 
 ## Configuration File Types
@@ -19,9 +20,9 @@ and hardware/service configuration manifests (`.textproto`).
   part/frame names, gripper parameters, optional CNC machine DIO pin/joint
   mappings, vision estimator settings, scene frame names, and cycle forces/timeouts.
   The optional `grasp:` section selects the grasp planning backend
-  (`cuboid_center`, the default when omitted, or `moveit`); its `moveit_*`
-  fields are only relevant when the `moveit` planner is selected, to tune the MoveIt
-  backend, and are ignored otherwise.
+  (`cuboid_center`, the default when omitted, `moveit`, or the simulation-only
+  `mesh`); its `moveit_*` and `mesh_*` fields tune those backends and are
+  ignored otherwise.
 * **`*.updates.pbtxt`**: `ObjectWorldUpdates` protos defining kinematic tree
   attachments (e.g. mounting `gripper` and `orbbec_camera` to `ur_module/flange`),
   robot base alignment, fixture poses, named scene frames (`view`,

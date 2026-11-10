@@ -1,0 +1,14 @@
+# proto-file: intrinsic/world/public/proto/object_world_updates.proto
+# proto-message: intrinsic_proto.world.ObjectWorldUpdates
+# Flat at infeed, 2 mm above the table before settling.
+updates {
+  update_transform {
+    node_a { by_name { object { object_name: "root" } } }
+    node_b { by_name { object { object_name: "banana" } } }
+    node_to_update { by_name { object { object_name: "banana" } } }
+    a_t_b {
+      position { x: 0.25 y: 0.25 z: 0.686782073 }
+      orientation { w: 1.0 }
+    }
+  }
+}

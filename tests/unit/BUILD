@@ -34,6 +34,54 @@ py_proto_library(
 )
 
 py_test(
+    name = "test_grasp_candidates",
+    srcs = ["test_grasp_candidates.py"],
+    deps = [
+        "//src/grasping:candidates",
+        "@ai_intrinsic_sdks_pip_deps//numpy",
+        "@com_google_absl_py//absl/testing:absltest",
+    ],
+)
+
+py_test(
+    name = "test_mesh_plan_grasp",
+    srcs = ["test_mesh_plan_grasp.py"],
+    deps = [
+        "//src/core:config",
+        "//src/hardware:mesh_grasp_planner",
+        "//src/skills/mesh_plan_grasp",
+        "//src/skills/mesh_plan_grasp:mesh_plan_grasp_py_pb2",
+        "@ai_intrinsic_sdks_pip_deps//numpy",
+        "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@com_google_protobuf//:protobuf_python",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/skills/python:skill_interface",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/world/proto:object_world_service_py_pb2",
+        "@intrinsic_apis//intrinsic/geometry/proto/v1:inline_geometry_py_pb2",
+    ],
+)
+
+py_test(
+    name = "test_mesh_workpieces",
+    srcs = ["test_mesh_workpieces.py"],
+    data = [
+        "//configs:all_configs",
+        "//models/banana:banana_filegroup",
+        "//models/bracket:bracket_filegroup",
+        "//models/raw_stock_2x3x5:raw_stock_2x3x5_filegroup",
+    ],
+    deps = [
+        "//src/grasping:candidates",
+        "@ai_intrinsic_sdks_pip_deps//numpy",
+        "@com_google_absl_py//absl/testing:absltest",
+        "@com_google_protobuf//:protobuf_python",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/world/proto:object_world_updates_py_pb2",
+    ],
+)
+
+py_test(
     name = "test_tray",
     srcs = ["test_tray.py"],
     deps = [
