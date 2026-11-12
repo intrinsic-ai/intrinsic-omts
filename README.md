@@ -179,7 +179,7 @@ bazel fetch @intrinsic-core//intrinsic_perception/intrinsic/perception/service/n
 bazel build \
   --repo_env=NVIDIA_POSE_ESTIMATOR_MODELS_DIR="${HOME}/.cache/intrinsic/nvidia_pose_estimator_models" \
   @intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:foundationpose_model_data_asset \
-  @intrinsic-core//intrinsic_perception/intrinsic_perception/service/nvidia_pose_estimator:foundationstereo_model_data_asset \
+  @intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:foundationstereo_model_data_asset \
   @intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:sam3_model_data_asset
 
 # 3. Install the three model DataAssets onto the cluster:
