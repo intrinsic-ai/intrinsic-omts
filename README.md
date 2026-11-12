@@ -153,7 +153,19 @@ them onto the cluster **before** deploying `//:omts_solution` so that
 `nvidia_pose_estimator_service` resolves them when its instance is created (see
 the
 [`nvidia_pose_estimator` README in `intrinsic-core`](https://github.com/intrinsic-ai/intrinsic-core/blob/main/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/README.md)
-for architecture, TensorRT engine caching, and licensing details):
+for architecture, TensorRT engine caching, and licensing details)
+
+You will first need to install huggingface cli :
+
+```bash
+curl -LsSf https://hf.co/cli/install.sh | bash
+```
+
+Then you need to be sure you have logged in using `hf auth login` and have requested access to the [Meta Sam model](https://huggingface.co/facebook/sam3). 
+> [!NOTE]
+> You will need to request access to this model from facebook but approval typically takes less than an hour to be granted.
+
+Once you have been granted access to the SAM models please execute the following to install them and their dependencies along with loading those models up as assets into the running solution. 
 
 ```bash
 # 1. Accept the Meta SAM License on https://huggingface.co/facebook/sam3,
