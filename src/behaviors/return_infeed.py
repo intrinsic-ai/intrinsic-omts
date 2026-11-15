@@ -161,7 +161,7 @@ def build_return_to_infeed_subtree(
             (
               "double",
               "pregrasp_distance_m",
-              config.grasp.mesh_pregrasp_distance_m,
+              config.grasp.antipodal_mesh_pregrasp_distance_m,
             ),
           ],
         ),

@@ -1,14 +1,16 @@
 # Mesh grasp planning (`src/grasping/`)
 
-The `mesh` grasp planner picks a Robotiq Hand-E grasp from the workpiece's
-triangle mesh instead of its bounding box, so curved and non-cuboid parts can
-be picked. It is **simulation only**: the gripper model comes from the Hand-E
+The `antipodal_mesh` grasp planner picks a Robotiq Hand-E grasp from the
+workpiece's triangle mesh instead of its bounding box, so curved and non-cuboid
+parts can be picked. It is named after its assumption of two opposing
+(antipodal) jaw contacts, so planners for other gripper kinds on a mesh, such
+as suction, can sit next to it. It is **simulation only**: the gripper model comes from the Hand-E
 SDF colliders and is not calibrated against hardware.
 
 ## How it works
 
 After perception updates the workpiece pose, the pick opens the gripper and
-runs the [`mesh_plan_grasp`](../skills/mesh_plan_grasp/) skill, which:
+runs the [`antipodal_mesh_plan_grasp`](../skills/antipodal_mesh_plan_grasp/) skill, which:
 
 1. Generates top-down candidates ([`candidates.py`](candidates.py)): it
    samples points on the near-vertical faces of the mesh, casts a ray from each
@@ -43,13 +45,13 @@ cycle standoff and no fallback offset, because mesh picks do not retract
 
 ```yaml
 grasp:
-  planner: "mesh"
-  mesh_simulation_only: true
-  mesh_pregrasp_distance_m: 0.1   # default
-  mesh_max_approach_tilt_deg: 10.0 # default
+  planner: "antipodal_mesh"
+  antipodal_mesh_simulation_only: true
+  antipodal_mesh_pregrasp_distance_m: 0.1   # default
+  antipodal_mesh_max_approach_tilt_deg: 10.0 # default
 ```
 
-Or select it for one run with `--grasp_planner=mesh --mesh_simulation_only`.
+Or select it for one run with `--grasp_planner=antipodal_mesh --antipodal_mesh_simulation_only`.
 
 The skill plans on the workpiece's visual mesh, the `.glb` its SDF names, which
 it reads from the Object World. That mesh must be closed and outward facing,
@@ -104,15 +106,15 @@ Set both variables once, then run the steps below in the same shell.
      --text_prompt="$TEXT_PROMPT"
    ```
 
-4. Run one cycle with the mesh planner:
+4. Run one cycle with the antipodal mesh planner:
 
    ```bash
    bazel run //src:omts_app -- \
      --address=localhost:17080 \
      --config=configs/lab_bb_01/app_config.yaml \
      --workpiece="$WORKPIECE" \
-     --grasp_planner=mesh \
-     --mesh_simulation_only
+     --grasp_planner=antipodal_mesh \
+     --antipodal_mesh_simulation_only
    ```
 
 ## Limits

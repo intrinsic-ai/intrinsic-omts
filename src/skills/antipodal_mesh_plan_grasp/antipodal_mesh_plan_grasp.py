@@ -31,7 +31,7 @@ from intrinsic.skills.python import skill_interface
 from intrinsic.world.proto import collision_settings_pb2
 
 from src.grasping import candidates
-from src.skills.mesh_plan_grasp import mesh_plan_grasp_pb2
+from src.skills.antipodal_mesh_plan_grasp import antipodal_mesh_plan_grasp_pb2
 from src.utils.math_utils import create_transform_node_ref
 
 # Status code for "no candidate passed the motion planner checks".
@@ -102,7 +102,7 @@ def workpiece_mesh(workpiece, geometry_service):
   )
 
 
-class MeshPlanGrasp(skill_interface.Skill):
+class AntipodalMeshPlanGrasp(skill_interface.Skill):
   """Plans a top-down mesh grasp and writes it to the grasp frames."""
 
   def get_footprint(self, request, context):
@@ -179,7 +179,7 @@ class MeshPlanGrasp(skill_interface.Skill):
         len(found),
         candidate.width_m,
       )
-      return mesh_plan_grasp_pb2.MeshPlanGraspResult(
+      return antipodal_mesh_plan_grasp_pb2.AntipodalMeshPlanGraspResult(
         width_m=candidate.width_m,
         num_candidates=len(found),
         num_checked=index,

@@ -63,10 +63,10 @@ _GRASP_PLANNER = flags.DEFINE_enum_class(
   "the 'grasp' section of the cell config.",
 )
 
-_MESH_SIMULATION_ONLY = flags.DEFINE_bool(
-  "mesh_simulation_only",
+_ANTIPODAL_MESH_SIMULATION_ONLY = flags.DEFINE_bool(
+  "antipodal_mesh_simulation_only",
   False,
-  "Acknowledges that the deployment is simulated, as required by the 'mesh' "
+  "Acknowledges that the deployment is simulated, as required by the 'antipodal_mesh' "
   "grasp planner.",
 )
 
@@ -197,10 +197,12 @@ def main(argv: Sequence[str]) -> None:
   config = load_app_config(_CONFIG.value)
   if _WORKPIECE.value:
     config = with_workpiece(config, _WORKPIECE.value)
-  if _MESH_SIMULATION_ONLY.value:
+  if _ANTIPODAL_MESH_SIMULATION_ONLY.value:
     config = dataclasses.replace(
       config,
-      grasp=dataclasses.replace(config.grasp, mesh_simulation_only=True),
+      grasp=dataclasses.replace(
+        config.grasp, antipodal_mesh_simulation_only=True
+      ),
     )
   run_machine_tending_pipeline(
     solution_address=_ADDRESS.value,

@@ -7,8 +7,8 @@ load("@intrinsic-core//intrinsic_sdk/intrinsic/skills/build_defs:skill.bzl", "py
 package(default_visibility = ["//visibility:public"])
 
 proto_library(
-    name = "mesh_plan_grasp_proto",
-    srcs = ["mesh_plan_grasp.proto"],
+    name = "antipodal_mesh_plan_grasp_proto",
+    srcs = ["antipodal_mesh_plan_grasp.proto"],
     deps = [
         "@intrinsic_apis//intrinsic/assets/proto:field_metadata_proto",
         "@intrinsic_apis//intrinsic/assets/proto/v1:resolved_dependency_proto",
@@ -16,21 +16,21 @@ proto_library(
 )
 
 py_proto_library(
-    name = "mesh_plan_grasp_py_pb2",
-    deps = [":mesh_plan_grasp_proto"],
+    name = "antipodal_mesh_plan_grasp_py_pb2",
+    deps = [":antipodal_mesh_plan_grasp_proto"],
 )
 
 skill_manifest(
-    name = "mesh_plan_grasp_manifest",
-    src = "mesh_plan_grasp_manifest.textproto",
-    deps = [":mesh_plan_grasp_proto"],
+    name = "antipodal_mesh_plan_grasp_manifest",
+    src = "antipodal_mesh_plan_grasp_manifest.textproto",
+    deps = [":antipodal_mesh_plan_grasp_proto"],
 )
 
 py_library(
-    name = "mesh_plan_grasp",
-    srcs = ["mesh_plan_grasp.py"],
+    name = "antipodal_mesh_plan_grasp",
+    srcs = ["antipodal_mesh_plan_grasp.py"],
     deps = [
-        ":mesh_plan_grasp_py_pb2",
+        ":antipodal_mesh_plan_grasp_py_pb2",
         "//src/grasping:candidates",
         "//src/utils:math_utils",
         "@ai_intrinsic_sdks_pip_deps//numpy",
@@ -57,11 +57,11 @@ container_image(
 )
 
 py_skill(
-    name = "mesh_plan_grasp_skill",
+    name = "antipodal_mesh_plan_grasp_skill",
     base_image = ":python3_base_image",
-    manifest = ":mesh_plan_grasp_manifest",
+    manifest = ":antipodal_mesh_plan_grasp_manifest",
     deps = [
-        ":mesh_plan_grasp",
-        ":mesh_plan_grasp_py_pb2",
+        ":antipodal_mesh_plan_grasp",
+        ":antipodal_mesh_plan_grasp_py_pb2",
     ],
 )

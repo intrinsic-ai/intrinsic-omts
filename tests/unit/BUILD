@@ -44,13 +44,13 @@ py_test(
 )
 
 py_test(
-    name = "test_mesh_plan_grasp",
-    srcs = ["test_mesh_plan_grasp.py"],
+    name = "test_antipodal_mesh_plan_grasp",
+    srcs = ["test_antipodal_mesh_plan_grasp.py"],
     deps = [
         "//src/core:config",
-        "//src/hardware:mesh_grasp_planner",
-        "//src/skills/mesh_plan_grasp",
-        "//src/skills/mesh_plan_grasp:mesh_plan_grasp_py_pb2",
+        "//src/hardware:antipodal_mesh_grasp_planner",
+        "//src/skills/antipodal_mesh_plan_grasp",
+        "//src/skills/antipodal_mesh_plan_grasp:antipodal_mesh_plan_grasp_py_pb2",
         "@ai_intrinsic_sdks_pip_deps//numpy",
         "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
         "@com_google_absl_py//absl/testing:absltest",

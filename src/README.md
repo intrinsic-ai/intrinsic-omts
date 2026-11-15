@@ -13,8 +13,8 @@ the machine tending cycle via `solution.executive.run(tree)`.
 | [`core/`](core/) | Domain models (`Workpiece`, `Tray`, `WorkcellState`), enums (`SimulationMode`, `InfeedMode`), infeed strategies, and strict YAML configuration schema (`AppConfig`). |
 | [`behaviors/`](behaviors/) | Composable Behavior Tree subtrees (`pick`, `load_machine`, `machining`, `unload_machine`, `return_infeed`), reusable motion primitives, and master cycle builder (`machine_tending_bt.py`). |
 | [`hardware/`](hardware/) | Stateless hardware adapters wrapping SBL skills (`Robot`, `RobotiqGripper`, `DioGripper`, `DioCncMachine`, `OrbbecVision`), plus the `GraspPlannerInterface` extension point and its `create_grasp_planner` factory. |
-| [`grasping/`](grasping/) | Top-down grasp candidates from a workpiece mesh for the simulation-only `mesh` grasp planner. |
-| [`skills/`](skills/) | OMTS's own skills: `mesh_plan_grasp` checks mesh grasp candidates with Core's motion planner and writes the grasp frames. |
+| [`grasping/`](grasping/) | Top-down grasp candidates from a workpiece mesh for the simulation-only `antipodal_mesh` grasp planner. |
+| [`skills/`](skills/) | OMTS's own skills: `antipodal_mesh_plan_grasp` checks mesh grasp candidates with Core's motion planner and writes the grasp frames. |
 | [`utils/`](utils/) | Runtime helpers: AST script loader (`load_python_script`), in-tree dynamic grasp frame calculator (`dynamic_frame_calculator.py`), kinematics/world utilities, and execution mode mapping. |
 
 ## Running the Application
@@ -50,9 +50,9 @@ bazel run //src:omts_app -- \
 bazel run //src:omts_app -- \
   --address=localhost:17080 \
   --config=configs/lab_bb_01/app_config.yaml \
-  --grasp_planner=mesh \
-  --mesh_simulation_only
+  --grasp_planner=antipodal_mesh \
+  --antipodal_mesh_simulation_only
 ```
 
-See [`grasping/README.md`](grasping/README.md) for the mesh planner and its
+See [`grasping/README.md`](grasping/README.md) for the antipodal mesh planner and its
 banana and bracket demo workpieces.

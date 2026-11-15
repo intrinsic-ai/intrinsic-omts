@@ -23,7 +23,7 @@ import "intrinsic/assets/proto/v1/resolved_dependency.proto";
 // writes it to two frames on root, creating them if missing. Each candidate is
 // checked with the motion planner: collision-checked IK at the pregrasp,
 // then a collision-checked Cartesian-linear plan to the grasp.
-message MeshPlanGraspParams {
+message AntipodalMeshPlanGraspParams {
   // Object World name of the workpiece. Its current pose and its visual mesh,
   // which must be closed and outward facing, are used.
   string workpiece_object = 1;
@@ -52,7 +52,7 @@ message MeshPlanGraspParams {
   }];
 }
 
-message MeshPlanGraspResult {
+message AntipodalMeshPlanGraspResult {
   // Contact width of the selected grasp.
   double width_m = 1;
   // Candidates found, and how many were checked before one passed.

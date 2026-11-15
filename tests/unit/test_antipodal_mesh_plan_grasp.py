@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for the mesh_plan_grasp skill and the mesh grasp planner backend."""
+"""Tests for the antipodal_mesh_plan_grasp skill and its planner backend."""
 
 import types
 from unittest import mock
@@ -27,8 +27,11 @@ from intrinsic.skills.python import skill_interface
 from intrinsic.world.proto import object_world_service_pb2
 
 from src.core.config import GraspConfig
-from src.hardware.mesh_grasp_planner import MeshGraspPlanner
-from src.skills.mesh_plan_grasp import mesh_plan_grasp, mesh_plan_grasp_pb2
+from src.hardware.antipodal_mesh_grasp_planner import AntipodalMeshGraspPlanner
+from src.skills.antipodal_mesh_plan_grasp import (
+  antipodal_mesh_plan_grasp,
+  antipodal_mesh_plan_grasp_pb2,
+)
 
 # A 40 x 100 x 30 mm box: graspable across x only.
 _BOX_MESH = {
@@ -181,7 +184,7 @@ def _execute(
 ):
   world = world or _World()
   request = types.SimpleNamespace(
-    params=mesh_plan_grasp_pb2.MeshPlanGraspParams(
+    params=antipodal_mesh_plan_grasp_pb2.AntipodalMeshPlanGraspParams(
       workpiece_object="box",
       robot_object="ur_module",
       tool_object="gripper",
@@ -193,10 +196,12 @@ def _execute(
   context = types.SimpleNamespace(
     object_world=world, motion_planner=planner, geometry_service=None
   )
-  return mesh_plan_grasp.MeshPlanGrasp().execute(request, context), world
+  return antipodal_mesh_plan_grasp.AntipodalMeshPlanGrasp().execute(
+    request, context
+  ), world
 
 
-class MeshPlanGraspSkillTest(absltest.TestCase):
+class AntipodalMeshPlanGraspSkillTest(absltest.TestCase):
   def test_preserves_the_workpiece_pose_relative_to_the_planned_grasp(self):
     _, world = _execute(_Planner())
     self.assertIn("grasp_workpiece", world.updates)
@@ -314,7 +319,7 @@ class WorkpieceMeshTest(absltest.TestCase):
       )
     )
 
-    vertices, triangles = mesh_plan_grasp.workpiece_mesh(
+    vertices, triangles = antipodal_mesh_plan_grasp.workpiece_mesh(
       types.SimpleNamespace(proto=box), service
     )
 
@@ -332,35 +337,45 @@ class WorkpieceMeshTest(absltest.TestCase):
       "Intrinsic_Visual"
     ]
     with self.assertRaisesRegex(ValueError, "no visual mesh"):
-      mesh_plan_grasp.workpiece_mesh(types.SimpleNamespace(proto=box), None)
+      antipodal_mesh_plan_grasp.workpiece_mesh(
+        types.SimpleNamespace(proto=box), None
+      )
 
 
-class MeshGraspPlannerTest(absltest.TestCase):
+class AntipodalMeshGraspPlannerTest(absltest.TestCase):
   def test_requires_the_simulation_only_acknowledgement(self):
-    # As when --grasp_planner=mesh overrides a cuboid_center config.
+    # As when --grasp_planner=antipodal_mesh overrides a cuboid_center config.
     with self.assertRaisesRegex(ValueError, "simulation only"):
-      MeshGraspPlanner(
+      AntipodalMeshGraspPlanner(
         mock.MagicMock(), GraspConfig(), "ur_module", "gripper", "tool_frame"
       )
 
   def test_requires_the_robot_object(self):
     # `create_grasp_planner` defaults it to "" for the other backends.
-    config = GraspConfig(planner="mesh", mesh_simulation_only=True)
+    config = GraspConfig(
+      planner="antipodal_mesh", antipodal_mesh_simulation_only=True
+    )
     with self.assertRaisesRegex(ValueError, "robot object"):
-      MeshGraspPlanner(mock.MagicMock(), config, "", "gripper", "tool_frame")
+      AntipodalMeshGraspPlanner(
+        mock.MagicMock(), config, "", "gripper", "tool_frame"
+      )
 
-  @mock.patch("src.hardware.mesh_grasp_planner.bt.Task")
+  @mock.patch("src.hardware.antipodal_mesh_grasp_planner.bt.Task")
   def test_builds_the_skill_task(self, unused_task):
     solution = mock.MagicMock()
-    config = GraspConfig(planner="mesh", mesh_simulation_only=True)
-    planner = MeshGraspPlanner(
+    config = GraspConfig(
+      planner="antipodal_mesh", antipodal_mesh_simulation_only=True
+    )
+    planner = AntipodalMeshGraspPlanner(
       solution, config, "ur_module", "gripper", "tool_frame"
     )
     self.assertFalse(planner.uses_contact_touchdown)
 
     planner.build_plan_grasp_task("box")
 
-    kwargs = solution.skills.ai.intrinsic.mesh_plan_grasp.call_args.kwargs
+    kwargs = (
+      solution.skills.ai.intrinsic.antipodal_mesh_plan_grasp.call_args.kwargs
+    )
     self.assertEqual(kwargs["workpiece_object"], "box")
     self.assertEqual(kwargs["robot_object"], "ur_module")
 

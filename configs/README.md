@@ -21,8 +21,8 @@ and hardware/service configuration manifests (`.textproto`).
   mappings, vision estimator settings, scene frame names, and cycle forces/timeouts.
   The optional `grasp:` section selects the grasp planning backend
   (`cuboid_center`, the default when omitted, `moveit`, or the simulation-only
-  `mesh`); its `moveit_*` and `mesh_*` fields tune those backends and are
-  ignored otherwise.
+  `antipodal_mesh`); its `moveit_*` and `antipodal_mesh_*` fields tune those
+  backends and are ignored otherwise.
 * **`*.updates.pbtxt`**: `ObjectWorldUpdates` protos defining kinematic tree
   attachments (e.g. mounting `gripper` and `orbbec_camera` to `ur_module/flange`),
   robot base alignment, fixture poses, named scene frames (`view`,

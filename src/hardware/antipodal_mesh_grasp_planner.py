@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Mesh grasp planner backend, simulation only.
+"""Antipodal mesh grasp planner backend, simulation only.
 
-Runs the `mesh_plan_grasp` skill, which plans a top-down Robotiq Hand-E grasp
+Runs the `antipodal_mesh_plan_grasp` skill, which plans a top-down Robotiq Hand-E grasp
 on the workpiece's mesh and checks it with the motion planner.
 """
 
@@ -26,8 +26,8 @@ from src.core.config import GraspConfig
 from src.hardware.grasping import GraspPlannerInterface
 
 
-class MeshGraspPlanner(GraspPlannerInterface):
-  """Plans grasps on the workpiece's mesh with the `mesh_plan_grasp` skill."""
+class AntipodalMeshGraspPlanner(GraspPlannerInterface):
+  """Plans grasps on the workpiece's mesh with the `antipodal_mesh_plan_grasp` skill."""
 
   # The planned contacts are exact, so the pick opens the jaws before planning
   # and approaches the contacts directly instead of touching down first.
@@ -41,14 +41,17 @@ class MeshGraspPlanner(GraspPlannerInterface):
     tool_object_name: str,
     tool_frame_name: str,
   ):
-    if not config.mesh_simulation_only:
+    if not config.antipodal_mesh_simulation_only:
       raise ValueError(
-        "The mesh grasp planner is for simulation only; set "
-        "mesh_simulation_only (or pass --mesh_simulation_only)."
+        "The antipodal mesh grasp planner is for simulation only; set "
+        "antipodal_mesh_simulation_only (or pass "
+        "--antipodal_mesh_simulation_only)."
       )
     if not robot_object_name:
-      raise ValueError("The mesh grasp planner needs the robot object name.")
-    self._skill = solution.skills.ai.intrinsic.mesh_plan_grasp
+      raise ValueError(
+        "The antipodal mesh grasp planner needs the robot object name."
+      )
+    self._skill = solution.skills.ai.intrinsic.antipodal_mesh_plan_grasp
     self._config = config
     self._robot_object_name = robot_object_name
     self._tool_object_name = tool_object_name
@@ -73,7 +76,7 @@ class MeshGraspPlanner(GraspPlannerInterface):
         tool_frame=self._tool_frame_name,
         grasp_frame=grasp_frame_name,
         pregrasp_frame=pregrasp_frame_name,
-        pregrasp_distance_m=self._config.mesh_pregrasp_distance_m,
-        max_approach_tilt_deg=self._config.mesh_max_approach_tilt_deg,
+        pregrasp_distance_m=self._config.antipodal_mesh_pregrasp_distance_m,
+        max_approach_tilt_deg=self._config.antipodal_mesh_max_approach_tilt_deg,
       ),
     )

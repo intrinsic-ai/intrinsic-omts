@@ -17,7 +17,7 @@
 Samples surface points, casts a ray from each one straight through the part to
 find the opposite contact, and keeps pairs that a top-down parallel-jaw
 gripper can close on. Reachability and collisions are not checked here; the
-`mesh_plan_grasp` skill checks each candidate with the motion planner.
+`antipodal_mesh_plan_grasp` skill checks each candidate with the motion planner.
 """
 
 import dataclasses

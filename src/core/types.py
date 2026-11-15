@@ -59,13 +59,13 @@ class GraspPlannerType(enum.Enum):
         directly from the 6D pose estimate.
       MOVEIT: Model-based planning through the `intrinsic-moveit` integration.
         Requires the MoveIt planning service to be running and reachable.
-      MESH: OMTS mesh-based planning through the `mesh_plan_grasp` skill,
+      ANTIPODAL_MESH: OMTS mesh-based planning through the `antipodal_mesh_plan_grasp` skill,
         with motion-planner checks for candidate grasps.
   """
 
   CUBOID_CENTER = "cuboid_center"
   MOVEIT = "moveit"
-  MESH = "mesh"
+  ANTIPODAL_MESH = "antipodal_mesh"
 
 
 class SimulationMode(enum.Enum):

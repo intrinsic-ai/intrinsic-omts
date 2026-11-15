@@ -58,7 +58,7 @@ config_setting(
 _OMTS_SKILL_ASSETS = [
     ":hand_e_gripper_cmd_skill_asset",
     ":moveit_plan_grasp_skill_asset",
-    "//src/skills/mesh_plan_grasp:mesh_plan_grasp_skill",
+    "//src/skills/antipodal_mesh_plan_grasp:antipodal_mesh_plan_grasp_skill",
     "@intrinsic-core//intrinsic_control/intrinsic/icon/skills:dio_read_input_skill",
     "@intrinsic-core//intrinsic_control/intrinsic/icon/skills:dio_set_output_skill",
     "@intrinsic-core//intrinsic_perception/intrinsic/perception/skills:capture_images_skill",
