@@ -9,8 +9,10 @@ CLI tool drives it for scene bring-up and verification.
 
 This is the `moveit` backend of the OMTS grasp planner selection. Choose it with
 `bazel run //src:omts_app -- --grasp_planner=moveit`, or permanently per cell
-with `grasp: {planner: "moveit"}` in `app_config.yaml`. The default backend
-remains the built-in `cuboid_center` heuristic, which needs none of this.
+with `grasp: {planner: "moveit"}` in `app_config.yaml`. Both OMTS workcell
+configurations are supported (`omts` by default, and `lab_bb_01` starting in
+`intrinsic-moveit` `v0.0.5`). The default grasp planner backend remains the
+built-in `cuboid_center` heuristic, which needs none of this.
 
 > [!IMPORTANT]
 > `//:omts_solution` installs the `ai.intrinsic.moveit_plan_grasp_skill` skill
@@ -39,7 +41,7 @@ MoveIt needs an accurate, live view of the robot and surrounding obstacles. The 
 flowchart LR
     subgraph Solution["Intrinsic Solution (localhost:17080)"]
         World["Object World Service\n- Scene obstacles & vice\n- Workpiece (raw_stock_2x3x5)"]
-        ICON["Robot Controller (ICON)\n- UR5e joint states"]
+        ICON["Robot Controller (ICON)\n- UR5e / UR3e joint states"]
         Bridge["flowstate_ros_bridge\n(deployed by //:omts_solution)"]
 
         World -->|"Link transforms"| Bridge
@@ -101,7 +103,7 @@ flowchart TD
     Skill -->|"Write poses into root/grasp & root/pre_grasp"| World
     Approach -->|"Move to pre-grasp frame"| ICON
     ICON -->|"Read root/pre_grasp pose"| World
-    ICON -->|"Move arm to pre-grasp"| Robot["UR5e Arm"]
+    ICON -->|"Move arm to pre-grasp"| Robot["UR5e / UR3e Arm"]
 ```
 
 - **Decoupled Hand-off**: The planning skill only updates poses in the Object World; it never commands motors directly.
@@ -133,7 +135,7 @@ touches any of it.
 
 ## Setup & Prerequisites
 
-Users will also need to set up a ROS colcon workspace that has `intrinsic-moveit` built. See [`intrinsic-moveit`](https://github.com/intrinsic-ai/intrinsic-moveit) for the setup instructions.
+Users will also need to set up a ROS colcon workspace that has `intrinsic-moveit` (`v0.0.5` or newer) built. See [`intrinsic-moveit`](https://github.com/intrinsic-ai/intrinsic-moveit) for the setup instructions.
 
 > [!NOTE]
 > The `moveit_plan_grasp_skill` itself is **not** a manual step. `//:omts_solution`
@@ -145,7 +147,11 @@ Users will also need to set up a ROS colcon workspace that has `intrinsic-moveit
 
 ### 1. Start `moveit_planning_service`
 
-We can now start the `moveit_planning_service`:
+We can now start the `moveit_planning_service`. By default, `service.launch.py`
+loads the `omts` workcell configuration (`omts_moveit_config` + UR5e hardware
+description from `robot_hardware_descriptions`). Pass `robot_config:=lab_bb_01`
+if `//:omts_solution` was deployed with `--config=lab_bb_01` /
+`--//:setup=lab_bb_01`:
 
 ```bash
 # These commands are generally required for all terminals running ROS
@@ -153,15 +159,21 @@ source <path-to-workspace>/install/setup.bash
 export RMW_IMPLEMENTATION=rmw_zenoh_cpp
 export ZENOH_CONFIG_OVERRIDE='mode="client";connect/endpoints=["tcp/127.0.0.1:7447"]'
 
-# Start the service
+# Start the service for the default OMTS cell (robot_config:=omts)
 ros2 launch moveit_planning_service service.launch.py headless:=false \
+  start_service_status_monitor:=false
+
+# Or, if you deployed the Lab BB-01 cell (--config=lab_bb_01 / --//:setup=lab_bb_01):
+ros2 launch moveit_planning_service service.launch.py \
+  robot_config:=lab_bb_01 \
+  headless:=false \
   start_service_status_monitor:=false
 ```
 
 ### 2. Verify Scene Synchronization in RViz
 
 Once the planning service launches, verify that the additional RViz window opens:
-- The robot is represented by its meshes.
+- The robot is represented by its meshes (UR5e for `omts`, UR3e for `lab_bb_01`).
 - All other objects in the scene are propagated as collision objects and represented as green meshes.
 
 The state of the robot and objects are synchronized with the MoveIt planning scene. This can be verified with:
@@ -173,7 +185,7 @@ bazel run //tools/jogging:jog_interactive -- \
   --port=17080 \
   --instance=icon
 
-# Updating the scene, see tutorial "Cell customization"
+# Updating the scene (OMTS cell only; lab_bb_01 has no CNC vise), see tutorial "Cell customization"
 bazel run //tools/world:apply_scene_updates -- \
   --address localhost:17080 \
   --files configs/omts/raw_stock_in_vise.updates.pbtxt
@@ -210,12 +222,12 @@ bazel run //third_party/intrinsic_moveit/tools:moveit_plan_grasp_and_move -- \
 # Optionally, reset the scene such that the trajectory to the CNC Vice is shorter
 # inctl world reset --address localhost:17080
 
-# Relocate Workpiece to the CNC Vice
+# Relocate Workpiece to the CNC Vice (OMTS cell only; skip on lab_bb_01)
 bazel run //tools/world:apply_scene_updates -- \
   --address=localhost:17080 \
   --files configs/omts/raw_stock_in_vise.updates.pbtxt
 
-# Plan again to grasp the workpiece that is in the vice now
+# Plan again to grasp the workpiece that is in the vice now (OMTS cell only)
 # This planning step may take longer due to the length of the trajectory if the
 # world has not been reset
 bazel run //third_party/intrinsic_moveit/tools:moveit_plan_grasp_and_move -- \
@@ -232,10 +244,16 @@ Once the tutorial above plans successfully, switch the machine tending cycle
 over to the same planner:
 
 ```bash
-# One run
+# Default OMTS cell (with moveit_planning_service running robot_config:=omts)
 bazel run //src:omts_app -- \
   --address=localhost:17080 \
   --config="configs/omts/app_config.yaml" \
+  --grasp_planner=moveit
+
+# Or Lab BB-01 cell (with moveit_planning_service running robot_config:=lab_bb_01)
+bazel run //src:omts_app -- \
+  --address=localhost:17080 \
+  --config="configs/lab_bb_01/app_config.yaml" \
   --grasp_planner=moveit
 ```
 
@@ -319,7 +337,8 @@ cluster, robot or planning service is required.
 
 | Error Code / Message | Root Cause | Resolution |
 | :--- | :--- | :--- |
-| `moveit_plan_grasp_skill: Robot model does not define the required end-effector or IK frame` | `--tool_frame_name` or `--end_effector_group` names something absent from the SRDF. Note `hande_tcp`, `hande_tool_frame` and `tool_frame` are all valid coincident aliases, so this is usually a typo or a hardware description that lacks the alias links. | Check the `hand` group in `robot_hardware.srdf` and pass a link listed there. |
+| MoveIt RViz shows the wrong robot arm (e.g. UR5e on a `lab_bb_01` deployment) or IK / collision checks do not match the deployed cell | `service.launch.py` defaults to `robot_config:=omts` when `robot_config` is omitted, or `intrinsic-moveit` predates `v0.0.5`. | Ensure `intrinsic-moveit` is at `v0.0.5` or newer and launch `service.launch.py` with `robot_config:=lab_bb_01` (or `robot_config:=omts` for the default OMTS cell) matching the deployed `//:omts_solution` setup. |
+| `moveit_plan_grasp_skill: Robot model does not define the required end-effector or IK frame` | `--tool_frame_name` or `--end_effector_group` names something absent from the SRDF. Note `hande_tcp`, `hande_tool_frame` and `tool_frame` are all valid coincident aliases, so this is usually a typo or a hardware description that lacks the alias links. | Check the `hand` group in `omts.srdf` (`omts_moveit_config`) or `lab_bb_01.srdf` (`lab_bb_01_moveit_config`) and pass a link listed there. |
 | `moveit_plan_grasp_skill: Output pregrasp frame could not be resolved in World Service` | The skill only updates pre-existing frames; it never creates them. | Run `bazel run //tools/world:apply_scene_updates` so `root/grasp` and `root/pre_grasp` exist before planning. |
 | `moveit_plan_grasp_skill: Target object was not found in the planning scene` | The part was moved moments before planning and the MoveIt scene has not caught up, or the object name does not resolve. | Raise `--settle_sec`, and confirm the name with `bazel run //tools/world:inspect_world`. |
 | `moveit_plan_grasp_skill: No reachable or collision-free grasp candidates found` | The surface set is too narrow for how the part is currently lying, the part is out of reach or occluded, or the candidate set is too coarse. | Widen `--surfaces` — `all` is the widest, and `0,1,4,5` is the demo's set. Confirm reachability with `bazel run //tools/world:inspect_world`. |
