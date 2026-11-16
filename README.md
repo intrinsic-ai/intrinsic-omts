@@ -356,7 +356,9 @@ for full build and licensing details.
 ## 8. Optional integrations
 
 MoveIt grasp planning is an opt-in alternative to the built-in cuboid-center
-heuristic. The integration code is third-party and lives under
+heuristic, supporting both the default `omts` cell (`robot_config:=omts`) and
+the `lab_bb_01` cell (`robot_config:=lab_bb_01`, available in `intrinsic-moveit`
+`v0.0.5+`). The integration code is third-party and lives under
 [`third_party/intrinsic_moveit/`](third_party/intrinsic_moveit/README.md); it is
 reachable two ways:
 
