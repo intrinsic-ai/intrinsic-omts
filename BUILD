@@ -95,6 +95,7 @@ intrinsic_solution(
         "@intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_train_service:ioc_train_service_asset",
         ":flowstate_ros_bridge_asset",
         ":hand_e_gripper_service_asset",
+        ":moveit_planning_service_asset",
         ":orbbec_gemini_driver_asset",
         "//models/raw_stock_2x3x5",
     ] + select({
@@ -131,6 +132,7 @@ intrinsic_solution(
         ":train_service",
         ":flowstate_ros_bridge",
         ":hand_e_gripper_service",
+        ":moveit_planning_service",
     ] + select({
         ":is_lab_banana": [":banana"],
         ":is_lab_bracket": [":bracket"],
@@ -311,6 +313,30 @@ intrinsic_asset_instance(
     name = "flowstate_ros_bridge",
     asset = "ai.intrinsic.flowstate_ros_bridge",
     instance_name = "flowstate_ros_bridge",
+)
+
+genrule(
+    name = "moveit_planning_service_fds",
+    srcs = ["@moveit_planning_service_bundle//:moveit_planning_service.bundle.tar"],
+    outs = ["moveit_planning_service_fds.binpb"],
+    cmd = "tar -xOf $< descriptors-transitive-descriptor-set.proto.bin > $@",
+)
+
+imported_asset_bundle(
+    name = "moveit_planning_service_asset",
+    bundle = "@moveit_planning_service_bundle//:moveit_planning_service.bundle.tar",
+    file_descriptor_set = ":moveit_planning_service_fds.binpb",
+    manifest = "//configs:common/moveit_planning_service_manifest.textproto",
+)
+
+intrinsic_asset_instance(
+    name = "moveit_planning_service",
+    asset = "ai.intrinsic.moveit_planning_service",
+    instance_name = "moveit_planning_service",
+    service_config = select({
+        ":is_lab_bb_01": "//configs:lab_bb_01/moveit_planning_service_config.textproto",
+        "//conditions:default": None,
+    }),
 )
 
 # assetlocalinfogen parses skill manifests as binary proto, so the manifest is

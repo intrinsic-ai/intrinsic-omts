@@ -283,7 +283,10 @@ py_test(
 py_test(
     name = "test_world_configs",
     srcs = ["test_world_configs.py"],
-    data = ["//configs:all_configs"],
+    data = [
+        "//:moveit_planning_service_fds.binpb",
+        "//configs:all_configs",
+    ],
     deps = [
         ":hal_adio_part_config_py_pb2",
         ":hal_arm_part_config_py_pb2",

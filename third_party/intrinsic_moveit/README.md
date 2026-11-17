@@ -11,15 +11,18 @@ This is the `moveit` backend of the OMTS grasp planner selection. Choose it with
 `bazel run //src:omts_app -- --grasp_planner=moveit`, or permanently per cell
 with `grasp: {planner: "moveit"}` in `app_config.yaml`. Both OMTS workcell
 configurations are supported (`omts` by default, and `lab_bb_01` starting in
-`intrinsic-moveit` `v0.0.5`). The default grasp planner backend remains the
+`intrinsic-moveit` `v0.1.0`). The default grasp planner backend remains the
 built-in `cuboid_center` heuristic, which needs none of this.
 
-> [!IMPORTANT]
-> `//:omts_solution` installs the `ai.intrinsic.moveit_plan_grasp_skill` skill
-> for you, but it does **not** run the MoveIt planning service the skill talks
-> to. Until you have completed the intrinsic-moveit integration,
-> `--grasp_planner=moveit` fails at runtime and every command below is inert.
-> Start with [Setup & Prerequisites](#setup--prerequisites).
+> [!NOTE]
+> `//:omts_solution` automatically installs and starts both
+> `ai.intrinsic.moveit_planning_service` and
+> `ai.intrinsic.moveit_plan_grasp_skill` for the selected `--//:setup` (`omts`
+> or `lab_bb_01`), so `--grasp_planner=moveit` and `moveit_plan_grasp_and_move`
+> work directly against a deployed solution without manual sideloading or a
+> local ROS 2 workspace. See
+> [Deployment & Optional Local RViz](#deployment--optional-local-rviz) if you
+> want to inspect the live MoveIt planning scene in RViz.
 
 The planning code here is third-party and deliberately namespaced: everything is
 named `moveit_*` so that it never has to be told apart from the built-in
@@ -49,12 +52,12 @@ flowchart LR
     end
 
     subgraph MoveIt["MoveIt Planning Layer"]
-        Service["moveit_planning_service"]
+        Service["moveit_planning_service\n(deployed by //:omts_solution)"]
         PSM["PlanningSceneMonitor\n(MoveIt Planning Scene)"]
-        RViz["RViz Window\n- Robot meshes\n- Green collision meshes"]
+        RViz["Optional Local RViz\n- Robot meshes\n- Green collision meshes"]
 
         Service --- PSM
-        PSM --> RViz
+        PSM -.-> RViz
     end
 
     World -.->|"Collision geometry sync"| PSM
@@ -133,25 +136,32 @@ touches any of it.
 
 ---
 
-## Setup & Prerequisites
+## Deployment & Optional Local RViz
 
-Users will also need to set up a ROS colcon workspace that has `intrinsic-moveit` (`v0.0.5` or newer) built. See [`intrinsic-moveit`](https://github.com/intrinsic-ai/intrinsic-moveit) for the setup instructions.
+`//:omts_solution` downloads both `moveit_planning_service.bundle.tar` and
+`moveit_plan_grasp_skill.bundle.tar` at build time (pinned to `v0.1.0` in
+[`MODULE.bazel`](../../MODULE.bazel)) and deploys them automatically:
 
-> [!NOTE]
-> The `moveit_plan_grasp_skill` itself is **not** a manual step. `//:omts_solution`
-> downloads the bundle at build time (pinned in
-> [`MODULE.bazel`](../../MODULE.bazel)) and installs
-> `ai.intrinsic.moveit_plan_grasp_skill` with every deployment. If you bump that
-> pin, redeploy the solution rather than `inctl asset install`-ing by hand, so
-> the solution and the installed skill cannot drift apart.
+- `--//:setup=omts` (default): runs `moveit_planning_service` with its default
+  configuration (`robot_config: "omts"`, UR5e).
+- `--//:setup=lab_bb_01`: applies
+  [`configs/lab_bb_01/moveit_planning_service_config.textproto`](../../configs/lab_bb_01/moveit_planning_service_config.textproto)
+  (`robot_config: "lab_bb_01"`, UR3e).
 
-### 1. Start `moveit_planning_service`
+If you bump the `intrinsic-moveit` release pin in `MODULE.bazel`, redeploy
+`//:omts_solution` rather than `inctl asset install`-ing by hand so the solution
+and installed bundles stay in lockstep.
 
-We can now start the `moveit_planning_service`. By default, `service.launch.py`
-loads the `omts` workcell configuration (`omts_moveit_config` + UR5e hardware
-description from `robot_hardware_descriptions`). Pass `robot_config:=lab_bb_01`
-if `//:omts_solution` was deployed with `--config=lab_bb_01` /
-`--//:setup=lab_bb_01`:
+### Optional: Run `moveit_planning_service` Locally with RViz
+
+For visual debugging in RViz (instead of using the headless in-cluster
+`moveit_planning_service` instance), remove the cluster service instance first
+(`inctl service delete --address=localhost:17080 moveit_planning_service`) so two
+planning nodes do not compete on the same ROS 2 action/service names, forward the
+cluster Zenoh router (`sudo k3s kubectl port-forward -n app-intrinsic-base
+service/zenoh-router 7447:7447`), and launch from a local colcon workspace with
+[`intrinsic-moveit`](https://github.com/intrinsic-ai/intrinsic-moveit) (`v0.1.0`
+or newer) built:
 
 ```bash
 # These commands are generally required for all terminals running ROS
@@ -244,13 +254,13 @@ Once the tutorial above plans successfully, switch the machine tending cycle
 over to the same planner:
 
 ```bash
-# Default OMTS cell (with moveit_planning_service running robot_config:=omts)
+# Default OMTS cell (--//:setup=omts deploys moveit_planning_service with robot_config: "omts")
 bazel run //src:omts_app -- \
   --address=localhost:17080 \
   --config="configs/omts/app_config.yaml" \
   --grasp_planner=moveit
 
-# Or Lab BB-01 cell (with moveit_planning_service running robot_config:=lab_bb_01)
+# Or Lab BB-01 cell (--//:setup=lab_bb_01 deploys moveit_planning_service with robot_config: "lab_bb_01")
 bazel run //src:omts_app -- \
   --address=localhost:17080 \
   --config="configs/lab_bb_01/app_config.yaml" \
@@ -337,7 +347,7 @@ cluster, robot or planning service is required.
 
 | Error Code / Message | Root Cause | Resolution |
 | :--- | :--- | :--- |
-| MoveIt RViz shows the wrong robot arm (e.g. UR5e on a `lab_bb_01` deployment) or IK / collision checks do not match the deployed cell | `service.launch.py` defaults to `robot_config:=omts` when `robot_config` is omitted, or `intrinsic-moveit` predates `v0.0.5`. | Ensure `intrinsic-moveit` is at `v0.0.5` or newer and launch `service.launch.py` with `robot_config:=lab_bb_01` (or `robot_config:=omts` for the default OMTS cell) matching the deployed `//:omts_solution` setup. |
+| MoveIt RViz shows the wrong robot arm (e.g. UR5e on a `lab_bb_01` deployment) or IK / collision checks do not match the deployed cell | `//:omts_solution` was deployed without `--//:setup=lab_bb_01`, or a local `service.launch.py` run omitted `robot_config:=lab_bb_01` (or `intrinsic-moveit` predates `v0.1.0`). | Redeploy `//:omts_solution` with `--//:setup=lab_bb_01` (or pass `robot_config:=lab_bb_01` when launching `service.launch.py` locally) on `intrinsic-moveit` `v0.1.0+`. |
 | `moveit_plan_grasp_skill: Robot model does not define the required end-effector or IK frame` | `--tool_frame_name` or `--end_effector_group` names something absent from the SRDF. Note `hande_tcp`, `hande_tool_frame` and `tool_frame` are all valid coincident aliases, so this is usually a typo or a hardware description that lacks the alias links. | Check the `hand` group in `omts.srdf` (`omts_moveit_config`) or `lab_bb_01.srdf` (`lab_bb_01_moveit_config`) and pass a link listed there. |
 | `moveit_plan_grasp_skill: Output pregrasp frame could not be resolved in World Service` | The skill only updates pre-existing frames; it never creates them. | Run `bazel run //tools/world:apply_scene_updates` so `root/grasp` and `root/pre_grasp` exist before planning. |
 | `moveit_plan_grasp_skill: Target object was not found in the planning scene` | The part was moved moments before planning and the MoveIt scene has not caught up, or the object name does not resolve. | Raise `--settle_sec`, and confirm the name with `bazel run //tools/world:inspect_world`. |
