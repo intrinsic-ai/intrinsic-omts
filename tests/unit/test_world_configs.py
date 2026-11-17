@@ -25,7 +25,13 @@ import math
 import os
 
 from absl.testing import absltest
-from google.protobuf import any_pb2, text_format
+from google.protobuf import (
+  any_pb2,
+  descriptor_pb2,
+  descriptor_pool,
+  message_factory,
+  text_format,
+)
 from intrinsic.assets.services.proto import service_manifest_pb2
 from intrinsic.icon.control.parts.hal.adio_part import (
   hal_adio_part_config_pb2,
@@ -90,6 +96,22 @@ _EXPECTED_SCENE_FRAMES = {
     "view",
   ],
 }
+
+
+def _load_moveit_planning_service_config_class():
+  """Registers moveit_planning_service.proto from the bundle FDS and returns its class."""
+  pool = descriptor_pool.Default()
+  try:
+    desc = pool.FindMessageTypeByName("intrinsic.MoveItPlanningServiceConfig")
+  except KeyError:
+    with open("moveit_planning_service_fds.binpb", "rb") as f:
+      fds = descriptor_pb2.FileDescriptorSet.FromString(f.read())
+    for fd in fds.file:
+      if fd.name == "moveit_planning_service.proto":
+        pool.Add(fd)
+        break
+    desc = pool.FindMessageTypeByName("intrinsic.MoveItPlanningServiceConfig")
+  return message_factory.GetMessageClass(desc)
 
 
 def _config_paths() -> list[str]:
@@ -279,6 +301,7 @@ class WorldUpdateConfigsTest(absltest.TestCase):
 
   def test_every_textproto_service_config_and_manifest_parses(self):
     """Validates all checked-in .textproto service configs and manifests against their proto schemas."""
+    moveit_cfg_cls = _load_moveit_planning_service_config_class()
     textproto_files = _textproto_paths()
     self.assertNotEmpty(textproto_files)
 
@@ -316,6 +339,16 @@ class WorldUpdateConfigsTest(absltest.TestCase):
             cam_cfg = camera_config_pb2.CameraConfig()
             self.assertTrue(any_msg.Unpack(cam_cfg))
             self.assertEqual(cam_cfg.identifier.ros.driver_type, "orbbec")
+          elif path.endswith("moveit_planning_service_config.textproto"):
+            moveit_cfg = moveit_cfg_cls()
+            self.assertTrue(any_msg.Unpack(moveit_cfg))
+            self.assertTrue(moveit_cfg.intrinsic_core_ingress_address)
+            self.assertTrue(moveit_cfg.zenoh_router_address)
+            self.assertEqual(
+              moveit_cfg.robot_base_frame_id, "ur_module/base_link"
+            )
+            if "/lab_bb_01/" in path:
+              self.assertEqual(moveit_cfg.robot_config, "lab_bb_01")
           else:
             self.fail(f"Unhandled .textproto config file: {path}")
 

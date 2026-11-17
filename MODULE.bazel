@@ -189,6 +189,8 @@ go_deps.gazelle_override(
 # They all live in a single release so that the pin can be moved atomically.
 OMTS_ASSETS_RELEASE = "20260922.0"
 
+INTRINSIC_MOVEIT_RELEASE = "v0.1.0"
+
 gh = use_extension("//bazel:gh_release.bzl", "gh_release")
 gh.download(
     name = "flowstate_ros_bridge_bundle",
@@ -222,8 +224,15 @@ gh.download(
     name = "moveit_plan_grasp_skill_bundle",
     pattern = "moveit_plan_grasp_skill.bundle.tar",
     repo = "intrinsic-ai/intrinsic-moveit",
-    sha256 = "1929077dc82dc923044aa971860529951b9d7af60d54eabcb6b72fa2b2ab13b0",
-    tag = "v0.0.4",
+    sha256 = "1ea356245235f98999c04f9a9d2757c915e853fbcea12a3ab61c3f884a014de0",
+    tag = INTRINSIC_MOVEIT_RELEASE,
+)
+gh.download(
+    name = "moveit_planning_service_bundle",
+    pattern = "moveit_planning_service.bundle.tar",
+    repo = "intrinsic-ai/intrinsic-moveit",
+    sha256 = "3cec1f984acb7d22fba0444f9ec272b539281987207d99efe507dc3374b61f5b",
+    tag = INTRINSIC_MOVEIT_RELEASE,
 )
 use_repo(
     gh,
@@ -231,6 +240,7 @@ use_repo(
     "hand_e_gripper_cmd_skill_bundle",
     "hand_e_gripper_service_bundle",
     "moveit_plan_grasp_skill_bundle",
+    "moveit_planning_service_bundle",
     "orbbec_gemini_driver_bundle",
 )
 
