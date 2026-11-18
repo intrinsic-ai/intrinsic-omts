@@ -25,6 +25,7 @@ from google.protobuf import text_format
 from intrinsic.math.python import data_types
 from intrinsic.world.proto import object_world_updates_pb2
 
+from src.core.config import load_gripper_jaws
 from src.grasping import candidates
 
 # (workpiece, scene updates placing it, its visual mesh)
@@ -100,17 +101,19 @@ def _scene_pose(scene_path, object_name):
 
 class MeshWorkpiecesTest(absltest.TestCase):
   def test_workpieces_have_grasp_candidates(self):
+    jaws = load_gripper_jaws("robotiq_hande")
+    gripper = candidates.GripperModel(
+      jaws.min_width_m, jaws.max_width_m, jaws.contact_depth_m
+    )
     for workpiece, scene_path, mesh_path in _WORKPIECES:
       with self.subTest(workpiece=workpiece):
         found = candidates.top_down_grasps(
-          *_read_glb(mesh_path), _scene_pose(scene_path, workpiece)
+          *_read_glb(mesh_path), _scene_pose(scene_path, workpiece), gripper
         )
         self.assertNotEmpty(found)
         for candidate in found:
           self.assertBetween(
-            candidate.width_m,
-            candidates.HANDE.min_width_m,
-            candidates.HANDE.max_width_m,
+            candidate.width_m, gripper.min_width_m, gripper.max_width_m
           )
 
 

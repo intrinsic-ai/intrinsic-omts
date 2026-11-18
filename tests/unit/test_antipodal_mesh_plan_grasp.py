@@ -26,7 +26,7 @@ from intrinsic.math.python import data_types
 from intrinsic.skills.python import skill_interface
 from intrinsic.world.proto import object_world_service_pb2
 
-from src.core.config import GraspConfig
+from src.core.config import GraspConfig, JawGeometry
 from src.hardware.antipodal_mesh_grasp_planner import AntipodalMeshGraspPlanner
 from src.skills.antipodal_mesh_plan_grasp import (
   antipodal_mesh_plan_grasp,
@@ -179,8 +179,22 @@ class _Planner:
     )
 
 
+# The Hand-E in configs/common/grippers.yaml.
+_JAWS = JawGeometry(min_width_m=0.01, max_width_m=0.06, contact_depth_m=0.022)
+_JAW_PARAMS = {
+  "jaw_min_width_m": _JAWS.min_width_m,
+  "jaw_max_width_m": _JAWS.max_width_m,
+  "jaw_contact_depth_m": _JAWS.contact_depth_m,
+}
+
+
 def _execute(
-  planner, *, world=None, grasp_frame="grasp", pregrasp_frame="pre_grasp"
+  planner,
+  *,
+  world=None,
+  grasp_frame="grasp",
+  pregrasp_frame="pre_grasp",
+  jaws=None,
 ):
   world = world or _World()
   request = types.SimpleNamespace(
@@ -191,6 +205,7 @@ def _execute(
       tool_frame="tool_frame",
       grasp_frame=grasp_frame,
       pregrasp_frame=pregrasp_frame,
+      **(_JAW_PARAMS if jaws is None else jaws),
     )
   )
   context = types.SimpleNamespace(
@@ -302,6 +317,19 @@ class AntipodalMeshPlanGraspSkillTest(absltest.TestCase):
     self.assertEmpty(world.updates)
     self.assertEmpty(world.created)
 
+  def test_jaws_too_narrow_for_the_part_find_no_grasp(self):
+    # The box is 40 mm across its only graspable axis.
+    planner = _Planner()
+    with self.assertRaises(skill_interface.SkillError):
+      _execute(planner, jaws={**_JAW_PARAMS, "jaw_max_width_m": 0.03})
+    self.assertEqual(planner.ik_calls, 0)
+
+  def test_requires_every_jaw_parameter(self):
+    jaws = dict(_JAW_PARAMS)
+    del jaws["jaw_contact_depth_m"]
+    with self.assertRaisesRegex(ValueError, "jaw_contact_depth_m"):
+      _execute(_Planner(), jaws=jaws)
+
 
 class WorkpieceMeshTest(absltest.TestCase):
   def test_reads_a_stored_mesh_in_the_object_frame(self):
@@ -342,6 +370,15 @@ class WorkpieceMeshTest(absltest.TestCase):
       )
 
 
+def _mesh_config(jaws=_JAWS):
+  return GraspConfig(
+    planner="antipodal_mesh",
+    antipodal_mesh_simulation_only=True,
+    antipodal_mesh_gripper="robotiq_hande" if jaws else None,
+    antipodal_mesh_jaws=jaws,
+  )
+
+
 class AntipodalMeshGraspPlannerTest(absltest.TestCase):
   def test_requires_the_simulation_only_acknowledgement(self):
     # As when --grasp_planner=antipodal_mesh overrides a cuboid_center config.
@@ -352,20 +389,25 @@ class AntipodalMeshGraspPlannerTest(absltest.TestCase):
 
   def test_requires_the_robot_object(self):
     # `create_grasp_planner` defaults it to "" for the other backends.
-    config = GraspConfig(
-      planner="antipodal_mesh", antipodal_mesh_simulation_only=True
-    )
     with self.assertRaisesRegex(ValueError, "robot object"):
       AntipodalMeshGraspPlanner(
-        mock.MagicMock(), config, "", "gripper", "tool_frame"
+        mock.MagicMock(), _mesh_config(), "", "gripper", "tool_frame"
+      )
+
+  def test_requires_a_gripper(self):
+    with self.assertRaisesRegex(ValueError, "antipodal_mesh_gripper"):
+      AntipodalMeshGraspPlanner(
+        mock.MagicMock(),
+        _mesh_config(jaws=None),
+        "ur_module",
+        "gripper",
+        "tool_frame",
       )
 
   @mock.patch("src.hardware.antipodal_mesh_grasp_planner.bt.Task")
   def test_builds_the_skill_task(self, unused_task):
     solution = mock.MagicMock()
-    config = GraspConfig(
-      planner="antipodal_mesh", antipodal_mesh_simulation_only=True
-    )
+    config = _mesh_config()
     planner = AntipodalMeshGraspPlanner(
       solution, config, "ur_module", "gripper", "tool_frame"
     )
@@ -378,6 +420,7 @@ class AntipodalMeshGraspPlannerTest(absltest.TestCase):
     )
     self.assertEqual(kwargs["workpiece_object"], "box")
     self.assertEqual(kwargs["robot_object"], "ur_module")
+    self.assertEqual({key: kwargs[key] for key in _JAW_PARAMS}, _JAW_PARAMS)
 
 
 if __name__ == "__main__":

@@ -58,6 +58,12 @@ def _boxes(*boxes):
   return candidates.validate_mesh(vertices, triangles)
 
 
+# The Hand-E in configs/common/grippers.yaml.
+_GRIPPER = candidates.GripperModel(
+  min_width_m=0.01, max_width_m=0.06, contact_depth_m=0.022
+)
+
+
 def _centered_box(size):
   return _boxes(([-s / 2 for s in size], size))
 
@@ -65,7 +71,10 @@ def _centered_box(size):
 class TopDownGraspsTest(absltest.TestCase):
   def test_box_is_grasped_across_its_narrow_side(self):
     found = candidates.top_down_grasps(
-      *_centered_box((0.04, 0.1, 0.03)), np.eye(4), pregrasp_distance_m=0.1
+      *_centered_box((0.04, 0.1, 0.03)),
+      np.eye(4),
+      _GRIPPER,
+      pregrasp_distance_m=0.1,
     )
 
     self.assertNotEmpty(found)
@@ -92,7 +101,7 @@ class TopDownGraspsTest(absltest.TestCase):
     world_t_object[:3, 3] = [0.3, 0.2, 0.7]
 
     best = candidates.top_down_grasps(
-      *_centered_box((0.04, 0.1, 0.03)), world_t_object
+      *_centered_box((0.04, 0.1, 0.03)), world_t_object, _GRIPPER
     )[0]
 
     # The narrow side now spans world y.
@@ -103,6 +112,7 @@ class TopDownGraspsTest(absltest.TestCase):
     found = candidates.top_down_grasps(
       *_centered_box((0.04, 0.1, 0.03)),
       np.eye(4),
+      _GRIPPER,
       preferred_jaw_axis=(-1.0, 0.0, 0.0),
     )
 
@@ -110,7 +120,9 @@ class TopDownGraspsTest(absltest.TestCase):
 
   def test_part_wider_than_the_open_jaws_has_no_grasp(self):
     self.assertEmpty(
-      candidates.top_down_grasps(*_centered_box((0.08, 0.1, 0.03)), np.eye(4))
+      candidates.top_down_grasps(
+        *_centered_box((0.08, 0.1, 0.03)), np.eye(4), _GRIPPER
+      )
     )
 
   def test_small_pose_estimate_tilt_keeps_the_grasps(self):
@@ -125,7 +137,7 @@ class TopDownGraspsTest(absltest.TestCase):
 
     self.assertNotEmpty(
       candidates.top_down_grasps(
-        *_centered_box((0.04, 0.1, 0.03)), world_t_object
+        *_centered_box((0.04, 0.1, 0.03)), world_t_object, _GRIPPER
       )
     )
 
@@ -140,7 +152,10 @@ class TopDownGraspsTest(absltest.TestCase):
 
     self.assertEmpty(
       candidates.top_down_grasps(
-        *_centered_box((0.04, 0.1, 0.03)), world_t_object, max_tilt_deg=2.0
+        *_centered_box((0.04, 0.1, 0.03)),
+        world_t_object,
+        _GRIPPER,
+        max_tilt_deg=2.0,
       )
     )
 
@@ -149,15 +164,17 @@ class TopDownGraspsTest(absltest.TestCase):
     # Too thin to be grasped itself, but in the +x finger's path.
     wall = ((0.015, -0.05, 0.0), (0.005, 0.1, 0.03))
 
-    self.assertNotEmpty(candidates.top_down_grasps(*_boxes(plate), np.eye(4)))
+    self.assertNotEmpty(
+      candidates.top_down_grasps(*_boxes(plate), np.eye(4), _GRIPPER)
+    )
     self.assertEmpty(
-      candidates.top_down_grasps(*_boxes(plate, wall), np.eye(4))
+      candidates.top_down_grasps(*_boxes(plate, wall), np.eye(4), _GRIPPER)
     )
 
   def test_planning_is_repeatable(self):
     mesh = _centered_box((0.04, 0.1, 0.03))
-    first = candidates.top_down_grasps(*mesh, np.eye(4))
-    second = candidates.top_down_grasps(*mesh, np.eye(4))
+    first = candidates.top_down_grasps(*mesh, np.eye(4), _GRIPPER)
+    second = candidates.top_down_grasps(*mesh, np.eye(4), _GRIPPER)
 
     self.assertEqual(len(first), len(second))
     for a, b in zip(first, second, strict=True):

@@ -1,0 +1,9 @@
+# Parallel-jaw grippers for the antipodal_mesh grasp planner, selected with
+# `grasp.antipodal_mesh_gripper`.
+
+# Robotiq Hand-E with OMTS's finger offset patch, from the SDF colliders: the
+# fingertip spheres close from 60 to 10 mm, 22 mm below `tool_frame`.
+robotiq_hande:
+  min_width_m: 0.01
+  max_width_m: 0.06
+  contact_depth_m: 0.022

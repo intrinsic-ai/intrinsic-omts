@@ -43,11 +43,6 @@ class GripperModel:
   contact_depth_m: float
 
 
-# Robotiq Hand-E with OMTS's finger offset patch, from the SDF colliders: the
-# fingertip spheres close from 60 to 10 mm, 22 mm below `tool_frame`.
-HANDE = GripperModel(min_width_m=0.01, max_width_m=0.06, contact_depth_m=0.022)
-
-
 @dataclasses.dataclass(frozen=True)
 class Candidate:
   """A top-down grasp, expressed in the world frame.
@@ -125,7 +120,7 @@ def top_down_grasps(
   vertices,
   triangles,
   world_t_object,
-  gripper=HANDE,
+  gripper,
   *,
   pregrasp_distance_m=0.1,
   max_tilt_deg=10.0,

@@ -50,6 +50,11 @@ message AntipodalMeshPlanGraspParams {
     requires: "grpc://intrinsic_proto.motion_planning.v1.MotionPlannerService",
     skill_annotations: { always_provide_connection_info: true }
   }];
+  // Required gripper jaw geometry: the closed and open finger pad gap.
+  optional double jaw_min_width_m = 12;
+  optional double jaw_max_width_m = 13;
+  // Distance along the tool z axis from `tool_frame` to the finger pads.
+  optional double jaw_contact_depth_m = 14;
 }
 
 message AntipodalMeshPlanGraspResult {

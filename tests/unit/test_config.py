@@ -30,6 +30,7 @@ from src.core.config import (
   GraspConfig,
   GripperConfig,
   load_app_config,
+  load_gripper_jaws,
   with_workpiece,
 )
 from src.core.types import GraspPlannerType, SimulationMode
@@ -118,6 +119,36 @@ class ConfigTest(absltest.TestCase):
     with self.assertRaisesRegex(
       ValueError, "Unsupported grasp planner 'nonexistent_planner'"
     ):
+      load_app_config(tmp_path)
+
+  def test_mesh_planner_gripper_comes_from_the_catalogue(self):
+    config = load_app_config("configs/omts/app_config.yaml")
+    self.assertEqual(
+      config.grasp.antipodal_mesh_jaws, load_gripper_jaws("robotiq_hande")
+    )
+
+  def test_unknown_mesh_planner_gripper_fails_loudly(self):
+    raw = yaml.safe_load(
+      pathlib.Path("configs/omts/app_config.yaml").read_text(encoding="utf-8")
+    )
+    raw["grasp"]["antipodal_mesh_gripper"] = "hande"
+    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as tmp:
+      yaml.safe_dump(raw, tmp)
+      tmp_path = tmp.name
+
+    with self.assertRaisesRegex(KeyError, "Unknown gripper 'hande'"):
+      load_app_config(tmp_path)
+
+  def test_jaws_cannot_be_set_directly(self):
+    raw = yaml.safe_load(
+      pathlib.Path("configs/omts/app_config.yaml").read_text(encoding="utf-8")
+    )
+    raw["grasp"]["antipodal_mesh_jaws"] = {"min_width_m": 0.01}
+    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as tmp:
+      yaml.safe_dump(raw, tmp)
+      tmp_path = tmp.name
+
+    with self.assertRaisesRegex(ValueError, "antipodal_mesh_gripper"):
       load_app_config(tmp_path)
 
   def test_missing_required_section_fails_loudly(self):
@@ -337,6 +368,25 @@ class GraspPlannerFactoryTest(absltest.TestCase):
     self.assertEqual(planner.default_surfaces, (4,))
     self.assertEqual(planner.default_num_rotations, 8)
     self.assertEqual(planner.default_settle_seconds, 1.5)
+
+  def test_cell_configs_name_a_mesh_planner_gripper(self):
+    """The README demo selects the mesh planner on these configs by flag."""
+    for path in (
+      "configs/omts/app_config.yaml",
+      "configs/lab_bb_01/app_config.yaml",
+    ):
+      with self.subTest(path=path):
+        grasp = load_app_config(path).grasp
+        planner = create_grasp_planner(
+          planner_type=GraspPlannerType.ANTIPODAL_MESH,
+          solution=mock.MagicMock(),
+          config=dataclasses.replace(
+            grasp, antipodal_mesh_simulation_only=True
+          ),
+          tool_object_name="gripper",
+          robot_object_name="ur_module",
+        )
+        self.assertIsInstance(planner, GraspPlannerInterface)
 
   def test_moveit_without_its_skill_fails_loudly(self):
     """Fails at startup, not mid-cycle, if the solution lacks the skill."""

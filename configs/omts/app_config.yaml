@@ -63,6 +63,8 @@ grasp:
   moveit_retract_dist_m: 0.05
   moveit_timeout_ms: 15000.0
   moveit_settle_seconds: 0.3
+  # Only relevant when planner is "antipodal_mesh"
+  antipodal_mesh_gripper: "robotiq_hande"
 
 cycle:
   num_cycles: 1

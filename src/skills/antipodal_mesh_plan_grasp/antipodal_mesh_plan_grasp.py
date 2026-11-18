@@ -45,6 +45,21 @@ def _value(params, field, default):
   return getattr(params, field) if params.HasField(field) else default
 
 
+_JAW_FIELDS = ("jaw_min_width_m", "jaw_max_width_m", "jaw_contact_depth_m")
+
+
+def _gripper(params):
+  """Returns the jaw geometry from the params; there is no default gripper."""
+  missing = [field for field in _JAW_FIELDS if not params.HasField(field)]
+  if missing:
+    raise ValueError(f"Missing gripper jaw parameter(s): {', '.join(missing)}.")
+  return candidates.GripperModel(
+    min_width_m=params.jaw_min_width_m,
+    max_width_m=params.jaw_max_width_m,
+    contact_depth_m=params.jaw_contact_depth_m,
+  )
+
+
 def _matrix(transform):
   """Returns a GeometricTransform as a 4x4 matrix."""
   if transform.HasField("matrix4d"):
@@ -111,6 +126,7 @@ class AntipodalMeshPlanGrasp(skill_interface.Skill):
 
   def execute(self, request, context):
     params = request.params
+    gripper = _gripper(params)
     world = context.object_world
     root = world.root
     workpiece = world.get_object(params.workpiece_object)
@@ -129,6 +145,7 @@ class AntipodalMeshPlanGrasp(skill_interface.Skill):
       vertices,
       triangles,
       world_t_object,
+      gripper,
       pregrasp_distance_m=_value(params, "pregrasp_distance_m", 0.1),
       max_tilt_deg=_value(params, "max_approach_tilt_deg", 10.0),
       preferred_jaw_axis=world_t_tool[:3, 0],

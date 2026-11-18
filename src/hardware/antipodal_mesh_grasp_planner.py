@@ -22,7 +22,7 @@ from typing import Any
 
 from intrinsic.solutions import behavior_tree as bt
 
-from src.core.config import GraspConfig
+from src.core.config import GRIPPER_CATALOG, GraspConfig
 from src.hardware.grasping import GraspPlannerInterface
 
 
@@ -51,6 +51,12 @@ class AntipodalMeshGraspPlanner(GraspPlannerInterface):
       raise ValueError(
         "The antipodal mesh grasp planner needs the robot object name."
       )
+    if config.antipodal_mesh_jaws is None:
+      raise ValueError(
+        "The antipodal mesh grasp planner has no default gripper; set "
+        f"grasp.antipodal_mesh_gripper to a gripper in {GRIPPER_CATALOG}."
+      )
+    self._jaws = config.antipodal_mesh_jaws
     self._skill = solution.skills.ai.intrinsic.antipodal_mesh_plan_grasp
     self._config = config
     self._robot_object_name = robot_object_name
@@ -78,5 +84,8 @@ class AntipodalMeshGraspPlanner(GraspPlannerInterface):
         pregrasp_frame=pregrasp_frame_name,
         pregrasp_distance_m=self._config.antipodal_mesh_pregrasp_distance_m,
         max_approach_tilt_deg=self._config.antipodal_mesh_max_approach_tilt_deg,
+        jaw_min_width_m=self._jaws.min_width_m,
+        jaw_max_width_m=self._jaws.max_width_m,
+        jaw_contact_depth_m=self._jaws.contact_depth_m,
       ),
     )

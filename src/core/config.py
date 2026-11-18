@@ -220,6 +220,41 @@ class ReturnShiftConfig:
   bounds_rz_degrees: float = 0.0
 
 
+# Catalogue of parallel-jaw grippers, relative to the working directory like
+# the default `--config`.
+GRIPPER_CATALOG = pathlib.Path("configs/common/grippers.yaml")
+
+
+@dataclasses.dataclass(frozen=True)
+class JawGeometry:
+  """Parallel-jaw geometry of a gripper in the gripper catalogue.
+
+  Attributes:
+      min_width_m: Smallest gap between the finger pads.
+      max_width_m: Gap between the finger pads when fully open.
+      contact_depth_m: Distance along the tool z axis from the tool frame to
+        the finger pads.
+  """
+
+  min_width_m: float
+  max_width_m: float
+  contact_depth_m: float
+
+
+def load_gripper_jaws(name: str) -> JawGeometry:
+  """Returns the jaw geometry of gripper `name` from the gripper catalogue.
+
+  Raises:
+      KeyError: If the catalogue has no gripper `name`.
+  """
+  catalog = yaml.safe_load(GRIPPER_CATALOG.read_text(encoding="utf-8")) or {}
+  if name not in catalog:
+    raise KeyError(
+      f"Unknown gripper '{name}'; {GRIPPER_CATALOG} defines {sorted(catalog)}."
+    )
+  return JawGeometry(**catalog[name])
+
+
 @dataclasses.dataclass(frozen=True)
 class GraspConfig:
   """Selects and tunes the grasp planning backend used during the infeed pick.
@@ -233,6 +268,9 @@ class GraspConfig:
         `'antipodal_mesh'`).
       antipodal_mesh_simulation_only: Required acknowledgement that the
         `'antipodal_mesh'` planner runs against a simulated deployment.
+      antipodal_mesh_gripper: Gripper in `configs/common/grippers.yaml` that
+        the `'antipodal_mesh'` planner requires.
+      antipodal_mesh_jaws: Its jaw geometry, set by `load_app_config`.
       antipodal_mesh_pregrasp_distance_m: Distance in meters between the
         planned grasp and pre-grasp frames.
       antipodal_mesh_max_approach_tilt_deg: Largest angle, in degrees, between
@@ -263,6 +301,8 @@ class GraspConfig:
   moveit_timeout_ms: float = 15000.0
   moveit_settle_seconds: float = 0.3
   antipodal_mesh_simulation_only: bool = False
+  antipodal_mesh_gripper: str | None = None
+  antipodal_mesh_jaws: JawGeometry | None = None
   antipodal_mesh_pregrasp_distance_m: float = 0.1
   antipodal_mesh_max_approach_tilt_deg: float = 10.0
 
@@ -490,11 +530,23 @@ def load_app_config(path: str | pathlib.Path) -> AppConfig:
     if "machine" in raw_data and raw_data["machine"] is not None
     else None
   )
+  if "antipodal_mesh_jaws" in (raw_data.get("grasp") or {}):
+    raise ValueError(
+      f"Set grasp.antipodal_mesh_gripper in {file_path} instead of "
+      f"antipodal_mesh_jaws, which comes from {GRIPPER_CATALOG}."
+    )
   grasp_config = (
     _construct_section(GraspConfig, raw_data, "grasp", file_path)
     if "grasp" in raw_data and raw_data["grasp"] is not None
     else GraspConfig()
   )
+  if grasp_config.antipodal_mesh_gripper:
+    grasp_config = dataclasses.replace(
+      grasp_config,
+      antipodal_mesh_jaws=load_gripper_jaws(
+        grasp_config.antipodal_mesh_gripper
+      ),
+    )
 
   return AppConfig(
     cell_name=str(raw_data["cell_name"]),

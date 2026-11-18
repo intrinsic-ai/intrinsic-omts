@@ -47,11 +47,16 @@ cycle standoff and no fallback offset, because mesh picks do not retract
 grasp:
   planner: "antipodal_mesh"
   antipodal_mesh_simulation_only: true
+  antipodal_mesh_gripper: "robotiq_hande" # required
   antipodal_mesh_pregrasp_distance_m: 0.1   # default
   antipodal_mesh_max_approach_tilt_deg: 10.0 # default
 ```
 
 Or select it for one run with `--grasp_planner=antipodal_mesh --antipodal_mesh_simulation_only`.
+
+`antipodal_mesh_gripper` names a gripper in
+[`configs/common/grippers.yaml`](../../configs/common/grippers.yaml); there is
+no default. To plan for another parallel-jaw gripper, add it there.
 
 The skill plans on the workpiece's visual mesh, the `.glb` its SDF names, which
 it reads from the Object World. That mesh must be closed and outward facing,
@@ -119,7 +124,7 @@ Set both variables once, then run the steps below in the same shell.
 
 ## Limits
 
-- Only the Hand-E is modeled (`candidates.HANDE`).
+- Only the Hand-E is modeled (`configs/common/grippers.yaml`).
 - Only top-down grasps are planned.
 - Mass, friction and holding force are not modeled. The simulated gripper
   welds the part to a finger when it closes while touching it, and holds
