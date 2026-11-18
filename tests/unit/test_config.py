@@ -376,13 +376,10 @@ class GraspPlannerFactoryTest(absltest.TestCase):
       "configs/lab_bb_01/app_config.yaml",
     ):
       with self.subTest(path=path):
-        grasp = load_app_config(path).grasp
         planner = create_grasp_planner(
           planner_type=GraspPlannerType.ANTIPODAL_MESH,
           solution=mock.MagicMock(),
-          config=dataclasses.replace(
-            grasp, antipodal_mesh_simulation_only=True
-          ),
+          config=load_app_config(path).grasp,
           tool_object_name="gripper",
           robot_object_name="ur_module",
         )

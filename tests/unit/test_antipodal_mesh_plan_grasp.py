@@ -373,18 +373,17 @@ class WorkpieceMeshTest(absltest.TestCase):
 def _mesh_config(jaws=_JAWS):
   return GraspConfig(
     planner="antipodal_mesh",
-    antipodal_mesh_simulation_only=True,
     antipodal_mesh_gripper="robotiq_hande" if jaws else None,
     antipodal_mesh_jaws=jaws,
   )
 
 
 class AntipodalMeshGraspPlannerTest(absltest.TestCase):
-  def test_requires_the_simulation_only_acknowledgement(self):
-    # As when --grasp_planner=antipodal_mesh overrides a cuboid_center config.
+  def test_refuses_a_real_deployment(self):
+    solution = mock.MagicMock(is_simulated=False)
     with self.assertRaisesRegex(ValueError, "simulation only"):
       AntipodalMeshGraspPlanner(
-        mock.MagicMock(), GraspConfig(), "ur_module", "gripper", "tool_frame"
+        solution, _mesh_config(), "ur_module", "gripper", "tool_frame"
       )
 
   def test_requires_the_robot_object(self):

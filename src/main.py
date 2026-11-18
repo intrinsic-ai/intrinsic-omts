@@ -14,7 +14,6 @@
 
 """Main application entrypoint for the Open Machine Tending Solution."""
 
-import dataclasses
 from collections.abc import Sequence
 
 from absl import app, flags, logging
@@ -61,13 +60,6 @@ _GRASP_PLANNER = flags.DEFINE_enum_class(
   GraspPlannerType,
   "Optional override for the grasp planner backend, taking precedence over "
   "the 'grasp' section of the cell config.",
-)
-
-_ANTIPODAL_MESH_SIMULATION_ONLY = flags.DEFINE_bool(
-  "antipodal_mesh_simulation_only",
-  False,
-  "Acknowledges that the deployment is simulated, as required by the 'antipodal_mesh' "
-  "grasp planner.",
 )
 
 _WORKPIECE = flags.DEFINE_string(
@@ -197,13 +189,6 @@ def main(argv: Sequence[str]) -> None:
   config = load_app_config(_CONFIG.value)
   if _WORKPIECE.value:
     config = with_workpiece(config, _WORKPIECE.value)
-  if _ANTIPODAL_MESH_SIMULATION_ONLY.value:
-    config = dataclasses.replace(
-      config,
-      grasp=dataclasses.replace(
-        config.grasp, antipodal_mesh_simulation_only=True
-      ),
-    )
   run_machine_tending_pipeline(
     solution_address=_ADDRESS.value,
     config=config,

@@ -5,7 +5,10 @@ workpiece's triangle mesh instead of its bounding box, so curved and non-cuboid
 parts can be picked. It is named after its assumption of two opposing
 (antipodal) jaw contacts, so planners for other gripper kinds on a mesh, such
 as suction, can sit next to it. It is **simulation only**: the gripper model comes from the Hand-E
-SDF colliders and is not calibrated against hardware.
+SDF colliders and is not calibrated against hardware, so the planner refuses to
+start on a real deployment. A supervised hardware test needs that check in
+[`antipodal_mesh_grasp_planner.py`](../hardware/antipodal_mesh_grasp_planner.py)
+removed.
 
 ## How it works
 
@@ -46,13 +49,12 @@ cycle standoff and no fallback offset, because mesh picks do not retract
 ```yaml
 grasp:
   planner: "antipodal_mesh"
-  antipodal_mesh_simulation_only: true
   antipodal_mesh_gripper: "robotiq_hande" # required
   antipodal_mesh_pregrasp_distance_m: 0.1   # default
   antipodal_mesh_max_approach_tilt_deg: 10.0 # default
 ```
 
-Or select it for one run with `--grasp_planner=antipodal_mesh --antipodal_mesh_simulation_only`.
+Or select it for one run with `--grasp_planner=antipodal_mesh`.
 
 `antipodal_mesh_gripper` names a gripper in
 [`configs/common/grippers.yaml`](../../configs/common/grippers.yaml); there is
@@ -118,8 +120,7 @@ Set both variables once, then run the steps below in the same shell.
      --address=localhost:17080 \
      --config=configs/lab_bb_01/app_config.yaml \
      --workpiece="$WORKPIECE" \
-     --grasp_planner=antipodal_mesh \
-     --antipodal_mesh_simulation_only
+     --grasp_planner=antipodal_mesh
    ```
 
 ## Limits

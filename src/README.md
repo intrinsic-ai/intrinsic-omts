@@ -50,8 +50,7 @@ bazel run //src:omts_app -- \
 bazel run //src:omts_app -- \
   --address=localhost:17080 \
   --config=configs/lab_bb_01/app_config.yaml \
-  --grasp_planner=antipodal_mesh \
-  --antipodal_mesh_simulation_only
+  --grasp_planner=antipodal_mesh
 ```
 
 See [`grasping/README.md`](grasping/README.md) for the antipodal mesh planner and its

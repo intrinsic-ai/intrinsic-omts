@@ -266,8 +266,6 @@ class GraspConfig:
   Attributes:
       planner: Grasp planner backend (`'cuboid_center'`, `'moveit'`, or
         `'antipodal_mesh'`).
-      antipodal_mesh_simulation_only: Required acknowledgement that the
-        `'antipodal_mesh'` planner runs against a simulated deployment.
       antipodal_mesh_gripper: Gripper in `configs/common/grippers.yaml` that
         the `'antipodal_mesh'` planner requires.
       antipodal_mesh_jaws: Its jaw geometry, set by `load_app_config`.
@@ -300,7 +298,6 @@ class GraspConfig:
   moveit_retract_dist_m: float = 0.05
   moveit_timeout_ms: float = 15000.0
   moveit_settle_seconds: float = 0.3
-  antipodal_mesh_simulation_only: bool = False
   antipodal_mesh_gripper: str | None = None
   antipodal_mesh_jaws: JawGeometry | None = None
   antipodal_mesh_pregrasp_distance_m: float = 0.1

@@ -41,11 +41,12 @@ class AntipodalMeshGraspPlanner(GraspPlannerInterface):
     tool_object_name: str,
     tool_frame_name: str,
   ):
-    if not config.antipodal_mesh_simulation_only:
+    # Not yet tested on hardware: remove this check for a supervised hardware
+    # test.
+    if not solution.is_simulated:
       raise ValueError(
-        "The antipodal mesh grasp planner is for simulation only; set "
-        "antipodal_mesh_simulation_only (or pass "
-        "--antipodal_mesh_simulation_only)."
+        "The antipodal mesh grasp planner is for simulation only; it has not "
+        "been tested on hardware."
       )
     if not robot_object_name:
       raise ValueError(
