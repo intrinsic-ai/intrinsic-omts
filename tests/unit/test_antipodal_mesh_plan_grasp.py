@@ -420,6 +420,7 @@ class AntipodalMeshGraspPlannerTest(absltest.TestCase):
     self.assertEqual(kwargs["workpiece_object"], "box")
     self.assertEqual(kwargs["robot_object"], "ur_module")
     self.assertEqual({key: kwargs[key] for key in _JAW_PARAMS}, _JAW_PARAMS)
+    self.assertEqual(kwargs["contact_edge_margin_m"], 0.005)
 
 
 if __name__ == "__main__":

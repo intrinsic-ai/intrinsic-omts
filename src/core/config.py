@@ -274,6 +274,8 @@ class GraspConfig:
       antipodal_mesh_max_approach_tilt_deg: Largest angle, in degrees, between
         a contact face's normal and the horizontal plane. It also absorbs tilt
         in the estimated workpiece pose.
+      antipodal_mesh_contact_edge_margin_m: Smallest height in meters between
+        a contact and the workpiece's top or bottom.
       moveit_tool_frame_name: MoveIt robot model link used as the grasp TCP.
         This is an SRDF link name, not an Object World frame.
       moveit_group_name: MoveIt planning group for the arm.
@@ -302,6 +304,7 @@ class GraspConfig:
   antipodal_mesh_jaws: JawGeometry | None = None
   antipodal_mesh_pregrasp_distance_m: float = 0.1
   antipodal_mesh_max_approach_tilt_deg: float = 10.0
+  antipodal_mesh_contact_edge_margin_m: float = 0.005
 
   def __post_init__(self) -> None:
     valid = sorted(member.value for member in GraspPlannerType)
@@ -343,6 +346,11 @@ class GraspConfig:
       raise ValueError(
         f"antipodal_mesh_max_approach_tilt_deg must be in [0, 90), got "
         f"{self.antipodal_mesh_max_approach_tilt_deg}."
+      )
+    if self.antipodal_mesh_contact_edge_margin_m < 0.0:
+      raise ValueError(
+        f"antipodal_mesh_contact_edge_margin_m must not be negative, got "
+        f"{self.antipodal_mesh_contact_edge_margin_m}."
       )
 
   @property

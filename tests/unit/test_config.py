@@ -335,6 +335,10 @@ class GraspConfigTest(absltest.TestCase):
       GraspConfig(moveit_settle_seconds=0.0).moveit_settle_seconds, 0.0
     )
 
+  def test_rejects_a_negative_contact_edge_margin(self):
+    with self.assertRaisesRegex(ValueError, "contact_edge_margin_m"):
+      GraspConfig(antipodal_mesh_contact_edge_margin_m=-0.001)
+
 
 class GraspPlannerFactoryTest(absltest.TestCase):
   """Unit tests for `create_grasp_planner`."""

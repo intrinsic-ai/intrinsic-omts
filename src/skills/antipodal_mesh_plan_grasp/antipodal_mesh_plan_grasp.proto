@@ -55,6 +55,8 @@ message AntipodalMeshPlanGraspParams {
   optional double jaw_max_width_m = 13;
   // Distance along the tool z axis from `tool_frame` to the finger pads.
   optional double jaw_contact_depth_m = 14;
+  // Smallest height between a contact and the workpiece's top or bottom.
+  optional double contact_edge_margin_m = 15;
 }
 
 message AntipodalMeshPlanGraspResult {

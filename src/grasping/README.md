@@ -19,8 +19,10 @@ runs the [`antipodal_mesh_plan_grasp`](../skills/antipodal_mesh_plan_grasp/) ski
    samples points on the near-vertical faces of the mesh, casts a ray from each
    point through the part to the opposite contact, and keeps pairs that fit the
    10 to 60 mm jaw opening, whose normals oppose each other within 15 degrees,
+   whose contacts stay at least 5 mm below the part's top and above its bottom,
    and whose closing fingers do not cross another part of the mesh. Candidates
-   closest to the part's centroid come first.
+   closest to the part's center (centroid horizontally, mid-height vertically)
+   come first.
 2. Checks candidates in that order with Core's motion planner: collision-checked
    inverse kinematics at the pregrasp (jaws open), then a collision-checked
    Cartesian-linear plan to the grasp. This uses
@@ -52,6 +54,7 @@ grasp:
   antipodal_mesh_gripper: "robotiq_hande" # required
   antipodal_mesh_pregrasp_distance_m: 0.1   # default
   antipodal_mesh_max_approach_tilt_deg: 10.0 # default
+  antipodal_mesh_contact_edge_margin_m: 0.005 # default
 ```
 
 Or select it for one run with `--grasp_planner=antipodal_mesh`.

@@ -124,6 +124,7 @@ def top_down_grasps(
   *,
   pregrasp_distance_m=0.1,
   max_tilt_deg=10.0,
+  edge_margin_m=0.005,
   friction_cone_deg=15.0,
   num_samples=2000,
   max_candidates=20,
@@ -133,8 +134,9 @@ def top_down_grasps(
   """Returns grasp candidates in the world frame, best first.
 
   Candidates are ranked by how close the grasp center is to the part's
-  centroid (a stable, central hold), then by how directly the two surface
-  normals oppose each other.
+  center, its centroid horizontally and mid-height vertically (a stable,
+  central hold), then by how directly the two surface normals oppose each
+  other.
 
   Args:
     vertices: (N, 3) mesh vertices in the object frame.
@@ -144,6 +146,8 @@ def top_down_grasps(
     pregrasp_distance_m: Height of the pregrasp above the grasp.
     max_tilt_deg: Largest angle between a contact face's normal and the
       horizontal plane, which also absorbs tilt in `world_t_object`.
+    edge_margin_m: Smallest height between either contact and the part's
+      lowest or highest point.
     friction_cone_deg: Largest angle between the jaw axis and either normal.
     num_samples: Surface points to sample.
     max_candidates: Maximum number of distinct candidates to return.
@@ -185,16 +189,24 @@ def top_down_grasps(
     width[i : i + 64] = distances[np.arange(len(nearest)), nearest]
   # The far face of a good pair faces along the ray, away from the near face.
   opposing = np.einsum("ij,ij->i", normals[first], inward)
+  # Keep both contacts away from the part's top and bottom edges.
+  bottom, top = corners[..., 2].min(), corners[..., 2].max()
+  far_z = points[:, 2] + inward[:, 2] * np.where(np.isfinite(width), width, 0)
+  low = np.minimum(points[:, 2], far_z)
+  high = np.maximum(points[:, 2], far_z)
   keep = (
     np.isfinite(width)
     & (width >= gripper.min_width_m)
     & (width <= gripper.max_width_m)
     & (opposing >= np.cos(np.radians(friction_cone_deg)))
+    & (low >= bottom + edge_margin_m)
+    & (high <= top - edge_margin_m)
   )
 
-  centroid = corners.reshape(-1, 3).mean(axis=0)
+  center = corners.reshape(-1, 3).mean(axis=0)
+  center[2] = (bottom + top) / 2
   centers = points + inward * width[:, None] / 2
-  offset = np.linalg.norm((centers - centroid)[:, :2], axis=1)
+  offset = np.linalg.norm(centers - center, axis=1)
   order = np.lexsort((-opposing, offset))
   preferred = np.asarray(preferred_jaw_axis, dtype=float)
 

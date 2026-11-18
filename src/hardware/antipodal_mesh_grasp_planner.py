@@ -85,6 +85,7 @@ class AntipodalMeshGraspPlanner(GraspPlannerInterface):
         pregrasp_frame=pregrasp_frame_name,
         pregrasp_distance_m=self._config.antipodal_mesh_pregrasp_distance_m,
         max_approach_tilt_deg=self._config.antipodal_mesh_max_approach_tilt_deg,
+        contact_edge_margin_m=self._config.antipodal_mesh_contact_edge_margin_m,
         jaw_min_width_m=self._jaws.min_width_m,
         jaw_max_width_m=self._jaws.max_width_m,
         jaw_contact_depth_m=self._jaws.contact_depth_m,

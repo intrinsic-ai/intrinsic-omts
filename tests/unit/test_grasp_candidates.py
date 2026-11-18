@@ -90,6 +90,31 @@ class TopDownGraspsTest(absltest.TestCase):
       best.pregrasp[:3, 3], best.grasp[:3, 3] + [0, 0, 0.1], atol=1e-9
     )
 
+  def test_contacts_keep_the_edge_margin_and_prefer_mid_height(self):
+    # The box spans z from -15 to 15 mm.
+    found = candidates.top_down_grasps(
+      *_centered_box((0.04, 0.1, 0.03)),
+      np.eye(4),
+      _GRIPPER,
+      edge_margin_m=0.01,
+    )
+
+    self.assertNotEmpty(found)
+    contact_z = [c.grasp[2, 3] - _GRIPPER.contact_depth_m for c in found]
+    self.assertBetween(min(contact_z), -0.005, 0.005)
+    self.assertBetween(max(contact_z), -0.005, 0.005)
+    self.assertLess(abs(contact_z[0]), 0.002)
+
+  def test_part_lower_than_both_edge_margins_has_no_grasp(self):
+    self.assertEmpty(
+      candidates.top_down_grasps(
+        *_centered_box((0.04, 0.1, 0.03)),
+        np.eye(4),
+        _GRIPPER,
+        edge_margin_m=0.016,
+      )
+    )
+
   def test_object_pose_is_applied(self):
     yaw = math.radians(90)
     world_t_object = np.eye(4)
