@@ -121,8 +121,11 @@ class _World:
       return self.object_pose
     return data_types.Pose3()
 
-  def update_transform(self, node_a, node_b, a_t_b):
-    del node_a
+  def update_transform(self, node_a, node_b, a_t_b, node_to_update=None):
+    # Like the world service, which only infers the node to update when one
+    # of the two is an object, not for a frame parented to a frame.
+    if node_a is not self.root and node_to_update is None:
+      raise ValueError("'node_a' and 'node_b' are not neighbors")
     self.updates[node_b[2]] = a_t_b.matrix4x4()
 
   def create_frame(self, frame_name, parent, parent_t_frame):

@@ -182,10 +182,11 @@ class AntipodalMeshPlanGrasp(skill_interface.Skill):
       ):
         parent = world.get_frame(parent_frame, "root") if parent_frame else root
         if frame in root.frame_names:
+          # Named explicitly: the world service does not infer it for a frame
+          # parented to another frame, such as the `_workpiece` frame.
+          node = world.get_frame(frame, "root")
           world.update_transform(
-            node_a=parent,
-            node_b=world.get_frame(frame, "root"),
-            a_t_b=transform,
+            node_a=parent, node_b=node, a_t_b=transform, node_to_update=node
           )
         else:
           world.create_frame(
