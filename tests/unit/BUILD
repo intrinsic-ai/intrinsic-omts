@@ -245,7 +245,6 @@ py_test(
         "//tools/world:apply_scene_updates_lib",
         "@com_google_absl_py//absl/testing:absltest",
         "@intrinsic-core//intrinsic_perception/intrinsic/perception/skills/calibration:sample_calibration_poses_py_pb2",
-        "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
         "@intrinsic-core//intrinsic_sdk/intrinsic/world/proto:object_world_updates_py_pb2",
         "@intrinsic_apis//intrinsic/assets/services/proto:service_manifest_py_pb2",
         "@intrinsic_apis//intrinsic/icon/server/config:icon_main_config_py_pb2",
