@@ -235,7 +235,6 @@ py_test(
     name = "test_world_configs",
     srcs = ["test_world_configs.py"],
     data = [
-        "//:moveit_planning_service_fds.binpb",
         "//configs:all_configs",
     ],
     deps = [
@@ -245,6 +244,7 @@ py_test(
         ":hardware_module_config_py_pb2",
         ":ur_module_config_py_pb2",
         "//src/core:config",
+        "//third_party/intrinsic_moveit/proto:moveit_planning_service_py_pb2",
         "//tools/world:apply_scene_updates_lib",
         "@com_google_absl_py//absl/testing:absltest",
         "@intrinsic-core//intrinsic_perception/intrinsic/perception/skills/calibration:sample_calibration_poses_py_pb2",

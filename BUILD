@@ -255,17 +255,10 @@ intrinsic_asset_instance(
     instance_name = "flowstate_ros_bridge",
 )
 
-genrule(
-    name = "moveit_planning_service_fds",
-    srcs = ["@moveit_planning_service_bundle//:moveit_planning_service.bundle.tar"],
-    outs = ["moveit_planning_service_fds.binpb"],
-    cmd = "tar -xOf $< descriptors-transitive-descriptor-set.proto.bin > $@",
-)
-
 imported_asset_bundle(
     name = "moveit_planning_service_asset",
     bundle = "@moveit_planning_service_bundle//:moveit_planning_service.bundle.tar",
-    file_descriptor_set = ":moveit_planning_service_fds.binpb",
+    file_descriptor_set = "//third_party/intrinsic_moveit/proto:moveit_planning_service_proto",
     manifest = "//configs:common/moveit_planning_service_manifest.textproto",
 )
 

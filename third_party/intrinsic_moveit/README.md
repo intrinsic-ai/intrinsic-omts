@@ -121,6 +121,7 @@ flowchart TD
 | :--- | :--- |
 | [`moveit_grasp_planner.py`](./moveit_grasp_planner.py) | `MoveItGraspPlannerInterface` (implements the first-party [`GraspPlannerInterface`](../../src/hardware/grasping.py)) and its `MoveItGraspPlanner` / `MockMoveItGraspPlanner` implementations; surface constants. |
 | [`moveit_grasp_planning.py`](./moveit_grasp_planning.py) | `build_moveit_grasp_planning_subtree` — plan a grasp, then approach the resulting pre-grasp. |
+| [`proto/moveit_planning_service.proto`](./proto/moveit_planning_service.proto) | `MoveItPlanningServiceConfig` schema used to validate `moveit_planning_service_config.textproto` and generate asset metadata without unpacking the service bundle. |
 | [`tools/moveit_plan_grasp_and_move.py`](./tools/moveit_plan_grasp_and_move.py) | CLI tool to plan a grasp on target workpiece(s) and move the arm to pre-grasp. |
 | [`tests/`](./tests/) | Offline unit tests for grasp planning subtree and CLI argument parsing. |
 

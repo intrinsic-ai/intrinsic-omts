@@ -126,8 +126,7 @@ OMTS adheres to clean separation of concerns:
 #### GitHub release artifacts
 
 During the build, Bazel automatically downloads the following prebuilt bundles
-and model weights from this repository's GitHub Releases (configured in
-[`MODULE.bazel`](MODULE.bazel)):
+from GitHub Releases (configured in [`MODULE.bazel`](MODULE.bazel)):
 
 - `flowstate_ros_bridge.bundle.tar`: Prebuilt service of
   [`flowstate_ros_bridge`](https://github.com/intrinsic-ai/sdk-ros/tree/main/flowstate_ros_bridge).
