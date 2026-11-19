@@ -25,13 +25,7 @@ import math
 import os
 
 from absl.testing import absltest
-from google.protobuf import (
-  any_pb2,
-  descriptor_pb2,
-  descriptor_pool,
-  message_factory,
-  text_format,
-)
+from google.protobuf import any_pb2, text_format
 from intrinsic.assets.services.proto import service_manifest_pb2
 from intrinsic.icon.control.parts.hal.adio_part import (
   hal_adio_part_config_pb2,
@@ -52,6 +46,7 @@ from intrinsic.perception.skills.calibration import sample_calibration_poses_pb2
 from intrinsic.world.proto import object_world_updates_pb2
 
 from src.core.config import load_app_config
+from third_party.intrinsic_moveit.proto import moveit_planning_service_pb2
 from tools.world.apply_scene_updates import DEFAULT_UPDATE_FILES
 
 # Ensure all google.protobuf.Any payload descriptors are registered in the pool.
@@ -63,6 +58,7 @@ _REGISTERED_ANY_DESCRIPTORS = (
   ur_module_config_pb2.UniversalRobotsModuleConfig.DESCRIPTOR,
   icon_main_config_pb2.IconMainConfig.DESCRIPTOR,
   camera_config_pb2.CameraConfig.DESCRIPTOR,
+  moveit_planning_service_pb2.MoveItPlanningServiceConfig.DESCRIPTOR,
 )
 
 # Every world update config is expected to be an ObjectWorldUpdates. Configs
@@ -96,22 +92,6 @@ _EXPECTED_SCENE_FRAMES = {
     "view",
   ],
 }
-
-
-def _load_moveit_planning_service_config_class():
-  """Registers moveit_planning_service.proto from the bundle FDS and returns its class."""
-  pool = descriptor_pool.Default()
-  try:
-    desc = pool.FindMessageTypeByName("intrinsic.MoveItPlanningServiceConfig")
-  except KeyError:
-    with open("moveit_planning_service_fds.binpb", "rb") as f:
-      fds = descriptor_pb2.FileDescriptorSet.FromString(f.read())
-    for fd in fds.file:
-      if fd.name == "moveit_planning_service.proto":
-        pool.Add(fd)
-        break
-    desc = pool.FindMessageTypeByName("intrinsic.MoveItPlanningServiceConfig")
-  return message_factory.GetMessageClass(desc)
 
 
 def _config_paths() -> list[str]:
@@ -319,7 +299,6 @@ class WorldUpdateConfigsTest(absltest.TestCase):
 
   def test_every_textproto_service_config_and_manifest_parses(self):
     """Validates all checked-in .textproto service configs and manifests against their proto schemas."""
-    moveit_cfg_cls = _load_moveit_planning_service_config_class()
     textproto_files = _textproto_paths()
     self.assertNotEmpty(textproto_files)
 
@@ -358,13 +337,18 @@ class WorldUpdateConfigsTest(absltest.TestCase):
             self.assertTrue(any_msg.Unpack(cam_cfg))
             self.assertEqual(cam_cfg.identifier.ros.driver_type, "orbbec")
           elif path.endswith("moveit_planning_service_config.textproto"):
-            moveit_cfg = moveit_cfg_cls()
+            moveit_cfg = (
+              moveit_planning_service_pb2.MoveItPlanningServiceConfig()
+            )
             self.assertTrue(any_msg.Unpack(moveit_cfg))
-            self.assertTrue(moveit_cfg.intrinsic_core_ingress_address)
-            self.assertTrue(moveit_cfg.zenoh_router_address)
+            self.assertIn(
+              "svc.cluster.local", moveit_cfg.intrinsic_core_ingress_address
+            )
+            self.assertIn("svc.cluster.local", moveit_cfg.zenoh_router_address)
             self.assertEqual(
               moveit_cfg.robot_base_frame_id, "ur_module/base_link"
             )
+            self.assertFalse(moveit_cfg.use_mock_hardware)
             if "/lab_bb_01/" in path:
               self.assertEqual(moveit_cfg.robot_config, "lab_bb_01")
           else:

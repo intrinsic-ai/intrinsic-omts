@@ -1,3 +1,6 @@
+# intrinsic_asset_instance.service_config replaces (rather than merges with) the
+# bundle's default_config.binarypb, so all cluster connection, TF, and collision
+# exclusion fields must remain populated alongside robot_config: "lab_bb_01".
 [type.googleapis.com/intrinsic.MoveItPlanningServiceConfig] {
   intrinsic_core_ingress_address: "istio-ingressgateway.app-ingress.svc.cluster.local:80"
   zenoh_router_address: "tcp/zenoh-router.app-intrinsic-base.svc.cluster.local:7447"
