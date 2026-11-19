@@ -21,8 +21,9 @@ built-in `cuboid_center` heuristic, which needs none of this.
 > or `lab_bb_01`), so `--grasp_planner=moveit` and `moveit_plan_grasp_and_move`
 > work directly against a deployed solution without manual sideloading or a
 > local ROS 2 workspace. See
-> [Deployment & Optional Local RViz](#deployment--optional-local-rviz) if you
-> want to inspect the live MoveIt planning scene in RViz.
+> [Deployment, RViz Visualization & Source Development](#deployment-rviz-visualization--source-development)
+> to inspect the live MoveIt planning scene in RViz or run the planning service
+> from source during development.
 
 The planning code here is third-party and deliberately namespaced: everything is
 named `moveit_*` so that it never has to be told apart from the built-in
@@ -136,53 +137,75 @@ touches any of it.
 
 ---
 
-## Deployment & Optional Local RViz
+## Deployment, RViz Visualization & Source Development
 
 `//:omts_solution` downloads both `moveit_planning_service.bundle.tar` and
 `moveit_plan_grasp_skill.bundle.tar` at build time (pinned to `v0.1.0` in
-[`MODULE.bazel`](../../MODULE.bazel)) and deploys them automatically:
+[`MODULE.bazel`](../../MODULE.bazel)) and deploys them automatically in the
+cluster (`rs-moveit-planning-service-0` in `app-resources`):
 
 - `--//:setup=omts` (default): runs `moveit_planning_service` with its default
   configuration (`robot_config: "omts"`, UR5e).
-- `--//:setup=lab_bb_01`: applies
+- `--//:setup=lab_bb_01` (`--config=lab_bb_01`): applies
   [`configs/lab_bb_01/moveit_planning_service_config.textproto`](../../configs/lab_bb_01/moveit_planning_service_config.textproto)
   (`robot_config: "lab_bb_01"`, UR3e).
+
+Verify that the planning service pod is up with:
+
+```bash
+kubectl get pods -n app-resources
+```
 
 If you bump the `intrinsic-moveit` release pin in `MODULE.bazel`, redeploy
 `//:omts_solution` rather than `inctl asset install`-ing by hand so the solution
 and installed bundles stay in lockstep.
 
-### Optional: Run `moveit_planning_service` Locally with RViz
+### 1. Optional: Visualize the MoveIt Planning Scene in RViz
 
-For visual debugging in RViz (instead of using the headless in-cluster
-`moveit_planning_service` instance), remove the cluster service instance first
-(`inctl service delete --address=localhost:17080 moveit_planning_service`) so two
-planning nodes do not compete on the same ROS 2 action/service names, forward the
-cluster Zenoh router (`sudo k3s kubectl port-forward -n app-intrinsic-base
-service/zenoh-router 7447:7447`), and launch from a local colcon workspace with
-[`intrinsic-moveit`](https://github.com/intrinsic-ai/intrinsic-moveit) (`v0.1.0`
-or newer) built:
+You can attach a standalone local RViz window directly to the running in-cluster
+`moveit_planning_service` pod without stopping or replacing the pod. Only the
+hardware description and MoveIt config packages need to be built locally (to
+provide the `package://` robot meshes and MoveIt/MTC RViz plugins; RViz receives
+`/robot_description`, `/robot_description_semantic`, `/monitored_planning_scene`,
+and MTC `/solution` directly from the cluster over Zenoh on port `7447`):
 
 ```bash
-# These commands are generally required for all terminals running ROS
-source <path-to-workspace>/install/setup.bash
+# One-time lightweight workspace setup (seconds to build; skips C++ sdk-ros/service build)
+mkdir -p ~/ws_intrinsic_moveit/src && cd ~/ws_intrinsic_moveit/src
+gh repo clone intrinsic-ai/intrinsic-moveit -- --revision=v0.1.0
+source /opt/ros/lyrical/setup.bash
+cd ~/ws_intrinsic_moveit
+sudo apt update && sudo apt install -y \
+  ros-lyrical-rmw-zenoh-cpp \
+  ros-lyrical-moveit-ros-visualization \
+  ros-lyrical-moveit-task-constructor-visualization
+rosdep install --from-paths \
+  src/intrinsic-moveit/robot_hardware_descriptions \
+  src/intrinsic-moveit/third_party \
+  --ignore-src -r -y
+colcon build --symlink-install \
+  --packages-up-to omts_moveit_config lab_bb_01_moveit_config
+```
+
+Then connect RViz to the cluster Zenoh router exposed on port `7447`:
+
+```bash
+source ~/ws_intrinsic_moveit/install/setup.bash
 export RMW_IMPLEMENTATION=rmw_zenoh_cpp
 export ZENOH_CONFIG_OVERRIDE='mode="client";connect/endpoints=["tcp/127.0.0.1:7447"]'
 
-# Start the service for the default OMTS cell (robot_config:=omts)
-ros2 launch moveit_planning_service service.launch.py headless:=false \
-  start_service_status_monitor:=false
+# Launch RViz for the default OMTS cell (UR5e):
+ros2 launch omts_moveit_config moveit_rviz.launch.py \
+  rviz_config:=$HOME/ws_intrinsic_moveit/src/intrinsic-moveit/moveit_planning_service/rviz/motion_planning_service.rviz
 
-# Or, if you deployed the Lab BB-01 cell (--config=lab_bb_01 / --//:setup=lab_bb_01):
-ros2 launch moveit_planning_service service.launch.py \
-  robot_config:=lab_bb_01 \
-  headless:=false \
-  start_service_status_monitor:=false
+# Or, if //:omts_solution was deployed with --config=lab_bb_01 / --//:setup=lab_bb_01 (UR3e):
+ros2 launch lab_bb_01_moveit_config moveit_rviz.launch.py \
+  rviz_config:=$HOME/ws_intrinsic_moveit/src/intrinsic-moveit/moveit_planning_service/rviz/motion_planning_service.rviz
 ```
 
 ### 2. Verify Scene Synchronization in RViz
 
-Once the planning service launches, verify that the additional RViz window opens:
+Once RViz opens, verify that:
 - The robot is represented by its meshes (UR5e for `omts`, UR3e for `lab_bb_01`).
 - All other objects in the scene are propagated as collision objects and represented as green meshes.
 
@@ -202,6 +225,47 @@ bazel run //tools/world:apply_scene_updates -- \
 
 # Resetting the scene, see tutorial "Cell customization"
 inctl world reset --address localhost:17080
+```
+
+### 3. Optional: Build and Run `moveit_planning_service` from Source (Development)
+
+When iterating on [`intrinsic-ai/intrinsic-moveit`](https://github.com/intrinsic-ai/intrinsic-moveit)
+itself, build the full colcon workspace (including `lyrical.repos` dependencies)
+and run `moveit_planning_service` locally from source instead of the in-cluster
+pod:
+
+```bash
+# 1. Import source dependencies and build moveit_planning_service
+cd ~/ws_intrinsic_moveit/src
+source /opt/ros/lyrical/setup.bash
+vcs import . < intrinsic-moveit/lyrical.repos --recursive
+cd ~/ws_intrinsic_moveit
+rosdep install --from-paths . --ignore-src -r -y
+colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+  --symlink-install --packages-up-to moveit_planning_service
+```
+
+Before launching locally, stop the in-cluster `moveit_planning_service` instance
+so two planning nodes do not compete on `/grasp_planning/plan_grasps` (or
+comment out `":moveit_planning_service",` in `omts_solution.instances` in
+[`BUILD`](../../BUILD) prior to deploying `//:omts_solution`):
+
+```bash
+inctl service delete --address=localhost:17080 moveit_planning_service
+```
+
+Then launch the local service connected to the cluster Zenoh router (`7447`):
+
+```bash
+source ~/ws_intrinsic_moveit/install/setup.bash
+export RMW_IMPLEMENTATION=rmw_zenoh_cpp
+export ZENOH_CONFIG_OVERRIDE='mode="client";connect/endpoints=["tcp/127.0.0.1:7447"]'
+
+# Default OMTS cell (robot_config:=omts; pass robot_config:=lab_bb_01 for Lab BB-01)
+ros2 launch moveit_planning_service service.launch.py \
+  robot_config:=omts \
+  headless:=false \
+  start_service_status_monitor:=false
 ```
 
 ---
@@ -347,7 +411,8 @@ cluster, robot or planning service is required.
 
 | Error Code / Message | Root Cause | Resolution |
 | :--- | :--- | :--- |
-| MoveIt RViz shows the wrong robot arm (e.g. UR5e on a `lab_bb_01` deployment) or IK / collision checks do not match the deployed cell | `//:omts_solution` was deployed without `--//:setup=lab_bb_01`, or a local `service.launch.py` run omitted `robot_config:=lab_bb_01` (or `intrinsic-moveit` predates `v0.1.0`). | Redeploy `//:omts_solution` with `--//:setup=lab_bb_01` (or pass `robot_config:=lab_bb_01` when launching `service.launch.py` locally) on `intrinsic-moveit` `v0.1.0+`. |
+| Grasp planning times out / fails to connect, or MoveIt RViz shows an empty or unsynced planning scene | `rs-moveit-planning-service-0`, `rs-flowstate-ros-bridge-0`, `rs-icon-0`, or `rs-ur-module-0` is not running, or local RViz is not connected to the cluster Zenoh router (`7447`). | Verify all pods in `app-resources` are `Running` with `kubectl get pods -n app-resources` (or `kubectl get pods --all-namespaces`), inspect planning service logs with `kubectl logs -n app-resources rs-moveit-planning-service-0`, and ensure `RMW_IMPLEMENTATION=rmw_zenoh_cpp` and `ZENOH_CONFIG_OVERRIDE='mode="client";connect/endpoints=["tcp/127.0.0.1:7447"]'` are exported before launching RViz. |
+| MoveIt RViz shows the wrong robot arm (e.g. UR5e on a `lab_bb_01` deployment) or IK / collision checks do not match the deployed cell | `//:omts_solution` was deployed without `--//:setup=lab_bb_01` (`--config=lab_bb_01`), `moveit_rviz.launch.py` was launched from the wrong `<cell>_moveit_config` package, or a local `service.launch.py` run omitted `robot_config:=lab_bb_01`. | Confirm `RuntimeContext configured robot_config` in `kubectl logs -n app-resources rs-moveit-planning-service-0`, redeploy `//:omts_solution` with matching `--config=lab_bb_01` / `--//:setup=lab_bb_01`, and launch `lab_bb_01_moveit_config` (or `robot_config:=lab_bb_01` when running from source). |
 | `moveit_plan_grasp_skill: Robot model does not define the required end-effector or IK frame` | `--tool_frame_name` or `--end_effector_group` names something absent from the SRDF. Note `hande_tcp`, `hande_tool_frame` and `tool_frame` are all valid coincident aliases, so this is usually a typo or a hardware description that lacks the alias links. | Check the `hand` group in `omts.srdf` (`omts_moveit_config`) or `lab_bb_01.srdf` (`lab_bb_01_moveit_config`) and pass a link listed there. |
 | `moveit_plan_grasp_skill: Output pregrasp frame could not be resolved in World Service` | The skill only updates pre-existing frames; it never creates them. | Run `bazel run //tools/world:apply_scene_updates` so `root/grasp` and `root/pre_grasp` exist before planning. |
 | `moveit_plan_grasp_skill: Target object was not found in the planning scene` | The part was moved moments before planning and the MoveIt scene has not caught up, or the object name does not resolve. | Raise `--settle_sec`, and confirm the name with `bazel run //tools/world:inspect_world`. |
