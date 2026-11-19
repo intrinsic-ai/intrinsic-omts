@@ -68,9 +68,10 @@ def build_machine_tending_behavior_tree(
       config: Validated application configuration dataclass.
       num_cycles_override: Optional override for number of cycles to execute
         (1 = single sequence, >1 = finite Loop, <=0 = continuous Loop).
-      grasp_planner: Optional grasp planner for the infeed pick. `None` selects
-        the built-in cuboid-center behaviour, where the perception pipeline
-        publishes the grasp frames itself.
+      grasp_planner: Optional grasp planner for the infeed pick, and for the
+        unload when it plans exact contacts. `None` selects the built-in
+        cuboid-center behaviour, where the perception pipeline publishes the
+        grasp frames itself.
       tree_name: Descriptive name for the Behavior Tree.
 
   Returns:
@@ -104,12 +105,14 @@ def build_machine_tending_behavior_tree(
     gripper=gripper,
     machine=machine,
     config=config,
+    grasp_planner=grasp_planner,
   )
 
   return_subtree = build_return_to_infeed_subtree(
     robot=robot,
     gripper=gripper,
     config=config,
+    grasp_planner=grasp_planner,
   )
 
   cycle_sequence = bt.Sequence(

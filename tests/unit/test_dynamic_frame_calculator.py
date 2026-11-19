@@ -32,7 +32,10 @@ from src.utils.math_utils import (
   normalize_motion_types,
   object_exists_in_world,
 )
-from src.utils.random_placement import randomize_placement_frame
+from src.utils.random_placement import (
+  randomize_placement_frame,
+  update_mesh_return_frames,
+)
 from src.utils.script_utils import load_python_script
 
 
@@ -406,6 +409,60 @@ class DynamicFrameCalculatorTest(absltest.TestCase):
     calculate_and_update_dynamic_frames(context, _LegacyParams())
 
     self.assertEqual(mock_world.create_frame.call_count, 2)
+
+
+class MeshReturnFramesTest(absltest.TestCase):
+  def test_places_the_part_at_the_target_despite_changed_grip_and_return_shift(
+    self,
+  ):
+    params = _make_params(
+      workpiece_object_name="bracket", pregrasp_distance_m=0.1
+    )
+    # Noncommuting rotations catch swapped transforms and wrong-frame offsets.
+    desired = data_types.Pose3.from_vec7(
+      [0.25, -0.15, 0.72, 0, 0, math.sin(0.3), math.cos(0.3)]
+    )
+    part_t_tool = data_types.Pose3.from_vec7(
+      [0.02, -0.01, 0.04, math.sin(0.5), 0, 0, math.cos(0.5)]
+    )
+    for existing in (False, True):
+      with self.subTest(existing=existing):
+        world = mock.MagicMock()
+        world.root.frame_names = (
+          ["grasp_return", "pre_grasp_return"] if existing else []
+        )
+        world.get_transform.side_effect = [desired, part_t_tool]
+        exec(  # noqa: S102
+          load_python_script(update_mesh_return_frames),
+          {"context": mock.Mock(object_world=world), "params": params},
+        )
+        calls = (
+          world.update_transform.call_args_list
+          if existing
+          else world.create_frame.call_args_list
+        )
+        self.assertLen(calls, 2)
+        poses = [
+          call.kwargs["a_t_b" if existing else "parent_t_frame"]
+          for call in calls
+        ]
+        self.assertTrue(
+          (poses[0] * part_t_tool.inverse()).almost_equal(desired)
+        )
+        self.assertTrue(
+          (poses[0].inverse() * poses[1]).almost_equal(
+            data_types.Pose3(translation=[0, 0, -0.1])
+          )
+        )
+        self.assertEqual(
+          world.get_transform.call_args_list,
+          [
+            mock.call(world.root, world.get_frame.return_value),
+            mock.call(
+              world.get_object.return_value, world.get_frame.return_value
+            ),
+          ],
+        )
 
 
 class MathUtilsTest(absltest.TestCase):

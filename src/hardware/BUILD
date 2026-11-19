@@ -3,6 +3,16 @@ load("@intrinsic-core//bazel:python.bzl", "py_library")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
+    name = "antipodal_mesh_grasp_planner",
+    srcs = ["antipodal_mesh_grasp_planner.py"],
+    deps = [
+        ":grasping",
+        "//src/core:config",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
+    ],
+)
+
+py_library(
     name = "grasping",
     srcs = ["grasping.py"],
     deps = [
@@ -14,6 +24,7 @@ py_library(
     name = "grasp_planners",
     srcs = ["grasp_planners.py"],
     deps = [
+        ":antipodal_mesh_grasp_planner",
         ":grasping",
         "//src/core:config",
         "//src/core:types",

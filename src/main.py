@@ -20,7 +20,7 @@ from absl import app, flags, logging
 from intrinsic.solutions import deployments
 
 from src.behaviors.machine_tending_bt import build_machine_tending_behavior_tree
-from src.core.config import AppConfig, load_app_config
+from src.core.config import AppConfig, load_app_config, with_workpiece
 from src.core.infeed import (
   InfeedMode,
   PerceptionInfeedStrategy,
@@ -60,6 +60,14 @@ _GRASP_PLANNER = flags.DEFINE_enum_class(
   GraspPlannerType,
   "Optional override for the grasp planner backend, taking precedence over "
   "the 'grasp' section of the cell config.",
+)
+
+_WORKPIECE = flags.DEFINE_string(
+  "workpiece",
+  None,
+  "Optional override for the workpiece, such as 'banana', deployed with the "
+  "matching --//:workpiece build flag. Sets the workpiece and its scene "
+  "object and pose estimator IDs.",
 )
 
 
@@ -138,6 +146,8 @@ def run_machine_tending_pipeline(
     solution=solution,
     config=config.grasp,
     tool_object_name=config.robot.tool_object_name,
+    tool_frame_name=config.robot.tool_frame_name,
+    robot_object_name=config.robot.arm_part_name,
   )
 
   tree = build_machine_tending_behavior_tree(
@@ -177,6 +187,8 @@ def main(argv: Sequence[str]) -> None:
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
   config = load_app_config(_CONFIG.value)
+  if _WORKPIECE.value:
+    config = with_workpiece(config, _WORKPIECE.value)
   run_machine_tending_pipeline(
     solution_address=_ADDRESS.value,
     config=config,

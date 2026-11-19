@@ -220,6 +220,41 @@ class ReturnShiftConfig:
   bounds_rz_degrees: float = 0.0
 
 
+# Catalogue of parallel-jaw grippers, relative to the working directory like
+# the default `--config`.
+GRIPPER_CATALOG = pathlib.Path("configs/common/grippers.yaml")
+
+
+@dataclasses.dataclass(frozen=True)
+class JawGeometry:
+  """Parallel-jaw geometry of a gripper in the gripper catalogue.
+
+  Attributes:
+      min_width_m: Smallest gap between the finger pads.
+      max_width_m: Gap between the finger pads when fully open.
+      contact_depth_m: Distance along the tool z axis from the tool frame to
+        the finger pads.
+  """
+
+  min_width_m: float
+  max_width_m: float
+  contact_depth_m: float
+
+
+def load_gripper_jaws(name: str) -> JawGeometry:
+  """Returns the jaw geometry of gripper `name` from the gripper catalogue.
+
+  Raises:
+      KeyError: If the catalogue has no gripper `name`.
+  """
+  catalog = yaml.safe_load(GRIPPER_CATALOG.read_text(encoding="utf-8")) or {}
+  if name not in catalog:
+    raise KeyError(
+      f"Unknown gripper '{name}'; {GRIPPER_CATALOG} defines {sorted(catalog)}."
+    )
+  return JawGeometry(**catalog[name])
+
+
 @dataclasses.dataclass(frozen=True)
 class GraspConfig:
   """Selects and tunes the grasp planning backend used during the infeed pick.
@@ -229,7 +264,18 @@ class GraspConfig:
   ignored otherwise.
 
   Attributes:
-      planner: Grasp planner backend (`'cuboid_center'` or `'moveit'`).
+      planner: Grasp planner backend (`'cuboid_center'`, `'moveit'`, or
+        `'antipodal_mesh'`).
+      antipodal_mesh_gripper: Gripper in `configs/common/grippers.yaml` that
+        the `'antipodal_mesh'` planner requires.
+      antipodal_mesh_jaws: Its jaw geometry, set by `load_app_config`.
+      antipodal_mesh_pregrasp_distance_m: Distance in meters between the
+        planned grasp and pre-grasp frames.
+      antipodal_mesh_max_approach_tilt_deg: Largest angle, in degrees, between
+        a contact face's normal and the horizontal plane. It also absorbs tilt
+        in the estimated workpiece pose.
+      antipodal_mesh_contact_edge_margin_m: Smallest height in meters between
+        a contact and the workpiece's top or bottom.
       moveit_tool_frame_name: MoveIt robot model link used as the grasp TCP.
         This is an SRDF link name, not an Object World frame.
       moveit_group_name: MoveIt planning group for the arm.
@@ -254,6 +300,11 @@ class GraspConfig:
   moveit_retract_dist_m: float = 0.05
   moveit_timeout_ms: float = 15000.0
   moveit_settle_seconds: float = 0.3
+  antipodal_mesh_gripper: str | None = None
+  antipodal_mesh_jaws: JawGeometry | None = None
+  antipodal_mesh_pregrasp_distance_m: float = 0.1
+  antipodal_mesh_max_approach_tilt_deg: float = 10.0
+  antipodal_mesh_contact_edge_margin_m: float = 0.005
 
   def __post_init__(self) -> None:
     valid = sorted(member.value for member in GraspPlannerType)
@@ -285,6 +336,21 @@ class GraspConfig:
       raise ValueError(
         f"moveit_settle_seconds must not be negative, got "
         f"{self.moveit_settle_seconds}."
+      )
+    if self.antipodal_mesh_pregrasp_distance_m <= 0.0:
+      raise ValueError(
+        f"antipodal_mesh_pregrasp_distance_m must be positive, got "
+        f"{self.antipodal_mesh_pregrasp_distance_m}."
+      )
+    if not 0.0 <= self.antipodal_mesh_max_approach_tilt_deg < 90.0:
+      raise ValueError(
+        f"antipodal_mesh_max_approach_tilt_deg must be in [0, 90), got "
+        f"{self.antipodal_mesh_max_approach_tilt_deg}."
+      )
+    if self.antipodal_mesh_contact_edge_margin_m < 0.0:
+      raise ValueError(
+        f"antipodal_mesh_contact_edge_margin_m must not be negative, got "
+        f"{self.antipodal_mesh_contact_edge_margin_m}."
       )
 
   @property
@@ -469,11 +535,23 @@ def load_app_config(path: str | pathlib.Path) -> AppConfig:
     if "machine" in raw_data and raw_data["machine"] is not None
     else None
   )
+  if "antipodal_mesh_jaws" in (raw_data.get("grasp") or {}):
+    raise ValueError(
+      f"Set grasp.antipodal_mesh_gripper in {file_path} instead of "
+      f"antipodal_mesh_jaws, which comes from {GRIPPER_CATALOG}."
+    )
   grasp_config = (
     _construct_section(GraspConfig, raw_data, "grasp", file_path)
     if "grasp" in raw_data and raw_data["grasp"] is not None
     else GraspConfig()
   )
+  if grasp_config.antipodal_mesh_gripper:
+    grasp_config = dataclasses.replace(
+      grasp_config,
+      antipodal_mesh_jaws=load_gripper_jaws(
+        grasp_config.antipodal_mesh_gripper
+      ),
+    )
 
   return AppConfig(
     cell_name=str(raw_data["cell_name"]),
@@ -484,4 +562,22 @@ def load_app_config(path: str | pathlib.Path) -> AppConfig:
     frames=_construct_section(FramesConfig, raw_data, "frames", file_path),
     cycle=_construct_section(CycleConfig, raw_data, "cycle", file_path),
     grasp=grasp_config,
+  )
+
+
+def with_workpiece(config: AppConfig, workpiece_id: str) -> AppConfig:
+  """Returns `config` with another workpiece in the same cell.
+
+  The workpiece's scene object and text-prompted pose estimator are named as
+  for `raw_stock_2x3x5`: `ai.intrinsic.<workpiece_id>` and
+  `ai.intrinsic.<workpiece_id>_estimator_text`.
+  """
+  return dataclasses.replace(
+    config,
+    vision=dataclasses.replace(
+      config.vision,
+      pose_estimator_id=f"ai.intrinsic.{workpiece_id}_estimator_text",
+      scene_object_id=f"ai.intrinsic.{workpiece_id}",
+    ),
+    cycle=dataclasses.replace(config.cycle, workpiece_id=workpiece_id),
   )

@@ -20,6 +20,15 @@ from intrinsic.solutions import behavior_tree as bt
 class GraspPlannerInterface(abc.ABC):
   """Update grasp and pre-grasp frames for an already-localized workpiece."""
 
+  # Whether the pick seats the gripper with a force-controlled touchdown at the
+  # grasp frame. Planners that place the jaws on exact contacts set False; the
+  # pick then moves linearly to the grasp frame, and the unload re-plans the
+  # grasp on the placed part instead of touching down. Such planners must also
+  # write a `<grasp_frame>_workpiece` frame, the workpiece pose as a child of
+  # the grasp frame, from which the return solves its tool target after the
+  # re-grasp.
+  uses_contact_touchdown: bool = True
+
   @abc.abstractmethod
   def build_plan_grasp_task(
     self,
@@ -47,3 +56,8 @@ class GraspPlannerInterface(abc.ABC):
         Behavior tree node that publishes the planned frames when executed.
     """
     raise NotImplementedError
+
+
+def plans_exact_contacts(grasp_planner: GraspPlannerInterface | None) -> bool:
+  """Returns whether `grasp_planner` grasps on exact contacts, not touchdown."""
+  return grasp_planner is not None and not grasp_planner.uses_contact_touchdown

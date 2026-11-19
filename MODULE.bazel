@@ -65,6 +65,7 @@ bazel_dep(name = "grpc", version = "1.81.1", repo_name = "com_github_grpc_grpc")
 bazel_dep(name = "pybind11_bazel", version = "3.0.3")
 bazel_dep(name = "rules_cc", version = "0.2.25")
 bazel_dep(name = "rules_cuda", version = "0.3.0")
+bazel_dep(name = "rules_oci", version = "2.3.0")
 bazel_dep(name = "rules_python", version = "2.3.3")
 # Bzlmod ignores `single_version_override` directives in non-root modules
 # (@intrinsic-core), so the overrides below are mirrored from
@@ -239,3 +240,8 @@ use_repo(
     pip,
     "ai_intrinsic_sdks_pip_deps",
 )
+
+# Base image for OMTS's own Python skills. @intrinsic-core pulls it for its
+# //intrinsic/kubernetes:python3-image-oci, which is not visible outside it.
+oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
+use_repo(oci, "distroless_python3")
