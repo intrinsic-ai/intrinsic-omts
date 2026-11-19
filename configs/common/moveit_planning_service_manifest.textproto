@@ -1,0 +1,34 @@
+# proto-file: intrinsic/assets/services/proto/service_manifest.proto
+# proto-message: intrinsic_proto.services.ServiceManifest
+#
+# Mirrors the manifest shipped inside moveit_planning_service.bundle.tar. Only
+# the asset id is consumed at build time (see //bazel:imported_asset.bzl); the
+# bundle's own manifest governs the deployment.
+
+metadata {
+  id {
+    package: "ai.intrinsic"
+    name: "moveit_planning_service"
+  }
+  display_name: "MoveIt Planning Service"
+  documentation {
+    description: "A consolidated MoveIt service integrating World/Robot synchronization, motion planning, and MoveIt Task Constructor grasp planning capabilities."
+  }
+  vendor {
+    display_name: "Intrinsic"
+  }
+}
+
+service_def {
+  supports_service_state: true
+  real_spec {
+    image {
+      archive_filename: "moveit_planning_service.tar"
+    }
+  }
+  sim_spec {
+    image {
+      archive_filename: "moveit_planning_service.tar"
+    }
+  }
+}
