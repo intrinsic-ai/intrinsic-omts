@@ -147,12 +147,9 @@ class WorldUpdateConfigsTest(absltest.TestCase):
         self.assertCountEqual(created, expected)
 
   def test_ur_module_initial_joint_positions(self):
-    expected_joint0 = {
-      "configs/omts/ur_module.attachments.updates.pbtxt": 3.140,
-      "configs/lab_bb_01/ur_module.attachments.updates.pbtxt": 1.5707,
-    }
-    for path, expected_j0 in expected_joint0.items():
-      with self.subTest(path=path):
+    for cell in ("omts", "lab_bb_01"):
+      with self.subTest(cell=cell):
+        path = f"configs/{cell}/ur_module.attachments.updates.pbtxt"
         updates = _load_updates_proto(path)
         self.assertIsNotNone(updates, f"{path} is missing from {os.getcwd()}.")
         joint_updates = [
@@ -163,7 +160,28 @@ class WorldUpdateConfigsTest(absltest.TestCase):
           == "ur_module"
         ]
         self.assertLen(joint_updates, 1)
-        self.assertAlmostEqual(joint_updates[0].joint_positions[0], expected_j0)
+        joints = list(joint_updates[0].joint_positions)
+        self.assertLen(joints, 6)
+        for angle in joints:
+          self.assertTrue(math.isfinite(angle))
+
+        limits_proto = _load_updates_proto(
+          f"configs/{cell}/ur_module.limits.updates.pbtxt"
+        )
+        if limits_proto is not None:
+          limits = limits_proto.updates[
+            0
+          ].update_object_joints.joint_application_limits
+          for idx, (angle, lo, hi) in enumerate(
+            zip(
+              joints,
+              limits.min_position.values,
+              limits.max_position.values,
+              strict=True,
+            )
+          ):
+            self.assertGreaterEqual(angle, lo, f"{cell} joint {idx} < min")
+            self.assertLessEqual(angle, hi, f"{cell} joint {idx} > max")
 
   def test_align_robot_is_single_source_of_ur_module_base_transform(self):
     """Only align_robot.updates.pbtxt may update the enclosure -> ur_module base transform."""

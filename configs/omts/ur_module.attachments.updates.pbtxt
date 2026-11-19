@@ -8,12 +8,12 @@ updates {
         object_name: "ur_module"
       }
     }
-    joint_positions: 3.140
-    joint_positions: -1.5707
-    joint_positions: 1.5707
-    joint_positions: -1.5707
-    joint_positions: -1.5707
-    joint_positions: 3.140
+    joint_positions: 1.543918
+    joint_positions: -2.356140
+    joint_positions: 1.667639
+    joint_positions: -0.587754
+    joint_positions: -1.437866
+    joint_positions: -2.425851
   }
 }
 
