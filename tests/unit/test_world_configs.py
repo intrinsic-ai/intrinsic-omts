@@ -41,6 +41,7 @@ from intrinsic.icon.hardware_modules.universal_robots import (
   config_pb2 as ur_module_config_pb2,
 )
 from intrinsic.icon.server.config import icon_main_config_pb2
+from intrinsic.math.python import data_types
 from intrinsic.perception.proto.v1 import camera_config_pb2
 from intrinsic.perception.skills.calibration import sample_calibration_poses_pb2
 from intrinsic.world.proto import object_world_updates_pb2
@@ -90,6 +91,91 @@ _EXPECTED_SCENE_FRAMES = {
     "view",
   ],
 }
+
+
+# UR5e and UR3e kinematic joint chains matching @intrinsic-core SceneObjects:
+# (inboard_xyz, inboard_quat_xyzw, revolute_axis_xyz)
+_UR_JOINT_CHAINS: dict[
+  str,
+  tuple[
+    tuple[
+      tuple[float, float, float],
+      tuple[float, float, float, float],
+      tuple[float, float, float],
+    ],
+    ...,
+  ],
+] = {
+  "omts": (
+    ((0.0, 0.0, 0.1625), (0.0, 0.0, 1.0, 0.0), (0.0, 0.0, 1.0)),
+    ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), (0.0, 1.0, 0.0)),
+    ((0.425, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), (0.0, 1.0, 0.0)),
+    ((0.3922, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), (0.0, 1.0, 0.0)),
+    ((0.0, 0.1333, -0.0997), (0.0, 0.0, 0.0, 1.0), (0.0, 0.0, -1.0)),
+    (
+      (0.0, 0.0996, 0.0),
+      (0.0, math.sqrt(0.5), math.sqrt(0.5), 0.0),
+      (0.0, 0.0, 1.0),
+    ),
+  ),
+  "lab_bb_01": (
+    ((0.0, 0.0, 0.15185), (0.0, 0.0, 1.0, 0.0), (0.0, 0.0, 1.0)),
+    ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), (0.0, 1.0, 0.0)),
+    ((0.24355, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), (0.0, 1.0, 0.0)),
+    ((0.2132, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), (0.0, 1.0, 0.0)),
+    ((0.0, 0.13105, -0.08535), (0.0, 0.0, 0.0, 1.0), (0.0, 0.0, -1.0)),
+    (
+      (0.0, 0.0921, 0.0),
+      (0.0, math.sqrt(0.5), math.sqrt(0.5), 0.0),
+      (0.0, 0.0, 1.0),
+    ),
+  ),
+}
+
+_UR3E_DEFAULT_MIN_LIMITS = (
+  -6.2203534,
+  -4.059,
+  -2.772,
+  -6.2203534,
+  -6.2203534,
+  -6.2203534,
+)
+_UR3E_DEFAULT_MAX_LIMITS = (
+  6.2203534,
+  0.9504,
+  2.772,
+  6.2203534,
+  6.2203534,
+  6.2203534,
+)
+
+
+def _pose3_from_proto(pose_proto) -> data_types.Pose3:
+  """Converts a `Pose` proto into a normalized `data_types.Pose3`."""
+  ori = pose_proto.orientation
+  quat = [float(ori.x), float(ori.y), float(ori.z), float(ori.w)]
+  if all(v == 0.0 for v in quat):
+    quat = [0.0, 0.0, 0.0, 1.0]
+  pos = pose_proto.position
+  return data_types.Pose3(
+    rotation=data_types.Rotation3.from_xyzw(quat, normalize=True),
+    translation=[float(pos.x), float(pos.y), float(pos.z)],
+  )
+
+
+def _axis_angle_pose3(
+  axis: tuple[float, float, float], angle_rad: float
+) -> data_types.Pose3:
+  """Builds a pure-rotation `Pose3` for `angle_rad` around unit `axis`."""
+  half = 0.5 * angle_rad
+  s = math.sin(half)
+  c = math.cos(half)
+  return data_types.Pose3(
+    rotation=data_types.Rotation3.from_xyzw(
+      [axis[0] * s, axis[1] * s, axis[2] * s, c], normalize=True
+    ),
+    translation=[0.0, 0.0, 0.0],
+  )
 
 
 def _config_paths() -> list[str]:
@@ -146,24 +232,131 @@ class WorldUpdateConfigsTest(absltest.TestCase):
         ]
         self.assertCountEqual(created, expected)
 
-  def test_ur_module_initial_joint_positions(self):
-    expected_joint0 = {
-      "configs/omts/ur_module.attachments.updates.pbtxt": 3.140,
-      "configs/lab_bb_01/ur_module.attachments.updates.pbtxt": 1.5707,
+  def test_ur_module_initial_joint_positions_align_tool_with_view_frame(self):
+    """Initial ur_module joints must stay within limits and align tool_frame to view."""
+    expected_joints = {
+      "omts": (
+        1.543918,
+        -2.356140,
+        1.667639,
+        -0.587754,
+        -1.437866,
+        -2.425851,
+      ),
+      "lab_bb_01": (
+        0.770987,
+        -2.237038,
+        1.658675,
+        -1.513059,
+        -1.414750,
+        -0.351416,
+      ),
     }
-    for path, expected_j0 in expected_joint0.items():
-      with self.subTest(path=path):
-        updates = _load_updates_proto(path)
-        self.assertIsNotNone(updates, f"{path} is missing from {os.getcwd()}.")
+    for cell, expected_q in expected_joints.items():
+      with self.subTest(cell=cell):
+        app_cfg = load_app_config(f"configs/{cell}/app_config.yaml")
+        attachments_path = f"configs/{cell}/ur_module.attachments.updates.pbtxt"
+        attachments = _load_updates_proto(attachments_path)
+        self.assertIsNotNone(attachments)
+
         joint_updates = [
           update.update_object_joints
-          for update in updates.updates
+          for update in attachments.updates
           if update.HasField("update_object_joints")
           and update.update_object_joints.object.by_name.object_name
           == "ur_module"
         ]
         self.assertLen(joint_updates, 1)
-        self.assertAlmostEqual(joint_updates[0].joint_positions[0], expected_j0)
+        joints = list(joint_updates[0].joint_positions)
+        self.assertLen(joints, 6)
+        for actual, expected in zip(joints, expected_q, strict=True):
+          self.assertAlmostEqual(actual, expected, places=6)
+
+        if cell == "omts":
+          limits_proto = _load_updates_proto(
+            "configs/omts/ur_module.limits.updates.pbtxt"
+          )
+          self.assertIsNotNone(limits_proto)
+          app_limits = limits_proto.updates[
+            0
+          ].update_object_joints.joint_application_limits
+          min_limits = list(app_limits.min_position.values)
+          max_limits = list(app_limits.max_position.values)
+        else:
+          min_limits = list(_UR3E_DEFAULT_MIN_LIMITS)
+          max_limits = list(_UR3E_DEFAULT_MAX_LIMITS)
+
+        for idx, (q_val, lo, hi) in enumerate(
+          zip(joints, min_limits, max_limits, strict=True)
+        ):
+          self.assertGreaterEqual(
+            q_val, lo, f"{cell} joint {idx} below min limit"
+          )
+          self.assertLessEqual(q_val, hi, f"{cell} joint {idx} above max limit")
+
+        align = _load_updates_proto(f"configs/{cell}/align_robot.updates.pbtxt")
+        self.assertIsNotNone(align)
+        root_t_robot = _pose3_from_proto(
+          align.updates[0].update_transform.a_t_b
+        )
+
+        flange_t_gripper = data_types.Pose3()
+        gripper_t_tool = data_types.Pose3()
+        for upd in attachments.updates:
+          if not upd.HasField("update_transform"):
+            continue
+          ut = upd.update_transform
+          if (
+            ut.node_to_update.by_name.HasField("object")
+            and ut.node_to_update.by_name.object.object_name
+            == app_cfg.robot.tool_object_name
+          ):
+            flange_t_gripper = _pose3_from_proto(ut.a_t_b)
+          elif (
+            ut.node_to_update.by_name.HasField("frame")
+            and ut.node_to_update.by_name.frame.frame_name
+            == app_cfg.robot.tool_frame_name
+          ):
+            gripper_t_tool = _pose3_from_proto(ut.a_t_b)
+
+        pose = root_t_robot
+        for (inboard_pos, inboard_quat, axis), q_val in zip(
+          _UR_JOINT_CHAINS[cell], joints, strict=True
+        ):
+          inboard_tf = data_types.Pose3(
+            rotation=data_types.Rotation3.from_xyzw(
+              list(inboard_quat), normalize=True
+            ),
+            translation=list(inboard_pos),
+          )
+          pose = pose.multiply(inboard_tf).multiply(
+            _axis_angle_pose3(axis, q_val)
+          )
+        root_t_tool = pose.multiply(flange_t_gripper).multiply(gripper_t_tool)
+
+        scene = _load_updates_proto(f"configs/{cell}/scene.updates.pbtxt")
+        self.assertIsNotNone(scene)
+        view_frames = [
+          upd.create_frame.parent_t_new_frame
+          for upd in scene.updates
+          if upd.HasField("create_frame")
+          and upd.create_frame.new_frame_name == app_cfg.frames.view_frame
+        ]
+        self.assertLen(view_frames, 1)
+        root_t_view = _pose3_from_proto(view_frames[0])
+
+        for coord_idx in range(3):
+          self.assertAlmostEqual(
+            float(root_t_tool.translation[coord_idx]),
+            float(root_t_view.translation[coord_idx]),
+            places=4,
+          )
+        q_tool = root_t_tool.rotation.quaternion.xyzw
+        q_view = root_t_view.rotation.quaternion.xyzw
+        quat_dot = abs(
+          sum(float(a) * float(b) for a, b in zip(q_tool, q_view, strict=True))
+        )
+        self.assertAlmostEqual(quat_dot, 1.0, places=5)
 
   def test_align_robot_is_single_source_of_ur_module_base_transform(self):
     """Only align_robot.updates.pbtxt may update the enclosure -> ur_module base transform."""
