@@ -45,6 +45,8 @@ py_library(
         "@com_google_absl_py//absl/logging",
         "@intrinsic-core//intrinsic/world/service/robot_calibration:robot_update_service_py_pb2",
         "@intrinsic-core//intrinsic/world/service/robot_calibration:robot_update_service_py_pb2_grpc",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:deployments",
+        "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:worlds",
     ],
 )
 

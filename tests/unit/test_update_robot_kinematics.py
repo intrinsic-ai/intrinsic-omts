@@ -71,6 +71,43 @@ class UpdateRobotKinematicsTest(absltest.TestCase):
     req = self.mock_stub.UpdateRobotKinematics.call_args[0][0]
     self.assertEqual(req.resource_id, "ur_module")
     self.assertEqual(req.world_id, "world")
+    self.assertEqual(
+      req.user_specified_update.set_ik_solvers_update.ik_solvers[0].ik_solver,
+      "rt_calibrated_ur5e",
+    )
+
+  def test_update_robot_kinematics_custom_ik_solver(self):
+    self.mock_stub.UpdateRobotKinematics.return_value = (
+      robot_update_service_pb2.RobotUpdateResponse()
+    )
+
+    update_robot_kinematics.update_robot_kinematics(
+      self.mock_stub,
+      resource_id="ur_module",
+      world_id="world",
+      ik_solver="rt_calibrated_ur3e",
+    )
+
+    req = self.mock_stub.UpdateRobotKinematics.call_args[0][0]
+    self.assertEqual(
+      req.user_specified_update.set_ik_solvers_update.ik_solvers[0].ik_solver,
+      "rt_calibrated_ur3e",
+    )
+
+  def test_update_robot_kinematics_without_ik_solver(self):
+    self.mock_stub.UpdateRobotKinematics.return_value = (
+      robot_update_service_pb2.RobotUpdateResponse()
+    )
+
+    update_robot_kinematics.update_robot_kinematics(
+      self.mock_stub,
+      resource_id="ur_module",
+      world_id="world",
+      ik_solver="",
+    )
+
+    req = self.mock_stub.UpdateRobotKinematics.call_args[0][0]
+    self.assertFalse(req.HasField("user_specified_update"))
 
   def test_update_robot_kinematics_raises_on_rpc_error(self):
     self.mock_stub.UpdateRobotKinematics.side_effect = grpc.RpcError(

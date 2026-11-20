@@ -28,5 +28,6 @@ bazel run //tools/calibration:calibrate_camera_to_robot -- \
 # Synchronize physical robot kinematic calibration with ObjectWorld:
 bazel run //tools/calibration:update_robot_kinematics -- \
   --address=localhost:17080 \
-  --resource_id=ur_module
+  --resource_id=ur_module \
+  --ik_solver=rt_calibrated_ur5e
 ```
