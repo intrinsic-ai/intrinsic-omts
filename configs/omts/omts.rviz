@@ -74,6 +74,21 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /omts_frame_editor/update
       Value: true
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Image
+      Normalize Range: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Transport Override: ""
+        Value: /detections
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
