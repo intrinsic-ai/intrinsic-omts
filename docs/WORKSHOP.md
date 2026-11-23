@@ -45,7 +45,7 @@ bazel run -c opt //:omts_solution -- \
 In **Terminal 1**, start RViz with the preconfigured OMTS display profile:
 
 ```bash
-choom -n 1000 ros2 run rviz2 rviz2 -d ~/intrinsic-omts/configs/omts/omts.rviz
+choom -n 1000 ros2 run rviz2 rviz2 -- -d ~/intrinsic-omts/configs/omts/omts.rviz
 ```
 
 You should see the UR5e robot arm, the infeed table with the raw stock block (`raw_stock_2x3x5`), and the CNC enclosure with the Schunk vise inside.

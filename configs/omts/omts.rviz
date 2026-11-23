@@ -1,46 +1,32 @@
 Panels:
   - Class: rviz_common/Displays
-    Help Height: 78
+    Help Height: 0
     Name: Displays
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /Status1
-        - /MarkerArray1
-        - /MarkerArray1/Topic1
+        - /Workcell Markers1
+        - /OMTS Frame Editor1
         - /Image1
-        - /Image1/Status1
-        - /Image1/Topic1
+        - /InteractiveMarkers1
+        - /Image2
       Splitter Ratio: 0.5
-    Tree Height: 215
-  - Class: rviz_common/Selection
-    Name: Selection
-  - Class: rviz_common/Tool Properties
-    Expanded:
-      - /2D Goal Pose1
-      - /Publish Point1
-    Name: Tool Properties
-    Splitter Ratio: 0.5886790156364441
+    Tree Height: 308
   - Class: rviz_common/Views
     Expanded:
       - /Current View1
     Name: Views
     Splitter Ratio: 0.5
-  - Class: rviz_common/Time
-    Experimental: false
-    Name: Time
-    SyncMode: 0
-    SyncSource: ""
 Visualization Manager:
   Class: ""
   Displays:
-    - Alpha: 0.5
-      Cell Size: 1
+    - Alpha: 0.4000000059604645
+      Cell Size: 0.5
       Class: rviz_default_plugins/Grid
       Color: 160; 160; 164
       Enabled: true
       Line Style:
-        Line Width: 0.029999999329447746
+        Line Width: 0.019999999552965164
         Value: Lines
       Name: Grid
       Normal Cell Count: 0
@@ -54,7 +40,7 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
-      Name: MarkerArray
+      Name: Workcell Markers
       Namespaces:
         Value: true
         camera_mount/base_link: true
@@ -85,6 +71,241 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /workcell_markers
       Value: true
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Filter (blacklist): ""
+      Filter (whitelist): ""
+      Frame Timeout: 15
+      Frames:
+        All Enabled: true
+        camera_mount/base_link:
+          Value: true
+        charuco_9x12_30mm_22mm_dict_5x5/body:
+          Value: true
+        charuco_9x14_20mm_15mm_dict_5x5/body:
+          Value: true
+        cnc_enclosure/door_joint_prismatic:
+          Value: true
+        cnc_enclosure/door_link:
+          Value: true
+        cnc_enclosure/enclosure_link:
+          Value: true
+        enclosure/base_link:
+          Value: true
+        enclosure/robot_frame:
+          Value: true
+        gripper/finger1:
+          Value: true
+        gripper/finger2:
+          Value: true
+        gripper/gripper_body:
+          Value: true
+        gripper/gripper_finger1:
+          Value: true
+        gripper/gripper_finger2:
+          Value: true
+        gripper/tool_frame:
+          Value: true
+        orbbec_camera/body:
+          Value: true
+        orbbec_camera/depth:
+          Value: true
+        orbbec_camera/ir_left:
+          Value: true
+        orbbec_camera/ir_right:
+          Value: true
+        orbbec_camera/rgb:
+          Value: true
+        orbbec_camera/sensor_link:
+          Value: true
+        raw_stock_2x3x5/base_link:
+          Value: true
+        root:
+          Value: true
+        root/grasp:
+          Value: true
+        root/machine_approach:
+          Value: true
+        root/pre_grasp:
+          Value: true
+        root/transit:
+          Value: true
+        root/view:
+          Value: true
+        root/vise_place:
+          Value: true
+        root/vise_pre_place:
+          Value: true
+        root/vise_view:
+          Value: true
+        root/work_view:
+          Value: true
+        schunk_egp_64nnb/base_link:
+          Value: true
+        schunk_egp_64nnb/jaw_l_frame:
+          Value: true
+        schunk_egp_64nnb/jaw_l_link:
+          Value: true
+        schunk_egp_64nnb/jaw_l_link_joint_prismatic:
+          Value: true
+        schunk_egp_64nnb/jaw_r_frame:
+          Value: true
+        schunk_egp_64nnb/jaw_r_link:
+          Value: true
+        schunk_egp_64nnb/jaw_r_link_joint_prismatic:
+          Value: true
+        ur_module/InternalForceTorqueSensor:
+          Value: true
+        ur_module/base_link:
+          Value: true
+        ur_module/elbow_joint:
+          Value: true
+        ur_module/flange:
+          Value: true
+        ur_module/forearm_link:
+          Value: true
+        ur_module/shoulder_lift_joint:
+          Value: true
+        ur_module/shoulder_link:
+          Value: true
+        ur_module/shoulder_pan_joint:
+          Value: true
+        ur_module/upper_arm_link:
+          Value: true
+        ur_module/wrist_1_joint:
+          Value: true
+        ur_module/wrist_1_link:
+          Value: true
+        ur_module/wrist_2_joint:
+          Value: true
+        ur_module/wrist_2_link:
+          Value: true
+        ur_module/wrist_3_joint:
+          Value: true
+        ur_module/wrist_3_link:
+          Value: true
+      Marker Scale: 0.20000000298023224
+      Name: TF
+      Show Arrows: false
+      Show Axes: true
+      Show Names: false
+      Tree:
+        root:
+          charuco_9x12_30mm_22mm_dict_5x5/body:
+            {}
+          charuco_9x14_20mm_15mm_dict_5x5/body:
+            {}
+          cnc_enclosure/enclosure_link:
+            cnc_enclosure/door_joint_prismatic:
+              cnc_enclosure/door_link:
+                {}
+          enclosure/base_link:
+            enclosure/robot_frame:
+              {}
+          raw_stock_2x3x5/base_link:
+            {}
+          root/grasp:
+            {}
+          root/machine_approach:
+            {}
+          root/pre_grasp:
+            {}
+          root/transit:
+            {}
+          root/view:
+            {}
+          root/vise_place:
+            {}
+          root/vise_pre_place:
+            {}
+          root/vise_view:
+            {}
+          root/work_view:
+            {}
+          schunk_egp_64nnb/base_link:
+            schunk_egp_64nnb/jaw_l_frame:
+              {}
+            schunk_egp_64nnb/jaw_l_link_joint_prismatic:
+              schunk_egp_64nnb/jaw_l_link:
+                {}
+            schunk_egp_64nnb/jaw_r_frame:
+              {}
+            schunk_egp_64nnb/jaw_r_link_joint_prismatic:
+              schunk_egp_64nnb/jaw_r_link:
+                {}
+          ur_module/base_link:
+            ur_module/shoulder_pan_joint:
+              ur_module/shoulder_link:
+                ur_module/shoulder_lift_joint:
+                  ur_module/upper_arm_link:
+                    ur_module/elbow_joint:
+                      ur_module/forearm_link:
+                        ur_module/wrist_1_joint:
+                          ur_module/wrist_1_link:
+                            ur_module/wrist_2_joint:
+                              ur_module/wrist_2_link:
+                                ur_module/wrist_3_joint:
+                                  ur_module/InternalForceTorqueSensor:
+                                    {}
+                                  ur_module/wrist_3_link:
+                                    camera_mount/base_link:
+                                      {}
+                                    gripper/gripper_body:
+                                      gripper/finger1:
+                                        gripper/gripper_finger1:
+                                          {}
+                                      gripper/finger2:
+                                        gripper/gripper_finger2:
+                                          {}
+                                      gripper/tool_frame:
+                                        {}
+                                    orbbec_camera/body:
+                                      orbbec_camera/sensor_link:
+                                        orbbec_camera/depth:
+                                          {}
+                                        orbbec_camera/ir_left:
+                                          {}
+                                        orbbec_camera/ir_right:
+                                          {}
+                                        orbbec_camera/rgb:
+                                          {}
+                                    ur_module/flange:
+                                      {}
+      Update Interval: 0
+      Value: true
+    - Class: rviz_default_plugins/InteractiveMarkers
+      Enable Transparency: true
+      Enabled: true
+      Interactive Markers Namespace: ""
+      Name: OMTS Frame Editor
+      Show Axes: false
+      Show Descriptions: true
+      Show Visual Aids: false
+      Value: true
+    - Class: rviz_default_plugins/Image
+      Enabled: false
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Image
+      Normalize Range: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Transport Override: ""
+        Value: /detections
+      Value: false
+    - Class: rviz_default_plugins/InteractiveMarkers
+      Enable Transparency: true
+      Enabled: true
+      Interactive Markers Namespace: /omts_frame_editor
+      Name: InteractiveMarkers
+      Show Axes: true
+      Show Descriptions: true
+      Show Visual Aids: true
+      Value: true
     - Class: rviz_default_plugins/Image
       Enabled: true
       Max Value: 1
@@ -107,38 +328,13 @@ Visualization Manager:
     Frame Rate: 30
   Name: root
   Tools:
+    - Class: rviz_default_plugins/MoveCamera
     - Class: rviz_default_plugins/Interact
       Hide Inactive Objects: true
-    - Class: rviz_default_plugins/MoveCamera
     - Class: rviz_default_plugins/Select
     - Class: rviz_default_plugins/FocusCamera
     - Class: rviz_default_plugins/Measure
       Line color: 128; 128; 0
-    - Class: rviz_default_plugins/SetInitialPose
-      Covariance x: 0.25
-      Covariance y: 0.25
-      Covariance yaw: 0.06853891909122467
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /initialpose
-    - Class: rviz_default_plugins/SetGoal
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /goal_pose
-    - Class: rviz_default_plugins/PublishPoint
-      Single click: true
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /clicked_point
   Transformation:
     Current:
       Class: rviz_default_plugins/TF
@@ -146,41 +342,35 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 2.935425043106079
+      Distance: 3.3143386840820312
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.06337899714708328
-        Y: 0.5802878737449646
-        Z: 0.8005099296569824
+        X: 0
+        Y: -0.10000000149011612
+        Z: 1.100000023841858
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6903983950614929
+      Pitch: 0.5
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.6835832595825195
+      Yaw: 4.698184490203857
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
   Height: 689
   Hide Left Dock: false
-  Hide Right Dock: false
+  Hide Right Dock: true
   Image:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd00000004000000000000018200000215fc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003c00000161000000c800fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d00610067006501000001a3000000ae0000001600ffffff000000010000010f00000215fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000003c00000215000000a200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004ce0000003efc0100000002fb0000000800540069006d00650100000000000004ce0000027800fffffffb0000000800540069006d00650100000000000004500000000000000000000002310000021500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
-  Selection:
-    collapsed: false
-  Time:
-    collapsed: false
-  Tool Properties:
-    collapsed: false
+  QMainWindow State: 000000ff00000000fd0000000100000000000001b400000259fc0200000004fb0000000a0049006d006100670065000000003c000000c60000001600fffffffb000000100044006900730070006c006100790073010000003c00000170000000c800fffffffb0000000a00560069006500770073000000014a000000a2000000a200fffffffb0000000a0049006d00610067006501000001b2000000e30000001600ffffff000003140000025900000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
   Width: 1230
