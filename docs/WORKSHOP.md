@@ -386,6 +386,9 @@ Pick any of these if you finish Lab 3 early:
 If your robot or scene gets into an unexpected state, run:
 
 ```bash
+# If the Digital Twin (ObjectWorld) is out of sync or broken, reset the world:
+inctl world reset --address=localhost:17080
+
 # Re-apply scene updates and reset Gazebo simulation back to clean initial state:
 bazel run -c opt //tools/world:apply_scene_updates -- \
   --address=localhost:17080 \
@@ -394,6 +397,9 @@ bazel run -c opt //tools/world:apply_scene_updates -- \
 # If RViz shows "No tf data" or missing meshes, restart the ROS bridge pod:
 kubectl delete pod -n app-resources -l app=flowstate-ros-bridge || \
   kubectl get pods -n app-resources | awk '/ros-bridge/{print $1}' | xargs -r kubectl delete pod -n app-resources
+
+# If everything is broken, stop the solution and start fresh from Lab 0.1 & 0.2:
+inctl solution stop --address=localhost:17080
 
 # Revert your local code/config edits back to clean git state:
 git checkout -- configs/omts/app_config.yaml configs/omts/scene.updates.pbtxt src/behaviors/machine_tending_bt.py
