@@ -24,8 +24,6 @@ No AI coding assistants are used in this workshop. Every step is designed to sho
 
 ## Lab 0 (0:00–0:15): Deploy the Solution & Run Your First Cycle
 
-> **Deck Reference:** Slides 5–12 (Deployment kickoff, Intrinsic Core stack, Flowstate 101: K3s / Services vs. Skills / Behavior Trees, 5-phase OMTS loop, and 6-DoF FoundationPose perception).
-
 ### 0.1. Deploy the OMTS Workcell in Simulation
 
 In **Terminal 2**, deploy `//:omts_solution` in simulation mode (`--operation_mode=sim`):
@@ -67,7 +65,7 @@ Notice the distinction:
 - **Services** (in `kubectl get pods -n app-resources`) are long-running processes: `rs-gazebo-simulator-0`, `rs-flowstate-ros-bridge-*`, `rs-nvidia-pose-estimator-service-*`, and ICON.
 - **Skills** (e.g., `ai.intrinsic.move_robot`, `ai.intrinsic.move_to_contact`, `ai.intrinsic.estimate_pose_multi_view`) are stateless, composable actions invoked by the **Executive** when running a **Behavior Tree**.
 
-### 0.4. Register the Pose Estimator & Run 1 Full Cycle *(Slide 11)*
+### 0.4. Register the Pose Estimator & Run 1 Full Cycle
 
 Register the text-prompted 6-DoF pose estimator for the raw stock block (safe to re-run if already registered):
 
@@ -101,8 +99,6 @@ Watch the 5 phases execute in sequence:
 ---
 
 ## Lab 1 (0:15–0:35): Digital Twin, Frames & Manual Control
-
-> **Deck Reference:** Slides 13–16 (Coordinate frames & kinematic trees, Belief World vs. Simulation World, and Lab 1 under-the-hood: ObjectWorldService, ICON real-time jogging, and DIO / world sync).
 
 ### Concept: Belief World vs. Simulation World
 
@@ -156,8 +152,6 @@ bazel run -c opt //tools/machine:control_machine -- --address=localhost:17080 --
 ---
 
 ## Lab 2 (0:35–0:50): Motion Planning & Collision Avoidance
-
-> **Deck Reference:** Slides 17–19 (Joint Space vs. Cartesian Space & IK, `ANY` vs. `LINEAR` planning, and Slide 19: Closed CNC Door collision-free motion planning deep dive).
 
 Instead of manually computing joint angles, Intrinsic Core's `move_robot` skill takes a target **coordinate frame** and solves inverse kinematics + collision-free path planning against the Digital Twin.
 
@@ -227,8 +221,6 @@ bazel run -c opt //tools/jogging:move_to_frame -- \
 ---
 
 ## Lab 3 (0:50–1:20): Customize OMTS (Frames -> Config -> Behavior Tree)
-
-> **Deck Reference:** Slides 20–23 (Three decoupled customization layers, Slide 21: RViz interactive frames & `store_frame`, Slide 22: YAML config & in-tree `bt.PythonScript`, Slide 23: SBL Behavior Tree extension).
 
 You will now modify the OMTS application across three layers without touching any low-level controller or driver code:
 
