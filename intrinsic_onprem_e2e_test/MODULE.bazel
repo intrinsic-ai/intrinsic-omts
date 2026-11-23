@@ -1,0 +1,20 @@
+"""Bazel module providing intrinsic_onprem_e2e_test().
+
+Runs a test against a freshly leased onprem VM (from a VM pool) that comes with
+the Intrinsic platform pre-installed.
+"""
+
+module(
+    name = "intrinsic_onprem_e2e_test",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "bazel_lib", version = "3.7.2")
+bazel_dep(name = "bazel_skylib", version = "1.9.2")
+bazel_dep(name = "jq.bzl", version = "0.7.1")
+bazel_dep(name = "rules_shell", version = "0.8.0")
+
+jq_toolchains = use_extension("@jq.bzl//jq:extensions.bzl", "toolchains")
+use_repo(jq_toolchains, "jq_toolchains")
+
+register_toolchains("@jq_toolchains//:all")

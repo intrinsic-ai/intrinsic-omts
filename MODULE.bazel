@@ -151,6 +151,16 @@ register_toolchains(
     dev_dependency = True,
 )
 
+bazel_dep(name = "rules_shell", version = "0.8.0")
+
+# Experimental: macro for e2e tests on onprem VMs leased from a VM pool, nested
+# here for de-risking before it moves to its own repository.
+bazel_dep(name = "intrinsic_onprem_e2e_test", version = "0.0.0", dev_dependency = True)
+local_path_override(
+    module_name = "intrinsic_onprem_e2e_test",
+    path = "intrinsic_onprem_e2e_test",
+)
+
 bazel_dep(name = "gazelle", version = "0.54.0", repo_name = "bazel_gazelle")
 
 go_deps = use_extension("@bazel_gazelle//:extensions.bzl", "go_deps")
