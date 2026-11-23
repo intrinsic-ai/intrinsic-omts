@@ -144,14 +144,12 @@ and model weights from this repository's GitHub Releases (configured in
 
 ### 4. Build and run instructions
 
-#### 4.1. Build and install NVIDIA Pose Estimator model `DataAssets` (one-time per cluster)
+#### 4.1. Build NVIDIA Pose Estimator model `DataAssets` (one-time build)
 
 The three perception model `DataAssets` (`foundationpose_models`,
 `foundationstereo_models`, and `sam3_models`) are tagged `manual` in
-`@intrinsic-core` and are not built by `//:omts_solution`. Build and install
-them onto the cluster **before** deploying `//:omts_solution` so that
-`nvidia_pose_estimator_service` resolves them when its instance is created (see
-the
+`@intrinsic-core` and are not built by `//:omts_solution`. Build the bundles
+once on the host before installing them onto the deployed cluster (see the
 [`nvidia_pose_estimator` README in `intrinsic-core`](https://github.com/intrinsic-ai/intrinsic-core/blob/main/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/README.md)
 for architecture, TensorRT engine caching, and licensing details):
 
@@ -169,24 +167,7 @@ bazel build \
   @intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:foundationpose_model_data_asset \
   @intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:foundationstereo_model_data_asset \
   @intrinsic-core//intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator:sam3_model_data_asset
-
-# 3. Install the three model DataAssets onto the cluster:
-inctl asset install --address=localhost:17080 \
-  bazel-bin/external/intrinsic-core+/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/foundationpose_model_data_asset.bundle.tar
-inctl asset install --address=localhost:17080 \
-  bazel-bin/external/intrinsic-core+/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/foundationstereo_model_data_asset.bundle.tar
-inctl asset install --address=localhost:17080 \
-  bazel-bin/external/intrinsic-core+/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/sam3_model_data_asset.bundle.tar
 ```
-
-> [!NOTE]
-> If `//:omts_solution` was already deployed before installing or updating the
-> model `DataAssets`, recreate the service instance so it binds the newly
-> installed assets:
-> ```bash
-> inctl service delete --address=localhost:17080 nvidia_pose_estimator_service || true
-> inctl service add --address=localhost:17080 ai.intrinsic.nvidia_pose_estimator_service
-> ```
 
 #### 4.2. Deploy the workcell solution
 
@@ -219,7 +200,31 @@ bazel run //:omts_solution -c opt --//:setup=lab_bb_01 -- --address=localhost:17
 > switching a running cluster between `real` and `sim`, stop the active solution
 > first (`inctl solution stop --address=localhost:17080`).
 
-#### 4.3. Register and verify workpiece pose estimator (required before running `omts_app`)
+#### 4.3. Install model `DataAssets` and recreate `nvidia_pose_estimator_service`
+
+Install the three prebuilt model `DataAssets` onto the running solution and
+recreate `nvidia_pose_estimator_service` so it binds the newly installed assets.
+
+> [!IMPORTANT]
+> This step **must** be run **after** deploying `//:omts_solution` (running
+> `inctl asset install` before a solution is deployed will fail) and must be
+> repeated every time after stopping the solution (`inctl solution stop`).
+
+```bash
+# Install the three model DataAssets onto the deployed solution:
+inctl asset install --address=localhost:17080 \
+  bazel-bin/external/intrinsic-core+/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/foundationpose_model_data_asset.bundle.tar
+inctl asset install --address=localhost:17080 \
+  bazel-bin/external/intrinsic-core+/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/foundationstereo_model_data_asset.bundle.tar
+inctl asset install --address=localhost:17080 \
+  bazel-bin/external/intrinsic-core+/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/sam3_model_data_asset.bundle.tar
+
+# Recreate the service instance so it binds the newly installed model assets:
+inctl service delete --address=localhost:17080 nvidia_pose_estimator_service || true
+inctl service add --address=localhost:17080 ai.intrinsic.nvidia_pose_estimator_service
+```
+
+#### 4.4. Register and verify workpiece pose estimator (required before running `omts_app`)
 
 Register and optionally verify the OMTS workpiece pose estimator using the CLI
 tools from `@intrinsic-core`:
@@ -243,7 +248,7 @@ bazel run @intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc
   --pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator_text"
 ```
 
-#### 4.4. Run the OMTS application
+#### 4.5. Run the OMTS application
 
 Connect to the running deployment and execute the machine tending Behavior Tree:
 

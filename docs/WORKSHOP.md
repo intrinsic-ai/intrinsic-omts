@@ -38,7 +38,30 @@ bazel run -c opt //:omts_solution -- \
 > **What is happening under the hood?**
 > Intrinsic Core runs on a local K3s Kubernetes cluster. Deploying a solution installs its **Assets** (robot UR5e, Robotiq Hand-E gripper, CNC enclosure, Schunk vise, Orbbec camera, workpiece, skills, and services) and starts the long-running **Services** (Gazebo simulator, ICON real-time controller, ROS bridge, and NVIDIA pose estimator) in the `app-resources` namespace.
 
-### 0.2. Launch RViz (The Digital Twin Viewer)
+### 0.2. Install Perception Model `DataAssets` & Recreate Pose Estimator Service
+
+Once `//:omts_solution` is running, install the three prebuilt perception model
+`DataAssets` onto the deployed solution and recreate
+`nvidia_pose_estimator_service` so it binds them.
+
+> **Important:** This step must run **after** deploying `//:omts_solution` (it
+> fails before a solution is deployed) and must be repeated any time you stop
+> and redeploy the solution (`inctl solution stop`).
+
+```bash
+cd ~/intrinsic-omts
+inctl asset install --address=localhost:17080 \
+  bazel-bin/external/intrinsic-core+/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/foundationpose_model_data_asset.bundle.tar
+inctl asset install --address=localhost:17080 \
+  bazel-bin/external/intrinsic-core+/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/foundationstereo_model_data_asset.bundle.tar
+inctl asset install --address=localhost:17080 \
+  bazel-bin/external/intrinsic-core+/intrinsic_perception/intrinsic/perception/service/nvidia_pose_estimator/sam3_model_data_asset.bundle.tar
+
+inctl service delete --address=localhost:17080 nvidia_pose_estimator_service || true
+inctl service add --address=localhost:17080 ai.intrinsic.nvidia_pose_estimator_service
+```
+
+### 0.3. Launch RViz (The Digital Twin Viewer)
 
 In **Terminal 1**, start RViz with the preconfigured OMTS display profile:
 
@@ -52,7 +75,7 @@ You should see the UR5e robot arm, the infeed table with the raw stock block (`r
 - **Middle-drag** (or Shift + Left-drag): Pan
 - **Scroll**: Zoom
 
-### 0.3. Inspect the Running K3s Cluster & Assets
+### 0.4. Inspect the Running K3s Cluster & Assets
 
 In **Terminal 2**, verify the pods and installed assets:
 
@@ -65,7 +88,7 @@ Notice the distinction:
 - **Services** (in `kubectl get pods -n app-resources`) are long-running processes: `rs-gazebo-simulator-0`, `rs-flowstate-ros-bridge-*`, `rs-nvidia-pose-estimator-service-*`, and ICON.
 - **Skills** (e.g., `ai.intrinsic.move_robot`, `ai.intrinsic.move_to_contact`, `ai.intrinsic.estimate_pose_multi_view`) are stateless, composable actions invoked by the **Executive** when running a **Behavior Tree**.
 
-### 0.4. Register the Pose Estimator & Run 1 Full Cycle
+### 0.5. Register the Pose Estimator & Run 1 Full Cycle
 
 Register the text-prompted 6-DoF pose estimator for the raw stock block (safe to re-run if already registered):
 
