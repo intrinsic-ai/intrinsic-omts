@@ -62,15 +62,17 @@ examples (run through Bazel as `bazel run
   moveit_plan_grasp_and_move --target_object=raw_stock_2x3x5 --surfaces=4
 
 prerequisites:
-  The ai.intrinsic.moveit_plan_grasp_skill asset ships with //:omts_solution,
-  but the planning service it calls does not. This tool does nothing until you
-  have completed the intrinsic-moveit integration yourself.
+  Both ai.intrinsic.moveit_plan_grasp_skill and
+  ai.intrinsic.moveit_planning_service ship with and are started by
+  //:omts_solution (for both --//:setup=omts and --//:setup=lab_bb_01).
 
-  * moveit_planning_service is running and reachable over Zenoh.
+  * //:omts_solution is deployed and moveit_planning_service is running
+    (in-cluster, or launched locally from source over Zenoh).
   * The output frames already exist in the world
-    (see configs/omts/scene.updates.pbtxt).
+    (see configs/omts/scene.updates.pbtxt and
+    configs/lab_bb_01/scene.updates.pbtxt).
 
-See third_party/intrinsic_moveit/README.md for the setup walkthrough.
+See third_party/intrinsic_moveit/README.md for details.
 """
 
 

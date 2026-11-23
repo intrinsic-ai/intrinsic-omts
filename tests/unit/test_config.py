@@ -80,6 +80,8 @@ class ConfigTest(absltest.TestCase):
     self.assertIsNone(config.machine)
     self.assertIsNone(config.frames.transit_frame)
     self.assertEqual(config.robot.enclosure_object_name, "enclosure")
+    self.assertEqual(config.grasp.planner_type, GraspPlannerType.CUBOID_CENTER)
+    self.assertEqual(config.grasp.moveit_surfaces, (0, 1, 4, 5))
 
   def test_omitted_grasp_section_defaults_to_cuboid_center(self):
     raw = yaml.safe_load(

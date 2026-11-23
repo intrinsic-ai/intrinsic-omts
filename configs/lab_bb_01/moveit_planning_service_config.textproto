@@ -1,0 +1,32 @@
+# intrinsic_asset_instance.service_config replaces (rather than merges with) the
+# bundle's default_config.binarypb, so all cluster connection, TF, and collision
+# exclusion fields must remain populated alongside robot_config: "lab_bb_01".
+[type.googleapis.com/intrinsic.MoveItPlanningServiceConfig] {
+  intrinsic_core_ingress_address: "istio-ingressgateway.app-ingress.svc.cluster.local:80"
+  zenoh_router_address: "tcp/zenoh-router.app-intrinsic-base.svc.cluster.local:7447"
+
+  world_tf_prefix: "world"
+  strip_tf_prefix: [""]
+  excluded_collision_namespaces: [
+    "ur_module",
+    "gripper",
+    "camera_mount",
+    "orbbec_camera",
+    "ecat_ft_hal_module_with_adapters_with_sim"
+  ]
+
+  robot_base_frame_id: "ur_module/base_link"
+  publish_world_root_tf: true
+  publish_robot_base_tf: true
+
+  collision_objects_update_rate_hz: 10.0
+  collision_objects_min_position_delta: 0.001
+  collision_objects_min_rotation_delta: 0.01
+
+  ros_service_call_timeout_sec: 5.0
+  add_collision_retry_interval_sec: 2.0
+  expect_collision_objects: true
+  use_mock_hardware: false
+  world_sync_interval_sec: 2.0
+  robot_config: "lab_bb_01"
+}
