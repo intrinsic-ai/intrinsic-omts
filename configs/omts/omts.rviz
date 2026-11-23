@@ -7,9 +7,8 @@ Panels:
         - /Global Options1
         - /Workcell Markers1
         - /OMTS Frame Editor1
+        - /OMTS Frame Editor1/Status1
         - /Image1
-        - /InteractiveMarkers1
-        - /Image2
       Splitter Ratio: 0.5
     Tree Height: 308
   - Class: rviz_common/Views
@@ -276,32 +275,8 @@ Visualization Manager:
     - Class: rviz_default_plugins/InteractiveMarkers
       Enable Transparency: true
       Enabled: true
-      Interactive Markers Namespace: ""
-      Name: OMTS Frame Editor
-      Show Axes: false
-      Show Descriptions: true
-      Show Visual Aids: false
-      Value: true
-    - Class: rviz_default_plugins/Image
-      Enabled: false
-      Max Value: 1
-      Median window: 5
-      Min Value: 0
-      Name: Image
-      Normalize Range: true
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Transport Override: ""
-        Value: /detections
-      Value: false
-    - Class: rviz_default_plugins/InteractiveMarkers
-      Enable Transparency: true
-      Enabled: true
       Interactive Markers Namespace: /omts_frame_editor
-      Name: InteractiveMarkers
+      Name: OMTS Frame Editor
       Show Axes: true
       Show Descriptions: true
       Show Visual Aids: true
@@ -342,7 +317,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 3.3143386840820312
+      Distance: 1.328918695449829
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -357,10 +332,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5
+      Pitch: 0.5999999046325684
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.698184490203857
+      Yaw: 4.778183937072754
     Saved: ~
 Window Geometry:
   Displays:
@@ -370,7 +345,7 @@ Window Geometry:
   Hide Right Dock: true
   Image:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000001b400000259fc0200000004fb0000000a0049006d006100670065000000003c000000c60000001600fffffffb000000100044006900730070006c006100790073010000003c00000170000000c800fffffffb0000000a00560069006500770073000000014a000000a2000000a200fffffffb0000000a0049006d00610067006501000001b2000000e30000001600ffffff000003140000025900000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000001b400000259fc0200000004fb0000000a0049006d006100670065000000003c000000930000000000000000fb000000100044006900730070006c006100790073010000003c00000170000000c800fffffffb0000000a00560069006500770073000000014a000000a2000000a200fffffffb0000000a0049006d00610067006501000001b2000000e30000001600ffffff000003140000025900000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
   Width: 1230
