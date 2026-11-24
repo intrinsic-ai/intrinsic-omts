@@ -7,10 +7,9 @@ Panels:
         - /Global Options1
         - /Workcell Markers1
         - /OMTS Frame Editor1
-        - /OMTS Frame Editor1/Status1
         - /Image1
       Splitter Ratio: 0.5
-    Tree Height: 308
+    Tree Height: 388
   - Class: rviz_common/Views
     Expanded:
       - /Current View1
@@ -123,6 +122,8 @@ Visualization Manager:
           Value: true
         root/grasp:
           Value: true
+        root/inspect:
+          Value: true
         root/machine_approach:
           Value: true
         root/pre_grasp:
@@ -204,6 +205,8 @@ Visualization Manager:
           raw_stock_2x3x5/base_link:
             {}
           root/grasp:
+            {}
+          root/inspect:
             {}
           root/machine_approach:
             {}
@@ -317,7 +320,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 1.328918695449829
+      Distance: 1.8670350313186646
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -345,7 +348,7 @@ Window Geometry:
   Hide Right Dock: true
   Image:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000001b400000259fc0200000004fb0000000a0049006d006100670065000000003c000000930000000000000000fb000000100044006900730070006c006100790073010000003c00000170000000c800fffffffb0000000a00560069006500770073000000014a000000a2000000a200fffffffb0000000a0049006d00610067006501000001b2000000e30000001600ffffff000003140000025900000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000001b400000259fc0200000004fb0000000a0049006d006100670065010000003c000000930000001600fffffffb000000100044006900730070006c00610079007301000000d5000001c0000000c800fffffffb0000000a00560069006500770073000000014a000000a2000000a200fffffffb0000000a0049006d00610067006501000001b2000000e30000000000000000000003140000025900000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
   Width: 1230
