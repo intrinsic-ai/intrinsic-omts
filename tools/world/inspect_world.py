@@ -16,8 +16,56 @@
 
 import argparse
 from collections.abc import Sequence
+from typing import Any
 
 from intrinsic.solutions import deployments
+
+
+def get_object_frames(obj: Any) -> list[tuple[str, Any]]:
+  """Returns sorted ``(frame_name, frame_node)`` pairs for a world object.
+
+  Supports real SBL ``WorldObject`` instances (``.frames`` / ``.frame_names``)
+  as well as mock/legacy objects exposing ``.list_frames()``.
+
+  Args:
+    obj: A world object (e.g., ``world.root`` or an entry from
+      ``world.list_objects()``).
+
+  Returns:
+    Sorted list of ``(frame_name, frame_node)`` tuples.
+  """
+  frames_attr = getattr(obj, "frames", None)
+  if isinstance(frames_attr, (list, tuple)):
+    resolved: list[tuple[str, Any]] = []
+    for frame in frames_attr:
+      name = str(
+        frame if isinstance(frame, str) else getattr(frame, "name", frame)
+      )
+      node = getattr(obj, name, None) if isinstance(frame, str) else frame
+      resolved.append((name, node))
+    return sorted(resolved, key=lambda item: item[0])
+
+  frame_names_attr = getattr(obj, "frame_names", None)
+  if isinstance(frame_names_attr, (list, tuple)):
+    return sorted(
+      ((str(name), getattr(obj, str(name), None)) for name in frame_names_attr),
+      key=lambda item: item[0],
+    )
+
+  list_frames_fn = getattr(obj, "list_frames", None)
+  if callable(list_frames_fn):
+    listed = list_frames_fn()
+    if isinstance(listed, (list, tuple, set)):
+      resolved = []
+      for frame in listed:
+        name = str(
+          frame if isinstance(frame, str) else getattr(frame, "name", frame)
+        )
+        node = getattr(obj, name, None) if isinstance(frame, str) else frame
+        resolved.append((name, node))
+      return sorted(resolved, key=lambda item: item[0])
+
+  return []
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -49,6 +97,11 @@ def main(argv: Sequence[str] | None = None) -> None:
     print(f" - {obj_name}")
     try:
       obj = item if not isinstance(item, str) else getattr(world, obj_name)
+      obj_frames = get_object_frames(obj)
+      if obj_frames:
+        print("   Frames:")
+        for frame_name, _ in obj_frames:
+          print(f"     * {frame_name}")
       if not hasattr(obj, "joint_configurations"):
         obj = getattr(world, obj_name, obj)
       if hasattr(obj, "joint_configurations") and list(
@@ -99,18 +152,18 @@ def main(argv: Sequence[str] | None = None) -> None:
         "Tool Frame in root:"
         f" {world.get_transform(world.root, world.gripper.tool_frame)}"
       )
-    if hasattr(world.root, "view"):
-      print(
-        f"View frame in root: {world.get_transform(world.root, world.root.view)}"
-      )
-    if hasattr(world.root, "pre_grasp"):
-      print(
-        f"Pre-grasp frame in root: {world.get_transform(world.root, world.root.pre_grasp)}"
-      )
-    if hasattr(world.root, "grasp"):
-      print(
-        f"Grasp frame in root: {world.get_transform(world.root, world.root.grasp)}"
-      )
+    root_frames = get_object_frames(world.root)
+    if root_frames:
+      print("Root frames:")
+      for frame_name, frame_node in root_frames:
+        if frame_node is None:
+          continue
+        try:
+          print(
+            f" - root.{frame_name}: {world.get_transform(world.root, frame_node)}"
+          )
+        except Exception as e:
+          print(f" - root.{frame_name}: <error: {e}>")
   except Exception as e:
     print(f"   Error checking transforms: {e}")
 
