@@ -78,7 +78,7 @@ py_test(
         "@com_google_absl_py//absl/testing:absltest",
         "@com_google_protobuf//:protobuf_python",
         "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
-        "@intrinsic-core//intrinsic_sdk/intrinsic/world/proto:object_world_updates_py_pb2",
+        "@intrinsic_apis//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
@@ -207,7 +207,7 @@ py_test(
         "//tools/jogging:store_frame_lib",
         "@com_google_absl_py//absl/testing:absltest",
         "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
-        "@intrinsic-core//intrinsic_sdk/intrinsic/world/proto:object_world_updates_py_pb2",
+        "@intrinsic_apis//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
@@ -265,7 +265,7 @@ py_test(
         "@com_google_absl_py//absl/testing:absltest",
         "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
         "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:proto_conversion",
-        "@intrinsic-core//intrinsic_sdk/intrinsic/world/proto:object_world_updates_py_pb2",
+        "@intrinsic_apis//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
@@ -297,10 +297,10 @@ py_test(
         "//tools/world:apply_scene_updates_lib",
         "@com_google_absl_py//absl/testing:absltest",
         "@intrinsic-core//intrinsic_perception/intrinsic/perception/skills/calibration:sample_calibration_poses_py_pb2",
-        "@intrinsic-core//intrinsic_sdk/intrinsic/world/proto:object_world_updates_py_pb2",
         "@intrinsic_apis//intrinsic/assets/services/proto:service_manifest_py_pb2",
         "@intrinsic_apis//intrinsic/icon/server/config:icon_main_config_py_pb2",
         "@intrinsic_apis//intrinsic/perception/proto/v1:camera_config_py_pb2",
+        "@intrinsic_apis//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
@@ -311,8 +311,8 @@ py_test(
         "//tools/calibration:calibrate_camera_lib",
         "//tools/world:apply_scene_updates_lib",
         "@com_google_absl_py//absl/testing:absltest",
-        "@intrinsic-core//intrinsic_sdk/intrinsic/world/proto:object_world_updates_py_pb2",
         "@intrinsic_apis//intrinsic/perception/proto/v1:camera_to_robot_calibration_py_pb2",
+        "@intrinsic_apis//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
@@ -332,8 +332,8 @@ py_test(
         "//tools/calibration:update_robot_kinematics_lib",
         "@com_github_grpc_grpc//src/python/grpcio/grpc:grpcio",
         "@com_google_absl_py//absl/testing:absltest",
-        "@intrinsic-core//intrinsic/world/service/robot_calibration:robot_update_service_py_pb2",
-        "@intrinsic-core//intrinsic/world/service/robot_calibration:robot_update_service_py_pb2_grpc",
+        "@intrinsic-core//intrinsic_runtime/intrinsic/world/service/robot_calibration:robot_update_service_py_pb2",
+        "@intrinsic-core//intrinsic_runtime/intrinsic/world/service/robot_calibration:robot_update_service_py_pb2_grpc",
     ],
 )
 

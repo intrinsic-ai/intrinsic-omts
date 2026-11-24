@@ -71,8 +71,8 @@ py_library(
         "//src/utils:math_utils",
         "//src/utils:script_utils",
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:behavior_tree",
-        "@intrinsic-core//intrinsic_sdk/intrinsic/world/proto:object_world_updates_py_pb2",
         "@intrinsic_apis//intrinsic/world/proto:object_world_refs_py_pb2",
+        "@intrinsic_apis//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
