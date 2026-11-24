@@ -230,14 +230,16 @@ Register and optionally verify the OMTS workpiece pose estimator using the CLI
 tools from `@intrinsic-core`:
 
 ```bash
-# Register the text-prompted pose estimator for the raw stock workpiece:
-bazel run @intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_train_service/tools:register_using_ioc_train_service -- \
+# Register the text-prompted pose estimator for the raw stock workpiece
+# (if already registered and changing thresholds, uninstall it first via:
+#  inctl asset uninstall ai.intrinsic.raw_stock_2x3x5_estimator_text --address=localhost:17080):
+bazel run -c opt @intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_train_service/tools:register_using_ioc_train_service -- \
   --address="localhost:17080" \
   --scene_object_id="ai.intrinsic.raw_stock_2x3x5" \
   --pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator_text" \
   --refinement_iters=5 \
-  --confidence_threshold=0.15 \
-  --visibility_threshold=0.15 \
+  --confidence_threshold=0.05 \
+  --visibility_threshold=0.05 \
   --text_prompt="cuboid"
 
 # Optionally verify pose detection directly against the live camera feed:

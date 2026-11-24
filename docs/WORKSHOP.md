@@ -90,7 +90,7 @@ Notice the distinction:
 
 ### 0.5. Register the Pose Estimator & Run 1 Full Cycle
 
-Register the text-prompted 6-DoF pose estimator for the raw stock block (safe to re-run if already registered):
+Register the text-prompted 6-DoF pose estimator for the raw stock block (if you later need to change thresholds or re-register under the same name, uninstall the existing asset first — see Troubleshooting below):
 
 ```bash
 bazel run -c opt @intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_train_service/tools:register_using_ioc_train_service -- \
@@ -98,8 +98,8 @@ bazel run -c opt @intrinsic-core//intrinsic_perception/intrinsic/perception/serv
   --scene_object_id="ai.intrinsic.raw_stock_2x3x5" \
   --pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator_text" \
   --refinement_iters=5 \
-  --confidence_threshold=0.15 \
-  --visibility_threshold=0.15 \
+  --confidence_threshold=0.05 \
+  --visibility_threshold=0.05 \
   --text_prompt="cuboid"
 ```
 
@@ -397,6 +397,10 @@ bazel run -c opt //tools/world:apply_scene_updates -- \
 # If RViz shows "No tf data" or missing meshes, restart the ROS bridge pod:
 kubectl delete pod -n app-resources -l app=flowstate-ros-bridge || \
   kubectl get pods -n app-resources | awk '/ros-bridge/{print $1}' | xargs -r kubectl delete pod -n app-resources
+
+# If the pose estimator was installed incorrectly or you want to change its thresholds
+# (must uninstall before re-registering under the same asset name):
+inctl asset uninstall ai.intrinsic.raw_stock_2x3x5_estimator_text --address=localhost:17080
 
 # If everything is broken, stop the solution and start fresh from Lab 0.1 & 0.2:
 inctl solution stop --address=localhost:17080
