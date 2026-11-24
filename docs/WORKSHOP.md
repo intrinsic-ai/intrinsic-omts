@@ -22,7 +22,7 @@ No AI coding assistants are used in this workshop. Every step is designed to sho
 
 ---
 
-## Lab 0 (0:00–0:15): Deploy the Solution & Run Your First Cycle
+## Lab 0 (0:00–0:20): Deploy, Launch RViz & Set Up Perception
 
 ### 0.1. Deploy the OMTS Workcell in Simulation
 
@@ -38,7 +38,21 @@ bazel run -c opt //:omts_solution -- \
 > **What is happening under the hood?**
 > Intrinsic Core runs on a local K3s Kubernetes cluster. Deploying a solution installs its **Assets** (robot UR5e, Robotiq Hand-E gripper, CNC enclosure, Schunk vise, Orbbec camera, workpiece, skills, and services) and starts the long-running **Services** (Gazebo simulator, ICON real-time controller, ROS bridge, and NVIDIA pose estimator) in the `app-resources` namespace.
 
-### 0.2. Install Perception Model `DataAssets` & Recreate Pose Estimator Service
+### 0.2. Launch RViz (The Digital Twin Viewer)
+
+In **Terminal 1**, start RViz with the preconfigured OMTS display profile:
+
+```bash
+choom -n 1000 ros2 run rviz2 rviz2 -- -d ~/intrinsic-omts/configs/omts/omts.rviz
+```
+
+You should see the UR5e robot arm, the infeed table with the raw stock block (`raw_stock_2x3x5`), and the CNC enclosure with the Schunk vise inside.
+
+- **Left-drag**: Orbit camera
+- **Middle-drag** (or Shift + Left-drag): Pan
+- **Scroll**: Zoom
+
+### 0.3. Install Perception Model `DataAssets` & Recreate Pose Estimator Service
 
 Once `//:omts_solution` is running, install the three prebuilt perception model
 `DataAssets` onto the deployed solution and recreate
@@ -61,20 +75,6 @@ inctl service delete --address=localhost:17080 nvidia_pose_estimator_service || 
 inctl service add --address=localhost:17080 ai.intrinsic.nvidia_pose_estimator_service
 ```
 
-### 0.3. Launch RViz (The Digital Twin Viewer)
-
-In **Terminal 1**, start RViz with the preconfigured OMTS display profile:
-
-```bash
-choom -n 1000 ros2 run rviz2 rviz2 -- -d ~/intrinsic-omts/configs/omts/omts.rviz
-```
-
-You should see the UR5e robot arm, the infeed table with the raw stock block (`raw_stock_2x3x5`), and the CNC enclosure with the Schunk vise inside.
-
-- **Left-drag**: Orbit camera
-- **Middle-drag** (or Shift + Left-drag): Pan
-- **Scroll**: Zoom
-
 ### 0.4. Inspect the Running K3s Cluster & Assets
 
 In **Terminal 2**, verify the pods and installed assets:
@@ -88,7 +88,7 @@ Notice the distinction:
 - **Services** (in `kubectl get pods -n app-resources`) are long-running processes: `rs-gazebo-simulator-0`, `rs-flowstate-ros-bridge-*`, `rs-nvidia-pose-estimator-service-*`, and ICON.
 - **Skills** (e.g., `ai.intrinsic.move_robot`, `ai.intrinsic.move_to_contact`, `ai.intrinsic.estimate_pose_multi_view`) are stateless, composable actions invoked by the **Executive** when running a **Behavior Tree**.
 
-### 0.5. Register the Pose Estimator & Run 1 Full Cycle
+### 0.5. Register the Workpiece Pose Estimator
 
 Register the text-prompted 6-DoF pose estimator for the raw stock block (if you later need to change thresholds or re-register under the same name, uninstall the existing asset first — see Troubleshooting below):
 
@@ -103,21 +103,17 @@ bazel run -c opt @intrinsic-core//intrinsic_perception/intrinsic/perception/serv
   --text_prompt="cuboid"
 ```
 
-Now run one full machine tending cycle and watch RViz:
+*(Optional)* Verify pose detection directly against the live simulated camera feed and watch the **`/detections`** image panel in RViz:
 
 ```bash
-bazel run -c opt //src:omts_app -- \
-  --address=localhost:17080 \
-  --config="configs/omts/app_config.yaml" \
-  --num_cycles=1
+bazel run -c opt @intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_pose_estimator:run_pose_estimation -- \
+  --address="localhost:17080" \
+  --service_name="nvidia_pose_estimator_service" \
+  --camera_name="orbbec_camera" \
+  --pose_estimator_id="ai.intrinsic.raw_stock_2x3x5_estimator_text"
 ```
 
-Watch the 5 phases execute in sequence:
-1. **Pick**: Open CNC door/vise -> move to `view` -> 6-DoF pose estimation -> approach & compliant touchdown -> grasp & attach block.
-2. **Load**: Move through `transit` -> `machine_approach` -> `vise_pre_place` -> seat into vise -> clamp vise & release.
-3. **Machining**: Retract to `machine_approach` -> close CNC door -> wait for simulated machining cycle.
-4. **Unload**: Open CNC door/vise -> grasp machined block -> lift & exit CNC enclosure.
-5. **Return**: Place block back on infeed table at a randomized `(x, y, rz)` offset -> release & return to `view`.
+We will run the full `omts_app` cycle right after Lab 2, once we have explored the Digital Twin, jogging, and collision-free motion planning.
 
 ---
 
@@ -240,6 +236,26 @@ bazel run -c opt //tools/jogging:move_to_frame -- \
 ```
 
 > **Why both exist**: Use `LINEAR` when inserting/extracting parts in tight clearances (like the CNC vise) so the tool sweeps a predictable straight line. Use `ANY` for long cross-cell transits where the planner should pick the fastest collision-free joint trajectory.
+
+---
+
+## OMTS in Action: Run Your First Full Cycle
+
+Now that you have seen K3s assets, 6-DoF pose estimation, Behavior Trees, the Digital Twin, jogging, and collision-free motion planning, run the full `omts_app` Behavior Tree for one cycle and watch RViz (including the `/detections` image panel):
+
+```bash
+bazel run -c opt //src:omts_app -- \
+  --address=localhost:17080 \
+  --config="configs/omts/app_config.yaml" \
+  --num_cycles=1
+```
+
+Watch the 5 phases execute in sequence:
+1. **Pick**: Open CNC door/vise -> move to `view` -> 6-DoF pose estimation -> approach & compliant touchdown -> grasp & attach block.
+2. **Load**: Move through `transit` -> `machine_approach` -> `vise_pre_place` -> seat into vise -> clamp vise & release.
+3. **Machining**: Retract to `machine_approach` -> close CNC door -> wait for simulated machining cycle.
+4. **Unload**: Open CNC door/vise -> grasp machined block -> lift & exit CNC enclosure.
+5. **Return**: Place block back on infeed table at a randomized `(x, y, rz)` offset -> release & return to `view`.
 
 ---
 
@@ -402,7 +418,7 @@ kubectl delete pod -n app-resources -l app=flowstate-ros-bridge || \
 # (must uninstall before re-registering under the same asset name):
 inctl asset uninstall ai.intrinsic.raw_stock_2x3x5_estimator_text --address=localhost:17080
 
-# If everything is broken, stop the solution and start fresh from Lab 0.1 & 0.2:
+# If everything is broken, stop the solution and start fresh from Lab 0.1 & 0.3:
 inctl solution stop --address=localhost:17080
 
 # Revert your local code/config edits back to clean git state:
