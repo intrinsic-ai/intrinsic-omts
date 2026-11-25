@@ -126,8 +126,7 @@ OMTS adheres to clean separation of concerns:
 #### GitHub release artifacts
 
 During the build, Bazel automatically downloads the following prebuilt bundles
-and model weights from this repository's GitHub Releases (configured in
-[`MODULE.bazel`](MODULE.bazel)):
+from GitHub Releases (configured in [`MODULE.bazel`](MODULE.bazel)):
 
 - `flowstate_ros_bridge.bundle.tar`: Prebuilt service of
   [`flowstate_ros_bridge`](https://github.com/intrinsic-ai/sdk-ros/tree/main/flowstate_ros_bridge).
@@ -136,10 +135,15 @@ and model weights from this repository's GitHub Releases (configured in
 - `hand_e_gripper_cmd_skill.bundle.tar`: Prebuilt Robotiq Hand-E control skill.
 - `orbbec_gemini_driver.bundle.tar`: Prebuilt driver service of
   [`flowstate_orbbec`](https://github.com/intrinsic-ai/intrinsic-ros-camera-drivers/tree/main/flowstate_orbbec).
+- `moveit_planning_service.bundle.tar`: Prebuilt MoveIt 2 & MoveIt Task
+  Constructor planning service (`ai.intrinsic.moveit_planning_service`) from
+  [`intrinsic-ai/intrinsic-moveit`](https://github.com/intrinsic-ai/intrinsic-moveit),
+  started automatically by `//:omts_solution` for both `omts` and `lab_bb_01`.
 - `moveit_plan_grasp_skill.bundle.tar`: Prebuilt MoveIt grasp planning skill
-  (`ai.intrinsic.moveit_plan_grasp_skill`). It is installed into every solution
-  so that `--grasp_planner=moveit` works without sideloading, but it only
-  executes once you have stood up the MoveIt planning service — see
+  (`ai.intrinsic.moveit_plan_grasp_skill`) from
+  [`intrinsic-ai/intrinsic-moveit`](https://github.com/intrinsic-ai/intrinsic-moveit).
+  Installed alongside `moveit_planning_service` so that `--grasp_planner=moveit`
+  works out of the box — see
   [§8 Optional integrations](#8-optional-integrations).
 
 ### 4. Build and run instructions
@@ -275,7 +279,7 @@ bazel run //src:omts_app -- \
   --simulation_mode=fast_preview
 
 # Optionally, plan the infeed grasp with MoveIt instead of the built-in cuboid-center
-# heuristic (requires the MoveIt planning service, see §8):
+# heuristic (see §8):
 bazel run //src:omts_app -- \
   --address=localhost:17080 \
   --config="configs/omts/app_config.yaml" \
@@ -365,7 +369,12 @@ for full build and licensing details.
 ## 8. Optional integrations
 
 MoveIt grasp planning is an opt-in alternative to the built-in cuboid-center
-heuristic. The integration code is third-party and lives under
+heuristic, supporting both the default `omts` cell (`robot_config: "omts"`) and
+the `lab_bb_01` cell (`robot_config: "lab_bb_01"`, available in
+`intrinsic-moveit` `v0.1.0+`). `//:omts_solution` automatically deploys and
+configures both `ai.intrinsic.moveit_planning_service` and
+`ai.intrinsic.moveit_plan_grasp_skill` for the selected `--//:setup`. The
+integration code is third-party and lives under
 [`third_party/intrinsic_moveit/`](third_party/intrinsic_moveit/README.md); it is
 reachable two ways:
 
@@ -375,13 +384,8 @@ reachable two ways:
 - **Standalone**: the `moveit_plan_grasp_and_move` CLI tool, for bringing the
   integration up and debugging candidates outside a production cycle.
 
-> [!NOTE]
-> Until you have completed the [intrinsic-moveit](https://github.com/intrinsic-ai/intrinsic-moveit)
-> integration against your solution, `--grasp_planner=moveit` will fail at
-> runtime and the standalone tools will do nothing. The default
-> `--grasp_planner=cuboid_center` path is unaffected. See
-> [`third_party/intrinsic_moveit/README.md`](third_party/intrinsic_moveit/README.md)
-> for the prerequisites and the tool reference.
+See [`third_party/intrinsic_moveit/README.md`](third_party/intrinsic_moveit/README.md)
+for architecture details, optional RViz visualization, and the tool reference.
 
 ---
 

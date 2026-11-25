@@ -46,6 +46,7 @@ from intrinsic.perception.skills.calibration import sample_calibration_poses_pb2
 from intrinsic.world.proto import object_world_updates_pb2
 
 from src.core.config import load_app_config
+from third_party.intrinsic_moveit.proto import moveit_planning_service_pb2
 from tools.world.apply_scene_updates import DEFAULT_UPDATE_FILES
 
 # Ensure all google.protobuf.Any payload descriptors are registered in the pool.
@@ -57,6 +58,7 @@ _REGISTERED_ANY_DESCRIPTORS = (
   ur_module_config_pb2.UniversalRobotsModuleConfig.DESCRIPTOR,
   icon_main_config_pb2.IconMainConfig.DESCRIPTOR,
   camera_config_pb2.CameraConfig.DESCRIPTOR,
+  moveit_planning_service_pb2.MoveItPlanningServiceConfig.DESCRIPTOR,
 )
 
 # Every world update config is expected to be an ObjectWorldUpdates. Configs
@@ -334,6 +336,21 @@ class WorldUpdateConfigsTest(absltest.TestCase):
             cam_cfg = camera_config_pb2.CameraConfig()
             self.assertTrue(any_msg.Unpack(cam_cfg))
             self.assertEqual(cam_cfg.identifier.ros.driver_type, "orbbec")
+          elif path.endswith("moveit_planning_service_config.textproto"):
+            moveit_cfg = (
+              moveit_planning_service_pb2.MoveItPlanningServiceConfig()
+            )
+            self.assertTrue(any_msg.Unpack(moveit_cfg))
+            self.assertIn(
+              "svc.cluster.local", moveit_cfg.intrinsic_core_ingress_address
+            )
+            self.assertIn("svc.cluster.local", moveit_cfg.zenoh_router_address)
+            self.assertEqual(
+              moveit_cfg.robot_base_frame_id, "ur_module/base_link"
+            )
+            self.assertFalse(moveit_cfg.use_mock_hardware)
+            if "/lab_bb_01/" in path:
+              self.assertEqual(moveit_cfg.robot_config, "lab_bb_01")
           else:
             self.fail(f"Unhandled .textproto config file: {path}")
 

@@ -1571,6 +1571,8 @@ class HermeticSolutionAndBehaviorTreeContractTest(absltest.TestCase):
     self.assertIn("schunk_egp_64nnb", omts_instances)
     self.assertNotIn("cnc_enclosure", lab_instances)
     self.assertNotIn("schunk_egp_64nnb", lab_instances)
+    self.assertIn("moveit_planning_service", omts_instances)
+    self.assertIn("moveit_planning_service", lab_instances)
 
     registered_skill_ids = set(self.skill_infos.keys())
 

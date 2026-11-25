@@ -1,0 +1,89 @@
+// Copyright 2026 Intrinsic Innovation LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Schema copy of moveit_planning_service/moveit_planning_service.proto from
+// intrinsic-ai/intrinsic-moveit (pinned by INTRINSIC_MOVEIT_RELEASE in
+// MODULE.bazel) so unit tests and asset metadata generation can validate
+// MoveItPlanningServiceConfig textprotos without downloading the 747 MB
+// service container bundle.
+
+syntax = "proto3";
+
+package intrinsic;
+
+// Configuration message for consolidated MoveIt planning service.
+message MoveItPlanningServiceConfig {
+  // Platform Connection & Zenoh Configuration
+  // Ingress Gateway gRPC endpoint for the World service.
+  string intrinsic_core_ingress_address = 1;
+  // Address of the internal Zenoh router (e.g.
+  // "tcp/zenoh-router.app-intrinsic-base.svc.cluster.local:7447").
+  string zenoh_router_address = 2;
+
+  // Transform & Geometry Configuration
+  // Prefix for the world frame in TF. Defaults to "" (uses "world").
+  optional string world_tf_prefix = 3;
+  // List of TF prefixes to strip from incoming frame names.
+  repeated string strip_tf_prefix = 4;
+  // Namespaces excluded from collision objects to prevent self-collision false
+  // positives.
+  repeated string excluded_collision_namespaces = 5;
+
+  // Static Transform & Kinematics Configuration
+  // Reserved / deprecated fields previously used for robot joint states (now
+  // handled by flowstate_ros_bridge)
+  reserved 6, 8, 9, 10;
+  reserved "enable_robot_joint_state_topic", "robot_controller_instance",
+      "throttle_robot_state_topic", "override_joint_names";
+
+  // Mounting frame ID for the robot arm base in the world scene (e.g.
+  // "ur_module/base_link").
+  string robot_base_frame_id = 7;
+  // Whether to broadcast static transform from world frame to "root". Defaults
+  // to true.
+  optional bool publish_world_root_tf = 11;
+  // Whether to broadcast static transform from robot_base_frame_id to
+  // "base_link" (with 180° yaw). Defaults to true.
+  optional bool publish_robot_base_tf = 12;
+
+  // Collision Object Throttling & Deadbanding
+  // Maximum frequency (in Hz) at which collision object pose updates are
+  // evaluated and published. Defaults to 10.0 Hz.
+  optional double collision_objects_update_rate_hz = 13;
+  // Minimum translational movement (in meters) required before publishing a
+  // pose update. Defaults to 0.001 m (1 mm).
+  optional double collision_objects_min_position_delta = 14;
+  // Minimum angular rotation (in radians) required before publishing a pose
+  // update. Defaults to 0.01 rad (~0.57°).
+  optional double collision_objects_min_rotation_delta = 15;
+
+  // Planning & Scene Verification Parameters
+  // Timeout in seconds for internal ROS 2 service calls. Defaults to 5.0 s.
+  optional double ros_service_call_timeout_sec = 16;
+  // Interval in seconds between retry attempts when populating collision
+  // objects. Defaults to 2.0 s.
+  optional double add_collision_retry_interval_sec = 17;
+  // Requires the MoveIt planning scene to contain collision objects before
+  // marking node ready. Defaults to true.
+  optional bool expect_collision_objects = 18;
+  // Whether to start mock ros2_control hardware for offline testing without a
+  // live platform connection. Defaults to false.
+  optional bool use_mock_hardware = 19;
+  // Periodic interval in seconds for background polling of World
+  // scene objects. Defaults to 2.0 s (0.0 to disable).
+  optional double world_sync_interval_sec = 20;
+  // Workcell robot configuration to launch (e.g. "omts" or "lab_bb_01").
+  // Defaults to "omts" when unset.
+  optional string robot_config = 21;
+}

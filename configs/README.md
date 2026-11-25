@@ -7,7 +7,7 @@ and hardware/service configuration manifests (`.textproto`).
 
 | Directory | Cell / Scope | Description |
 | :--- | :--- | :--- |
-| [`common/`](common/) | Shared across cells | Asset manifests and service configs shared by all cells (`flowstate_ros_bridge`, `hande_gripper_service`, `orbbec_gemini_driver`), and the `antipodal_mesh` gripper catalogue (`grippers.yaml`). |
+| [`common/`](common/) | Shared across cells | Asset manifests and service configs shared by all cells (`flowstate_ros_bridge`, `hande_gripper_service`, `moveit_planning_service`, `orbbec_gemini_driver`), and the `antipodal_mesh` gripper catalogue (`grippers.yaml`). |
 | [`omts/`](omts/) | Production OMTS Cell | UR5e arm, Robotiq Hand-E gripper, Orbbec Gemini 335Le camera, CNC enclosure, and Schunk EGP 64 pneumatic vise. Selected by default (`--//:setup=omts`). |
 | [`lab_bb_01/`](lab_bb_01/) | Lab BB-01 Cell | UR3e arm, Robotiq Hand-E gripper, Orbbec Gemini 335Le camera, CAW enclosure, without CNC machine/vise hardware. Selected via `--//:setup=lab_bb_01`. |
 | [`lab_bb_01_objects/`](lab_bb_01_objects/) | Lab BB-01 mesh grasping demo | Scene updates for the simulation-only `banana` and `bracket` workpieces, which replace the raw stock (`--//:workpiece`). See [`src/grasping/`](../src/grasping/README.md). |
@@ -30,6 +30,10 @@ and hardware/service configuration manifests (`.textproto`).
   and cell-specific joint application limits
   (`omts/ur_module.limits.updates.pbtxt`).
   Can be applied live via `bazel run //tools/world:apply_scene_updates`.
-* **`*.textproto`**: Service configurations for ICON realtime control
-  (`icon_config.textproto`), UR hardware module (`ur_module_config.textproto`),
-  and Orbbec camera driver (`gemini_device_config.textproto`).
+* **`*.textproto`**: Shared `ServiceManifest` definitions
+  (`common/*_manifest.textproto`) for imported service bundles, plus per-cell
+  service configurations for ICON realtime control (`icon_config.textproto`), UR
+  hardware module (`ur_module_config.textproto`), Orbbec camera driver
+  (`gemini_device_config.textproto`), and MoveIt planning service
+  (`lab_bb_01/moveit_planning_service_config.textproto`; `omts` uses the
+  bundle's default config).
