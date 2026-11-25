@@ -242,7 +242,9 @@ bazel run -c opt @intrinsic-core//intrinsic_perception/intrinsic/perception/serv
   --visibility_threshold=0.05 \
   --text_prompt="cuboid"
 
-# Optionally verify pose detection directly against the live camera feed:
+# Optionally verify pose detection directly against the live camera feed
+# (wait 1-2 minutes after recreating the service / registering so model weights
+# finish loading on the GPU, otherwise the service will report unavailable):
 bazel run @intrinsic-core//intrinsic_perception/intrinsic/perception/service/ioc_pose_estimator:run_pose_estimation -- \
   --address="localhost:17080" \
   --service_name="nvidia_pose_estimator_service" \

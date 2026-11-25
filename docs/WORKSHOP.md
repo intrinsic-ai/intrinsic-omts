@@ -103,6 +103,8 @@ bazel run -c opt @intrinsic-core//intrinsic_perception/intrinsic/perception/serv
   --text_prompt="cuboid"
 ```
 
+> **Note**: Wait **1–2 minutes** after recreating `nvidia_pose_estimator_service` and registering the pose estimator for the model weights to finish loading on the GPU. Running `run_pose_estimation` before initialization completes will return a service-unavailable error.
+
 *(Optional)* Verify pose detection directly against the live simulated camera feed and watch the **`/detections`** image panel in RViz:
 
 ```bash
