@@ -17,7 +17,7 @@ The Open Machine Tending Solution (OMTS) is an open-source reference application
 
 ## Installation and setup
 
-See the [Getting Started guide](https://github.com/intrinsic-ai/intrinsic-core/tree/main/developer_resources/learn/tutorials/getting_started.md) for full installation and setup instructions.
+See the [Getting Started guide](https://developer.intrinsic.ai/docs/learn/tutorials/getting_started/) for full installation and setup instructions.
 
 ---
 
@@ -48,8 +48,8 @@ The top-level task orchestration engine. Built using the Solution Building Libra
 - [Architecture & System Design](https://github.com/intrinsic-ai/intrinsic-omts/blob/main/docs/ARCHITECTURE.md): SBL abstractions, behavior tree lifecycle, infeed strategy pattern, and domain models.
 - [Extending Hardware & Real I/O](src/hardware/README.md): Guide for connecting real Robotiq grippers, pneumatic vises, CNC machine door interlocks, and 3D perception tracking.
 - [Developer Playbook & Operations](tools/README.md): Bazel execution, unit tests, diagnostic tools (`inspect_world`, `apply_scene_updates`, `move_to_frame`), and troubleshooting gotchas.
-- [Tutorials](https://github.com/intrinsic-ai/intrinsic-core/tree/main/developer_resources/learn/tutorials): Step-by-step guides to get started, customize physical layouts, visualize the robot, and more.
-- [Glossary](https://github.com/intrinsic-ai/intrinsic-core/blob/main/developer_resources/learn/glossary/general_terms.md): Technical definitions of Intrinsic Core and OMTS.
+- [Tutorials](https://developer.intrinsic.ai/docs/learn/tutorials/): Step-by-step guides to get started, customize physical layouts, visualize the robot, and more.
+- [Glossary](https://developer.intrinsic.ai/docs/learn/glossary/general_terms/): Technical definitions of Intrinsic Core and OMTS.
 - [Intrinsic developer community](https://developer.intrinsic.ai/): Guides, tutorials, a community forum to ask questions, share projects, and get support, and be the first to hear about new tools and features.
 
 ---
