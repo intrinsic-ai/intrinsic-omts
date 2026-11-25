@@ -366,3 +366,12 @@ py_test(
         "@intrinsic-core//intrinsic_sdk/intrinsic/math/python:data_types",
     ],
 )
+
+py_test(
+    name = "test_inspect_world",
+    srcs = ["test_inspect_world.py"],
+    deps = [
+        "//tools/world:inspect_world_lib",
+        "@com_google_absl_py//absl/testing:absltest",
+    ],
+)

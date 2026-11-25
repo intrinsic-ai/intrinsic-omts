@@ -4,6 +4,7 @@ package(default_visibility = ["//visibility:public"])
 # genuinely cell-independent; every other directory is one cell.
 _CONFIG_GLOB = [
     "*/*.pbtxt",
+    "*/*.rviz",
     "*/*.textproto",
     "*/*.yaml",
 ]
