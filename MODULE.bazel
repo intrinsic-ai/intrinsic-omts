@@ -11,13 +11,13 @@ module(name = "omts")
 #
 # When bumping INTRINSIC_CORE_COMMIT, update INTRINSIC_CORE_SHA256 with:
 #   curl -fsSL "https://github.com/intrinsic-ai/intrinsic-core/archive/<commit>.tar.gz" | sha256sum
-INTRINSIC_CORE_COMMIT = "50927e35c5c85992b2a4d0b91dabb9cf4172b2d5"
+INTRINSIC_CORE_COMMIT = "d8fa43c54942a2c05022969a26af6e8d9401a7ef"
 
 INTRINSIC_CORE_URL = "https://github.com/intrinsic-ai/intrinsic-core/archive/{commit}.tar.gz".format(
     commit = INTRINSIC_CORE_COMMIT,
 )
 
-INTRINSIC_CORE_SHA256 = "3cd4921366ac2ad4786c44bb992f4f22b5e866f0bf9180cb5b11d5e39bdf2718"
+INTRINSIC_CORE_SHA256 = "04a248f8b1c346e0759dc55cebc6fbd2469b34637265a02b6dc3a883d9611888"
 
 bazel_dep(name = "intrinsic-core")
 git_override(
@@ -39,13 +39,6 @@ archive_override(
 )
 
 archive_override(
-    module_name = "universal-robots-client-library",
-    sha256 = "a7823035d5b157035448874b8ee622c2cd20e68fb10a2322a6efea3ea7fb1732",
-    strip_prefix = "Universal_Robots_Client_Library-2.7.0-alpha-acceleration.0",
-    url = "https://github.com/FilipposSot/Universal_Robots_Client_Library/archive/refs/tags/2.7.0-alpha-acceleration.0.tar.gz",
-)
-
-archive_override(
     module_name = "gloop",
     patch_strip = 1,
     patches = ["//bazel/patches:gloop.patch"],
@@ -56,17 +49,17 @@ archive_override(
     ],
 )
 
-bazel_dep(name = "zenoh-c", version = "1.8.0.bcr.1")
+bazel_dep(name = "zenoh-c", version = "1.8.0.bcr.2")
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
 bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(name = "abseil-py", version = "2.1.0", repo_name = "com_google_absl_py")
-bazel_dep(name = "eigen", version = "5.0.1.bcr.2", repo_name = "com_gitlab_libeigen_eigen")
+bazel_dep(name = "eigen", version = "5.0.1.bcr.3", repo_name = "com_gitlab_libeigen_eigen")
 bazel_dep(name = "grpc", version = "1.81.1", repo_name = "com_github_grpc_grpc")
 bazel_dep(name = "pybind11_bazel", version = "3.0.3")
-bazel_dep(name = "rules_cc", version = "0.2.25")
-bazel_dep(name = "rules_cuda", version = "0.3.0")
-bazel_dep(name = "rules_oci", version = "2.3.0")
-bazel_dep(name = "rules_python", version = "2.3.3")
+bazel_dep(name = "rules_cc", version = "0.2.28")
+bazel_dep(name = "rules_cuda", version = "0.4.0")
+bazel_dep(name = "rules_oci", version = "2.3.5")
+bazel_dep(name = "rules_python", version = "2.5.1")
 # Bzlmod ignores `single_version_override` directives in non-root modules
 # (@intrinsic-core), so the overrides below are mirrored from
 # @intrinsic-core//MODULE.bazel until the upstream fixes land in the Bazel
@@ -87,7 +80,7 @@ single_version_override(
     version = "0.8.24",
 )
 
-bazel_dep(name = "googleapis", version = "0.0.0-20260929-28769825", repo_name = "com_google_googleapis")
+bazel_dep(name = "googleapis", version = "0.0.0-20261103-57aa4dbc", repo_name = "com_google_googleapis")
 
 # TODO(b/388805879): Remove this override once
 # https://github.com/protocolbuffers/protobuf/issues/24084 is resolved in BCR
@@ -99,20 +92,6 @@ single_version_override(
         "sed -i 's|@system_python//:python_headers|@rules_python//python/cc:current_py_cc_headers|g' python/build_targets.bzl python/py_extension.bzl",
     ],
     version = "33.6",
-)
-
-# Remove once opencv@4.13+ on BCR carries the webp/Qt6 patches and
-# @intrinsic-core drops its single_version_override on `opencv`.
-single_version_override(
-    module_name = "opencv",
-    version = "4.12.0.bcr.5",
-)
-
-# TODO(b/567681750): Remove once `libxml2-go` on BCR supports libxml2 >= 2.15
-# under Clang 21 and @intrinsic-core drops its override on `libxml2`.
-single_version_override(
-    module_name = "libxml2",
-    version = "2.14.4.bcr.1",
 )
 
 # TODO(b/567681027): Remove this override and
@@ -144,6 +123,9 @@ cuda.redist_json(
         "cudart",
         "nvcc",
         "curand",
+    ],
+    platforms = [
+        "linux-x86_64",
     ],
     version = "12.8.1",
 )

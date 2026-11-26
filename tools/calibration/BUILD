@@ -19,10 +19,10 @@ py_library(
         "@intrinsic-core//intrinsic_sdk/intrinsic/solutions:provided",
         "@intrinsic-core//intrinsic_sdk/intrinsic/util/grpc:connection",
         "@intrinsic-core//intrinsic_sdk/intrinsic/util/grpc:interceptor",
-        "@intrinsic-core//intrinsic_sdk/intrinsic/world/proto:object_world_updates_py_pb2",
         "@intrinsic_apis//intrinsic/icon/proto:joint_space_py_pb2",
         "@intrinsic_apis//intrinsic/icon/proto/v1:service_py_pb2_grpc",
         "@intrinsic_apis//intrinsic/perception/proto/v1:camera_to_robot_calibration_py_pb2",
+        "@intrinsic_apis//intrinsic/world/proto:object_world_updates_py_pb2",
     ],
 )
 
@@ -43,8 +43,8 @@ py_library(
         "@com_google_absl_py//absl:app",
         "@com_google_absl_py//absl/flags",
         "@com_google_absl_py//absl/logging",
-        "@intrinsic-core//intrinsic/world/service/robot_calibration:robot_update_service_py_pb2",
-        "@intrinsic-core//intrinsic/world/service/robot_calibration:robot_update_service_py_pb2_grpc",
+        "@intrinsic-core//intrinsic_runtime/intrinsic/world/service/robot_calibration:robot_update_service_py_pb2",
+        "@intrinsic-core//intrinsic_runtime/intrinsic/world/service/robot_calibration:robot_update_service_py_pb2_grpc",
     ],
 )
 
