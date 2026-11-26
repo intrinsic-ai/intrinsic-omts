@@ -430,7 +430,8 @@ git checkout -- configs/omts/app_config.yaml configs/omts/scene.updates.pbtxt sr
 ## Continue Exploring Open Source
 
 - **OMTS Repository**: <https://github.com/intrinsic-ai/intrinsic-omts>
-- **Intrinsic Core & Tutorials**: <https://github.com/intrinsic-ai/intrinsic-core/tree/main/developer_resources/learn/tutorials>
+- **Intrinsic Core Repository**: <https://github.com/intrinsic-ai/intrinsic-core>
+- **Intrinsic Core Tutorials**: <https://developer.intrinsic.ai/docs/learn/tutorials/>
 - **Architecture Deep Dive**: [`docs/ARCHITECTURE.md`](ARCHITECTURE.md)
 - **Developer CLI Reference**: [`tools/README.md`](../tools/README.md)
 - **Developer Community**: <https://developer.intrinsic.ai/>
